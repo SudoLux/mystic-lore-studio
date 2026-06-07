@@ -48,14 +48,43 @@ export type TaskPriority = 'Low' | 'Medium' | 'High' | 'Critical';
 export type NoteTone = 'Design' | 'Material' | 'Fit' | 'Production' | 'Lookbook';
 export type FabricWeight = 'Light' | 'Medium' | 'Heavy';
 export type FabricStatus = 'In Stock' | 'Reserved' | 'Low Stock' | 'Depleted';
+export const materialRoles = [
+  'Shell Fabric',
+  'Contrast Fabric',
+  'Lining',
+  'Trim',
+  'Buttons',
+  'Zippers',
+  'Thread',
+  'Interfacing',
+  'Hardware',
+  'Labels',
+  'Other',
+] as const;
+export const materialStatuses = [
+  'Needed',
+  'Selected',
+  'Ordered',
+  'In Stock',
+  'Reserved',
+  'Cut',
+  'Used',
+  'Need More',
+] as const;
+export type MaterialRole = (typeof materialRoles)[number];
+export type MaterialStatus = (typeof materialStatuses)[number];
 export type LinkedMaterialUse =
-  | 'Shell'
+  | 'Shell Fabric'
+  | 'Contrast Fabric'
   | 'Lining'
-  | 'Accent'
   | 'Trim'
-  | 'Rib'
-  | 'Pocketing'
-  | 'Prototype';
+  | 'Buttons'
+  | 'Zippers'
+  | 'Thread'
+  | 'Interfacing'
+  | 'Hardware'
+  | 'Labels'
+  | 'Other';
 export type LookbookPageType =
   | 'Cover'
   | 'Editorial'
@@ -66,9 +95,12 @@ export type LookbookPageType =
 
 export type LinkedMaterial = {
   id: string;
-  fabricId: string;
+  fabricId?: string;
+  materialName: string;
   projectId: string;
-  use: LinkedMaterialUse;
+  role: MaterialRole;
+  status: MaterialStatus;
+  neededYards: number;
   reservedYards: number;
   usedYards: number;
   notes?: string;
