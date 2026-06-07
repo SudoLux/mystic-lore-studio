@@ -10,19 +10,21 @@ import { SettingsPage } from './pages/SettingsPage';
 import { StatsPage } from './pages/StatsPage';
 import type { PageId } from './types/navigation';
 
-const pages: Record<PageId, React.ReactNode> = {
-  dashboard: <DashboardPage />,
-  projects: <ProjectsPage />,
-  kanban: <KanbanPage />,
-  lookbooks: <LookbooksPage />,
-  fabrics: <FabricVaultPage />,
-  stats: <StatsPage />,
-  settings: <SettingsPage />,
-};
-
 function App() {
   const [activePage, setActivePage] = useState<PageId>('dashboard');
-  const currentPage = useMemo(() => pages[activePage], [activePage]);
+  const currentPage = useMemo(() => {
+    const pages: Record<PageId, React.ReactNode> = {
+      dashboard: <DashboardPage onNavigate={setActivePage} />,
+      projects: <ProjectsPage />,
+      kanban: <KanbanPage />,
+      lookbooks: <LookbooksPage />,
+      fabrics: <FabricVaultPage />,
+      stats: <StatsPage />,
+      settings: <SettingsPage />,
+    };
+
+    return pages[activePage];
+  }, [activePage]);
 
   return (
     <AppShell
