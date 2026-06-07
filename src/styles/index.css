@@ -50,3 +50,19 @@ button {
 button:disabled {
   cursor: not-allowed;
 }
+
+.studio-project-card {
+  animation: studio-card-rise 420ms ease both;
+}
+
+@keyframes studio-card-rise {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
