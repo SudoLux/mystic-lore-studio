@@ -1,0 +1,523 @@
+import type {
+  ApparelProject,
+  Fabric,
+  LinkedMaterial,
+  LookbookPage,
+  ProjectPhase,
+  ProjectStatus,
+  StudioNote,
+  StudioTask,
+  TaskPriority,
+  GarmentType,
+} from '../types/studio';
+
+type ProjectSeed = {
+  id: string;
+  name: string;
+  garmentType: GarmentType;
+  phase: ProjectPhase;
+  status: ProjectStatus;
+  season: string;
+  collection: string;
+  progress: number;
+  priority: TaskPriority;
+  summary: string;
+  designIntent: string;
+  tags: string[];
+  startDate: string;
+  targetDate?: string;
+};
+
+export const demoFabrics: Fabric[] = [
+  {
+    id: 'fabric-midnight-indigo-heavy-denim',
+    name: 'Midnight Indigo Heavy Denim',
+    supplier: 'Cone Mills Archive Lot',
+    category: 'Denim',
+    composition: '100% cotton',
+    colorFamily: 'Midnight indigo',
+    weight: 'Heavy',
+    widthInches: 62,
+    totalYards: 18,
+    reservedYards: 8.5,
+    usedYards: 3.25,
+    status: 'Reserved',
+    tags: ['denim', 'outerwear', 'structured', 'indigo'],
+    notes:
+      'Dense hand with strong recovery after steam. Best for structured jackets and dress panels.',
+  },
+  {
+    id: 'fabric-black-linen-blend',
+    name: 'Black Linen Blend',
+    supplier: 'Metro Textile House',
+    category: 'Linen',
+    composition: '55% linen, 45% viscose',
+    colorFamily: 'Black',
+    weight: 'Medium',
+    widthInches: 58,
+    totalYards: 14,
+    reservedYards: 4,
+    usedYards: 1.5,
+    status: 'In Stock',
+    tags: ['linen', 'summer', 'drape', 'breathable'],
+    notes:
+      'Soft rumple and fluid drape. Keep interfacing light to preserve movement.',
+  },
+  {
+    id: 'fabric-golden-ankara-accent-cotton',
+    name: 'Golden Ankara Accent Cotton',
+    supplier: 'Heritage Market Batch',
+    category: 'Printed cotton',
+    composition: '100% cotton',
+    colorFamily: 'Golden ember',
+    weight: 'Medium',
+    widthInches: 45,
+    totalYards: 7.5,
+    reservedYards: 2.75,
+    usedYards: 1,
+    status: 'Reserved',
+    tags: ['ankara', 'accent', 'print', 'heritage'],
+    notes:
+      'High-impact accent yardage. Use deliberately for facings, pocket flashes, and lookbook detail shots.',
+  },
+  {
+    id: 'fabric-deep-espresso-chino-twill',
+    name: 'Deep Espresso Chino Twill',
+    supplier: 'Pacific Workwear Supply',
+    category: 'Twill',
+    composition: '98% cotton, 2% elastane',
+    colorFamily: 'Deep espresso',
+    weight: 'Medium',
+    widthInches: 60,
+    totalYards: 16,
+    reservedYards: 6,
+    usedYards: 2.25,
+    status: 'Reserved',
+    tags: ['twill', 'pants', 'workwear', 'stretch'],
+    notes:
+      'Stable enough for tailoring details with a slight give for comfort in fitted trousers.',
+  },
+  {
+    id: 'fabric-stardust-ivory-lining',
+    name: 'Stardust Ivory Lining',
+    supplier: 'Atelier Supply Co.',
+    category: 'Lining',
+    composition: 'Cupro blend',
+    colorFamily: 'Stardust ivory',
+    weight: 'Light',
+    widthInches: 54,
+    totalYards: 20,
+    reservedYards: 5.5,
+    usedYards: 1.75,
+    status: 'In Stock',
+    tags: ['lining', 'ivory', 'tailoring', 'soft hand'],
+    notes:
+      'Smooth lining option for jackets, dresses, and internal finish moments.',
+  },
+  {
+    id: 'fabric-nebula-teal-rib-knit',
+    name: 'Nebula Teal Rib Knit',
+    supplier: 'North Star Knits',
+    category: 'Rib knit',
+    composition: '94% cotton, 6% spandex',
+    colorFamily: 'Nebula teal',
+    weight: 'Medium',
+    widthInches: 48,
+    totalYards: 9,
+    reservedYards: 2.5,
+    usedYards: 0.75,
+    status: 'Reserved',
+    tags: ['rib', 'knit', 'cuffs', 'collar'],
+    notes:
+      'Strong color accent with good snap-back. Ideal for cuffs, neckbands, and cardigan finishing.',
+  },
+];
+
+const linkedMaterials: LinkedMaterial[] = [
+  {
+    id: 'link-waden-denim-shell',
+    fabricId: 'fabric-midnight-indigo-heavy-denim',
+    projectId: 'project-waden-sutra-jacket',
+    use: 'Shell',
+    reservedYards: 4,
+    usedYards: 1.5,
+    notes: 'Cut test sleeve and pocket bags before committing main body panels.',
+  },
+  {
+    id: 'link-waden-ankara-accent',
+    fabricId: 'fabric-golden-ankara-accent-cotton',
+    projectId: 'project-waden-sutra-jacket',
+    use: 'Accent',
+    reservedYards: 1.25,
+    usedYards: 0.5,
+    notes: 'Use for interior facing and a narrow back-neck reveal.',
+  },
+  {
+    id: 'link-sankofa-twill-shell',
+    fabricId: 'fabric-deep-espresso-chino-twill',
+    projectId: 'project-sankofa-pants',
+    use: 'Shell',
+    reservedYards: 3,
+    usedYards: 1.25,
+    notes: 'Reserve extra yardage for pleat testing and waistband refinement.',
+  },
+  {
+    id: 'link-sankofa-lining-pocketing',
+    fabricId: 'fabric-stardust-ivory-lining',
+    projectId: 'project-sankofa-pants',
+    use: 'Pocketing',
+    reservedYards: 0.75,
+    usedYards: 0.25,
+    notes: 'Use only for internal pocketing to keep the trouser weight balanced.',
+  },
+  {
+    id: 'link-meridian-linen-shell',
+    fabricId: 'fabric-black-linen-blend',
+    projectId: 'project-meridian-shirt',
+    use: 'Shell',
+    reservedYards: 2.5,
+    usedYards: 1,
+    notes: 'Cut with relaxed ease to honor the linen blend drape.',
+  },
+  {
+    id: 'link-meridian-ankara-trim',
+    fabricId: 'fabric-golden-ankara-accent-cotton',
+    projectId: 'project-meridian-shirt',
+    use: 'Trim',
+    reservedYards: 0.5,
+    usedYards: 0.25,
+    notes: 'Small trim application on inner collar stand and placket underside.',
+  },
+  {
+    id: 'link-ronyn-rib-shell',
+    fabricId: 'fabric-nebula-teal-rib-knit',
+    projectId: 'project-ronyn-cardigan',
+    use: 'Rib',
+    reservedYards: 2.5,
+    usedYards: 0.75,
+    notes: 'Use for cuffs, hem band, and soft shawl collar experiment.',
+  },
+  {
+    id: 'link-blazer-denim-shell',
+    fabricId: 'fabric-midnight-indigo-heavy-denim',
+    projectId: 'project-denim-blazer-dress',
+    use: 'Shell',
+    reservedYards: 4.5,
+    usedYards: 1.75,
+    notes: 'Reserve continuous yardage for front panels and skirt extension.',
+  },
+  {
+    id: 'link-blazer-ivory-lining',
+    fabricId: 'fabric-stardust-ivory-lining',
+    projectId: 'project-denim-blazer-dress',
+    use: 'Lining',
+    reservedYards: 3,
+    usedYards: 1.25,
+    notes: 'Line bodice and sleeve only; leave skirt extension clean-finished.',
+  },
+];
+
+const tasks: StudioTask[] = [
+  {
+    id: 'task-waden-refine-collar',
+    projectId: 'project-waden-sutra-jacket',
+    title: 'Refine sculpted collar roll',
+    description: 'Adjust collar stand curve and test how it sits over a hoodie layer.',
+    status: 'In Progress',
+    priority: 'High',
+    phase: 'Pattern Drafting',
+    dueDate: '2026-06-18',
+  },
+  {
+    id: 'task-waden-pocket-placement',
+    projectId: 'project-waden-sutra-jacket',
+    title: 'Confirm pocket placement',
+    description: 'Mark patch-pocket scale against cropped jacket proportions.',
+    status: 'To Do',
+    priority: 'Medium',
+    phase: 'Sample Sewing',
+    dueDate: '2026-06-21',
+  },
+  {
+    id: 'task-sankofa-pleat-test',
+    projectId: 'project-sankofa-pants',
+    title: 'Test double-pleat depth',
+    description: 'Compare 1.25 inch and 1.75 inch pleat depth in espresso twill.',
+    status: 'Review',
+    priority: 'High',
+    phase: 'Fitting',
+    dueDate: '2026-06-14',
+  },
+  {
+    id: 'task-sankofa-waistband',
+    projectId: 'project-sankofa-pants',
+    title: 'Draft extended waistband tab',
+    description: 'Build a cleaner closure that works with the high-rise silhouette.',
+    status: 'Done',
+    priority: 'Medium',
+    phase: 'Pattern Drafting',
+  },
+  {
+    id: 'task-meridian-placket',
+    projectId: 'project-meridian-shirt',
+    title: 'Sample hidden placket',
+    description: 'Mock up a concealed placket with a narrow Ankara reveal.',
+    status: 'To Do',
+    priority: 'Medium',
+    phase: 'Sample Sewing',
+    dueDate: '2026-06-24',
+  },
+  {
+    id: 'task-meridian-reference-board',
+    projectId: 'project-meridian-shirt',
+    title: 'Lock reference board',
+    description: 'Collect shirting references focused on relaxed tailoring and movement.',
+    status: 'Done',
+    priority: 'Low',
+    phase: 'Research',
+  },
+  {
+    id: 'task-ronyn-knit-recovery',
+    projectId: 'project-ronyn-cardigan',
+    title: 'Check rib recovery',
+    description: 'Steam test hem band and cuff recovery after stretch.',
+    status: 'Backlog',
+    priority: 'Medium',
+    phase: 'Materials',
+  },
+  {
+    id: 'task-ronyn-button-story',
+    projectId: 'project-ronyn-cardigan',
+    title: 'Choose button finish',
+    description: 'Compare dark corozo and antique brass against nebula teal rib.',
+    status: 'To Do',
+    priority: 'Low',
+    phase: 'Materials',
+    dueDate: '2026-06-29',
+  },
+  {
+    id: 'task-blazer-dress-fitting',
+    projectId: 'project-denim-blazer-dress',
+    title: 'First fitting with shoulder pads',
+    description: 'Review shoulder line, sleeve pitch, and dress length balance.',
+    status: 'In Progress',
+    priority: 'Critical',
+    phase: 'Fitting',
+    dueDate: '2026-06-12',
+  },
+  {
+    id: 'task-blazer-dress-lookbook-copy',
+    projectId: 'project-denim-blazer-dress',
+    title: 'Draft lookbook copy',
+    description: 'Write presentation language around tailored denim and evening utility.',
+    status: 'To Do',
+    priority: 'Medium',
+    phase: 'Photoshoot',
+  },
+];
+
+const notes: StudioNote[] = [
+  {
+    id: 'note-waden-silhouette',
+    projectId: 'project-waden-sutra-jacket',
+    title: 'Silhouette direction',
+    body: 'Keep the jacket cropped and architectural, with enough shoulder ease to layer over rib knits.',
+    tone: 'Design',
+    createdAt: '2026-06-05',
+  },
+  {
+    id: 'note-waden-facing',
+    projectId: 'project-waden-sutra-jacket',
+    title: 'Accent facing',
+    body: 'Golden Ankara should appear as a controlled interior reveal, not a dominant exterior statement.',
+    tone: 'Material',
+    createdAt: '2026-06-06',
+  },
+  {
+    id: 'note-sankofa-fit',
+    projectId: 'project-sankofa-pants',
+    title: 'Fit target',
+    body: 'High rise, generous thigh, clean taper. The trouser should feel ceremonial but wearable.',
+    tone: 'Fit',
+    createdAt: '2026-06-04',
+  },
+  {
+    id: 'note-meridian-drape',
+    projectId: 'project-meridian-shirt',
+    title: 'Drape note',
+    body: 'Let the black linen blend fall away from the body. Avoid overbuilding the collar.',
+    tone: 'Design',
+    createdAt: '2026-06-03',
+  },
+  {
+    id: 'note-ronyn-mood',
+    projectId: 'project-ronyn-cardigan',
+    title: 'Mood',
+    body: 'Soft armor: cardigan ease with a more deliberate collar and weighted hem.',
+    tone: 'Lookbook',
+    createdAt: '2026-06-02',
+  },
+  {
+    id: 'note-blazer-dress-production',
+    projectId: 'project-denim-blazer-dress',
+    title: 'Production caution',
+    body: 'Heavy denim needs graded seam allowances through the waist and hip to avoid bulk stacking.',
+    tone: 'Production',
+    createdAt: '2026-06-07',
+  },
+];
+
+const lookbookPages: LookbookPage[] = [
+  {
+    id: 'lookbook-waden-cover',
+    projectId: 'project-waden-sutra-jacket',
+    title: 'Waden Sutra Jacket cover',
+    pageType: 'Cover',
+    headline: 'Structured denim with hidden ceremonial warmth.',
+    body: 'A cropped jacket study in midnight denim, finished with restrained golden interior detail.',
+    layoutHint: 'Full-bleed garment hero with detail strip for collar and facing.',
+  },
+  {
+    id: 'lookbook-sankofa-editorial',
+    projectId: 'project-sankofa-pants',
+    title: 'Sankofa Pants editorial page',
+    pageType: 'Editorial',
+    headline: 'Tailored volume grounded in espresso twill.',
+    body: 'High-rise pleated trousers built for movement, memory, and daily ritual.',
+    layoutHint: 'Three-quarter pose beside close crop of waistband and pleat.',
+  },
+  {
+    id: 'lookbook-meridian-material',
+    projectId: 'project-meridian-shirt',
+    title: 'Meridian Shirt material story',
+    pageType: 'Material Story',
+    headline: 'Black linen softened with a precise flash of gold.',
+    body: 'A breathable shirt concept balancing quiet tailoring and heritage trim.',
+    layoutHint: 'Flat garment layout with placket and collar detail callouts.',
+  },
+  {
+    id: 'lookbook-ronyn-detail',
+    projectId: 'project-ronyn-cardigan',
+    title: 'Rōnyn Cardigan detail page',
+    pageType: 'Detail',
+    headline: 'Nebula rib work shaped into a soft outer layer.',
+    body: 'A cardigan placeholder focused on collar proportion, rib recovery, and calm utility.',
+    layoutHint: 'Macro detail grid for cuff, hem, collar, and button finish.',
+  },
+  {
+    id: 'lookbook-blazer-dress-lineup',
+    projectId: 'project-denim-blazer-dress',
+    title: 'Denim Blazer Dress lineup page',
+    pageType: 'Lineup',
+    headline: 'A tailored denim dress with evening control.',
+    body: 'Blazer structure extends into a dress silhouette for a sharp studio statement.',
+    layoutHint: 'Front, side, and motion sequence with shoulder and skirt notes.',
+  },
+];
+
+const projectData: ProjectSeed[] = [
+  {
+    id: 'project-waden-sutra-jacket',
+    name: 'Waden Sutra Jacket',
+    garmentType: 'Jacket',
+    phase: 'Sample Sewing',
+    status: 'Active',
+    season: 'Fall 2026',
+    collection: 'Mystic Lore Core',
+    progress: 46,
+    priority: 'High',
+    summary:
+      'Cropped heavy denim jacket with sculpted collar, strong pocket geometry, and a controlled Ankara interior reveal.',
+    designIntent:
+      'Build a premium outerwear anchor that feels protective, ceremonial, and practical for layered styling.',
+    tags: ['outerwear', 'denim', 'cropped', 'accent facing'],
+    startDate: '2026-05-22',
+    targetDate: '2026-07-10',
+  },
+  {
+    id: 'project-sankofa-pants',
+    name: 'Sankofa Pants',
+    garmentType: 'Pants',
+    phase: 'Fitting',
+    status: 'Active',
+    season: 'Fall 2026',
+    collection: 'Mystic Lore Core',
+    progress: 64,
+    priority: 'High',
+    summary:
+      'High-rise pleated trouser in espresso twill with tailored volume and a clean taper.',
+    designIntent:
+      'Create a grounding trouser shape that can carry both shirting and structured outerwear.',
+    tags: ['trouser', 'pleated', 'espresso', 'tailoring'],
+    startDate: '2026-05-18',
+    targetDate: '2026-06-28',
+  },
+  {
+    id: 'project-meridian-shirt',
+    name: 'Meridian Shirt',
+    garmentType: 'Shirt',
+    phase: 'Research',
+    status: 'Idea',
+    season: 'Spring 2027',
+    collection: 'Field Notes',
+    progress: 22,
+    priority: 'Medium',
+    summary:
+      'Relaxed black linen shirt with hidden placket and subtle Ankara trim at internal touchpoints.',
+    designIntent:
+      'Keep the shirt airy and architectural while adding small material moments for discovery.',
+    tags: ['shirt', 'linen', 'hidden placket', 'summer layer'],
+    startDate: '2026-06-01',
+    targetDate: '2026-08-02',
+  },
+  {
+    id: 'project-ronyn-cardigan',
+    name: 'Rōnyn Cardigan',
+    garmentType: 'Cardigan',
+    phase: 'Materials',
+    status: 'Paused',
+    season: 'Winter 2026',
+    collection: 'Soft Armor',
+    progress: 18,
+    priority: 'Medium',
+    summary:
+      'Soft cardigan concept using nebula teal rib for cuffs, hem, and collar proportion studies.',
+    designIntent:
+      'Explore the cardigan as a soft armor layer with weight, recovery, and calm presence.',
+    tags: ['cardigan', 'rib knit', 'soft armor', 'layering'],
+    startDate: '2026-05-30',
+  },
+  {
+    id: 'project-denim-blazer-dress',
+    name: 'Denim Blazer Dress',
+    garmentType: 'Dress',
+    phase: 'Fitting',
+    status: 'Blocked',
+    season: 'Fall 2026',
+    collection: 'Mystic Lore Core',
+    progress: 58,
+    priority: 'Critical',
+    summary:
+      'Heavy denim blazer dress with tailored shoulder structure, ivory lining, and sharp evening utility.',
+    designIntent:
+      'Merge blazer authority with dress movement for the collection presentation anchor.',
+    tags: ['dress', 'denim', 'tailored', 'presentation anchor'],
+    startDate: '2026-05-12',
+    targetDate: '2026-07-01',
+  },
+];
+
+export const demoProjects: ApparelProject[] = projectData.map((project) => ({
+  ...project,
+  linkedMaterials: linkedMaterials.filter(
+    (material) => material.projectId === project.id,
+  ),
+  tasks: tasks.filter((task) => task.projectId === project.id),
+  notes: notes.filter((note) => note.projectId === project.id),
+  lookbookPages: lookbookPages.filter((page) => page.projectId === project.id),
+}));
+
+export const demoTasks = tasks;
+export const demoNotes = notes;
+export const demoLinkedMaterials = linkedMaterials;
+export const demoLookbookPages = lookbookPages;
