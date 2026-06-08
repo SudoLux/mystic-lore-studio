@@ -185,6 +185,32 @@ export function deleteProjectInData(
   };
 }
 
+export function createFabricInData(data: StudioData, fabric: Fabric): StudioData {
+  return {
+    ...data,
+    fabrics: [fabric, ...data.fabrics],
+  };
+}
+
+export function updateFabricInData(data: StudioData, fabric: Fabric): StudioData {
+  return {
+    ...data,
+    fabrics: data.fabrics.map((currentFabric) =>
+      currentFabric.id === fabric.id ? fabric : currentFabric,
+    ),
+  };
+}
+
+export function deleteFabricInData(
+  data: StudioData,
+  fabricId: string,
+): StudioData {
+  return {
+    ...data,
+    fabrics: data.fabrics.filter((fabric) => fabric.id !== fabricId),
+  };
+}
+
 export function updateTaskStatusInData(
   data: StudioData,
   taskId: string,

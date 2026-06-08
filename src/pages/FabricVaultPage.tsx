@@ -8,12 +8,14 @@ import {
   Link2,
   MapPin,
   Package,
+  PackagePlus,
   Pencil,
   Ruler,
   Search,
   Shirt,
   SlidersHorizontal,
   Sparkles,
+  Trash2,
 } from 'lucide-react';
 import { Badge } from '../components/shared/Badge';
 import { Button } from '../components/shared/Button';
@@ -26,6 +28,9 @@ import type { ApparelProject, Fabric, LinkedMaterial } from '../types/studio';
 type FabricVaultPageProps = {
   fabricId?: string;
   onBack: () => void;
+  onDeleteFabric: (fabric: Fabric) => void;
+  onEditFabric: (fabric: Fabric) => void;
+  onNewFabric: () => void;
   onOpenFabric: (fabricId: string) => void;
 };
 
@@ -41,6 +46,9 @@ const lowYardageThreshold = 5;
 export function FabricVaultPage({
   fabricId,
   onBack,
+  onDeleteFabric,
+  onEditFabric,
+  onNewFabric,
   onOpenFabric,
 }: FabricVaultPageProps) {
   const {
@@ -137,6 +145,8 @@ export function FabricVaultPage({
       <FabricDetailPage
         fabric={selectedFabric}
         onBack={onBack}
+        onDeleteFabric={onDeleteFabric}
+        onEditFabric={onEditFabric}
         projects={projects}
       />
     );
@@ -157,7 +167,16 @@ export function FabricVaultPage({
         badge="Fabric Vault"
         description="Search the material archive by fabric story, inventory signal, mood, and garment use."
         title="Fabric Vault"
-      />
+      >
+        <Button
+          icon={<PackagePlus aria-hidden="true" size={16} strokeWidth={1.9} />}
+          onClick={onNewFabric}
+          size="sm"
+          variant="primary"
+        >
+          Add Fabric
+        </Button>
+      </PageHeader>
 
       <div className="grid gap-4 md:grid-cols-3">
         <VaultMetric
@@ -412,10 +431,14 @@ function FabricCard({
 function FabricDetailPage({
   fabric,
   onBack,
+  onDeleteFabric,
+  onEditFabric,
   projects,
 }: {
   fabric?: Fabric;
   onBack: () => void;
+  onDeleteFabric: (fabric: Fabric) => void;
+  onEditFabric: (fabric: Fabric) => void;
   projects: ApparelProject[];
 }) {
   if (!fabric) {
@@ -500,10 +523,19 @@ function FabricDetailPage({
                 <div className="flex flex-wrap gap-2">
                   <Button
                     icon={<Pencil aria-hidden="true" size={15} strokeWidth={1.9} />}
+                    onClick={() => onEditFabric(fabric)}
                     size="sm"
                     variant="primary"
                   >
                     Edit Fabric
+                  </Button>
+                  <Button
+                    icon={<Trash2 aria-hidden="true" size={15} strokeWidth={1.9} />}
+                    onClick={() => onDeleteFabric(fabric)}
+                    size="sm"
+                    variant="ghost"
+                  >
+                    Delete Fabric
                   </Button>
                   <Button
                     icon={<Link2 aria-hidden="true" size={15} strokeWidth={1.9} />}

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { AppShell } from './components/layout/AppShell';
+import { FabricFormModal } from './components/fabrics/FabricFormModal';
 import { ProjectFormModal } from './components/projects/ProjectFormModal';
 import { Button } from './components/shared/Button';
 import { navigationItems } from './data/navigation';
@@ -13,7 +14,7 @@ import { ProjectsPage } from './pages/ProjectsPage';
 import { SettingsPage } from './pages/SettingsPage';
 import { StatsPage } from './pages/StatsPage';
 import type { PageId } from './types/navigation';
-import type { ApparelProject } from './types/studio';
+import type { ApparelProject, Fabric } from './types/studio';
 
 type AppRoute = {
   fabricId?: string;
@@ -24,6 +25,10 @@ type AppRoute = {
 type ProjectFormState =
   | { mode: 'create'; project?: undefined }
   | { mode: 'edit'; project: ApparelProject };
+
+type FabricFormState =
+  | { fabric?: undefined; mode: 'create' }
+  | { fabric: Fabric; mode: 'edit' };
 
 function getInitialRoute(): AppRoute {
   const [, section, recordId] = window.location.hash.split('/');
@@ -47,13 +52,19 @@ function getInitialRoute(): AppRoute {
 
 function App() {
   const {
+    createFabric,
     createProject,
     data: { projects },
+    deleteFabric,
     deleteProject,
+    updateFabric,
     updateProject,
   } = useStudioData();
   const [route, setRoute] = useState<AppRoute>(getInitialRoute);
+  const [fabricForm, setFabricForm] = useState<FabricFormState | null>(null);
   const [projectForm, setProjectForm] = useState<ProjectFormState | null>(null);
+  const [deleteFabricCandidate, setDeleteFabricCandidate] =
+    useState<Fabric | null>(null);
   const [deleteProjectCandidate, setDeleteProjectCandidate] =
     useState<ApparelProject | null>(null);
 
@@ -98,14 +109,27 @@ function App() {
   };
 
   const closeFabric = () => {
-    window.history.pushState(null, '', '#');
+    window.history.pushState(null, '', '#/fabrics');
     setRoute({ page: 'fabrics' });
+  };
+
+  const openNewFabricForm = () => {
+    setFabricForm({ mode: 'create' });
+  };
+
+  const openEditFabricForm = (fabric: Fabric) => {
+    setFabricForm({ fabric, mode: 'edit' });
+  };
+
+  const handleDeleteFabric = (fabric: Fabric) => {
+    setDeleteFabricCandidate(fabric);
   };
 
   const currentPage = useMemo(() => {
     const pages: Record<PageId, ReactNode> = {
       dashboard: (
         <DashboardPage
+          onAddFabric={openNewFabricForm}
           onNavigate={navigateToPage}
           onNewProject={openNewProjectForm}
         />
@@ -129,6 +153,9 @@ function App() {
         <FabricVaultPage
           fabricId={route.fabricId}
           onBack={closeFabric}
+          onDeleteFabric={handleDeleteFabric}
+          onEditFabric={openEditFabricForm}
+          onNewFabric={openNewFabricForm}
           onOpenFabric={openFabric}
         />
       ),
@@ -166,6 +193,35 @@ function App() {
           project={projectForm.project}
         />
       ) : null}
+      {fabricForm ? (
+        <FabricFormModal
+          fabric={fabricForm.fabric}
+          mode={fabricForm.mode}
+          onClose={() => setFabricForm(null)}
+          onSubmit={(fabric) => {
+            if (fabricForm.mode === 'create') {
+              createFabric(fabric);
+              setFabricForm(null);
+              openFabric(fabric.id);
+              return;
+            }
+
+            updateFabric(fabric);
+            setFabricForm(null);
+          }}
+        />
+      ) : null}
+      {deleteFabricCandidate ? (
+        <DeleteFabricDialog
+          fabric={deleteFabricCandidate}
+          onCancel={() => setDeleteFabricCandidate(null)}
+          onConfirm={() => {
+            deleteFabric(deleteFabricCandidate.id);
+            setDeleteFabricCandidate(null);
+            closeFabric();
+          }}
+        />
+      ) : null}
       {deleteProjectCandidate ? (
         <DeleteProjectDialog
           onCancel={() => setDeleteProjectCandidate(null)}
@@ -178,6 +234,42 @@ function App() {
         />
       ) : null}
     </>
+  );
+}
+
+function DeleteFabricDialog({
+  fabric,
+  onCancel,
+  onConfirm,
+}: {
+  fabric: Fabric;
+  onCancel: () => void;
+  onConfirm: () => void;
+}) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-midnight/82 px-4 py-5 backdrop-blur-xl sm:items-center">
+      <section className="w-full max-w-lg rounded-3xl border border-ember/40 bg-[linear-gradient(135deg,rgba(61,43,31,0.94),rgba(10,10,10,0.98),rgba(45,92,107,0.36))] p-5 shadow-[0_28px_90px_rgba(0,0,0,0.46)] sm:p-6">
+        <p className="text-xs font-medium uppercase tracking-[0.16em] text-ember">
+          Delete Fabric
+        </p>
+        <h2 className="mt-3 text-2xl font-semibold text-stardust">
+          Delete {fabric.name}?
+        </h2>
+        <p className="mt-3 text-sm leading-6 text-stardust/64">
+          This removes the fabric from the vault. Existing project material
+          records will keep their material names and handle the missing fabric
+          link as an unlinked material.
+        </p>
+        <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+          <Button onClick={onCancel} variant="ghost">
+            Cancel
+          </Button>
+          <Button onClick={onConfirm} variant="primary">
+            Delete Fabric
+          </Button>
+        </div>
+      </section>
+    </div>
   );
 }
 
