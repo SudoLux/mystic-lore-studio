@@ -45,7 +45,16 @@ export type GarmentType = (typeof garmentTypes)[number];
 
 export type TaskStatus = 'Backlog' | 'To Do' | 'In Progress' | 'Review' | 'Done';
 export type TaskPriority = 'Low' | 'Medium' | 'High' | 'Critical';
-export type NoteTone = 'Design' | 'Material' | 'Fit' | 'Production' | 'Lookbook';
+export const noteCategories = [
+  'Design Note',
+  'Construction Note',
+  'Pattern Note',
+  'Fit Note',
+  'Build Log',
+  'Client Note',
+  'Idea',
+] as const;
+export type NoteCategory = (typeof noteCategories)[number];
 export type FabricWeight = 'Light' | 'Medium' | 'Heavy';
 export type FabricStatus = 'In Stock' | 'Reserved' | 'Low Stock' | 'Depleted';
 export const materialRoles = [
@@ -122,8 +131,9 @@ export type StudioNote = {
   projectId: string;
   title: string;
   body: string;
-  tone: NoteTone;
+  category: NoteCategory;
   createdAt: string;
+  updatedAt?: string;
 };
 
 export type LookbookPage = {
