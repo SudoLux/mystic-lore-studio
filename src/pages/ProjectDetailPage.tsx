@@ -22,12 +22,15 @@ import { demoFabrics, demoProjects } from '../data/seedData';
 import { cn } from '../lib/classes';
 import {
   materialRoles,
+  noteCategories,
   projectPhases,
   type ApparelProject,
   type Fabric,
   type LinkedMaterial,
   type MaterialRole,
+  type NoteCategory,
   type ProjectPhase,
+  type StudioNote,
 } from '../types/studio';
 
 type ProjectDetailPageProps = {
@@ -675,27 +678,169 @@ function TasksTab({ project }: { project: ApparelProject }) {
 }
 
 function NotesTab({ project }: { project: ApparelProject }) {
+  const [selectedCategory, setSelectedCategory] = useState<NoteCategory | 'All'>(
+    'All',
+  );
+  const sortedNotes = [...project.notes].sort((a, b) =>
+    b.createdAt.localeCompare(a.createdAt),
+  );
+  const visibleNotes =
+    selectedCategory === 'All'
+      ? sortedNotes
+      : sortedNotes.filter((note) => note.category === selectedCategory);
+
   return (
-    <div className="grid gap-4 lg:grid-cols-2">
-      {project.notes.map((note) => (
-        <Card className="transition duration-300 hover:border-ember/45" key={note.id}>
-          <div className="flex items-start justify-between gap-4">
-            <div>
-              <Badge variant="bronze">{note.tone}</Badge>
-              <h3 className="mt-4 text-lg font-semibold text-stardust">
-                {note.title}
-              </h3>
-            </div>
-            <span className="text-sm text-stardust/48">
-              {formatDate(note.createdAt)}
-            </span>
+    <div className="space-y-4">
+      <Card className="border-bronze/30 bg-[linear-gradient(135deg,rgba(27,58,99,0.22),rgba(10,10,10,0.48),rgba(61,43,31,0.34))]">
+        <div className="flex flex-col gap-5 xl:flex-row xl:items-end xl:justify-between">
+          <div>
+            <Badge variant="teal">Project Journal</Badge>
+            <h2 className="mt-4 text-2xl font-semibold text-stardust">
+              Studio notes
+            </h2>
+            <p className="mt-3 max-w-2xl text-sm leading-6 text-stardust/62">
+              Design thinking, construction decisions, fit observations, and
+              build history for this garment.
+            </p>
           </div>
-          <p className="mt-4 text-sm leading-7 text-stardust/64">{note.body}</p>
+          <Button size="sm" variant="primary">Add Note</Button>
+        </div>
+        <div className="mt-5 flex gap-2 overflow-x-auto pb-1">
+          {(['All', ...noteCategories] as Array<NoteCategory | 'All'>).map(
+            (category) => {
+              const isActive = selectedCategory === category;
+              const count =
+                category === 'All'
+                  ? project.notes.length
+                  : project.notes.filter((note) => note.category === category).length;
+
+              return (
+                <button
+                  aria-pressed={isActive}
+                  className={cn(
+                    'inline-flex shrink-0 items-center gap-2 rounded-full border px-3 py-2 text-xs font-medium transition duration-200',
+                    isActive
+                      ? 'border-ember/60 bg-ember text-midnight'
+                      : 'border-bronze/25 bg-midnight/35 text-stardust/64 hover:border-ember/40 hover:text-stardust',
+                  )}
+                  key={category}
+                  onClick={() => setSelectedCategory(category)}
+                  type="button"
+                >
+                  {category}
+                  <span
+                    className={cn(
+                      'rounded-full px-2 py-0.5 text-[0.65rem]',
+                      isActive
+                        ? 'bg-midnight/18 text-midnight'
+                        : 'bg-stardust/8 text-stardust/48',
+                    )}
+                  >
+                    {count}
+                  </span>
+                </button>
+              );
+            },
+          )}
+        </div>
+      </Card>
+
+      {visibleNotes.length > 0 ? (
+        <div className="grid gap-4 xl:grid-cols-2">
+          {visibleNotes.map((note) => (
+            <NoteJournalCard key={note.id} note={note} />
+          ))}
+        </div>
+      ) : (
+        <Card className="border-bronze/25 text-center">
+          <p className="text-lg font-semibold text-stardust">
+            No notes in this category
+          </p>
+          <p className="mt-2 text-sm text-stardust/60">
+            Choose another category or add a note when note creation is enabled.
+          </p>
         </Card>
-      ))}
+      )}
     </div>
   );
 }
+
+function NoteJournalCard({ note }: { note: StudioNote }) {
+  return (
+    <article className="group relative overflow-hidden rounded-3xl border border-bronze/25 bg-stardust/[0.055] p-5 text-stardust shadow-[0_20px_60px_rgba(0,0,0,0.18)] backdrop-blur-xl transition duration-300 hover:-translate-y-1 hover:border-ember/45 hover:bg-stardust/[0.075]">
+      <div
+        className={cn(
+          'absolute inset-x-0 top-0 h-1',
+          noteCategoryAccent[note.category],
+        )}
+      />
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <NoteCategoryChip category={note.category} />
+          <h3 className="mt-4 text-xl font-semibold leading-tight text-stardust">
+            {note.title}
+          </h3>
+        </div>
+        <div className="shrink-0 text-right text-xs leading-5 text-stardust/48">
+          <p>Created {formatDate(note.createdAt)}</p>
+          {note.updatedAt ? <p>Updated {formatDate(note.updatedAt)}</p> : null}
+        </div>
+      </div>
+      <p className="mt-5 text-sm leading-7 text-stardust/66">{note.body}</p>
+      <div className="mt-5 rounded-2xl border border-bronze/18 bg-midnight/32 p-3">
+        <p className="text-xs font-medium uppercase tracking-[0.14em] text-stardust/38">
+          Journal cue
+        </p>
+        <p className="mt-2 text-sm leading-6 text-stardust/58">
+          {noteCategoryCue[note.category]}
+        </p>
+      </div>
+    </article>
+  );
+}
+
+function NoteCategoryChip({ category }: { category: NoteCategory }) {
+  return (
+    <span
+      className={cn(
+        'inline-flex items-center rounded-full border px-3 py-1 text-xs font-medium',
+        noteCategoryChip[category],
+      )}
+    >
+      {category}
+    </span>
+  );
+}
+
+const noteCategoryChip: Record<NoteCategory, string> = {
+  'Build Log': 'border-nebula/45 bg-nebula/18 text-stardust',
+  'Client Note': 'border-stardust/25 bg-stardust/10 text-stardust',
+  'Construction Note': 'border-bronze/45 bg-bronze/16 text-stardust',
+  'Design Note': 'border-ember/35 bg-ember/12 text-ember',
+  'Fit Note': 'border-celestial/55 bg-celestial/26 text-stardust',
+  Idea: 'border-ember/35 bg-ember/18 text-stardust',
+  'Pattern Note': 'border-espresso/70 bg-espresso/55 text-stardust',
+};
+
+const noteCategoryAccent: Record<NoteCategory, string> = {
+  'Build Log': 'bg-nebula',
+  'Client Note': 'bg-stardust',
+  'Construction Note': 'bg-bronze',
+  'Design Note': 'bg-ember',
+  'Fit Note': 'bg-celestial',
+  Idea: 'bg-[linear-gradient(90deg,#C89B3C,#EDE3CF)]',
+  'Pattern Note': 'bg-espresso',
+};
+
+const noteCategoryCue: Record<NoteCategory, string> = {
+  'Build Log': 'Chronicles what changed during sampling, sewing, pressing, or review.',
+  'Client Note': 'Captures buyer, wearer, or presentation feedback that should shape the garment.',
+  'Construction Note': 'Records seam, finish, and assembly decisions for future production reference.',
+  'Design Note': 'Preserves the creative reason behind the garment and its visual language.',
+  'Fit Note': 'Tracks body, proportion, comfort, and movement observations.',
+  Idea: 'Holds an open creative thought that may become a task or design decision later.',
+  'Pattern Note': 'Documents draft changes, measurements, and pattern behavior.',
+};
 
 function LookbookTab({ project }: { project: ApparelProject }) {
   return (
