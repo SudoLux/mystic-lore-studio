@@ -52,18 +52,12 @@ import {
 
 type ProjectDetailPageProps = {
   onBack: () => void;
+  onDeleteProject: (project: ApparelProject) => void;
+  onEditProject: (project: ApparelProject) => void;
   projectId: string;
 };
 
 type DetailTab = 'overview' | 'materials' | 'tasks' | 'notes' | 'lookbook';
-
-type ProjectProfile = {
-  colorStory: string;
-  generalNotes: string;
-  keyFeatures: string[];
-  silhouette: string;
-  targetWearer: string;
-};
 
 type LinkedMaterialRow = {
   allocation: LinkedMaterial;
@@ -78,90 +72,12 @@ const detailTabs = [
   { id: 'lookbook', label: 'Lookbook', icon: BookOpen },
 ] satisfies Array<{ id: DetailTab; label: string; icon: typeof Sparkles }>;
 
-const projectProfiles: Record<string, ProjectProfile> = {
-  'project-waden-sutra-jacket': {
-    colorStory:
-      'Midnight indigo dominates the outer shell, with Golden Ankara appearing as a quiet interior flash.',
-    generalNotes:
-      'Protect the architectural shoulder and collar line. The jacket should feel ceremonial without sacrificing everyday utility.',
-    keyFeatures: [
-      'Cropped structured body',
-      'Sculpted collar roll',
-      'Patch pocket geometry',
-      'Interior Ankara facing reveal',
-    ],
-    silhouette:
-      'Cropped and boxy through the body with deliberate shoulder ease for layered styling.',
-    targetWearer:
-      'A creative director or maker who wants a statement jacket that still works as a daily studio layer.',
-  },
-  'project-sankofa-pants': {
-    colorStory:
-      'Deep espresso twill grounds the shape, with stardust ivory pocketing kept inside the garment.',
-    generalNotes:
-      'Balance the ceremonial trouser volume with enough taper to keep the profile sharp under jackets.',
-    keyFeatures: [
-      'High-rise waist',
-      'Double pleat study',
-      'Extended waistband tab',
-      'Clean taper through hem',
-    ],
-    silhouette:
-      'High-waisted with generous thigh volume, controlled taper, and a tailored break.',
-    targetWearer:
-      'A person who moves between atelier work, events, and everyday errands without changing wardrobe language.',
-  },
-  'project-meridian-shirt': {
-    colorStory:
-      'Black linen carries the surface, while golden trim appears only at internal touchpoints.',
-    generalNotes:
-      'Keep construction light. The shirt should breathe and move before it announces tailoring.',
-    keyFeatures: [
-      'Relaxed linen body',
-      'Hidden placket',
-      'Subtle Ankara trim',
-      'Soft collar construction',
-    ],
-    silhouette:
-      'Airy and relaxed with a slightly architectural fall away from the body.',
-    targetWearer:
-      'A warm-weather dresser who wants a quiet shirt with hidden craft details.',
-  },
-  'project-ronyn-cardigan': {
-    colorStory:
-      'Nebula teal rib sets the mood, supported by dark buttons and a grounded studio palette.',
-    generalNotes:
-      'Test recovery before committing. The cardigan needs softness, but the hem and cuffs cannot collapse.',
-    keyFeatures: [
-      'Weighted hem band',
-      'Soft shawl collar experiment',
-      'Rib cuff recovery',
-      'Button finish study',
-    ],
-    silhouette:
-      'Relaxed cardigan body with a deliberate collar and weighted lower edge.',
-    targetWearer:
-      'A layered dresser who wants softness with structure and a low-key color accent.',
-  },
-  'project-denim-blazer-dress': {
-    colorStory:
-      'Heavy midnight denim creates the tailored exterior, offset by stardust ivory lining inside the bodice.',
-    generalNotes:
-      'Watch bulk through the waist and hip. The shoulder structure should stay crisp without overpowering the dress line.',
-    keyFeatures: [
-      'Blazer shoulder structure',
-      'Dress-length denim body',
-      'Ivory-lined bodice',
-      'Sharp evening utility',
-    ],
-    silhouette:
-      'Tailored through the shoulder and waist, extending into a controlled dress shape.',
-    targetWearer:
-      'A presentation lead or performer who wants blazer authority with evening movement.',
-  },
-};
-
-export function ProjectDetailPage({ onBack, projectId }: ProjectDetailPageProps) {
+export function ProjectDetailPage({
+  onBack,
+  onDeleteProject,
+  onEditProject,
+  projectId,
+}: ProjectDetailPageProps) {
   const {
     data: { fabrics, projects },
     updateTaskStatus,
@@ -205,8 +121,7 @@ export function ProjectDetailPage({ onBack, projectId }: ProjectDetailPageProps)
     );
   }
 
-  const profile = projectProfiles[project.id] ?? getFallbackProfile(project);
-  const difficulty = getDifficulty(project);
+  const difficulty = project.difficulty;
 
   return (
     <section className="space-y-5">
@@ -216,6 +131,8 @@ export function ProjectDetailPage({ onBack, projectId }: ProjectDetailPageProps)
           .map((item) => item.fabric)
           .filter((fabric): fabric is Fabric => Boolean(fabric))}
         onBack={onBack}
+        onDeleteProject={() => onDeleteProject(project)}
+        onEditProject={() => onEditProject(project)}
         project={project}
       />
 
@@ -249,7 +166,7 @@ export function ProjectDetailPage({ onBack, projectId }: ProjectDetailPageProps)
       </Card>
 
       {activeTab === 'overview' ? (
-        <OverviewTab project={project} profile={profile} />
+        <OverviewTab project={project} />
       ) : null}
       {activeTab === 'materials' ? (
         <MaterialsTab linkedMaterials={linkedMaterials} />
@@ -267,11 +184,15 @@ function ProjectHero({
   difficulty,
   linkedFabrics,
   onBack,
+  onDeleteProject,
+  onEditProject,
   project,
 }: {
   difficulty: string;
   linkedFabrics: Fabric[];
   onBack: () => void;
+  onDeleteProject: () => void;
+  onEditProject: () => void;
   project: ApparelProject;
 }) {
   return (
@@ -279,7 +200,17 @@ function ProjectHero({
       <div className="grid min-h-[26rem] lg:grid-cols-[1.08fr_0.92fr]">
         <div className="flex flex-col justify-between gap-10 p-5 sm:p-7 lg:p-8">
           <div>
-            <BackButton onBack={onBack} />
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <BackButton onBack={onBack} />
+              <div className="flex flex-wrap gap-2">
+                <Button onClick={onEditProject} size="sm" variant="secondary">
+                  Edit Project
+                </Button>
+                <Button onClick={onDeleteProject} size="sm" variant="ghost">
+                  Delete Project
+                </Button>
+              </div>
+            </div>
             <div className="mt-8 flex flex-wrap gap-2">
               <Badge variant="teal">{project.status}</Badge>
               <Badge variant="bronze">{project.phase}</Badge>
@@ -427,13 +358,7 @@ function PhasePath({ currentPhase }: { currentPhase: ProjectPhase }) {
   );
 }
 
-function OverviewTab({
-  profile,
-  project,
-}: {
-  profile: ProjectProfile;
-  project: ApparelProject;
-}) {
+function OverviewTab({ project }: { project: ApparelProject }) {
   return (
     <div className="grid gap-4 xl:grid-cols-[1fr_0.82fr]">
       <Card>
@@ -445,8 +370,8 @@ function OverviewTab({
         <div className="mt-6 grid gap-4">
           <InfoBlock label="Design intent" value={project.designIntent} />
           <InfoBlock label="Description" value={project.summary} />
-          <InfoBlock label="Target wearer" value={profile.targetWearer} />
-          <InfoBlock label="General notes" value={profile.generalNotes} />
+          <InfoBlock label="Target wearer" value={project.targetWearer} />
+          <InfoBlock label="General notes" value={project.generalNotes} />
         </div>
       </Card>
 
@@ -455,14 +380,14 @@ function OverviewTab({
           <SectionHeading
             eyebrow="Shape"
             title="Silhouette"
-            subtitle={profile.silhouette}
+            subtitle={project.silhouette}
           />
         </Card>
         <Card>
           <SectionHeading
             eyebrow="Palette"
             title="Color story"
-            subtitle={profile.colorStory}
+            subtitle={project.colorStory}
           />
         </Card>
         <Card>
@@ -483,7 +408,7 @@ function OverviewTab({
           subtitle="The signature elements to preserve as the project moves forward."
         />
         <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          {profile.keyFeatures.map((feature) => (
+          {project.keyFeatures.map((feature) => (
             <div
               className="rounded-2xl border border-bronze/20 bg-midnight/32 p-4"
               key={feature}
@@ -1258,40 +1183,6 @@ function SectionHeading({
       <p className="mt-3 text-sm leading-6 text-stardust/60">{subtitle}</p>
     </div>
   );
-}
-
-function getFallbackProfile(project: ApparelProject): ProjectProfile {
-  return {
-    colorStory:
-      'A grounded Mystic Lore palette shaped by the fabrics assigned to this garment.',
-    generalNotes:
-      'Preserve the project intent while refining construction details through the active phase.',
-    keyFeatures: project.tags,
-    silhouette: `A ${project.garmentType.toLowerCase()} silhouette guided by the current ${project.phase.toLowerCase()} phase.`,
-    targetWearer:
-      'A style-conscious wearer who values craft, story, and practical garment architecture.',
-  };
-}
-
-function getDifficulty(project: ApparelProject) {
-  const score =
-    (project.priority === 'Critical' ? 3 : project.priority === 'High' ? 2 : 1) +
-    project.linkedMaterials.length +
-    project.tasks.filter((task) => task.status !== 'Done').length;
-
-  if (score >= 7) {
-    return 'Masterwork';
-  }
-
-  if (score >= 5) {
-    return 'Advanced';
-  }
-
-  if (score >= 3) {
-    return 'Moderate';
-  }
-
-  return 'Light';
 }
 
 function getFabricSwatch(fabric: Fabric) {

@@ -7,26 +7,33 @@ import {
   type ReactNode,
 } from 'react';
 import {
+  createProjectInData,
+  deleteProjectInData,
   exportStudioData,
   getStudioData,
   hydrateStudioData,
   importStudioData,
   resetStudioData,
   saveStudioData,
+  updateProjectInData,
   updateProjectPhaseInData,
   updateTaskStatusInData,
   type StudioData,
   type StudioDataView,
+  type StoredProject,
 } from '../lib/studioStorage';
 import type { ProjectPhase, TaskStatus } from '../types/studio';
 
 type StudioDataContextValue = {
+  createProject: (project: StoredProject) => void;
   data: StudioDataView;
+  deleteProject: (projectId: string) => void;
   exportData: () => string;
   importData: (serializedData: string) => void;
   rawData: StudioData;
   resetData: () => void;
   saveData: (nextData: StudioData) => void;
+  updateProject: (project: StoredProject) => void;
   updateProjectPhase: (projectId: string, phase: ProjectPhase) => void;
   updateTaskStatus: (taskId: string, status: TaskStatus) => void;
 };
@@ -54,6 +61,30 @@ export function StudioDataProvider({ children }: { children: ReactNode }) {
     [saveData],
   );
 
+  const createProject = useCallback((project: StoredProject) => {
+    setRawData((current) => {
+      const nextData = createProjectInData(current, project);
+      saveStudioData(nextData);
+      return nextData;
+    });
+  }, []);
+
+  const updateProject = useCallback((project: StoredProject) => {
+    setRawData((current) => {
+      const nextData = updateProjectInData(current, project);
+      saveStudioData(nextData);
+      return nextData;
+    });
+  }, []);
+
+  const deleteProject = useCallback((projectId: string) => {
+    setRawData((current) => {
+      const nextData = deleteProjectInData(current, projectId);
+      saveStudioData(nextData);
+      return nextData;
+    });
+  }, []);
+
   const updateProjectPhase = useCallback(
     (projectId: string, phase: ProjectPhase) => {
       setRawData((current) => {
@@ -75,21 +106,27 @@ export function StudioDataProvider({ children }: { children: ReactNode }) {
 
   const value = useMemo<StudioDataContextValue>(
     () => ({
+      createProject,
       data: hydrateStudioData(rawData),
+      deleteProject,
       exportData,
       importData,
       rawData,
       resetData,
       saveData,
+      updateProject,
       updateProjectPhase,
       updateTaskStatus,
     }),
     [
+      createProject,
+      deleteProject,
       exportData,
       importData,
       rawData,
       resetData,
       saveData,
+      updateProject,
       updateProjectPhase,
       updateTaskStatus,
     ],
