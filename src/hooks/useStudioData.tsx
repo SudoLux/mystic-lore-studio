@@ -9,8 +9,10 @@ import {
 import {
   createFabricInData,
   createProjectInData,
+  createTaskInData,
   deleteFabricInData,
   deleteProjectInData,
+  deleteTaskInData,
   exportStudioData,
   getStudioData,
   hydrateStudioData,
@@ -20,19 +22,22 @@ import {
   updateFabricInData,
   updateProjectInData,
   updateProjectPhaseInData,
+  updateTaskInData,
   updateTaskStatusInData,
   type StudioData,
   type StudioDataView,
   type StoredProject,
 } from '../lib/studioStorage';
-import type { Fabric, ProjectPhase, TaskStatus } from '../types/studio';
+import type { Fabric, ProjectPhase, StudioTask, TaskStatus } from '../types/studio';
 
 type StudioDataContextValue = {
   createFabric: (fabric: Fabric) => void;
   createProject: (project: StoredProject) => void;
+  createTask: (task: StudioTask) => void;
   data: StudioDataView;
   deleteFabric: (fabricId: string) => void;
   deleteProject: (projectId: string) => void;
+  deleteTask: (taskId: string) => void;
   exportData: () => string;
   importData: (serializedData: string) => void;
   rawData: StudioData;
@@ -41,6 +46,7 @@ type StudioDataContextValue = {
   updateFabric: (fabric: Fabric) => void;
   updateProject: (project: StoredProject) => void;
   updateProjectPhase: (projectId: string, phase: ProjectPhase) => void;
+  updateTask: (task: StudioTask) => void;
   updateTaskStatus: (taskId: string, status: TaskStatus) => void;
 };
 
@@ -83,6 +89,14 @@ export function StudioDataProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
+  const createTask = useCallback((task: StudioTask) => {
+    setRawData((current) => {
+      const nextData = createTaskInData(current, task);
+      saveStudioData(nextData);
+      return nextData;
+    });
+  }, []);
+
   const updateProject = useCallback((project: StoredProject) => {
     setRawData((current) => {
       const nextData = updateProjectInData(current, project);
@@ -99,9 +113,25 @@ export function StudioDataProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
+  const updateTask = useCallback((task: StudioTask) => {
+    setRawData((current) => {
+      const nextData = updateTaskInData(current, task);
+      saveStudioData(nextData);
+      return nextData;
+    });
+  }, []);
+
   const deleteProject = useCallback((projectId: string) => {
     setRawData((current) => {
       const nextData = deleteProjectInData(current, projectId);
+      saveStudioData(nextData);
+      return nextData;
+    });
+  }, []);
+
+  const deleteTask = useCallback((taskId: string) => {
+    setRawData((current) => {
+      const nextData = deleteTaskInData(current, taskId);
       saveStudioData(nextData);
       return nextData;
     });
@@ -138,9 +168,11 @@ export function StudioDataProvider({ children }: { children: ReactNode }) {
     () => ({
       createFabric,
       createProject,
+      createTask,
       data: hydrateStudioData(rawData),
       deleteFabric,
       deleteProject,
+      deleteTask,
       exportData,
       importData,
       rawData,
@@ -149,13 +181,16 @@ export function StudioDataProvider({ children }: { children: ReactNode }) {
       updateFabric,
       updateProject,
       updateProjectPhase,
+      updateTask,
       updateTaskStatus,
     }),
     [
       createFabric,
       createProject,
+      createTask,
       deleteFabric,
       deleteProject,
+      deleteTask,
       exportData,
       importData,
       rawData,
@@ -164,6 +199,7 @@ export function StudioDataProvider({ children }: { children: ReactNode }) {
       updateFabric,
       updateProject,
       updateProjectPhase,
+      updateTask,
       updateTaskStatus,
     ],
   );

@@ -21,11 +21,14 @@ import {
   NotebookTabs,
   Package,
   Palette,
+  Pencil,
   Plus,
   Shirt,
   Sparkles,
   Target,
+  Trash2,
 } from 'lucide-react';
+import { TaskFormModal } from '../components/tasks/TaskFormModal';
 import { Badge } from '../components/shared/Badge';
 import { Button } from '../components/shared/Button';
 import { Card } from '../components/shared/Card';
@@ -80,6 +83,9 @@ export function ProjectDetailPage({
 }: ProjectDetailPageProps) {
   const {
     data: { fabrics, projects },
+    createTask,
+    deleteTask,
+    updateTask,
     updateTaskStatus,
   } = useStudioData();
   const [activeTab, setActiveTab] = useState<DetailTab>('overview');
@@ -172,7 +178,13 @@ export function ProjectDetailPage({
         <MaterialsTab linkedMaterials={linkedMaterials} />
       ) : null}
       {activeTab === 'tasks' ? (
-        <TasksTab project={project} updateTaskStatus={updateTaskStatus} />
+        <TasksTab
+          createTask={createTask}
+          deleteTask={deleteTask}
+          project={project}
+          updateTask={updateTask}
+          updateTaskStatus={updateTaskStatus}
+        />
       ) : null}
       {activeTab === 'notes' ? <NotesTab project={project} /> : null}
       {activeTab === 'lookbook' ? <LookbookTab project={project} /> : null}
@@ -598,16 +610,25 @@ function MaterialCard({ row }: { row: LinkedMaterialRow }) {
 }
 
 function TasksTab({
+  createTask,
+  deleteTask,
   project,
+  updateTask,
   updateTaskStatus,
 }: {
+  createTask: (task: StudioTask) => void;
+  deleteTask: (taskId: string) => void;
   project: ApparelProject;
+  updateTask: (task: StudioTask) => void;
   updateTaskStatus: (taskId: string, status: TaskStatus) => void;
 }) {
   const [taskStatusById, setTaskStatusById] = useState<TaskStatusMap>(() =>
     getTaskStatusMap(project.tasks),
   );
   const [lastMove, setLastMove] = useState<string | null>(null);
+  const [taskForm, setTaskForm] = useState<TaskFormState | null>(null);
+  const [deleteTaskCandidate, setDeleteTaskCandidate] =
+    useState<StudioTask | null>(null);
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: { distance: 6 },
@@ -619,8 +640,11 @@ function TasksTab({
 
   useEffect(() => {
     setTaskStatusById(getTaskStatusMap(project.tasks));
+  }, [project.tasks]);
+
+  useEffect(() => {
     setLastMove(null);
-  }, [project.id, project.tasks]);
+  }, [project.id]);
 
   const materialsById = useMemo(
     () =>
@@ -687,6 +711,7 @@ function TasksTab({
             <TaskBoardMetric label="Done" value={completeCount} />
             <Button
               icon={<Plus aria-hidden="true" size={16} strokeWidth={1.9} />}
+              onClick={() => setTaskForm({ mode: 'create' })}
               size="sm"
               variant="primary"
             >
@@ -708,6 +733,8 @@ function TasksTab({
               <TaskBoardColumn
                 key={status}
                 materialsById={materialsById}
+                onDeleteTask={setDeleteTaskCandidate}
+                onEditTask={(task) => setTaskForm({ mode: 'edit', task })}
                 status={status}
                 tasks={tasks}
               />
@@ -715,9 +742,43 @@ function TasksTab({
           </div>
         </div>
       </DndContext>
+      {taskForm ? (
+        <TaskFormModal
+          mode={taskForm.mode}
+          onClose={() => setTaskForm(null)}
+          onSubmit={(task) => {
+            if (taskForm.mode === 'create') {
+              createTask(task);
+              setLastMove(`${task.title} added to ${task.status}.`);
+            } else {
+              updateTask(task);
+              setLastMove(`${task.title} updated.`);
+            }
+
+            setTaskForm(null);
+          }}
+          project={project}
+          task={taskForm.task}
+        />
+      ) : null}
+      {deleteTaskCandidate ? (
+        <DeleteTaskDialog
+          onCancel={() => setDeleteTaskCandidate(null)}
+          onConfirm={() => {
+            deleteTask(deleteTaskCandidate.id);
+            setLastMove(`${deleteTaskCandidate.title} deleted.`);
+            setDeleteTaskCandidate(null);
+          }}
+          task={deleteTaskCandidate}
+        />
+      ) : null}
     </div>
   );
 }
+
+type TaskFormState =
+  | { mode: 'create'; task?: undefined }
+  | { mode: 'edit'; task: StudioTask };
 
 type TaskStatusMap = Record<string, TaskStatus>;
 
@@ -750,10 +811,14 @@ function TaskBoardMetric({
 
 function TaskBoardColumn({
   materialsById,
+  onDeleteTask,
+  onEditTask,
   status,
   tasks,
 }: {
   materialsById: Map<string, LinkedMaterial>;
+  onDeleteTask: (task: StudioTask) => void;
+  onEditTask: (task: StudioTask) => void;
   status: TaskStatus;
   tasks: StudioTask[];
 }) {
@@ -790,6 +855,8 @@ function TaskBoardColumn({
                 ? materialsById.get(task.linkedMaterialId)
                 : undefined
             }
+            onDeleteTask={onDeleteTask}
+            onEditTask={onEditTask}
             task={task}
           />
         ))}
@@ -805,9 +872,13 @@ function TaskBoardColumn({
 
 function TaskBoardCard({
   material,
+  onDeleteTask,
+  onEditTask,
   task,
 }: {
   material?: LinkedMaterial;
+  onDeleteTask: (task: StudioTask) => void;
+  onEditTask: (task: StudioTask) => void;
   task: StudioTask;
 }) {
   const { attributes, listeners, setNodeRef, transform, isDragging } =
@@ -830,8 +901,6 @@ function TaskBoardCard({
       )}
       ref={setNodeRef}
       style={dragStyle}
-      {...listeners}
-      {...attributes}
     >
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
@@ -842,12 +911,15 @@ function TaskBoardCard({
             {task.title}
           </h3>
         </div>
-        <GripVertical
-          aria-hidden="true"
-          className="shrink-0 text-stardust/35"
-          size={18}
-          strokeWidth={1.8}
-        />
+        <button
+          aria-label={`Drag ${task.title}`}
+          className="flex h-9 w-9 shrink-0 touch-none items-center justify-center rounded-xl border border-bronze/20 bg-midnight/30 text-stardust/35 transition hover:border-ember/40 hover:text-ember"
+          type="button"
+          {...listeners}
+          {...attributes}
+        >
+          <GripVertical aria-hidden="true" size={18} strokeWidth={1.8} />
+        </button>
       </div>
 
       <p className="mt-3 line-clamp-3 text-sm leading-6 text-stardust/58">
@@ -868,14 +940,71 @@ function TaskBoardCard({
           icon={<CalendarDays aria-hidden="true" size={14} strokeWidth={1.9} />}
           label={task.dueDate ? formatDate(task.dueDate) : 'No due date'}
         />
-        {material ? (
-          <TaskCardMeta
-            icon={<Package aria-hidden="true" size={14} strokeWidth={1.9} />}
-            label={material.materialName}
-          />
-        ) : null}
+      {material ? (
+        <TaskCardMeta
+          icon={<Package aria-hidden="true" size={14} strokeWidth={1.9} />}
+          label={material.materialName}
+        />
+      ) : null}
+      </div>
+      {task.notes ? (
+        <p className="mt-3 line-clamp-2 rounded-xl border border-bronze/18 bg-midnight/24 px-3 py-2 text-xs leading-5 text-stardust/50">
+          {task.notes}
+        </p>
+      ) : null}
+      <div className="mt-4 flex flex-wrap gap-2 border-t border-bronze/18 pt-3">
+        <Button
+          icon={<Pencil aria-hidden="true" size={14} strokeWidth={1.9} />}
+          onClick={() => onEditTask(task)}
+          size="sm"
+          variant="ghost"
+        >
+          Edit
+        </Button>
+        <Button
+          icon={<Trash2 aria-hidden="true" size={14} strokeWidth={1.9} />}
+          onClick={() => onDeleteTask(task)}
+          size="sm"
+          variant="ghost"
+        >
+          Delete
+        </Button>
       </div>
     </article>
+  );
+}
+
+function DeleteTaskDialog({
+  onCancel,
+  onConfirm,
+  task,
+}: {
+  onCancel: () => void;
+  onConfirm: () => void;
+  task: StudioTask;
+}) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-midnight/82 px-4 py-5 backdrop-blur-xl sm:items-center">
+      <section className="w-full max-w-lg rounded-3xl border border-ember/40 bg-[linear-gradient(135deg,rgba(61,43,31,0.94),rgba(10,10,10,0.98),rgba(27,58,99,0.36))] p-5 shadow-[0_28px_90px_rgba(0,0,0,0.46)] sm:p-6">
+        <p className="text-xs font-medium uppercase tracking-[0.16em] text-ember">
+          Delete Task
+        </p>
+        <h2 className="mt-3 text-2xl font-semibold text-stardust">
+          Delete {task.title}?
+        </h2>
+        <p className="mt-3 text-sm leading-6 text-stardust/64">
+          This removes the task from this project board and local studio data.
+        </p>
+        <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+          <Button onClick={onCancel} variant="ghost">
+            Cancel
+          </Button>
+          <Button onClick={onConfirm} variant="primary">
+            Delete Task
+          </Button>
+        </div>
+      </section>
+    </div>
   );
 }
 

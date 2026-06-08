@@ -211,6 +211,29 @@ export function deleteFabricInData(
   };
 }
 
+export function createTaskInData(data: StudioData, task: StudioTask): StudioData {
+  return {
+    ...data,
+    tasks: [task, ...data.tasks],
+  };
+}
+
+export function updateTaskInData(data: StudioData, task: StudioTask): StudioData {
+  return {
+    ...data,
+    tasks: data.tasks.map((currentTask) =>
+      currentTask.id === task.id ? task : currentTask,
+    ),
+  };
+}
+
+export function deleteTaskInData(data: StudioData, taskId: string): StudioData {
+  return {
+    ...data,
+    tasks: data.tasks.filter((task) => task.id !== taskId),
+  };
+}
+
 export function updateTaskStatusInData(
   data: StudioData,
   taskId: string,

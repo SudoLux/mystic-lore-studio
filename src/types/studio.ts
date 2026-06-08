@@ -154,6 +154,7 @@ export type StudioTask = {
   projectId: string;
   title: string;
   description: string;
+  notes?: string;
   category: TaskCategory;
   status: TaskStatus;
   priority: TaskPriority;
