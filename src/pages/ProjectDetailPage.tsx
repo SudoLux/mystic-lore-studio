@@ -30,7 +30,7 @@ import { Badge } from '../components/shared/Badge';
 import { Button } from '../components/shared/Button';
 import { Card } from '../components/shared/Card';
 import { PageHeader } from '../components/shared/PageHeader';
-import { demoFabrics, demoProjects } from '../data/seedData';
+import { useStudioData } from '../hooks/useStudioData';
 import { cn } from '../lib/classes';
 import {
   materialRoles,
@@ -64,8 +64,6 @@ type ProjectProfile = {
   silhouette: string;
   targetWearer: string;
 };
-
-const fabricById = new Map(demoFabrics.map((fabric) => [fabric.id, fabric]));
 
 type LinkedMaterialRow = {
   allocation: LinkedMaterial;
@@ -164,8 +162,16 @@ const projectProfiles: Record<string, ProjectProfile> = {
 };
 
 export function ProjectDetailPage({ onBack, projectId }: ProjectDetailPageProps) {
+  const {
+    data: { fabrics, projects },
+    updateTaskStatus,
+  } = useStudioData();
   const [activeTab, setActiveTab] = useState<DetailTab>('overview');
-  const project = demoProjects.find((item) => item.id === projectId);
+  const project = projects.find((item) => item.id === projectId);
+  const fabricById = useMemo(
+    () => new Map(fabrics.map((fabric) => [fabric.id, fabric])),
+    [fabrics],
+  );
 
   useEffect(() => {
     setActiveTab('overview');
@@ -248,7 +254,9 @@ export function ProjectDetailPage({ onBack, projectId }: ProjectDetailPageProps)
       {activeTab === 'materials' ? (
         <MaterialsTab linkedMaterials={linkedMaterials} />
       ) : null}
-      {activeTab === 'tasks' ? <TasksTab project={project} /> : null}
+      {activeTab === 'tasks' ? (
+        <TasksTab project={project} updateTaskStatus={updateTaskStatus} />
+      ) : null}
       {activeTab === 'notes' ? <NotesTab project={project} /> : null}
       {activeTab === 'lookbook' ? <LookbookTab project={project} /> : null}
     </section>
@@ -664,7 +672,13 @@ function MaterialCard({ row }: { row: LinkedMaterialRow }) {
   );
 }
 
-function TasksTab({ project }: { project: ApparelProject }) {
+function TasksTab({
+  project,
+  updateTaskStatus,
+}: {
+  project: ApparelProject;
+  updateTaskStatus: (taskId: string, status: TaskStatus) => void;
+}) {
   const [taskStatusById, setTaskStatusById] = useState<TaskStatusMap>(() =>
     getTaskStatusMap(project.tasks),
   );
@@ -724,10 +738,7 @@ function TasksTab({ project }: { project: ApparelProject }) {
       return;
     }
 
-    setTaskStatusById((current) => ({
-      ...current,
-      [taskId]: nextStatus,
-    }));
+    updateTaskStatus(taskId, nextStatus);
     setLastMove(`${task.title} moved from ${previousStatus} to ${nextStatus}.`);
   };
 
@@ -742,7 +753,7 @@ function TasksTab({ project }: { project: ApparelProject }) {
             </h2>
             <p className="mt-3 max-w-2xl text-sm leading-6 text-stardust/62">
               Move garment-specific work through the project board. Status
-              changes are kept in local component state for this milestone.
+              changes are saved to local browser storage for this MVP.
             </p>
           </div>
           <div className="flex flex-wrap gap-2">

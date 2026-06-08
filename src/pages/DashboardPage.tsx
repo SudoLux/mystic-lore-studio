@@ -16,7 +16,7 @@ import { Badge } from '../components/shared/Badge';
 import { Button } from '../components/shared/Button';
 import { Card } from '../components/shared/Card';
 import { PageHeader } from '../components/shared/PageHeader';
-import { demoFabrics, demoProjects, demoTasks } from '../data/seedData';
+import { useStudioData } from '../hooks/useStudioData';
 import { projectPhases, type ApparelProject } from '../types/studio';
 import type { PageId } from '../types/navigation';
 
@@ -33,76 +33,6 @@ const productionPhases = new Set([
   'Photoshoot',
   'Lookbook Ready',
 ]);
-
-const activeProjects = demoProjects.filter((project) => project.status === 'Active');
-const completedProjects = demoProjects.filter(
-  (project) => project.status === 'Completed',
-);
-const productionProjects = demoProjects.filter((project) =>
-  productionPhases.has(project.phase),
-);
-const totalYardage = demoFabrics.reduce(
-  (total, fabric) => total + fabric.totalYards,
-  0,
-);
-const lowYardageFabrics = demoFabrics.filter(
-  (fabric) => fabric.totalYards - fabric.reservedYards - fabric.usedYards < 5,
-);
-const featuredProjects = [...demoProjects]
-  .sort((a, b) => b.progress - a.progress)
-  .slice(0, 3);
-const recentlyUpdatedProjects = [...demoProjects]
-  .sort((a, b) => latestProjectDate(b).localeCompare(latestProjectDate(a)))
-  .slice(0, 4);
-const nextTasks = [...demoTasks]
-  .filter((task) => task.status !== 'Done')
-  .sort((a, b) => {
-    const priorityRank = { Critical: 0, High: 1, Medium: 2, Low: 3 };
-    return (
-      priorityRank[a.priority] - priorityRank[b.priority] ||
-      (a.dueDate ?? '9999-12-31').localeCompare(b.dueDate ?? '9999-12-31')
-    );
-  })
-  .slice(0, 5);
-
-const statCards = [
-  {
-    label: 'Active Projects',
-    value: activeProjects.length.toString(),
-    detail: 'Garments currently moving through the studio.',
-    icon: Shirt,
-  },
-  {
-    label: 'Completed',
-    value: completedProjects.length.toString(),
-    detail: 'Archived wins ready for collection records.',
-    icon: CheckCircle2,
-  },
-  {
-    label: 'In Production',
-    value: productionProjects.length.toString(),
-    detail: 'Projects in sampling, fitting, build, or shoot phases.',
-    icon: Gauge,
-  },
-  {
-    label: 'Total Fabrics',
-    value: demoFabrics.length.toString(),
-    detail: 'Fabric records available in the vault.',
-    icon: Boxes,
-  },
-  {
-    label: 'Total Yardage',
-    value: `${formatNumber(totalYardage)} yd`,
-    detail: 'Current recorded inventory before allocations.',
-    icon: Layers3,
-  },
-  {
-    label: 'Low Yardage',
-    value: lowYardageFabrics.length.toString(),
-    detail: 'Fabrics with fewer than five free yards remaining.',
-    icon: Scissors,
-  },
-];
 
 const quickActions = [
   {
@@ -128,6 +58,80 @@ const quickActions = [
 ] satisfies Array<{ label: string; icon: typeof Sparkles; pageId: PageId }>;
 
 export function DashboardPage({ onNavigate }: DashboardPageProps) {
+  const {
+    data: { fabrics, projects, tasks },
+  } = useStudioData();
+  const activeProjects = projects.filter((project) => project.status === 'Active');
+  const completedProjects = projects.filter(
+    (project) => project.status === 'Completed',
+  );
+  const productionProjects = projects.filter((project) =>
+    productionPhases.has(project.phase),
+  );
+  const totalYardage = fabrics.reduce(
+    (total, fabric) => total + fabric.totalYards,
+    0,
+  );
+  const lowYardageFabrics = fabrics.filter(
+    (fabric) => fabric.totalYards - fabric.reservedYards - fabric.usedYards < 5,
+  );
+  const featuredProjects = [...projects]
+    .sort((a, b) => b.progress - a.progress)
+    .slice(0, 3);
+  const recentlyUpdatedProjects = [...projects]
+    .sort((a, b) => latestProjectDate(b).localeCompare(latestProjectDate(a)))
+    .slice(0, 4);
+  const nextTasks = [...tasks]
+    .filter((task) => task.status !== 'Done')
+    .sort((a, b) => {
+      const priorityRank = { Critical: 0, High: 1, Medium: 2, Low: 3 };
+      return (
+        priorityRank[a.priority] - priorityRank[b.priority] ||
+        (a.dueDate ?? '9999-12-31').localeCompare(b.dueDate ?? '9999-12-31')
+      );
+    })
+    .slice(0, 5);
+  const statCards = [
+    {
+      label: 'Active Projects',
+      value: activeProjects.length.toString(),
+      detail: 'Garments currently moving through the studio.',
+      icon: Shirt,
+    },
+    {
+      label: 'Completed',
+      value: completedProjects.length.toString(),
+      detail: 'Archived wins ready for collection records.',
+      icon: CheckCircle2,
+    },
+    {
+      label: 'In Production',
+      value: productionProjects.length.toString(),
+      detail: 'Projects in sampling, fitting, build, or shoot phases.',
+      icon: Gauge,
+    },
+    {
+      label: 'Total Fabrics',
+      value: fabrics.length.toString(),
+      detail: 'Fabric records available in the vault.',
+      icon: Boxes,
+    },
+    {
+      label: 'Total Yardage',
+      value: `${formatNumber(totalYardage)} yd`,
+      detail: 'Current recorded inventory before allocations.',
+      icon: Layers3,
+    },
+    {
+      label: 'Low Yardage',
+      value: lowYardageFabrics.length.toString(),
+      detail: 'Fabrics with fewer than five free yards remaining.',
+      icon: Scissors,
+    },
+  ];
+  const getProject = (projectId: string) =>
+    projects.find((project) => project.id === projectId);
+
   return (
     <section className="space-y-5">
       <PageHeader
@@ -268,7 +272,7 @@ export function DashboardPage({ onNavigate }: DashboardPageProps) {
             {projectPhases
               .map((phase) => ({
                 phase,
-                count: demoProjects.filter((project) => project.phase === phase).length,
+                count: projects.filter((project) => project.phase === phase).length,
               }))
               .filter((item) => item.count > 0)
               .map((item) => (
@@ -283,7 +287,7 @@ export function DashboardPage({ onNavigate }: DashboardPageProps) {
                     <div
                       className="h-full rounded-full bg-[linear-gradient(90deg,#C89B3C,#2D5C6B)]"
                       style={{
-                        width: `${Math.max((item.count / demoProjects.length) * 100, 8)}%`,
+                        width: `${Math.max((item.count / projects.length) * 100, 8)}%`,
                       }}
                     />
                   </div>
@@ -419,10 +423,6 @@ function SectionHeading({
       <p className="mt-3 text-sm leading-6 text-stardust/60">{subtitle}</p>
     </div>
   );
-}
-
-function getProject(projectId: string) {
-  return demoProjects.find((project) => project.id === projectId);
 }
 
 function latestProjectDate(project: ApparelProject) {

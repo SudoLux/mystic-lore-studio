@@ -86,7 +86,10 @@ export type FabricWeight = 'Light' | 'Medium' | 'Heavy';
 export type FabricStatus = 'In Stock' | 'Reserved' | 'Low Stock' | 'Depleted';
 export type FabricArchiveStatus = 'Active' | 'Reserved' | 'Archived' | 'Depleted';
 export type FabricDrape = 'Crisp' | 'Structured' | 'Fluid' | 'Soft' | 'Stretch';
+export type FabricOpacity = 'Sheer' | 'Semi-sheer' | 'Opaque';
 export type FabricRarity = 'Core' | 'Seasonal' | 'Rare' | 'One-off' | 'Archive';
+export type FabricStretch = 'None' | 'Mechanical' | 'Two-way' | 'Four-way';
+export type FabricStorageStatus = 'Filed' | 'Reserved' | 'In Use' | 'Low Yardage' | 'Depleted';
 export const materialRoles = [
   'Shell Fabric',
   'Contrast Fabric',
@@ -185,8 +188,16 @@ export type Fabric = {
   category: string;
   composition: string;
   colorFamily: string;
+  primaryColor: string;
+  secondaryColors: string[];
   weight: FabricWeight;
   drape: FabricDrape;
+  weaveOrKnit: string;
+  stretch: FabricStretch;
+  opacity: FabricOpacity;
+  handFeel: string;
+  texture: string;
+  structure: string;
   widthInches: number;
   totalYards: number;
   reservedYards: number;
@@ -194,9 +205,17 @@ export type Fabric = {
   status: FabricStatus;
   archiveStatus: FabricArchiveStatus;
   rarity: FabricRarity;
+  purchaseDate: string;
+  costPerYard: number;
+  storageLocation: string;
+  binNumber: string;
+  shelf: string;
+  storageStatus: FabricStorageStatus;
   bestUses: string[];
+  careNotes: string;
   moodTags: string[];
   tags: string[];
+  loreNote: string;
   notes: string;
   updatedAt: string;
 };
