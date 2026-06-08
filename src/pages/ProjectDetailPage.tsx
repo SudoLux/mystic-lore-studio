@@ -1,4 +1,14 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import {
+  DndContext,
+  PointerSensor,
+  TouchSensor,
+  useDraggable,
+  useDroppable,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from '@dnd-kit/core';
 import {
   ArrowLeft,
   AlertTriangle,
@@ -6,10 +16,12 @@ import {
   CalendarDays,
   CheckCircle2,
   ClipboardList,
+  GripVertical,
   Layers3,
   NotebookTabs,
   Package,
   Palette,
+  Plus,
   Shirt,
   Sparkles,
   Target,
@@ -24,6 +36,7 @@ import {
   materialRoles,
   noteCategories,
   projectPhases,
+  taskStatuses,
   type ApparelProject,
   type Fabric,
   type LinkedMaterial,
@@ -31,6 +44,10 @@ import {
   type NoteCategory,
   type ProjectPhase,
   type StudioNote,
+  type StudioTask,
+  type TaskCategory,
+  type TaskPriority,
+  type TaskStatus,
 } from '../types/studio';
 
 type ProjectDetailPageProps = {
@@ -648,34 +665,317 @@ function MaterialCard({ row }: { row: LinkedMaterialRow }) {
 }
 
 function TasksTab({ project }: { project: ApparelProject }) {
+  const [taskStatusById, setTaskStatusById] = useState<TaskStatusMap>(() =>
+    getTaskStatusMap(project.tasks),
+  );
+  const [lastMove, setLastMove] = useState<string | null>(null);
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: { distance: 6 },
+    }),
+    useSensor(TouchSensor, {
+      activationConstraint: { delay: 120, tolerance: 8 },
+    }),
+  );
+
+  useEffect(() => {
+    setTaskStatusById(getTaskStatusMap(project.tasks));
+    setLastMove(null);
+  }, [project.id, project.tasks]);
+
+  const materialsById = useMemo(
+    () =>
+      new Map(
+        project.linkedMaterials.map((material) => [material.id, material]),
+      ),
+    [project.linkedMaterials],
+  );
+
+  const tasksByStatus = useMemo(
+    () =>
+      taskStatuses.map((status) => ({
+        status,
+        tasks: project.tasks.filter(
+          (task) => taskStatusById[task.id] === status,
+        ),
+      })),
+    [project.tasks, taskStatusById],
+  );
+
+  const completeCount = project.tasks.filter(
+    (task) => taskStatusById[task.id] === 'Done',
+  ).length;
+  const blockedCount = project.tasks.filter(
+    (task) => taskStatusById[task.id] === 'Blocked',
+  ).length;
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const taskId = String(event.active.id);
+    const nextStatus = event.over?.id as TaskStatus | undefined;
+
+    if (!nextStatus || !taskStatuses.includes(nextStatus)) {
+      return;
+    }
+
+    const task = project.tasks.find((item) => item.id === taskId);
+    const previousStatus = taskStatusById[taskId];
+
+    if (!task || previousStatus === nextStatus) {
+      return;
+    }
+
+    setTaskStatusById((current) => ({
+      ...current,
+      [taskId]: nextStatus,
+    }));
+    setLastMove(`${task.title} moved from ${previousStatus} to ${nextStatus}.`);
+  };
+
   return (
-    <div className="grid gap-4 lg:grid-cols-2">
-      {project.tasks.map((task) => (
-        <Card className="transition duration-300 hover:border-ember/45" key={task.id}>
-          <div className="flex items-start justify-between gap-4">
-            <div>
-              <Badge variant={task.priority === 'Critical' ? 'ember' : 'blue'}>
-                {task.priority}
-              </Badge>
-              <h3 className="mt-4 text-lg font-semibold text-stardust">
-                {task.title}
-              </h3>
-            </div>
-            <Badge variant="bronze">{task.status}</Badge>
+    <div className="space-y-4">
+      <Card className="border-bronze/30 bg-[linear-gradient(135deg,rgba(45,92,107,0.2),rgba(10,10,10,0.5),rgba(61,43,31,0.32))]">
+        <div className="flex flex-col gap-5 xl:flex-row xl:items-end xl:justify-between">
+          <div>
+            <Badge variant="teal">Project Task Board</Badge>
+            <h2 className="mt-4 text-2xl font-semibold text-stardust">
+              {project.name} tasks
+            </h2>
+            <p className="mt-3 max-w-2xl text-sm leading-6 text-stardust/62">
+              Move garment-specific work through the project board. Status
+              changes are kept in local component state for this milestone.
+            </p>
           </div>
-          <p className="mt-4 text-sm leading-6 text-stardust/62">
-            {task.description}
-          </p>
-          <div className="mt-5 flex flex-wrap gap-2 text-xs text-stardust/52">
-            <span>{task.phase}</span>
-            <span>•</span>
-            <span>{task.dueDate ? formatDate(task.dueDate) : 'No due date'}</span>
+          <div className="flex flex-wrap gap-2">
+            <TaskBoardMetric label="Tasks" value={project.tasks.length} />
+            <TaskBoardMetric label="Blocked" value={blockedCount} />
+            <TaskBoardMetric label="Done" value={completeCount} />
+            <Button
+              icon={<Plus aria-hidden="true" size={16} strokeWidth={1.9} />}
+              size="sm"
+              variant="primary"
+            >
+              Add Task
+            </Button>
           </div>
-        </Card>
-      ))}
+        </div>
+        {lastMove ? (
+          <div className="mt-5 rounded-2xl border border-ember/30 bg-ember/10 px-4 py-3 text-sm text-stardust/72">
+            {lastMove}
+          </div>
+        ) : null}
+      </Card>
+
+      <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
+        <div className="-mx-4 overflow-x-auto px-4 pb-4 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8">
+          <div className="flex min-h-[31rem] gap-4">
+            {tasksByStatus.map(({ status, tasks }) => (
+              <TaskBoardColumn
+                key={status}
+                materialsById={materialsById}
+                status={status}
+                tasks={tasks}
+              />
+            ))}
+          </div>
+        </div>
+      </DndContext>
     </div>
   );
 }
+
+type TaskStatusMap = Record<string, TaskStatus>;
+
+function getTaskStatusMap(tasks: StudioTask[]) {
+  return tasks.reduce<TaskStatusMap>(
+    (statusMap, task) => ({
+      ...statusMap,
+      [task.id]: task.status,
+    }),
+    {},
+  );
+}
+
+function TaskBoardMetric({
+  label,
+  value,
+}: {
+  label: string;
+  value: number;
+}) {
+  return (
+    <div className="min-w-20 rounded-2xl border border-bronze/25 bg-midnight/38 px-3 py-2 text-center">
+      <p className="text-lg font-semibold text-stardust">{value}</p>
+      <p className="text-[0.65rem] font-medium uppercase tracking-[0.14em] text-stardust/42">
+        {label}
+      </p>
+    </div>
+  );
+}
+
+function TaskBoardColumn({
+  materialsById,
+  status,
+  tasks,
+}: {
+  materialsById: Map<string, LinkedMaterial>;
+  status: TaskStatus;
+  tasks: StudioTask[];
+}) {
+  const { isOver, setNodeRef } = useDroppable({ id: status });
+
+  return (
+    <section
+      className={cn(
+        'flex w-[17.5rem] shrink-0 flex-col rounded-3xl border bg-stardust/[0.045] p-3 backdrop-blur-xl transition duration-300 sm:w-[20rem]',
+        isOver
+          ? 'border-ember/60 bg-ember/10 shadow-[0_22px_70px_rgba(200,155,60,0.12)]'
+          : 'border-bronze/24',
+      )}
+      ref={setNodeRef}
+    >
+      <div className="mb-3 flex items-start justify-between gap-3 rounded-2xl border border-bronze/20 bg-midnight/35 p-3">
+        <div className="min-w-0">
+          <p className="truncate text-sm font-semibold text-stardust">{status}</p>
+          <p className="mt-1 text-xs text-stardust/45">
+            {tasks.length} {tasks.length === 1 ? 'task' : 'tasks'}
+          </p>
+        </div>
+        <span className="rounded-full border border-bronze/25 bg-espresso/40 px-2.5 py-1 text-xs font-medium text-ember">
+          {tasks.length}
+        </span>
+      </div>
+
+      <div className="flex flex-1 flex-col gap-3">
+        {tasks.map((task) => (
+          <TaskBoardCard
+            key={task.id}
+            material={
+              task.linkedMaterialId
+                ? materialsById.get(task.linkedMaterialId)
+                : undefined
+            }
+            task={task}
+          />
+        ))}
+        {tasks.length === 0 ? (
+          <div className="flex min-h-36 flex-1 items-center justify-center rounded-2xl border border-dashed border-bronze/24 bg-midnight/20 p-4 text-center text-sm leading-6 text-stardust/42">
+            Drop a task here to mark it {status}.
+          </div>
+        ) : null}
+      </div>
+    </section>
+  );
+}
+
+function TaskBoardCard({
+  material,
+  task,
+}: {
+  material?: LinkedMaterial;
+  task: StudioTask;
+}) {
+  const { attributes, listeners, setNodeRef, transform, isDragging } =
+    useDraggable({
+      id: task.id,
+      data: { taskId: task.id },
+    });
+  const dragStyle = transform
+    ? {
+        transform: `translate3d(${transform.x}px, ${transform.y}px, 0)`,
+      }
+    : undefined;
+
+  return (
+    <article
+      className={cn(
+        'touch-none rounded-2xl border border-bronze/25 bg-midnight/42 p-4 text-stardust shadow-[0_16px_45px_rgba(0,0,0,0.2)] transition duration-200 hover:-translate-y-1 hover:border-ember/45 hover:bg-midnight/58',
+        isDragging &&
+          'z-30 scale-[1.02] border-ember/70 opacity-90 shadow-[0_24px_70px_rgba(200,155,60,0.16)]',
+      )}
+      ref={setNodeRef}
+      style={dragStyle}
+      {...listeners}
+      {...attributes}
+    >
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <span className={cn('task-chip', categoryStyles[task.category])}>
+            {task.category}
+          </span>
+          <h3 className="mt-3 text-base font-semibold leading-6 text-stardust">
+            {task.title}
+          </h3>
+        </div>
+        <GripVertical
+          aria-hidden="true"
+          className="shrink-0 text-stardust/35"
+          size={18}
+          strokeWidth={1.8}
+        />
+      </div>
+
+      <p className="mt-3 line-clamp-3 text-sm leading-6 text-stardust/58">
+        {task.description}
+      </p>
+
+      <div className="mt-4 flex flex-wrap gap-2">
+        <span className={cn('task-chip', priorityStyles[task.priority])}>
+          {task.priority}
+        </span>
+        <span className="task-chip border-bronze/35 bg-bronze/12 text-stardust/70">
+          {task.phase}
+        </span>
+      </div>
+
+      <div className="mt-4 space-y-2 rounded-xl border border-bronze/18 bg-espresso/24 px-3 py-3 text-xs text-stardust/55">
+        <TaskCardMeta
+          icon={<CalendarDays aria-hidden="true" size={14} strokeWidth={1.9} />}
+          label={task.dueDate ? formatDate(task.dueDate) : 'No due date'}
+        />
+        {material ? (
+          <TaskCardMeta
+            icon={<Package aria-hidden="true" size={14} strokeWidth={1.9} />}
+            label={material.materialName}
+          />
+        ) : null}
+      </div>
+    </article>
+  );
+}
+
+function TaskCardMeta({ icon, label }: { icon: ReactNode; label: string }) {
+  return (
+    <div className="flex items-center gap-2">
+      <span className="text-ember">{icon}</span>
+      <span className="min-w-0 truncate">{label}</span>
+    </div>
+  );
+}
+
+const priorityStyles: Record<TaskPriority, string> = {
+  Low: 'border-nebula/38 bg-nebula/12 text-stardust/68',
+  Medium: 'border-celestial/45 bg-celestial/20 text-stardust',
+  High: 'border-bronze/55 bg-bronze/18 text-stardust',
+  Critical: 'border-ember/50 bg-ember/16 text-ember',
+};
+
+const categoryStyles: Record<TaskCategory, string> = {
+  Concept: 'border-ember/35 bg-ember/10 text-ember',
+  Research: 'border-celestial/45 bg-celestial/18 text-stardust',
+  Sketch: 'border-stardust/28 bg-stardust/8 text-stardust/78',
+  Fabric: 'border-nebula/48 bg-nebula/18 text-stardust',
+  Pattern: 'border-bronze/45 bg-bronze/16 text-stardust',
+  Cutting: 'border-bronze/50 bg-bronze/18 text-stardust',
+  Sewing: 'border-espresso/70 bg-espresso/45 text-stardust',
+  Fitting: 'border-ember/45 bg-ember/12 text-stardust',
+  Revision: 'border-bronze/50 bg-bronze/18 text-stardust',
+  Trim: 'border-nebula/45 bg-nebula/16 text-stardust',
+  Costing: 'border-celestial/48 bg-celestial/18 text-stardust',
+  Photography: 'border-stardust/30 bg-stardust/9 text-stardust',
+  Lookbook: 'border-ember/38 bg-ember/12 text-ember',
+  Client: 'border-bronze/42 bg-bronze/15 text-stardust',
+  Admin: 'border-stardust/24 bg-midnight/45 text-stardust/68',
+};
 
 function NotesTab({ project }: { project: ApparelProject }) {
   const [selectedCategory, setSelectedCategory] = useState<NoteCategory | 'All'>(
