@@ -43,7 +43,34 @@ export type ProjectPhase = (typeof projectPhases)[number];
 export type ProjectStatus = (typeof projectStatuses)[number];
 export type GarmentType = (typeof garmentTypes)[number];
 
-export type TaskStatus = 'Backlog' | 'To Do' | 'In Progress' | 'Review' | 'Done';
+export const taskStatuses = [
+  'To Do',
+  'In Progress',
+  'Blocked',
+  'Review',
+  'Done',
+] as const;
+
+export const taskCategories = [
+  'Concept',
+  'Research',
+  'Sketch',
+  'Fabric',
+  'Pattern',
+  'Cutting',
+  'Sewing',
+  'Fitting',
+  'Revision',
+  'Trim',
+  'Costing',
+  'Photography',
+  'Lookbook',
+  'Client',
+  'Admin',
+] as const;
+
+export type TaskStatus = (typeof taskStatuses)[number];
+export type TaskCategory = (typeof taskCategories)[number];
 export type TaskPriority = 'Low' | 'Medium' | 'High' | 'Critical';
 export const noteCategories = [
   'Design Note',
@@ -120,10 +147,12 @@ export type StudioTask = {
   projectId: string;
   title: string;
   description: string;
+  category: TaskCategory;
   status: TaskStatus;
   priority: TaskPriority;
   phase: ProjectPhase;
   dueDate?: string;
+  linkedMaterialId?: string;
 };
 
 export type StudioNote = {
