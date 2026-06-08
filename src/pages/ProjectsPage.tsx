@@ -469,7 +469,9 @@ function FabricSwatch({
 
 function getProjectFabrics(project: ApparelProject) {
   return project.linkedMaterials
-    .map((material) => fabricById.get(material.fabricId))
+    .map((material) =>
+      material.fabricId ? fabricById.get(material.fabricId) : undefined,
+    )
     .filter((fabric): fabric is Fabric => Boolean(fabric));
 }
 

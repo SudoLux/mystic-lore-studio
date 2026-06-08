@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import {
   ArrowLeft,
+  AlertTriangle,
   BookOpen,
   CalendarDays,
   CheckCircle2,
@@ -20,9 +21,12 @@ import { PageHeader } from '../components/shared/PageHeader';
 import { demoFabrics, demoProjects } from '../data/seedData';
 import { cn } from '../lib/classes';
 import {
+  materialRoles,
   projectPhases,
   type ApparelProject,
   type Fabric,
+  type LinkedMaterial,
+  type MaterialRole,
   type ProjectPhase,
 } from '../types/studio';
 
@@ -42,6 +46,11 @@ type ProjectProfile = {
 };
 
 const fabricById = new Map(demoFabrics.map((fabric) => [fabric.id, fabric]));
+
+type LinkedMaterialRow = {
+  allocation: LinkedMaterial;
+  fabric?: Fabric;
+};
 
 const detailTabs = [
   { id: 'overview', label: 'Overview', icon: Target },
@@ -142,18 +151,16 @@ export function ProjectDetailPage({ onBack, projectId }: ProjectDetailPageProps)
     setActiveTab('overview');
   }, [projectId]);
 
-  const linkedFabrics = useMemo(
+  const linkedMaterials = useMemo<LinkedMaterialRow[]>(
     () =>
       project
         ? project.linkedMaterials
             .map((material) => ({
               allocation: material,
-              fabric: fabricById.get(material.fabricId),
+              fabric: material.fabricId
+                ? fabricById.get(material.fabricId)
+                : undefined,
             }))
-            .filter(
-              (item): item is typeof item & { fabric: Fabric } =>
-                Boolean(item.fabric),
-            )
         : [],
     [project],
   );
@@ -179,7 +186,9 @@ export function ProjectDetailPage({ onBack, projectId }: ProjectDetailPageProps)
     <section className="space-y-5">
       <ProjectHero
         difficulty={difficulty}
-        linkedFabrics={linkedFabrics.map((item) => item.fabric)}
+        linkedFabrics={linkedMaterials
+          .map((item) => item.fabric)
+          .filter((fabric): fabric is Fabric => Boolean(fabric))}
         onBack={onBack}
         project={project}
       />
@@ -217,7 +226,7 @@ export function ProjectDetailPage({ onBack, projectId }: ProjectDetailPageProps)
         <OverviewTab project={project} profile={profile} />
       ) : null}
       {activeTab === 'materials' ? (
-        <MaterialsTab linkedFabrics={linkedFabrics} />
+        <MaterialsTab linkedMaterials={linkedMaterials} />
       ) : null}
       {activeTab === 'tasks' ? <TasksTab project={project} /> : null}
       {activeTab === 'notes' ? <NotesTab project={project} /> : null}
@@ -468,53 +477,170 @@ function OverviewTab({
   );
 }
 
-function MaterialsTab({
-  linkedFabrics,
-}: {
-  linkedFabrics: Array<{
-    allocation: ApparelProject['linkedMaterials'][number];
-    fabric: Fabric;
-  }>;
-}) {
+function MaterialsTab({ linkedMaterials }: { linkedMaterials: LinkedMaterialRow[] }) {
+  const groups = materialRoles
+    .map((role) => ({
+      role,
+      rows: linkedMaterials.filter((item) => item.allocation.role === role),
+    }))
+    .filter((group) => group.rows.length > 0);
+  const warningCount = linkedMaterials.filter((item) =>
+    hasYardageWarning(item.allocation, item.fabric),
+  ).length;
+
   return (
-    <div className="grid gap-4 lg:grid-cols-2">
-      {linkedFabrics.map(({ allocation, fabric }) => (
-        <Card className="transition duration-300 hover:border-ember/45" key={allocation.id}>
-          <div className="flex items-start gap-4">
-            <span
-              className="h-14 w-14 rounded-2xl border border-stardust/20"
-              style={{ background: getFabricSwatch(fabric) }}
-            />
-            <div className="min-w-0 flex-1">
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <div>
-                  <p className="text-lg font-semibold text-stardust">
-                    {fabric.name}
-                  </p>
-                  <p className="mt-1 text-sm text-stardust/54">
-                    {fabric.category} • {fabric.composition}
-                  </p>
-                </div>
-                <Badge variant="bronze">{allocation.use}</Badge>
-              </div>
-              <p className="mt-4 text-sm leading-6 text-stardust/62">
-                {fabric.notes}
-              </p>
-              <div className="mt-5 grid gap-3 sm:grid-cols-3">
-                <MiniMetric label="Reserved" value={`${allocation.reservedYards} yd`} />
-                <MiniMetric label="Used" value={`${allocation.usedYards} yd`} />
-                <MiniMetric
-                  label="Remaining"
-                  value={`${formatNumber(
-                    fabric.totalYards - fabric.reservedYards - fabric.usedYards,
-                  )} yd`}
-                />
-              </div>
-            </div>
+    <div className="space-y-4">
+      <Card className="border-bronze/30 bg-[linear-gradient(135deg,rgba(27,58,99,0.22),rgba(10,10,10,0.48),rgba(61,43,31,0.34))]">
+        <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
+          <div>
+            <Badge variant="teal">Materials</Badge>
+            <h2 className="mt-4 text-2xl font-semibold text-stardust">
+              Linked garment materials
+            </h2>
+            <p className="mt-3 max-w-2xl text-sm leading-6 text-stardust/62">
+              Fabrics, trims, notions, and production materials grouped by their
+              role in this garment.
+            </p>
           </div>
-        </Card>
+          <div className="flex flex-wrap gap-2">
+            <Button size="sm" variant="primary">Link Fabric</Button>
+            <Button size="sm" variant="secondary">Add Material</Button>
+            <Button size="sm" variant="secondary">Reserve Yardage</Button>
+          </div>
+        </div>
+        {warningCount > 0 ? (
+          <div className="mt-5 flex gap-3 rounded-2xl border border-ember/35 bg-ember/10 p-4 text-sm leading-6 text-stardust/72">
+            <AlertTriangle
+              aria-hidden="true"
+              className="mt-0.5 shrink-0 text-ember"
+              size={18}
+              strokeWidth={1.9}
+            />
+            <span>
+              {warningCount} material {warningCount === 1 ? 'needs' : 'need'} more
+              yardage than currently appears available in the linked fabric vault.
+            </span>
+          </div>
+        ) : null}
+      </Card>
+
+      {groups.map((group) => (
+        <MaterialRoleGroup group={group} key={group.role} />
       ))}
     </div>
+  );
+}
+
+function MaterialRoleGroup({
+  group,
+}: {
+  group: { role: MaterialRole; rows: LinkedMaterialRow[] };
+}) {
+  return (
+    <Card>
+      <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <Badge variant="bronze">{group.role}</Badge>
+          <h3 className="mt-3 text-xl font-semibold text-stardust">
+            {group.rows.length} {group.rows.length === 1 ? 'material' : 'materials'}
+          </h3>
+        </div>
+        <span className="text-sm text-stardust/52">
+          {group.rows.filter((item) => item.fabric).length} fabric-linked
+        </span>
+      </div>
+      <div className="grid gap-4 xl:grid-cols-2">
+        {group.rows.map((row) => (
+          <MaterialCard key={row.allocation.id} row={row} />
+        ))}
+      </div>
+    </Card>
+  );
+}
+
+function MaterialCard({ row }: { row: LinkedMaterialRow }) {
+  const { allocation, fabric } = row;
+  const availableYards = fabric
+    ? fabric.totalYards - fabric.reservedYards - fabric.usedYards
+    : undefined;
+  const hasWarning = hasYardageWarning(allocation, fabric);
+  const displayName = fabric?.name ?? allocation.materialName;
+  const notes = allocation.notes ?? fabric?.notes ?? 'No material notes yet.';
+
+  return (
+    <article
+      className={cn(
+        'rounded-3xl border bg-midnight/30 p-4 transition duration-300 hover:-translate-y-1 hover:bg-midnight/44',
+        hasWarning
+          ? 'border-ember/45 shadow-[0_18px_50px_rgba(200,155,60,0.1)]'
+          : 'border-bronze/22 hover:border-ember/35',
+      )}
+    >
+      <div className="flex items-start gap-4">
+        <span
+          className="h-14 w-14 shrink-0 rounded-2xl border border-stardust/20 bg-espresso/60"
+          style={{ background: fabric ? getFabricSwatch(fabric) : undefined }}
+        />
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div className="min-w-0">
+              <p className="truncate text-lg font-semibold text-stardust">
+                {displayName}
+              </p>
+              <p className="mt-1 text-sm text-stardust/52">
+                {fabric
+                  ? `${fabric.category} • ${fabric.composition}`
+                  : 'Unlinked material record'}
+              </p>
+            </div>
+            <Badge variant={hasWarning ? 'ember' : 'teal'}>
+              {hasWarning ? 'Need More' : allocation.status}
+            </Badge>
+          </div>
+          <div className="mt-4 flex flex-wrap gap-2">
+            <Badge variant="bronze">{allocation.role}</Badge>
+            {fabric ? <Badge variant="blue">{fabric.status}</Badge> : null}
+          </div>
+        </div>
+      </div>
+
+      <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <MiniMetric
+          label="Needed"
+          value={formatYardage(allocation.neededYards)}
+        />
+        <MiniMetric
+          label="Reserved"
+          value={formatYardage(allocation.reservedYards)}
+        />
+        <MiniMetric label="Used" value={formatYardage(allocation.usedYards)} />
+        <MiniMetric
+          label={fabric ? 'Available' : 'Available'}
+          value={
+            availableYards === undefined
+              ? 'Not linked'
+              : formatYardage(availableYards)
+          }
+        />
+      </div>
+
+      {hasWarning ? (
+        <div className="mt-4 flex gap-3 rounded-2xl border border-ember/35 bg-ember/10 p-3 text-sm leading-6 text-stardust/72">
+          <AlertTriangle
+            aria-hidden="true"
+            className="mt-0.5 shrink-0 text-ember"
+            size={17}
+            strokeWidth={1.9}
+          />
+          <span>
+            Needed yardage is greater than the currently available linked fabric
+            yardage.
+          </span>
+        </div>
+      ) : null}
+
+      <p className="mt-4 text-sm leading-6 text-stardust/62">{notes}</p>
+    </article>
   );
 }
 
@@ -723,6 +849,24 @@ function getFabricSwatch(fabric: Fabric) {
   };
 
   return swatches[fabric.colorFamily] ?? 'linear-gradient(135deg,#C89B3C,#2D5C6B)';
+}
+
+function hasYardageWarning(allocation: LinkedMaterial, fabric?: Fabric) {
+  if (!fabric || allocation.neededYards <= 0) {
+    return false;
+  }
+
+  const availableYards = fabric.totalYards - fabric.reservedYards - fabric.usedYards;
+
+  return allocation.neededYards > availableYards;
+}
+
+function formatYardage(value: number) {
+  if (value === 0) {
+    return 'N/A';
+  }
+
+  return `${formatNumber(value)} yd`;
 }
 
 function formatDate(date: string) {
