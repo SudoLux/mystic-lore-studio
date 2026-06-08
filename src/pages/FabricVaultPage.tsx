@@ -19,7 +19,7 @@ import { Badge } from '../components/shared/Badge';
 import { Button } from '../components/shared/Button';
 import { Card } from '../components/shared/Card';
 import { PageHeader } from '../components/shared/PageHeader';
-import { demoFabrics, demoProjects } from '../data/seedData';
+import { useStudioData } from '../hooks/useStudioData';
 import { cn } from '../lib/classes';
 import type { ApparelProject, Fabric, LinkedMaterial } from '../types/studio';
 
@@ -43,6 +43,9 @@ export function FabricVaultPage({
   onBack,
   onOpenFabric,
 }: FabricVaultPageProps) {
+  const {
+    data: { fabrics, projects },
+  } = useStudioData();
   const [search, setSearch] = useState('');
   const [typeFilter, setTypeFilter] = useState(allValue);
   const [colorFilter, setColorFilter] = useState(allValue);
@@ -53,25 +56,25 @@ export function FabricVaultPage({
   const [sortMode, setSortMode] = useState<FabricSort>('Recently updated');
 
   const selectedFabric = fabricId
-    ? demoFabrics.find((fabric) => fabric.id === fabricId)
+    ? fabrics.find((fabric) => fabric.id === fabricId)
     : undefined;
 
   const filterOptions = useMemo(
     () => ({
-      archiveStatuses: getUniqueValues(demoFabrics, 'archiveStatus'),
-      colors: getUniqueValues(demoFabrics, 'colorFamily'),
-      drapes: getUniqueValues(demoFabrics, 'drape'),
-      rarities: getUniqueValues(demoFabrics, 'rarity'),
-      types: getUniqueValues(demoFabrics, 'category'),
-      weights: getUniqueValues(demoFabrics, 'weight'),
+      archiveStatuses: getUniqueValues(fabrics, 'archiveStatus'),
+      colors: getUniqueValues(fabrics, 'colorFamily'),
+      drapes: getUniqueValues(fabrics, 'drape'),
+      rarities: getUniqueValues(fabrics, 'rarity'),
+      types: getUniqueValues(fabrics, 'category'),
+      weights: getUniqueValues(fabrics, 'weight'),
     }),
-    [],
+    [fabrics],
   );
 
   const visibleFabrics = useMemo(() => {
     const query = search.trim().toLowerCase();
 
-    return [...demoFabrics]
+    return [...fabrics]
       .filter((fabric) => {
         const searchableText = [
           fabric.name,
@@ -115,6 +118,7 @@ export function FabricVaultPage({
     archiveFilter,
     colorFilter,
     drapeFilter,
+    fabrics,
     rarityFilter,
     search,
     sortMode,
@@ -122,17 +126,18 @@ export function FabricVaultPage({
     weightFilter,
   ]);
 
-  const totalRemaining = demoFabrics.reduce(
+  const totalRemaining = fabrics.reduce(
     (total, fabric) => total + getRemainingYards(fabric),
     0,
   );
-  const lowYardageCount = demoFabrics.filter(isLowYardage).length;
+  const lowYardageCount = fabrics.filter(isLowYardage).length;
 
   if (fabricId) {
     return (
       <FabricDetailPage
         fabric={selectedFabric}
         onBack={onBack}
+        projects={projects}
       />
     );
   }
@@ -158,7 +163,7 @@ export function FabricVaultPage({
         <VaultMetric
           icon={<Archive aria-hidden="true" size={18} strokeWidth={1.9} />}
           label="Fabric Records"
-          value={demoFabrics.length.toString()}
+          value={fabrics.length.toString()}
         />
         <VaultMetric
           icon={<Ruler aria-hidden="true" size={18} strokeWidth={1.9} />}
@@ -247,14 +252,14 @@ export function FabricVaultPage({
         </div>
       </Card>
 
-      {demoFabrics.length === 0 ? (
+      {fabrics.length === 0 ? (
         <FabricEmptyState
           description="Fabric records will appear here once the vault has materials to index."
           title="No fabrics in the vault yet"
         />
       ) : null}
 
-      {demoFabrics.length > 0 && visibleFabrics.length === 0 ? (
+      {fabrics.length > 0 && visibleFabrics.length === 0 ? (
         <FabricEmptyState
           description={
             hasFilters
@@ -407,9 +412,11 @@ function FabricCard({
 function FabricDetailPage({
   fabric,
   onBack,
+  projects,
 }: {
   fabric?: Fabric;
   onBack: () => void;
+  projects: ApparelProject[];
 }) {
   if (!fabric) {
     return (
@@ -432,7 +439,7 @@ function FabricDetailPage({
   }
 
   const remainingYards = getRemainingYards(fabric);
-  const linkedProjects = getLinkedProjects(fabric);
+  const linkedProjects = getLinkedProjects(fabric, projects);
   const totalCost = fabric.totalYards * fabric.costPerYard;
 
   return (
@@ -911,8 +918,8 @@ function getRemainingYards(fabric: Fabric) {
   return Math.max(0, fabric.totalYards - fabric.reservedYards - fabric.usedYards);
 }
 
-function getLinkedProjects(fabric: Fabric) {
-  return demoProjects.flatMap((project) =>
+function getLinkedProjects(fabric: Fabric, projects: ApparelProject[]) {
+  return projects.flatMap((project) =>
     project.linkedMaterials
       .filter((allocation) => allocation.fabricId === fabric.id)
       .map((allocation) => ({ allocation, project })),

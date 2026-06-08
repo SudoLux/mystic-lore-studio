@@ -19,23 +19,15 @@ import {
 import { Badge } from '../components/shared/Badge';
 import { Card } from '../components/shared/Card';
 import { PageHeader } from '../components/shared/PageHeader';
-import { demoProjects } from '../data/seedData';
+import { useStudioData } from '../hooks/useStudioData';
 import { cn } from '../lib/classes';
 import { projectPhases, type ApparelProject, type ProjectPhase } from '../types/studio';
 
-type ProjectPhaseMap = Record<string, ProjectPhase>;
-
-const initialPhaseByProject = demoProjects.reduce<ProjectPhaseMap>(
-  (phaseMap, project) => ({
-    ...phaseMap,
-    [project.id]: project.phase,
-  }),
-  {},
-);
-
 export function KanbanPage() {
-  const [phaseByProject, setPhaseByProject] =
-    useState<ProjectPhaseMap>(initialPhaseByProject);
+  const {
+    data: { projects },
+    updateProjectPhase,
+  } = useStudioData();
   const [lastMove, setLastMove] = useState<string | null>(null);
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -50,19 +42,17 @@ export function KanbanPage() {
     () =>
       projectPhases.map((phase) => ({
         phase,
-        projects: demoProjects.filter(
-          (project) => phaseByProject[project.id] === phase,
-        ),
+        projects: projects.filter((project) => project.phase === phase),
       })),
-    [phaseByProject],
+    [projects],
   );
 
-  const activeCount = demoProjects.filter(
+  const activeCount = projects.filter(
     (project) => project.status === 'Active',
   ).length;
-  const productionCount = demoProjects.filter((project) =>
+  const productionCount = projects.filter((project) =>
     ['Pattern Drafting', 'Sample Sewing', 'Fitting', 'Revision', 'Final Build'].includes(
-      phaseByProject[project.id],
+      project.phase,
     ),
   ).length;
 
@@ -74,17 +64,14 @@ export function KanbanPage() {
       return;
     }
 
-    const project = demoProjects.find((item) => item.id === projectId);
-    const previousPhase = phaseByProject[projectId];
+    const project = projects.find((item) => item.id === projectId);
+    const previousPhase = project?.phase;
 
     if (!project || previousPhase === nextPhase) {
       return;
     }
 
-    setPhaseByProject((current) => ({
-      ...current,
-      [projectId]: nextPhase,
-    }));
+    updateProjectPhase(projectId, nextPhase);
     setLastMove(`${project.name} moved from ${previousPhase} to ${nextPhase}.`);
   };
 
@@ -100,7 +87,7 @@ export function KanbanPage() {
         <KanbanStat
           icon={<Shirt aria-hidden="true" size={18} strokeWidth={1.9} />}
           label="Projects"
-          value={demoProjects.length.toString()}
+          value={projects.length.toString()}
         />
         <KanbanStat
           icon={<Layers3 aria-hidden="true" size={18} strokeWidth={1.9} />}
@@ -119,9 +106,8 @@ export function KanbanPage() {
           <div>
             <Badge variant="teal">Drag Board</Badge>
             <p className="mt-3 max-w-2xl text-sm leading-6 text-stardust/62">
-              Drag project cards between phase columns. Changes update local
-              component state only, leaving persistence ready for a future data
-              layer.
+              Drag project cards between phase columns. Changes are saved to the
+              local Mystic Lore Studio data store.
             </p>
           </div>
           {lastMove ? (

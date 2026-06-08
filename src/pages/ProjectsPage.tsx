@@ -10,7 +10,7 @@ import { Badge } from '../components/shared/Badge';
 import { Button } from '../components/shared/Button';
 import { Card } from '../components/shared/Card';
 import { PageHeader } from '../components/shared/PageHeader';
-import { demoFabrics, demoProjects } from '../data/seedData';
+import { useStudioData } from '../hooks/useStudioData';
 import { cn } from '../lib/classes';
 import {
   garmentTypes,
@@ -32,13 +32,15 @@ type ViewMode = 'gallery' | 'list';
 type FilterValue = 'All';
 
 const allValue: FilterValue = 'All';
-const fabricById = new Map(demoFabrics.map((fabric) => [fabric.id, fabric]));
 const priorities: TaskPriority[] = ['Low', 'Medium', 'High', 'Critical'];
 
 const selectClassName =
   'h-11 w-full rounded-xl border border-bronze/30 bg-midnight/60 px-3 text-sm text-stardust outline-none transition duration-200 hover:border-ember/45 focus:border-ember/60';
 
 export function ProjectsPage({ onOpenProject }: ProjectsPageProps) {
+  const {
+    data: { fabrics, projects },
+  } = useStudioData();
   const [query, setQuery] = useState('');
   const [garmentType, setGarmentType] = useState<GarmentType | FilterValue>(
     allValue,
@@ -51,7 +53,7 @@ export function ProjectsPage({ onOpenProject }: ProjectsPageProps) {
   const filteredProjects = useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase();
 
-    return demoProjects.filter((project) => {
+    return projects.filter((project) => {
       const searchableText = [
         project.name,
         project.garmentType,
@@ -70,7 +72,11 @@ export function ProjectsPage({ onOpenProject }: ProjectsPageProps) {
         (priority === allValue || project.priority === priority)
       );
     });
-  }, [garmentType, phase, priority, query, status]);
+  }, [garmentType, phase, priority, projects, query, status]);
+  const fabricById = useMemo(
+    () => new Map(fabrics.map((fabric) => [fabric.id, fabric])),
+    [fabrics],
+  );
 
   return (
     <section className="space-y-5">
@@ -130,7 +136,7 @@ export function ProjectsPage({ onOpenProject }: ProjectsPageProps) {
           <div className="flex items-center gap-2 text-sm text-stardust/62">
             <SlidersHorizontal aria-hidden="true" size={16} strokeWidth={1.8} />
             <span>
-              {filteredProjects.length} of {demoProjects.length} projects shown
+              {filteredProjects.length} of {projects.length} projects shown
             </span>
           </div>
           <Button
@@ -161,6 +167,7 @@ export function ProjectsPage({ onOpenProject }: ProjectsPageProps) {
             viewMode === 'gallery' ? (
               <ProjectGalleryCard
                 key={project.id}
+                fabricById={fabricById}
                 onOpenProject={onOpenProject}
                 project={project}
                 style={{ animationDelay: `${index * 55}ms` }}
@@ -168,6 +175,7 @@ export function ProjectsPage({ onOpenProject }: ProjectsPageProps) {
             ) : (
               <ProjectListCard
                 key={project.id}
+                fabricById={fabricById}
                 onOpenProject={onOpenProject}
                 project={project}
                 style={{ animationDelay: `${index * 45}ms` }}
@@ -260,15 +268,17 @@ function FilterSelect({
 }
 
 function ProjectGalleryCard({
+  fabricById,
   onOpenProject,
   project,
   style,
 }: {
+  fabricById: Map<string, Fabric>;
   onOpenProject: (projectId: string) => void;
   project: ApparelProject;
   style: React.CSSProperties;
 }) {
-  const fabrics = getProjectFabrics(project);
+  const fabrics = getProjectFabrics(project, fabricById);
   const difficulty = getDifficulty(project);
   const lastUpdated = getLastUpdated(project);
 
@@ -338,15 +348,17 @@ function ProjectGalleryCard({
 }
 
 function ProjectListCard({
+  fabricById,
   onOpenProject,
   project,
   style,
 }: {
+  fabricById: Map<string, Fabric>;
   onOpenProject: (projectId: string) => void;
   project: ApparelProject;
   style: React.CSSProperties;
 }) {
-  const fabrics = getProjectFabrics(project);
+  const fabrics = getProjectFabrics(project, fabricById);
 
   return (
     <button
@@ -467,7 +479,10 @@ function FabricSwatch({
   );
 }
 
-function getProjectFabrics(project: ApparelProject) {
+function getProjectFabrics(
+  project: ApparelProject,
+  fabricById: Map<string, Fabric>,
+) {
   return project.linkedMaterials
     .map((material) =>
       material.fabricId ? fabricById.get(material.fabricId) : undefined,
