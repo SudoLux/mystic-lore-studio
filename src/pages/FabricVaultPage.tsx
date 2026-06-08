@@ -4,8 +4,14 @@ import {
   ArrowLeft,
   ArrowRight,
   Archive,
+  DollarSign,
+  Link2,
+  MapPin,
+  Package,
+  Pencil,
   Ruler,
   Search,
+  Shirt,
   SlidersHorizontal,
   Sparkles,
 } from 'lucide-react';
@@ -13,9 +19,9 @@ import { Badge } from '../components/shared/Badge';
 import { Button } from '../components/shared/Button';
 import { Card } from '../components/shared/Card';
 import { PageHeader } from '../components/shared/PageHeader';
-import { demoFabrics } from '../data/seedData';
+import { demoFabrics, demoProjects } from '../data/seedData';
 import { cn } from '../lib/classes';
-import type { Fabric } from '../types/studio';
+import type { ApparelProject, Fabric, LinkedMaterial } from '../types/studio';
 
 type FabricVaultPageProps = {
   fabricId?: string;
@@ -124,7 +130,7 @@ export function FabricVaultPage({
 
   if (fabricId) {
     return (
-      <FabricDetailPlaceholder
+      <FabricDetailPage
         fabric={selectedFabric}
         onBack={onBack}
       />
@@ -398,7 +404,7 @@ function FabricCard({
   );
 }
 
-function FabricDetailPlaceholder({
+function FabricDetailPage({
   fabric,
   onBack,
 }: {
@@ -426,43 +432,386 @@ function FabricDetailPlaceholder({
   }
 
   const remainingYards = getRemainingYards(fabric);
+  const linkedProjects = getLinkedProjects(fabric);
+  const totalCost = fabric.totalYards * fabric.costPerYard;
 
   return (
     <section className="space-y-5">
-      <PageHeader
-        badge="Fabric Detail"
-        description="Detail workspace placeholder. The full fabric detail page is reserved for the next milestone."
-        title={fabric.name}
-      >
-        <Button
-          icon={<ArrowLeft aria-hidden="true" size={16} strokeWidth={1.9} />}
-          onClick={onBack}
-          size="sm"
-        >
-          Back to Vault
-        </Button>
-      </PageHeader>
-      <Card className="overflow-hidden p-0">
-        <div className="grid gap-0 lg:grid-cols-[0.9fr_1.1fr]">
-          <div className={cn('min-h-72 border-b border-bronze/20 lg:border-b-0 lg:border-r', getFabricVisualClass(fabric))} />
-          <div className="p-5 sm:p-7">
-            <div className="flex flex-wrap gap-2">
-              <Badge variant="teal">{fabric.archiveStatus}</Badge>
-              <Badge variant="bronze">{fabric.rarity}</Badge>
+      <Card className="overflow-hidden p-0" elevated>
+        <div className="grid min-h-[34rem] lg:grid-cols-[0.92fr_1.08fr]">
+          <div
+            className={cn(
+              'relative flex min-h-80 flex-col justify-between overflow-hidden border-b border-bronze/20 p-5 sm:p-7 lg:border-b-0 lg:border-r',
+              getFabricVisualClass(fabric),
+            )}
+          >
+            <div className="absolute inset-0 opacity-35 [background-image:linear-gradient(90deg,rgba(237,227,207,0.08)_1px,transparent_1px),linear-gradient(0deg,rgba(237,227,207,0.07)_1px,transparent_1px)] [background-size:18px_18px]" />
+            <div className="relative">
+              <Button
+                icon={<ArrowLeft aria-hidden="true" size={16} strokeWidth={1.9} />}
+                onClick={onBack}
+                size="sm"
+              >
+                Back to Vault
+              </Button>
             </div>
-            <p className="mt-5 text-sm leading-6 text-stardust/64">
-              {fabric.notes}
-            </p>
-            <div className="mt-6 grid gap-3 sm:grid-cols-2">
-              <FabricDatum label="Type" value={fabric.category} />
-              <FabricDatum label="Color" value={fabric.colorFamily} />
-              <FabricDatum label="Remaining" value={`${formatNumber(remainingYards)} yd`} />
-              <FabricDatum label="Drape" value={fabric.drape} />
+            <div className="relative">
+              <div className="flex flex-wrap gap-2">
+                <Badge variant="teal">{fabric.archiveStatus}</Badge>
+                <Badge variant="bronze">{fabric.rarity}</Badge>
+                {isLowYardage(fabric) ? (
+                  <Badge variant="ember">Low Yardage</Badge>
+                ) : null}
+              </div>
+              <p className="mt-8 text-xs font-medium uppercase tracking-[0.16em] text-stardust/58">
+                {fabric.category} / {fabric.weaveOrKnit}
+              </p>
+              <h1 className="mt-3 max-w-xl text-4xl font-semibold leading-tight text-stardust sm:text-5xl">
+                {fabric.name}
+              </h1>
+              <p className="mt-5 max-w-lg text-sm leading-6 text-stardust/68">
+                {fabric.loreNote}
+              </p>
+            </div>
+          </div>
+
+          <div className="flex flex-col justify-between gap-8 p-5 sm:p-7 lg:p-8">
+            <div>
+              <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
+                <div>
+                  <p className="text-xs font-medium uppercase tracking-[0.16em] text-stardust/42">
+                    Fabric Detail
+                  </p>
+                  <h2 className="mt-3 text-2xl font-semibold text-stardust">
+                    Material profile
+                  </h2>
+                  <p className="mt-3 max-w-2xl text-sm leading-6 text-stardust/62">
+                    Technical inventory, sourcing, storage, and garment linkage
+                    for this vault record.
+                  </p>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <Button
+                    icon={<Pencil aria-hidden="true" size={15} strokeWidth={1.9} />}
+                    size="sm"
+                    variant="primary"
+                  >
+                    Edit Fabric
+                  </Button>
+                  <Button
+                    icon={<Link2 aria-hidden="true" size={15} strokeWidth={1.9} />}
+                    size="sm"
+                  >
+                    Reserve for Project
+                  </Button>
+                  <Button
+                    icon={<AlertTriangle aria-hidden="true" size={15} strokeWidth={1.9} />}
+                    size="sm"
+                    variant="ghost"
+                  >
+                    Mark Low Yardage
+                  </Button>
+                  <Button
+                    icon={<Archive aria-hidden="true" size={15} strokeWidth={1.9} />}
+                    size="sm"
+                    variant="ghost"
+                  >
+                    Mark Depleted
+                  </Button>
+                </div>
+              </div>
+
+              <div className="mt-7 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                <FabricDatum label="Total" value={`${formatNumber(fabric.totalYards)} yd`} />
+                <FabricDatum label="Reserved" value={`${formatNumber(fabric.reservedYards)} yd`} />
+                <FabricDatum label="Used" value={`${formatNumber(fabric.usedYards)} yd`} />
+                <FabricDatum label="Remaining" value={`${formatNumber(remainingYards)} yd`} />
+              </div>
+
+              <div className="mt-6">
+                <div className="mb-2 flex items-center justify-between text-xs">
+                  <span className="text-stardust/52">Yardage ledger</span>
+                  <span className="font-medium text-ember">
+                    {formatNumber(remainingYards)} yd remaining
+                  </span>
+                </div>
+                <div className="grid h-3 overflow-hidden rounded-full bg-stardust/10">
+                  <div
+                    className="h-full rounded-full bg-[linear-gradient(90deg,#2D5C6B,#C89B3C,#EDE3CF)]"
+                    style={{
+                      width: `${Math.max(4, (remainingYards / fabric.totalYards) * 100)}%`,
+                    }}
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div className="grid gap-3 md:grid-cols-3">
+              <DetailCallout
+                icon={<PaletteSwatch fabric={fabric} />}
+                label="Primary Color"
+                value={fabric.primaryColor}
+              />
+              <DetailCallout
+                icon={<Package aria-hidden="true" size={18} strokeWidth={1.9} />}
+                label="Archive Status"
+                value={fabric.archiveStatus}
+              />
+              <DetailCallout
+                icon={<Sparkles aria-hidden="true" size={18} strokeWidth={1.9} />}
+                label="Rarity"
+                value={fabric.rarity}
+              />
             </div>
           </div>
         </div>
       </Card>
+
+      <div className="grid gap-5 xl:grid-cols-[minmax(0,1.05fr)_minmax(20rem,0.65fr)]">
+        <div className="space-y-5">
+          <DetailSection
+            icon={<Package aria-hidden="true" size={18} strokeWidth={1.9} />}
+            title="Material Specifications"
+          >
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              <DetailDatum label="Fabric Type" value={fabric.category} />
+              <DetailDatum label="Fiber Content" value={fabric.composition} />
+              <DetailDatum label="Weave / Knit" value={fabric.weaveOrKnit} />
+              <DetailDatum label="Weight" value={fabric.weight} />
+              <DetailDatum label="Width" value={`${fabric.widthInches} in`} />
+              <DetailDatum label="Stretch" value={fabric.stretch} />
+              <DetailDatum label="Opacity" value={fabric.opacity} />
+              <DetailDatum label="Drape" value={fabric.drape} />
+              <DetailDatum label="Hand Feel" value={fabric.handFeel} />
+              <DetailDatum label="Texture" value={fabric.texture} />
+              <DetailDatum label="Structure" value={fabric.structure} />
+              <DetailDatum label="Storage Status" value={fabric.storageStatus} />
+            </div>
+          </DetailSection>
+
+          <DetailSection
+            icon={<MapPin aria-hidden="true" size={18} strokeWidth={1.9} />}
+            title="Source and Storage"
+          >
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              <DetailDatum label="Supplier / Source" value={fabric.supplier} />
+              <DetailDatum label="Purchase Date" value={formatDate(fabric.purchaseDate)} />
+              <DetailDatum label="Cost / Yard" value={formatCurrency(fabric.costPerYard)} />
+              <DetailDatum label="Total Cost" value={formatCurrency(totalCost)} />
+              <DetailDatum label="Storage Location" value={fabric.storageLocation} />
+              <DetailDatum label="Bin Number" value={fabric.binNumber} />
+              <DetailDatum label="Shelf" value={fabric.shelf} />
+            </div>
+          </DetailSection>
+
+          <DetailSection
+            icon={<Shirt aria-hidden="true" size={18} strokeWidth={1.9} />}
+            title="Linked Projects"
+          >
+            {linkedProjects.length > 0 ? (
+              <div className="grid gap-3 md:grid-cols-2">
+                {linkedProjects.map(({ allocation, project }) => (
+                  <LinkedProjectCard
+                    allocation={allocation}
+                    key={`${project.id}-${allocation.id}`}
+                    project={project}
+                  />
+                ))}
+              </div>
+            ) : (
+              <p className="rounded-2xl border border-dashed border-bronze/25 bg-midnight/24 p-5 text-sm leading-6 text-stardust/54">
+                This fabric is not linked to any garment projects yet.
+              </p>
+            )}
+          </DetailSection>
+        </div>
+
+        <div className="space-y-5">
+          <DetailSection
+            icon={<Sparkles aria-hidden="true" size={18} strokeWidth={1.9} />}
+            title="Color Story"
+          >
+            <div className="space-y-4">
+              <DetailDatum label="Color Family" value={fabric.colorFamily} />
+              <DetailDatum label="Primary Color" value={fabric.primaryColor} />
+              {fabric.secondaryColors.length > 0 ? (
+                <div>
+                  <p className="text-xs font-medium uppercase tracking-[0.14em] text-stardust/38">
+                    Secondary Colors
+                  </p>
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    {fabric.secondaryColors.map((color) => (
+                      <span
+                        className="rounded-full border border-bronze/28 bg-midnight/34 px-3 py-1 text-xs text-stardust/68"
+                        key={color}
+                      >
+                        {color}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
+            </div>
+          </DetailSection>
+
+          <DetailSection
+            icon={<Ruler aria-hidden="true" size={18} strokeWidth={1.9} />}
+            title="Best Uses"
+          >
+            <div className="flex flex-wrap gap-2">
+              {fabric.bestUses.map((use) => (
+                <span
+                  className="rounded-full border border-bronze/28 bg-midnight/34 px-3 py-1 text-xs text-stardust/68"
+                  key={use}
+                >
+                  {use}
+                </span>
+              ))}
+            </div>
+          </DetailSection>
+
+          <DetailSection
+            icon={<Sparkles aria-hidden="true" size={18} strokeWidth={1.9} />}
+            title="Mood Tags"
+          >
+            <div className="flex flex-wrap gap-2">
+              {fabric.moodTags.map((tag) => (
+                <span
+                  className="rounded-full border border-nebula/38 bg-nebula/14 px-3 py-1 text-xs text-stardust/72"
+                  key={tag}
+                >
+                  {tag}
+                </span>
+              ))}
+            </div>
+          </DetailSection>
+
+          <DetailSection
+            icon={<AlertTriangle aria-hidden="true" size={18} strokeWidth={1.9} />}
+            title="Care Notes"
+          >
+            <p className="text-sm leading-6 text-stardust/62">{fabric.careNotes}</p>
+          </DetailSection>
+
+          <DetailSection
+            icon={<DollarSign aria-hidden="true" size={18} strokeWidth={1.9} />}
+            title="Lore Note"
+          >
+            <p className="text-sm leading-6 text-stardust/66">{fabric.loreNote}</p>
+          </DetailSection>
+        </div>
+      </div>
     </section>
+  );
+}
+
+function DetailCallout({
+  icon,
+  label,
+  value,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  value: string;
+}) {
+  return (
+    <div className="rounded-2xl border border-bronze/22 bg-midnight/34 p-4">
+      <div className="flex items-center gap-2 text-ember">{icon}</div>
+      <p className="mt-3 text-xs font-medium uppercase tracking-[0.14em] text-stardust/38">
+        {label}
+      </p>
+      <p className="mt-1 truncate text-sm font-semibold text-stardust">{value}</p>
+    </div>
+  );
+}
+
+function PaletteSwatch({ fabric }: { fabric: Fabric }) {
+  return (
+    <span
+      className={cn(
+        'block h-5 w-5 rounded-full border border-stardust/24 shadow-[0_0_24px_rgba(237,227,207,0.16)]',
+        getFabricVisualClass(fabric),
+      )}
+    />
+  );
+}
+
+function DetailSection({
+  children,
+  icon,
+  title,
+}: {
+  children: React.ReactNode;
+  icon: React.ReactNode;
+  title: string;
+}) {
+  return (
+    <Card className="transition duration-300 hover:border-ember/35">
+      <div className="mb-5 flex items-center gap-3">
+        <span className="flex h-10 w-10 items-center justify-center rounded-2xl border border-bronze/25 bg-midnight/45 text-ember">
+          {icon}
+        </span>
+        <h2 className="text-lg font-semibold text-stardust">{title}</h2>
+      </div>
+      {children}
+    </Card>
+  );
+}
+
+function DetailDatum({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-2xl border border-bronze/18 bg-midnight/28 p-4">
+      <p className="text-[0.68rem] font-medium uppercase tracking-[0.14em] text-stardust/38">
+        {label}
+      </p>
+      <p className="mt-2 text-sm font-semibold leading-5 text-stardust">{value}</p>
+    </div>
+  );
+}
+
+function LinkedProjectCard({
+  allocation,
+  project,
+}: {
+  allocation: LinkedMaterial;
+  project: ApparelProject;
+}) {
+  return (
+    <article className="rounded-2xl border border-bronze/22 bg-midnight/30 p-4 transition duration-300 hover:border-ember/40">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <h3 className="truncate text-base font-semibold text-stardust">
+            {project.name}
+          </h3>
+          <p className="mt-1 text-xs text-stardust/48">
+            {project.garmentType} / {project.collection}
+          </p>
+        </div>
+        <Badge variant={project.status === 'Blocked' ? 'ember' : 'teal'}>
+          {project.status}
+        </Badge>
+      </div>
+      <div className="mt-4 flex flex-wrap gap-2">
+        <Badge variant="bronze">{allocation.role}</Badge>
+        <Badge variant="blue">{allocation.status}</Badge>
+      </div>
+      <div className="mt-4 grid grid-cols-3 gap-2">
+        <FabricDatum
+          label="Needed"
+          value={formatYardage(allocation.neededYards)}
+        />
+        <FabricDatum
+          label="Reserved"
+          value={formatYardage(allocation.reservedYards)}
+        />
+        <FabricDatum label="Used" value={formatYardage(allocation.usedYards)} />
+      </div>
+      {allocation.notes ? (
+        <p className="mt-4 line-clamp-2 text-sm leading-6 text-stardust/56">
+          {allocation.notes}
+        </p>
+      ) : null}
+    </article>
   );
 }
 
@@ -562,6 +911,14 @@ function getRemainingYards(fabric: Fabric) {
   return Math.max(0, fabric.totalYards - fabric.reservedYards - fabric.usedYards);
 }
 
+function getLinkedProjects(fabric: Fabric) {
+  return demoProjects.flatMap((project) =>
+    project.linkedMaterials
+      .filter((allocation) => allocation.fabricId === fabric.id)
+      .map((allocation) => ({ allocation, project })),
+  );
+}
+
 function isLowYardage(fabric: Fabric) {
   return getRemainingYards(fabric) <= lowYardageThreshold;
 }
@@ -623,8 +980,24 @@ function formatDate(date: string) {
   }).format(new Date(`${date}T00:00:00`));
 }
 
+function formatCurrency(value: number) {
+  return new Intl.NumberFormat('en-US', {
+    currency: 'USD',
+    maximumFractionDigits: 2,
+    style: 'currency',
+  }).format(value);
+}
+
 function formatNumber(value: number) {
   return new Intl.NumberFormat('en-US', {
     maximumFractionDigits: 1,
   }).format(value);
+}
+
+function formatYardage(value: number) {
+  if (value === 0) {
+    return 'N/A';
+  }
+
+  return `${formatNumber(value)} yd`;
 }
