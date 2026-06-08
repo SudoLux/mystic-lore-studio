@@ -42,6 +42,7 @@ export const garmentTypes = [
 export type ProjectPhase = (typeof projectPhases)[number];
 export type ProjectStatus = (typeof projectStatuses)[number];
 export type GarmentType = (typeof garmentTypes)[number];
+export type ProjectDifficulty = 'Light' | 'Moderate' | 'Advanced' | 'Masterwork';
 
 export const taskStatuses = [
   'To Do',
@@ -230,8 +231,14 @@ export type ApparelProject = {
   collection: string;
   progress: number;
   priority: TaskPriority;
+  difficulty: ProjectDifficulty;
   summary: string;
   designIntent: string;
+  targetWearer: string;
+  silhouette: string;
+  keyFeatures: string[];
+  colorStory: string;
+  generalNotes: string;
   tags: string[];
   startDate: string;
   targetDate?: string;

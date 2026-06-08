@@ -22,6 +22,7 @@ import type { PageId } from '../types/navigation';
 
 type DashboardPageProps = {
   onNavigate: (pageId: PageId) => void;
+  onNewProject: () => void;
 };
 
 const productionPhases = new Set([
@@ -57,7 +58,7 @@ const quickActions = [
   },
 ] satisfies Array<{ label: string; icon: typeof Sparkles; pageId: PageId }>;
 
-export function DashboardPage({ onNavigate }: DashboardPageProps) {
+export function DashboardPage({ onNavigate, onNewProject }: DashboardPageProps) {
   const {
     data: { fabrics, projects, tasks },
   } = useStudioData();
@@ -147,7 +148,11 @@ export function DashboardPage({ onNavigate }: DashboardPageProps) {
               <Button
                 icon={<Icon aria-hidden="true" size={16} strokeWidth={1.9} />}
                 key={action.label}
-                onClick={() => onNavigate(action.pageId)}
+                onClick={() =>
+                  action.label === 'New Project'
+                    ? onNewProject()
+                    : onNavigate(action.pageId)
+                }
                 size="sm"
                 variant={action.label === 'New Project' ? 'primary' : 'secondary'}
               >

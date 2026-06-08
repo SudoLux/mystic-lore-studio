@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import {
+  FolderPlus,
   ArrowRight,
   Grid2X2,
   List,
@@ -25,6 +26,7 @@ import {
 } from '../types/studio';
 
 type ProjectsPageProps = {
+  onNewProject: () => void;
   onOpenProject: (projectId: string) => void;
 };
 
@@ -37,7 +39,7 @@ const priorities: TaskPriority[] = ['Low', 'Medium', 'High', 'Critical'];
 const selectClassName =
   'h-11 w-full rounded-xl border border-bronze/30 bg-midnight/60 px-3 text-sm text-stardust outline-none transition duration-200 hover:border-ember/45 focus:border-ember/60';
 
-export function ProjectsPage({ onOpenProject }: ProjectsPageProps) {
+export function ProjectsPage({ onNewProject, onOpenProject }: ProjectsPageProps) {
   const {
     data: { fabrics, projects },
   } = useStudioData();
@@ -85,7 +87,17 @@ export function ProjectsPage({ onOpenProject }: ProjectsPageProps) {
         description="Browse garment dossiers, filter the collection pipeline, and open a project detail route for focused review."
         title="Projects"
       >
-        <ViewModeToggle viewMode={viewMode} onChange={setViewMode} />
+        <div className="flex flex-wrap gap-2 sm:justify-end">
+          <Button
+            icon={<FolderPlus aria-hidden="true" size={16} strokeWidth={1.9} />}
+            onClick={onNewProject}
+            size="sm"
+            variant="primary"
+          >
+            New Project
+          </Button>
+          <ViewModeToggle viewMode={viewMode} onChange={setViewMode} />
+        </div>
       </PageHeader>
 
       <Card className="border-bronze/30 bg-[linear-gradient(135deg,rgba(27,58,99,0.22),rgba(10,10,10,0.48),rgba(61,43,31,0.36))]">
@@ -491,24 +503,7 @@ function getProjectFabrics(
 }
 
 function getDifficulty(project: ApparelProject) {
-  const score =
-    (project.priority === 'Critical' ? 3 : project.priority === 'High' ? 2 : 1) +
-    project.linkedMaterials.length +
-    project.tasks.filter((task) => task.status !== 'Done').length;
-
-  if (score >= 7) {
-    return 'Masterwork';
-  }
-
-  if (score >= 5) {
-    return 'Advanced';
-  }
-
-  if (score >= 3) {
-    return 'Moderate';
-  }
-
-  return 'Light';
+  return project.difficulty;
 }
 
 function getLastUpdated(project: ApparelProject) {

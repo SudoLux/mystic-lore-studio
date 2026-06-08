@@ -21,8 +21,14 @@ type ProjectSeed = {
   collection: string;
   progress: number;
   priority: TaskPriority;
+  difficulty: ApparelProject['difficulty'];
   summary: string;
   designIntent: string;
+  targetWearer: string;
+  silhouette: string;
+  keyFeatures: string[];
+  colorStory: string;
+  generalNotes: string;
   tags: string[];
   startDate: string;
   targetDate?: string;
@@ -810,10 +816,25 @@ const projectData: ProjectSeed[] = [
     collection: 'Mystic Lore Core',
     progress: 46,
     priority: 'High',
+    difficulty: 'Advanced',
     summary:
       'Cropped heavy denim jacket with sculpted collar, strong pocket geometry, and a controlled Ankara interior reveal.',
     designIntent:
       'Build a premium outerwear anchor that feels protective, ceremonial, and practical for layered styling.',
+    targetWearer:
+      'A creative director or maker who wants a statement jacket that still works as a daily studio layer.',
+    silhouette:
+      'Cropped and boxy through the body with deliberate shoulder ease for layered styling.',
+    keyFeatures: [
+      'Cropped structured body',
+      'Sculpted collar roll',
+      'Patch pocket geometry',
+      'Interior Ankara facing reveal',
+    ],
+    colorStory:
+      'Midnight indigo dominates the outer shell, with Golden Ankara appearing as a quiet interior flash.',
+    generalNotes:
+      'Protect the architectural shoulder and collar line. The jacket should feel ceremonial without sacrificing everyday utility.',
     tags: ['outerwear', 'denim', 'cropped', 'accent facing'],
     startDate: '2026-05-22',
     targetDate: '2026-07-10',
@@ -828,10 +849,25 @@ const projectData: ProjectSeed[] = [
     collection: 'Mystic Lore Core',
     progress: 64,
     priority: 'High',
+    difficulty: 'Advanced',
     summary:
       'High-rise pleated trouser in espresso twill with tailored volume and a clean taper.',
     designIntent:
       'Create a grounding trouser shape that can carry both shirting and structured outerwear.',
+    targetWearer:
+      'A person who moves between atelier work, events, and everyday errands without changing wardrobe language.',
+    silhouette:
+      'High-waisted with generous thigh volume, controlled taper, and a tailored break.',
+    keyFeatures: [
+      'High-rise waist',
+      'Double pleat study',
+      'Extended waistband tab',
+      'Clean taper through hem',
+    ],
+    colorStory:
+      'Deep espresso twill grounds the shape, with stardust ivory pocketing kept inside the garment.',
+    generalNotes:
+      'Balance the ceremonial trouser volume with enough taper to keep the profile sharp under jackets.',
     tags: ['trouser', 'pleated', 'espresso', 'tailoring'],
     startDate: '2026-05-18',
     targetDate: '2026-06-28',
@@ -846,10 +882,25 @@ const projectData: ProjectSeed[] = [
     collection: 'Field Notes',
     progress: 22,
     priority: 'Medium',
+    difficulty: 'Moderate',
     summary:
       'Relaxed black linen shirt with hidden placket and subtle Ankara trim at internal touchpoints.',
     designIntent:
       'Keep the shirt airy and architectural while adding small material moments for discovery.',
+    targetWearer:
+      'A warm-weather dresser who wants a quiet shirt with hidden craft details.',
+    silhouette:
+      'Airy and relaxed with a slightly architectural fall away from the body.',
+    keyFeatures: [
+      'Relaxed linen body',
+      'Hidden placket',
+      'Subtle Ankara trim',
+      'Soft collar construction',
+    ],
+    colorStory:
+      'Black linen carries the surface, while golden trim appears only at internal touchpoints.',
+    generalNotes:
+      'Keep construction light. The shirt should breathe and move before it announces tailoring.',
     tags: ['shirt', 'linen', 'hidden placket', 'summer layer'],
     startDate: '2026-06-01',
     targetDate: '2026-08-02',
@@ -864,10 +915,25 @@ const projectData: ProjectSeed[] = [
     collection: 'Soft Armor',
     progress: 18,
     priority: 'Medium',
+    difficulty: 'Moderate',
     summary:
       'Soft cardigan concept using nebula teal rib for cuffs, hem, and collar proportion studies.',
     designIntent:
       'Explore the cardigan as a soft armor layer with weight, recovery, and calm presence.',
+    targetWearer:
+      'A layered dresser who wants softness with structure and a low-key color accent.',
+    silhouette:
+      'Relaxed cardigan body with a deliberate collar and weighted lower edge.',
+    keyFeatures: [
+      'Weighted hem band',
+      'Soft shawl collar experiment',
+      'Rib cuff recovery',
+      'Button finish study',
+    ],
+    colorStory:
+      'Nebula teal rib sets the mood, supported by dark buttons and a grounded studio palette.',
+    generalNotes:
+      'Test recovery before committing. The cardigan needs softness, but the hem and cuffs cannot collapse.',
     tags: ['cardigan', 'rib knit', 'soft armor', 'layering'],
     startDate: '2026-05-30',
   },
@@ -881,10 +947,25 @@ const projectData: ProjectSeed[] = [
     collection: 'Mystic Lore Core',
     progress: 58,
     priority: 'Critical',
+    difficulty: 'Masterwork',
     summary:
       'Heavy denim blazer dress with tailored shoulder structure, ivory lining, and sharp evening utility.',
     designIntent:
       'Merge blazer authority with dress movement for the collection presentation anchor.',
+    targetWearer:
+      'A presentation lead or performer who wants blazer authority with evening movement.',
+    silhouette:
+      'Tailored through the shoulder and waist, extending into a controlled dress shape.',
+    keyFeatures: [
+      'Blazer shoulder structure',
+      'Dress-length denim body',
+      'Ivory-lined bodice',
+      'Sharp evening utility',
+    ],
+    colorStory:
+      'Heavy midnight denim creates the tailored exterior, offset by stardust ivory lining inside the bodice.',
+    generalNotes:
+      'Watch bulk through the waist and hip. The shoulder structure should stay crisp without overpowering the dress line.',
     tags: ['dress', 'denim', 'tailored', 'presentation anchor'],
     startDate: '2026-05-12',
     targetDate: '2026-07-01',
