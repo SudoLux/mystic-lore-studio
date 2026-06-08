@@ -84,6 +84,9 @@ export const noteCategories = [
 export type NoteCategory = (typeof noteCategories)[number];
 export type FabricWeight = 'Light' | 'Medium' | 'Heavy';
 export type FabricStatus = 'In Stock' | 'Reserved' | 'Low Stock' | 'Depleted';
+export type FabricArchiveStatus = 'Active' | 'Reserved' | 'Archived' | 'Depleted';
+export type FabricDrape = 'Crisp' | 'Structured' | 'Fluid' | 'Soft' | 'Stretch';
+export type FabricRarity = 'Core' | 'Seasonal' | 'Rare' | 'One-off' | 'Archive';
 export const materialRoles = [
   'Shell Fabric',
   'Contrast Fabric',
@@ -183,13 +186,19 @@ export type Fabric = {
   composition: string;
   colorFamily: string;
   weight: FabricWeight;
+  drape: FabricDrape;
   widthInches: number;
   totalYards: number;
   reservedYards: number;
   usedYards: number;
   status: FabricStatus;
+  archiveStatus: FabricArchiveStatus;
+  rarity: FabricRarity;
+  bestUses: string[];
+  moodTags: string[];
   tags: string[];
   notes: string;
+  updatedAt: string;
 };
 
 export type ApparelProject = {

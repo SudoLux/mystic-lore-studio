@@ -12,15 +12,26 @@ import { StatsPage } from './pages/StatsPage';
 import type { PageId } from './types/navigation';
 
 type AppRoute = {
+  fabricId?: string;
   page: PageId;
   projectId?: string;
 };
 
 function getInitialRoute(): AppRoute {
-  const [, section, projectId] = window.location.hash.split('/');
+  const [, section, recordId] = window.location.hash.split('/');
 
-  if (section === 'projects' && projectId) {
-    return { page: 'projects', projectId };
+  if (section === 'projects' && recordId) {
+    return { page: 'projects', projectId: recordId };
+  }
+
+  if (section === 'projects') {
+    return { page: 'projects' };
+  }
+
+  if (section === 'fabrics') {
+    return recordId
+      ? { page: 'fabrics', fabricId: recordId }
+      : { page: 'fabrics' };
   }
 
   return { page: 'dashboard' };
@@ -52,6 +63,16 @@ function App() {
     setRoute({ page: 'projects' });
   };
 
+  const openFabric = (fabricId: string) => {
+    window.history.pushState(null, '', `#/fabrics/${fabricId}`);
+    setRoute({ page: 'fabrics', fabricId });
+  };
+
+  const closeFabric = () => {
+    window.history.pushState(null, '', '#');
+    setRoute({ page: 'fabrics' });
+  };
+
   const currentPage = useMemo(() => {
     const pages: Record<PageId, React.ReactNode> = {
       dashboard: <DashboardPage onNavigate={navigateToPage} />,
@@ -65,7 +86,13 @@ function App() {
       ),
       kanban: <KanbanPage />,
       lookbooks: <LookbooksPage />,
-      fabrics: <FabricVaultPage />,
+      fabrics: (
+        <FabricVaultPage
+          fabricId={route.fabricId}
+          onBack={closeFabric}
+          onOpenFabric={openFabric}
+        />
+      ),
       stats: <StatsPage />,
       settings: <SettingsPage />,
     };

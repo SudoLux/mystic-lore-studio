@@ -1,16 +1,630 @@
-import { PlaceholderPage } from './PlaceholderPage';
+import { useMemo, useState } from 'react';
+import {
+  AlertTriangle,
+  ArrowLeft,
+  ArrowRight,
+  Archive,
+  Ruler,
+  Search,
+  SlidersHorizontal,
+  Sparkles,
+} from 'lucide-react';
+import { Badge } from '../components/shared/Badge';
+import { Button } from '../components/shared/Button';
+import { Card } from '../components/shared/Card';
+import { PageHeader } from '../components/shared/PageHeader';
+import { demoFabrics } from '../data/seedData';
+import { cn } from '../lib/classes';
+import type { Fabric } from '../types/studio';
 
-export function FabricVaultPage() {
-  return (
-    <PlaceholderPage
-      badge="Fabric Vault"
-      description="A future materials archive for fabric records, project links, yardage reservations, and usage."
-      metrics={[
-        { label: 'Inventory', value: 'Fabric records' },
-        { label: 'Links', value: 'Project allocation' },
-        { label: 'Yardage', value: 'Reserve and use' },
-      ]}
-      title="Fabric Vault"
-    />
+type FabricVaultPageProps = {
+  fabricId?: string;
+  onBack: () => void;
+  onOpenFabric: (fabricId: string) => void;
+};
+
+type FabricSort =
+  | 'Recently updated'
+  | 'Name A-Z'
+  | 'Yardage high to low'
+  | 'Yardage low to high';
+
+const allValue = 'All';
+const lowYardageThreshold = 5;
+
+export function FabricVaultPage({
+  fabricId,
+  onBack,
+  onOpenFabric,
+}: FabricVaultPageProps) {
+  const [search, setSearch] = useState('');
+  const [typeFilter, setTypeFilter] = useState(allValue);
+  const [colorFilter, setColorFilter] = useState(allValue);
+  const [archiveFilter, setArchiveFilter] = useState(allValue);
+  const [rarityFilter, setRarityFilter] = useState(allValue);
+  const [weightFilter, setWeightFilter] = useState(allValue);
+  const [drapeFilter, setDrapeFilter] = useState(allValue);
+  const [sortMode, setSortMode] = useState<FabricSort>('Recently updated');
+
+  const selectedFabric = fabricId
+    ? demoFabrics.find((fabric) => fabric.id === fabricId)
+    : undefined;
+
+  const filterOptions = useMemo(
+    () => ({
+      archiveStatuses: getUniqueValues(demoFabrics, 'archiveStatus'),
+      colors: getUniqueValues(demoFabrics, 'colorFamily'),
+      drapes: getUniqueValues(demoFabrics, 'drape'),
+      rarities: getUniqueValues(demoFabrics, 'rarity'),
+      types: getUniqueValues(demoFabrics, 'category'),
+      weights: getUniqueValues(demoFabrics, 'weight'),
+    }),
+    [],
   );
+
+  const visibleFabrics = useMemo(() => {
+    const query = search.trim().toLowerCase();
+
+    return [...demoFabrics]
+      .filter((fabric) => {
+        const searchableText = [
+          fabric.name,
+          fabric.category,
+          fabric.colorFamily,
+          fabric.composition,
+          fabric.notes,
+          ...fabric.bestUses,
+          ...fabric.moodTags,
+          ...fabric.tags,
+        ]
+          .join(' ')
+          .toLowerCase();
+
+        const matchesSearch = !query || searchableText.includes(query);
+        const matchesType =
+          typeFilter === allValue || fabric.category === typeFilter;
+        const matchesColor =
+          colorFilter === allValue || fabric.colorFamily === colorFilter;
+        const matchesArchive =
+          archiveFilter === allValue || fabric.archiveStatus === archiveFilter;
+        const matchesRarity =
+          rarityFilter === allValue || fabric.rarity === rarityFilter;
+        const matchesWeight =
+          weightFilter === allValue || fabric.weight === weightFilter;
+        const matchesDrape =
+          drapeFilter === allValue || fabric.drape === drapeFilter;
+
+        return (
+          matchesSearch &&
+          matchesType &&
+          matchesColor &&
+          matchesArchive &&
+          matchesRarity &&
+          matchesWeight &&
+          matchesDrape
+        );
+      })
+      .sort((a, b) => sortFabrics(a, b, sortMode));
+  }, [
+    archiveFilter,
+    colorFilter,
+    drapeFilter,
+    rarityFilter,
+    search,
+    sortMode,
+    typeFilter,
+    weightFilter,
+  ]);
+
+  const totalRemaining = demoFabrics.reduce(
+    (total, fabric) => total + getRemainingYards(fabric),
+    0,
+  );
+  const lowYardageCount = demoFabrics.filter(isLowYardage).length;
+
+  if (fabricId) {
+    return (
+      <FabricDetailPlaceholder
+        fabric={selectedFabric}
+        onBack={onBack}
+      />
+    );
+  }
+
+  const hasFilters =
+    search ||
+    typeFilter !== allValue ||
+    colorFilter !== allValue ||
+    archiveFilter !== allValue ||
+    rarityFilter !== allValue ||
+    weightFilter !== allValue ||
+    drapeFilter !== allValue;
+
+  return (
+    <section className="space-y-5">
+      <PageHeader
+        badge="Fabric Vault"
+        description="Search the material archive by fabric story, inventory signal, mood, and garment use."
+        title="Fabric Vault"
+      />
+
+      <div className="grid gap-4 md:grid-cols-3">
+        <VaultMetric
+          icon={<Archive aria-hidden="true" size={18} strokeWidth={1.9} />}
+          label="Fabric Records"
+          value={demoFabrics.length.toString()}
+        />
+        <VaultMetric
+          icon={<Ruler aria-hidden="true" size={18} strokeWidth={1.9} />}
+          label="Remaining Yardage"
+          value={`${formatNumber(totalRemaining)} yd`}
+        />
+        <VaultMetric
+          icon={<AlertTriangle aria-hidden="true" size={18} strokeWidth={1.9} />}
+          label="Low Yardage"
+          value={lowYardageCount.toString()}
+        />
+      </div>
+
+      <Card className="border-bronze/30 bg-[linear-gradient(135deg,rgba(27,58,99,0.22),rgba(10,10,10,0.5),rgba(61,43,31,0.34))]">
+        <div className="grid gap-4 xl:grid-cols-[minmax(0,1.2fr)_minmax(0,2fr)]">
+          <label className="block">
+            <span className="mb-2 flex items-center gap-2 text-xs font-medium uppercase tracking-[0.14em] text-stardust/42">
+              <Search aria-hidden="true" size={14} strokeWidth={1.9} />
+              Search Vault
+            </span>
+            <input
+              className="h-11 w-full rounded-2xl border border-bronze/28 bg-midnight/45 px-4 text-sm text-stardust outline-none transition placeholder:text-stardust/32 focus:border-ember/60"
+              onChange={(event) => setSearch(event.target.value)}
+              placeholder="Search name, fiber, color, uses, notes..."
+              type="search"
+              value={search}
+            />
+          </label>
+
+          <div>
+            <div className="mb-2 flex items-center gap-2 text-xs font-medium uppercase tracking-[0.14em] text-stardust/42">
+              <SlidersHorizontal aria-hidden="true" size={14} strokeWidth={1.9} />
+              Filters
+            </div>
+            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+              <VaultSelect
+                label="Type"
+                onChange={setTypeFilter}
+                options={filterOptions.types}
+                value={typeFilter}
+              />
+              <VaultSelect
+                label="Color"
+                onChange={setColorFilter}
+                options={filterOptions.colors}
+                value={colorFilter}
+              />
+              <VaultSelect
+                label="Archive"
+                onChange={setArchiveFilter}
+                options={filterOptions.archiveStatuses}
+                value={archiveFilter}
+              />
+              <VaultSelect
+                label="Rarity"
+                onChange={setRarityFilter}
+                options={filterOptions.rarities}
+                value={rarityFilter}
+              />
+              <VaultSelect
+                label="Weight"
+                onChange={setWeightFilter}
+                options={filterOptions.weights}
+                value={weightFilter}
+              />
+              <VaultSelect
+                label="Drape"
+                onChange={setDrapeFilter}
+                options={filterOptions.drapes}
+                value={drapeFilter}
+              />
+              <VaultSelect
+                includeAll={false}
+                label="Sort"
+                onChange={(value) => setSortMode(value as FabricSort)}
+                options={[
+                  'Recently updated',
+                  'Name A-Z',
+                  'Yardage high to low',
+                  'Yardage low to high',
+                ]}
+                value={sortMode}
+              />
+            </div>
+          </div>
+        </div>
+      </Card>
+
+      {demoFabrics.length === 0 ? (
+        <FabricEmptyState
+          description="Fabric records will appear here once the vault has materials to index."
+          title="No fabrics in the vault yet"
+        />
+      ) : null}
+
+      {demoFabrics.length > 0 && visibleFabrics.length === 0 ? (
+        <FabricEmptyState
+          description={
+            hasFilters
+              ? 'Try clearing one filter or searching with a broader fabric cue.'
+              : 'No fabric records are available for this view.'
+          }
+          title="No fabric results"
+        />
+      ) : null}
+
+      {visibleFabrics.length > 0 ? (
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+          {visibleFabrics.map((fabric, index) => (
+            <FabricCard
+              fabric={fabric}
+              key={fabric.id}
+              onOpenFabric={onOpenFabric}
+              style={{ animationDelay: `${index * 45}ms` }}
+            />
+          ))}
+        </div>
+      ) : null}
+    </section>
+  );
+}
+
+function FabricCard({
+  fabric,
+  onOpenFabric,
+  style,
+}: {
+  fabric: Fabric;
+  onOpenFabric: (fabricId: string) => void;
+  style: React.CSSProperties;
+}) {
+  const remainingYards = getRemainingYards(fabric);
+  const lowYardage = isLowYardage(fabric);
+
+  return (
+    <button
+      className="studio-project-card group min-h-[35rem] overflow-hidden rounded-3xl border border-bronze/25 bg-stardust/[0.055] text-left text-stardust shadow-[0_24px_70px_rgba(0,0,0,0.22)] backdrop-blur-xl transition duration-300 hover:-translate-y-1.5 hover:border-ember/55 hover:bg-stardust/[0.075] hover:shadow-[0_28px_90px_rgba(200,155,60,0.12)]"
+      onClick={() => onOpenFabric(fabric.id)}
+      style={style}
+      type="button"
+    >
+      <div
+        className={cn(
+          'relative h-40 overflow-hidden border-b border-bronze/20 p-4',
+          getFabricVisualClass(fabric),
+        )}
+      >
+        <div className="absolute inset-0 opacity-35 [background-image:linear-gradient(90deg,rgba(237,227,207,0.08)_1px,transparent_1px),linear-gradient(0deg,rgba(237,227,207,0.07)_1px,transparent_1px)] [background-size:18px_18px]" />
+        <div className="relative flex items-start justify-between gap-3">
+          <Badge variant={fabric.archiveStatus === 'Archived' ? 'bronze' : 'teal'}>
+            {fabric.archiveStatus}
+          </Badge>
+          <span className="rounded-full border border-stardust/15 bg-midnight/45 px-3 py-1 text-xs font-medium text-stardust/72">
+            {formatDate(fabric.updatedAt)}
+          </span>
+        </div>
+        <div className="relative mt-14 flex items-end justify-between gap-4">
+          <div>
+            <p className="text-xs font-medium uppercase tracking-[0.14em] text-stardust/58">
+              {fabric.category}
+            </p>
+            <p className="mt-1 text-2xl font-semibold text-stardust">
+              {fabric.colorFamily}
+            </p>
+          </div>
+          {lowYardage ? (
+            <span className="inline-flex items-center gap-1 rounded-full border border-ember/45 bg-ember/16 px-3 py-1 text-xs font-medium text-ember">
+              <AlertTriangle aria-hidden="true" size={13} strokeWidth={1.9} />
+              Low
+            </span>
+          ) : null}
+        </div>
+      </div>
+
+      <div className="p-5">
+        <div className="flex items-start justify-between gap-4">
+          <div className="min-w-0">
+            <h2 className="truncate text-xl font-semibold text-stardust">
+              {fabric.name}
+            </h2>
+            <p className="mt-1 text-sm text-stardust/52">
+              {fabric.composition}
+            </p>
+          </div>
+          <ArrowRight
+            aria-hidden="true"
+            className="mt-1 shrink-0 text-ember opacity-55 transition duration-300 group-hover:translate-x-1 group-hover:opacity-100"
+            size={20}
+            strokeWidth={1.9}
+          />
+        </div>
+
+        <div className="mt-5 grid grid-cols-2 gap-2">
+          <FabricDatum label="Remaining" value={`${formatNumber(remainingYards)} yd`} />
+          <FabricDatum label="Weight" value={fabric.weight} />
+          <FabricDatum label="Drape" value={fabric.drape} />
+          <FabricDatum label="Rarity" value={fabric.rarity} />
+        </div>
+
+        <div className="mt-5">
+          <div className="mb-2 flex items-center justify-between text-xs">
+            <span className="text-stardust/52">Yardage remaining</span>
+            <span className={cn('font-medium', lowYardage ? 'text-ember' : 'text-stardust/72')}>
+              {formatNumber(remainingYards)} of {formatNumber(fabric.totalYards)} yd
+            </span>
+          </div>
+          <div className="h-2 overflow-hidden rounded-full bg-stardust/10">
+            <div
+              className={cn(
+                'h-full rounded-full transition-all duration-500',
+                lowYardage
+                  ? 'bg-[linear-gradient(90deg,#C89B3C,#9A6C3C)]'
+                  : 'bg-[linear-gradient(90deg,#2D5C6B,#C89B3C,#EDE3CF)]',
+              )}
+              style={{
+                width: `${Math.max(4, (remainingYards / fabric.totalYards) * 100)}%`,
+              }}
+            />
+          </div>
+        </div>
+
+        <div className="mt-5 border-t border-bronze/20 pt-4">
+          <p className="text-xs font-medium uppercase tracking-[0.14em] text-stardust/42">
+            Best Uses
+          </p>
+          <div className="mt-3 flex flex-wrap gap-2">
+            {fabric.bestUses.map((use) => (
+              <span
+                className="rounded-full border border-bronze/28 bg-midnight/34 px-2.5 py-1 text-xs text-stardust/62"
+                key={use}
+              >
+                {use}
+              </span>
+            ))}
+          </div>
+        </div>
+
+        <p className="mt-4 line-clamp-2 text-sm leading-6 text-stardust/58">
+          {fabric.notes}
+        </p>
+      </div>
+    </button>
+  );
+}
+
+function FabricDetailPlaceholder({
+  fabric,
+  onBack,
+}: {
+  fabric?: Fabric;
+  onBack: () => void;
+}) {
+  if (!fabric) {
+    return (
+      <section>
+        <PageHeader
+          badge="Fabric Detail"
+          description="The requested fabric route could not be matched to demo data."
+          title="Fabric Not Found"
+        >
+          <Button
+            icon={<ArrowLeft aria-hidden="true" size={16} strokeWidth={1.9} />}
+            onClick={onBack}
+            size="sm"
+          >
+            Back to Vault
+          </Button>
+        </PageHeader>
+      </section>
+    );
+  }
+
+  const remainingYards = getRemainingYards(fabric);
+
+  return (
+    <section className="space-y-5">
+      <PageHeader
+        badge="Fabric Detail"
+        description="Detail workspace placeholder. The full fabric detail page is reserved for the next milestone."
+        title={fabric.name}
+      >
+        <Button
+          icon={<ArrowLeft aria-hidden="true" size={16} strokeWidth={1.9} />}
+          onClick={onBack}
+          size="sm"
+        >
+          Back to Vault
+        </Button>
+      </PageHeader>
+      <Card className="overflow-hidden p-0">
+        <div className="grid gap-0 lg:grid-cols-[0.9fr_1.1fr]">
+          <div className={cn('min-h-72 border-b border-bronze/20 lg:border-b-0 lg:border-r', getFabricVisualClass(fabric))} />
+          <div className="p-5 sm:p-7">
+            <div className="flex flex-wrap gap-2">
+              <Badge variant="teal">{fabric.archiveStatus}</Badge>
+              <Badge variant="bronze">{fabric.rarity}</Badge>
+            </div>
+            <p className="mt-5 text-sm leading-6 text-stardust/64">
+              {fabric.notes}
+            </p>
+            <div className="mt-6 grid gap-3 sm:grid-cols-2">
+              <FabricDatum label="Type" value={fabric.category} />
+              <FabricDatum label="Color" value={fabric.colorFamily} />
+              <FabricDatum label="Remaining" value={`${formatNumber(remainingYards)} yd`} />
+              <FabricDatum label="Drape" value={fabric.drape} />
+            </div>
+          </div>
+        </div>
+      </Card>
+    </section>
+  );
+}
+
+function VaultMetric({
+  icon,
+  label,
+  value,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  value: string;
+}) {
+  return (
+    <Card className="transition duration-300 hover:border-ember/45">
+      <div className="flex items-center justify-between gap-4">
+        <div>
+          <p className="text-xs font-medium uppercase tracking-[0.14em] text-stardust/42">
+            {label}
+          </p>
+          <p className="mt-2 text-3xl font-semibold text-stardust">{value}</p>
+        </div>
+        <span className="flex h-11 w-11 items-center justify-center rounded-2xl border border-bronze/25 bg-midnight/45 text-ember">
+          {icon}
+        </span>
+      </div>
+    </Card>
+  );
+}
+
+function VaultSelect({
+  includeAll = true,
+  label,
+  onChange,
+  options,
+  value,
+}: {
+  includeAll?: boolean;
+  label: string;
+  onChange: (value: string) => void;
+  options: string[];
+  value: string;
+}) {
+  return (
+    <label className="block">
+      <span className="sr-only">{label}</span>
+      <select
+        className="h-11 w-full rounded-2xl border border-bronze/28 bg-midnight/45 px-3 text-sm text-stardust outline-none transition focus:border-ember/60"
+        onChange={(event) => onChange(event.target.value)}
+        value={value}
+      >
+        {includeAll ? <option value={allValue}>All {label}</option> : null}
+        {options.map((option) => (
+          <option key={option} value={option}>
+            {option}
+          </option>
+        ))}
+      </select>
+    </label>
+  );
+}
+
+function FabricDatum({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-2xl border border-bronze/20 bg-midnight/32 p-3">
+      <p className="text-[0.68rem] font-medium uppercase tracking-[0.14em] text-stardust/38">
+        {label}
+      </p>
+      <p className="mt-1 truncate text-sm font-semibold text-stardust">{value}</p>
+    </div>
+  );
+}
+
+function FabricEmptyState({
+  description,
+  title,
+}: {
+  description: string;
+  title: string;
+}) {
+  return (
+    <Card className="flex min-h-72 items-center justify-center text-center">
+      <div className="max-w-md">
+        <Sparkles
+          aria-hidden="true"
+          className="mx-auto text-ember"
+          size={28}
+          strokeWidth={1.8}
+        />
+        <h2 className="mt-4 text-2xl font-semibold text-stardust">{title}</h2>
+        <p className="mt-3 text-sm leading-6 text-stardust/58">{description}</p>
+      </div>
+    </Card>
+  );
+}
+
+function getRemainingYards(fabric: Fabric) {
+  return Math.max(0, fabric.totalYards - fabric.reservedYards - fabric.usedYards);
+}
+
+function isLowYardage(fabric: Fabric) {
+  return getRemainingYards(fabric) <= lowYardageThreshold;
+}
+
+function sortFabrics(a: Fabric, b: Fabric, sortMode: FabricSort) {
+  if (sortMode === 'Name A-Z') {
+    return a.name.localeCompare(b.name);
+  }
+
+  if (sortMode === 'Yardage high to low') {
+    return getRemainingYards(b) - getRemainingYards(a);
+  }
+
+  if (sortMode === 'Yardage low to high') {
+    return getRemainingYards(a) - getRemainingYards(b);
+  }
+
+  return b.updatedAt.localeCompare(a.updatedAt);
+}
+
+function getUniqueValues<T extends keyof Fabric>(fabrics: Fabric[], key: T) {
+  return Array.from(new Set(fabrics.map((fabric) => String(fabric[key])))).sort(
+    (a, b) => a.localeCompare(b),
+  );
+}
+
+function getFabricVisualClass(fabric: Fabric) {
+  const category = fabric.category.toLowerCase();
+  const color = fabric.colorFamily.toLowerCase();
+
+  if (category.includes('denim') || color.includes('indigo')) {
+    return 'bg-[radial-gradient(circle_at_18%_12%,rgba(237,227,207,0.16),transparent_24%),radial-gradient(circle_at_82%_20%,rgba(45,92,107,0.42),transparent_34%),linear-gradient(135deg,rgba(27,58,99,0.9),rgba(10,10,10,0.72),rgba(27,58,99,0.72))]';
+  }
+
+  if (color.includes('golden') || category.includes('printed')) {
+    return 'bg-[radial-gradient(circle_at_18%_16%,rgba(237,227,207,0.24),transparent_26%),radial-gradient(circle_at_84%_22%,rgba(200,155,60,0.52),transparent_34%),linear-gradient(135deg,rgba(154,108,60,0.88),rgba(10,10,10,0.72),rgba(200,155,60,0.7))]';
+  }
+
+  if (color.includes('espresso') || category.includes('twill')) {
+    return 'bg-[radial-gradient(circle_at_22%_18%,rgba(200,155,60,0.2),transparent_30%),linear-gradient(135deg,rgba(61,43,31,0.95),rgba(10,10,10,0.76),rgba(154,108,60,0.62))]';
+  }
+
+  if (color.includes('ivory') || category.includes('lining')) {
+    return 'bg-[radial-gradient(circle_at_18%_14%,rgba(237,227,207,0.72),transparent_34%),linear-gradient(135deg,rgba(237,227,207,0.7),rgba(45,92,107,0.34),rgba(10,10,10,0.62))]';
+  }
+
+  if (color.includes('teal') || category.includes('rib')) {
+    return 'bg-[radial-gradient(circle_at_84%_18%,rgba(237,227,207,0.18),transparent_28%),linear-gradient(135deg,rgba(45,92,107,0.92),rgba(10,10,10,0.72),rgba(27,58,99,0.62))]';
+  }
+
+  return 'bg-[radial-gradient(circle_at_20%_10%,rgba(200,155,60,0.26),transparent_30%),linear-gradient(135deg,rgba(27,58,99,0.74),rgba(10,10,10,0.72),rgba(61,43,31,0.82))]';
+}
+
+function formatDate(date: string) {
+  return new Intl.DateTimeFormat('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+  }).format(new Date(`${date}T00:00:00`));
+}
+
+function formatNumber(value: number) {
+  return new Intl.NumberFormat('en-US', {
+    maximumFractionDigits: 1,
+  }).format(value);
 }
