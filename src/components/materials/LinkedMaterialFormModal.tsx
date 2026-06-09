@@ -92,7 +92,7 @@ export function LinkedMaterialFormModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto bg-midnight/82 px-3 py-4 backdrop-blur-xl sm:px-5 sm:py-6">
+    <div className="studio-scrollbar fixed inset-0 z-50 overflow-y-auto bg-midnight/82 px-3 py-4 backdrop-blur-xl sm:px-5 sm:py-6">
       <div className="mx-auto max-w-4xl overflow-hidden rounded-3xl border border-bronze/30 bg-[linear-gradient(135deg,rgba(45,92,107,0.28),rgba(10,10,10,0.96),rgba(61,43,31,0.58))] shadow-[0_30px_100px_rgba(0,0,0,0.45)]">
         <div className="sticky top-0 z-10 flex items-start justify-between gap-4 border-b border-bronze/24 bg-midnight/92 p-4 backdrop-blur-xl sm:p-6">
           <div>

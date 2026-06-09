@@ -111,7 +111,7 @@ export function GlobalSearch({
       </div>
 
       {hasQuery ? (
-        <div className="absolute left-0 right-0 top-[calc(100%+0.5rem)] max-h-[70vh] overflow-y-auto rounded-3xl border border-bronze/28 bg-[linear-gradient(135deg,rgba(27,58,99,0.26),rgba(10,10,10,0.98),rgba(61,43,31,0.54))] p-4 shadow-[0_28px_90px_rgba(0,0,0,0.46)] backdrop-blur-2xl">
+        <div className="studio-scrollbar fixed inset-x-3 top-3 z-50 max-h-[calc(100dvh-1.5rem)] overflow-y-auto rounded-3xl border border-bronze/28 bg-[linear-gradient(135deg,rgba(27,58,99,0.26),rgba(10,10,10,0.98),rgba(61,43,31,0.54))] p-4 shadow-[0_28px_90px_rgba(0,0,0,0.46)] backdrop-blur-2xl sm:absolute sm:left-0 sm:right-0 sm:top-[calc(100%+0.5rem)] sm:max-h-[70vh]">
           <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
             <div>
               <Badge variant="teal">Global Search</Badge>
@@ -127,7 +127,7 @@ export function GlobalSearch({
           </div>
 
           {totalResults > 0 ? (
-            <div className="grid gap-4 lg:grid-cols-2">
+            <div className="grid gap-4 xl:grid-cols-2">
               {results.map((group) =>
                 group.results.length > 0 ? (
                   <SearchGroup
