@@ -171,7 +171,7 @@ export function ProjectDetailPage({
       <PhasePath currentPhase={project.phase} />
 
       <Card className="p-2 sm:p-3">
-        <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
+        <div className="studio-scrollbar -mx-1 flex gap-2 overflow-x-auto px-1 pb-1 sm:mx-0 sm:grid sm:grid-cols-5 sm:overflow-visible sm:px-0 sm:pb-0">
           {detailTabs.map((tab) => {
             const Icon = tab.icon;
             const isActive = activeTab === tab.id;
@@ -180,7 +180,7 @@ export function ProjectDetailPage({
               <button
                 aria-pressed={isActive}
                 className={cn(
-                  'inline-flex h-11 items-center justify-center gap-2 rounded-xl border px-3 text-sm font-medium transition duration-200',
+                  'inline-flex h-11 min-w-[8.75rem] items-center justify-center gap-2 rounded-xl border px-3 text-sm font-medium transition duration-200 sm:min-w-0',
                   isActive
                     ? 'border-ember/55 bg-ember text-midnight'
                     : 'border-transparent text-stardust/62 hover:border-bronze/35 hover:bg-stardust/7 hover:text-stardust',
@@ -420,7 +420,7 @@ function PhasePath({ currentPhase }: { currentPhase: ProjectPhase }) {
         </div>
         <span className="text-sm text-stardust/55">{currentPhase}</span>
       </div>
-      <div className="overflow-x-auto pb-2">
+      <div className="studio-scrollbar overflow-x-auto pb-2">
         <ol className="flex min-w-[62rem] items-start">
           {projectPhases.map((phase, index) => {
             const isComplete = index < currentIndex;
@@ -1079,7 +1079,7 @@ function TasksTab({
       </Card>
 
       <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
-        <div className="-mx-4 overflow-x-auto px-4 pb-4 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8">
+        <div className="studio-scrollbar -mx-4 overflow-x-auto px-4 pb-4 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8">
           <div className="flex min-h-[31rem] gap-4">
             {tasksByStatus.map(({ status, tasks }) => (
               <TaskBoardColumn
@@ -1179,7 +1179,7 @@ function TaskBoardColumn({
   return (
     <section
       className={cn(
-        'flex w-[17.5rem] shrink-0 flex-col rounded-3xl border bg-stardust/[0.045] p-3 backdrop-blur-xl transition duration-300 sm:w-[20rem]',
+        'flex w-[17.25rem] shrink-0 flex-col rounded-3xl border bg-stardust/[0.045] p-3 backdrop-blur-xl transition duration-300 sm:w-[20rem]',
         isOver
           ? 'border-ember/60 bg-ember/10 shadow-[0_22px_70px_rgba(200,155,60,0.12)]'
           : 'border-bronze/24',
@@ -1442,7 +1442,7 @@ function NotesTab({
             Add Note
           </Button>
         </div>
-        <div className="mt-5 flex gap-2 overflow-x-auto pb-1">
+        <div className="studio-scrollbar mt-5 flex gap-2 overflow-x-auto pb-1">
           {(['All', ...noteCategories] as Array<NoteCategory | 'All'>).map(
             (category) => {
               const isActive = selectedCategory === category;
@@ -2081,7 +2081,7 @@ function LookbookEditModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto bg-midnight/82 px-3 py-4 backdrop-blur-xl sm:px-5 sm:py-6">
+    <div className="studio-scrollbar fixed inset-0 z-50 overflow-y-auto bg-midnight/82 px-3 py-4 backdrop-blur-xl sm:px-5 sm:py-6">
       <div className="mx-auto max-w-5xl overflow-hidden rounded-3xl border border-bronze/30 bg-[linear-gradient(135deg,rgba(45,92,107,0.28),rgba(10,10,10,0.96),rgba(61,43,31,0.58))] shadow-[0_30px_100px_rgba(0,0,0,0.45)]">
         <div className="sticky top-0 z-10 flex items-start justify-between gap-4 border-b border-bronze/24 bg-midnight/92 p-4 backdrop-blur-xl sm:p-6">
           <div>

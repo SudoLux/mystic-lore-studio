@@ -30,6 +30,7 @@ body {
   margin: 0;
   min-width: 320px;
   min-height: 100vh;
+  overflow-x: hidden;
   background:
     linear-gradient(135deg, rgba(27, 58, 99, 0.34), transparent 36%),
     linear-gradient(225deg, rgba(45, 92, 107, 0.22), transparent 34%),
@@ -49,6 +50,47 @@ button {
 
 button:disabled {
   cursor: not-allowed;
+}
+
+img,
+svg,
+video,
+canvas {
+  max-width: 100%;
+}
+
+button,
+[role="button"],
+input,
+select,
+textarea {
+  touch-action: manipulation;
+}
+
+input,
+select,
+textarea {
+  max-width: 100%;
+}
+
+.studio-scrollbar {
+  scrollbar-color: rgba(200, 155, 60, 0.38) rgba(237, 227, 207, 0.08);
+  scrollbar-width: thin;
+}
+
+.studio-scrollbar::-webkit-scrollbar {
+  height: 0.65rem;
+  width: 0.65rem;
+}
+
+.studio-scrollbar::-webkit-scrollbar-track {
+  background: rgba(237, 227, 207, 0.08);
+  border-radius: 999px;
+}
+
+.studio-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(200, 155, 60, 0.38);
+  border-radius: 999px;
 }
 
 .studio-project-card {

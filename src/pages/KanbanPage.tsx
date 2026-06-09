@@ -119,7 +119,7 @@ export function KanbanPage() {
       </Card>
 
       <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
-        <div className="-mx-4 overflow-x-auto px-4 pb-4 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8">
+        <div className="studio-scrollbar -mx-4 overflow-x-auto px-4 pb-4 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8">
           <div className="flex min-h-[34rem] gap-4">
             {projectsByPhase.map(({ phase, projects }) => (
               <KanbanColumn key={phase} phase={phase} projects={projects} />
@@ -169,7 +169,7 @@ function KanbanColumn({
   return (
     <section
       className={cn(
-        'flex w-[18rem] shrink-0 flex-col rounded-3xl border bg-stardust/[0.045] p-3 backdrop-blur-xl transition duration-300 sm:w-[20rem]',
+        'flex w-[17.25rem] shrink-0 flex-col rounded-3xl border bg-stardust/[0.045] p-3 backdrop-blur-xl transition duration-300 sm:w-[20rem]',
         isOver
           ? 'border-ember/60 bg-ember/10 shadow-[0_22px_70px_rgba(200,155,60,0.12)]'
           : 'border-bronze/24',
