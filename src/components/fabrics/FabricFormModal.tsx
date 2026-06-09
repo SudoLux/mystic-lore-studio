@@ -57,6 +57,7 @@ type FabricFormValues = {
 const archiveStatuses: FabricArchiveStatus[] = [
   'Active',
   'Reserved',
+  'Low Yardage',
   'Archived',
   'Depleted',
 ];
@@ -646,7 +647,11 @@ function getFabricStatus({
     return 'Reserved';
   }
 
-  if (storageStatus === 'Low Yardage' || remainingYards <= 5) {
+  if (
+    archiveStatus === 'Low Yardage' ||
+    storageStatus === 'Low Yardage' ||
+    remainingYards <= 5
+  ) {
     return 'Low Stock';
   }
 

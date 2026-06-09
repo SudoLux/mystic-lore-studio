@@ -17,6 +17,7 @@ import { Button } from '../components/shared/Button';
 import { Card } from '../components/shared/Card';
 import { PageHeader } from '../components/shared/PageHeader';
 import { useStudioData } from '../hooks/useStudioData';
+import { LOW_YARDAGE_THRESHOLD, calculateFabricYardage } from '../lib/yardage';
 import { projectPhases, type ApparelProject } from '../types/studio';
 import type { PageId } from '../types/navigation';
 
@@ -65,7 +66,7 @@ export function DashboardPage({
   onNewProject,
 }: DashboardPageProps) {
   const {
-    data: { fabrics, projects, tasks },
+    data: { fabrics, linkedMaterials, projects, tasks },
   } = useStudioData();
   const activeProjects = projects.filter((project) => project.status === 'Active');
   const completedProjects = projects.filter(
@@ -79,7 +80,9 @@ export function DashboardPage({
     0,
   );
   const lowYardageFabrics = fabrics.filter(
-    (fabric) => fabric.totalYards - fabric.reservedYards - fabric.usedYards < 5,
+    (fabric) =>
+      calculateFabricYardage(fabric, linkedMaterials, projects).availableYards <
+      LOW_YARDAGE_THRESHOLD,
   );
   const featuredProjects = [...projects]
     .sort((a, b) => b.progress - a.progress)
@@ -358,7 +361,11 @@ export function DashboardPage({
           />
           <div className="grid gap-3 sm:grid-cols-2">
             {lowYardageFabrics.map((fabric) => {
-              const remaining = fabric.totalYards - fabric.reservedYards - fabric.usedYards;
+              const available = calculateFabricYardage(
+                fabric,
+                linkedMaterials,
+                projects,
+              ).availableYards;
 
               return (
                 <div
@@ -370,7 +377,7 @@ export function DashboardPage({
                       {fabric.name}
                     </p>
                     <span className="text-sm font-semibold text-ember">
-                      {formatNumber(remaining)} yd
+                      {formatNumber(available)} yd
                     </span>
                   </div>
                   <p className="mt-2 text-xs leading-5 text-stardust/55">

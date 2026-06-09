@@ -23,6 +23,12 @@ import { Card } from '../components/shared/Card';
 import { PageHeader } from '../components/shared/PageHeader';
 import { useStudioData } from '../hooks/useStudioData';
 import { cn } from '../lib/classes';
+import {
+  LOW_YARDAGE_THRESHOLD,
+  calculateFabricYardage,
+  getDerivedFabricStatus,
+  isLowYardage as hasLowAvailableYardage,
+} from '../lib/yardage';
 import type { ApparelProject, Fabric, LinkedMaterial } from '../types/studio';
 
 type FabricVaultPageProps = {
@@ -41,7 +47,6 @@ type FabricSort =
   | 'Yardage low to high';
 
 const allValue = 'All';
-const lowYardageThreshold = 5;
 
 export function FabricVaultPage({
   fabricId,
@@ -52,7 +57,8 @@ export function FabricVaultPage({
   onOpenFabric,
 }: FabricVaultPageProps) {
   const {
-    data: { fabrics, projects },
+    data: { fabrics, linkedMaterials: allLinkedMaterials, projects },
+    updateFabric,
   } = useStudioData();
   const [search, setSearch] = useState('');
   const [typeFilter, setTypeFilter] = useState(allValue);
@@ -121,8 +127,9 @@ export function FabricVaultPage({
           matchesDrape
         );
       })
-      .sort((a, b) => sortFabrics(a, b, sortMode));
+      .sort((a, b) => sortFabrics(a, b, sortMode, allLinkedMaterials, projects));
   }, [
+    allLinkedMaterials,
     archiveFilter,
     colorFilter,
     drapeFilter,
@@ -132,13 +139,18 @@ export function FabricVaultPage({
     sortMode,
     typeFilter,
     weightFilter,
+    projects,
   ]);
 
   const totalRemaining = fabrics.reduce(
-    (total, fabric) => total + getRemainingYards(fabric),
+    (total, fabric) =>
+      total +
+      calculateFabricYardage(fabric, allLinkedMaterials, projects).remainingYards,
     0,
   );
-  const lowYardageCount = fabrics.filter(isLowYardage).length;
+  const lowYardageCount = fabrics.filter((fabric) =>
+    isLowYardage(fabric, allLinkedMaterials, projects),
+  ).length;
 
   if (fabricId) {
     return (
@@ -147,6 +159,8 @@ export function FabricVaultPage({
         onBack={onBack}
         onDeleteFabric={onDeleteFabric}
         onEditFabric={onEditFabric}
+        onUpdateFabric={updateFabric}
+        linkedMaterials={allLinkedMaterials}
         projects={projects}
       />
     );
@@ -295,7 +309,9 @@ export function FabricVaultPage({
             <FabricCard
               fabric={fabric}
               key={fabric.id}
+              linkedMaterials={allLinkedMaterials}
               onOpenFabric={onOpenFabric}
+              projects={projects}
               style={{ animationDelay: `${index * 45}ms` }}
             />
           ))}
@@ -307,15 +323,19 @@ export function FabricVaultPage({
 
 function FabricCard({
   fabric,
+  linkedMaterials,
   onOpenFabric,
+  projects,
   style,
 }: {
   fabric: Fabric;
+  linkedMaterials: LinkedMaterial[];
   onOpenFabric: (fabricId: string) => void;
+  projects: ApparelProject[];
   style: React.CSSProperties;
 }) {
-  const remainingYards = getRemainingYards(fabric);
-  const lowYardage = isLowYardage(fabric);
+  const yardage = calculateFabricYardage(fabric, linkedMaterials, projects);
+  const lowYardage = isLowYardage(fabric, linkedMaterials, projects);
 
   return (
     <button
@@ -376,7 +396,10 @@ function FabricCard({
         </div>
 
         <div className="mt-5 grid grid-cols-2 gap-2">
-          <FabricDatum label="Remaining" value={`${formatNumber(remainingYards)} yd`} />
+          <FabricDatum
+            label="Available"
+            value={`${formatNumber(yardage.availableYards)} yd`}
+          />
           <FabricDatum label="Weight" value={fabric.weight} />
           <FabricDatum label="Drape" value={fabric.drape} />
           <FabricDatum label="Rarity" value={fabric.rarity} />
@@ -384,9 +407,9 @@ function FabricCard({
 
         <div className="mt-5">
           <div className="mb-2 flex items-center justify-between text-xs">
-            <span className="text-stardust/52">Yardage remaining</span>
+            <span className="text-stardust/52">Yardage available</span>
             <span className={cn('font-medium', lowYardage ? 'text-ember' : 'text-stardust/72')}>
-              {formatNumber(remainingYards)} of {formatNumber(fabric.totalYards)} yd
+              {formatNumber(yardage.availableYards)} of {formatNumber(fabric.totalYards)} yd
             </span>
           </div>
           <div className="h-2 overflow-hidden rounded-full bg-stardust/10">
@@ -398,7 +421,10 @@ function FabricCard({
                   : 'bg-[linear-gradient(90deg,#2D5C6B,#C89B3C,#EDE3CF)]',
               )}
               style={{
-                width: `${Math.max(4, (remainingYards / fabric.totalYards) * 100)}%`,
+                width: `${Math.max(
+                  4,
+                  (Math.max(0, yardage.availableYards) / fabric.totalYards) * 100,
+                )}%`,
               }}
             />
           </div>
@@ -430,15 +456,19 @@ function FabricCard({
 
 function FabricDetailPage({
   fabric,
+  linkedMaterials,
   onBack,
   onDeleteFabric,
   onEditFabric,
+  onUpdateFabric,
   projects,
 }: {
   fabric?: Fabric;
+  linkedMaterials: LinkedMaterial[];
   onBack: () => void;
   onDeleteFabric: (fabric: Fabric) => void;
   onEditFabric: (fabric: Fabric) => void;
+  onUpdateFabric: (fabric: Fabric) => void;
   projects: ApparelProject[];
 }) {
   if (!fabric) {
@@ -461,9 +491,26 @@ function FabricDetailPage({
     );
   }
 
-  const remainingYards = getRemainingYards(fabric);
+  const yardage = calculateFabricYardage(fabric, linkedMaterials, projects);
+  const lowYardage = isLowYardage(fabric, linkedMaterials, projects);
   const linkedProjects = getLinkedProjects(fabric, projects);
   const totalCost = fabric.totalYards * fabric.costPerYard;
+  const updateManualStatus = (archiveStatus: Fabric['archiveStatus']) => {
+    const storageStatus =
+      archiveStatus === 'Depleted'
+        ? 'Depleted'
+        : archiveStatus === 'Low Yardage'
+          ? 'Low Yardage'
+          : fabric.storageStatus;
+
+    onUpdateFabric({
+      ...fabric,
+      archiveStatus,
+      status: getDerivedFabricStatus(yardage, storageStatus),
+      storageStatus,
+      updatedAt: new Date().toISOString().slice(0, 10),
+    });
+  };
 
   return (
     <section className="space-y-5">
@@ -489,7 +536,7 @@ function FabricDetailPage({
               <div className="flex flex-wrap gap-2">
                 <Badge variant="teal">{fabric.archiveStatus}</Badge>
                 <Badge variant="bronze">{fabric.rarity}</Badge>
-                {isLowYardage(fabric) ? (
+                {lowYardage ? (
                   <Badge variant="ember">Low Yardage</Badge>
                 ) : null}
               </div>
@@ -545,6 +592,7 @@ function FabricDetailPage({
                   </Button>
                   <Button
                     icon={<AlertTriangle aria-hidden="true" size={15} strokeWidth={1.9} />}
+                    onClick={() => updateManualStatus('Low Yardage')}
                     size="sm"
                     variant="ghost"
                   >
@@ -552,6 +600,7 @@ function FabricDetailPage({
                   </Button>
                   <Button
                     icon={<Archive aria-hidden="true" size={15} strokeWidth={1.9} />}
+                    onClick={() => updateManualStatus('Depleted')}
                     size="sm"
                     variant="ghost"
                   >
@@ -560,28 +609,57 @@ function FabricDetailPage({
                 </div>
               </div>
 
-              <div className="mt-7 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+              <div className="mt-7 grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
                 <FabricDatum label="Total" value={`${formatNumber(fabric.totalYards)} yd`} />
-                <FabricDatum label="Reserved" value={`${formatNumber(fabric.reservedYards)} yd`} />
-                <FabricDatum label="Used" value={`${formatNumber(fabric.usedYards)} yd`} />
-                <FabricDatum label="Remaining" value={`${formatNumber(remainingYards)} yd`} />
+                <FabricDatum label="Reserved" value={`${formatNumber(yardage.reservedYards)} yd`} />
+                <FabricDatum label="Used" value={`${formatNumber(yardage.usedYards)} yd`} />
+                <FabricDatum label="Remaining" value={`${formatNumber(yardage.remainingYards)} yd`} />
+                <FabricDatum label="Available" value={`${formatNumber(yardage.availableYards)} yd`} />
               </div>
+              {lowYardage ? (
+                <div className="mt-5 flex gap-3 rounded-2xl border border-ember/35 bg-ember/10 p-4 text-sm leading-6 text-stardust/72">
+                  <AlertTriangle
+                    aria-hidden="true"
+                    className="mt-0.5 shrink-0 text-ember"
+                    size={18}
+                    strokeWidth={1.9}
+                  />
+                  <span>
+                    Available yardage is below the {LOW_YARDAGE_THRESHOLD} yd low
+                    threshold. This fabric is automatically treated as{' '}
+                    {yardage.availableYards <= 0 ? 'depleted' : 'low yardage'}.
+                  </span>
+                </div>
+              ) : null}
 
               <div className="mt-6">
                 <div className="mb-2 flex items-center justify-between text-xs">
-                  <span className="text-stardust/52">Yardage ledger</span>
+                  <span className="text-stardust/52">
+                    Total - reserved - used = available
+                  </span>
                   <span className="font-medium text-ember">
-                    {formatNumber(remainingYards)} yd remaining
+                    {formatNumber(yardage.availableYards)} yd available
                   </span>
                 </div>
                 <div className="grid h-3 overflow-hidden rounded-full bg-stardust/10">
                   <div
                     className="h-full rounded-full bg-[linear-gradient(90deg,#2D5C6B,#C89B3C,#EDE3CF)]"
                     style={{
-                      width: `${Math.max(4, (remainingYards / fabric.totalYards) * 100)}%`,
+                      width: `${Math.max(
+                        4,
+                        (Math.max(0, yardage.availableYards) / fabric.totalYards) * 100,
+                      )}%`,
                     }}
                   />
                 </div>
+                <p className="mt-3 text-xs leading-5 text-stardust/48">
+                  {formatNumber(yardage.totalYards)} yd total -{' '}
+                  {formatNumber(yardage.reservedYards)} yd reserved -{' '}
+                  {formatNumber(yardage.usedYards)} yd used ={' '}
+                  {formatNumber(yardage.availableYards)} yd available.
+                  Remaining yardage is total minus used:{' '}
+                  {formatNumber(yardage.remainingYards)} yd.
+                </p>
               </div>
             </div>
 
@@ -946,10 +1024,6 @@ function FabricEmptyState({
   );
 }
 
-function getRemainingYards(fabric: Fabric) {
-  return Math.max(0, fabric.totalYards - fabric.reservedYards - fabric.usedYards);
-}
-
 function getLinkedProjects(fabric: Fabric, projects: ApparelProject[]) {
   return projects.flatMap((project) =>
     project.linkedMaterials
@@ -958,21 +1032,39 @@ function getLinkedProjects(fabric: Fabric, projects: ApparelProject[]) {
   );
 }
 
-function isLowYardage(fabric: Fabric) {
-  return getRemainingYards(fabric) <= lowYardageThreshold;
+function isLowYardage(
+  fabric: Fabric,
+  linkedMaterials: LinkedMaterial[],
+  projects: ApparelProject[],
+) {
+  const summary = calculateFabricYardage(fabric, linkedMaterials, projects);
+
+  return summary.availableYards <= 0 || hasLowAvailableYardage(summary);
 }
 
-function sortFabrics(a: Fabric, b: Fabric, sortMode: FabricSort) {
+function sortFabrics(
+  a: Fabric,
+  b: Fabric,
+  sortMode: FabricSort,
+  linkedMaterials: LinkedMaterial[],
+  projects: ApparelProject[],
+) {
   if (sortMode === 'Name A-Z') {
     return a.name.localeCompare(b.name);
   }
 
   if (sortMode === 'Yardage high to low') {
-    return getRemainingYards(b) - getRemainingYards(a);
+    return (
+      calculateFabricYardage(b, linkedMaterials, projects).remainingYards -
+      calculateFabricYardage(a, linkedMaterials, projects).remainingYards
+    );
   }
 
   if (sortMode === 'Yardage low to high') {
-    return getRemainingYards(a) - getRemainingYards(b);
+    return (
+      calculateFabricYardage(a, linkedMaterials, projects).remainingYards -
+      calculateFabricYardage(b, linkedMaterials, projects).remainingYards
+    );
   }
 
   return b.updatedAt.localeCompare(a.updatedAt);

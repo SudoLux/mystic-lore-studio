@@ -85,7 +85,12 @@ export const noteCategories = [
 export type NoteCategory = (typeof noteCategories)[number];
 export type FabricWeight = 'Light' | 'Medium' | 'Heavy';
 export type FabricStatus = 'In Stock' | 'Reserved' | 'Low Stock' | 'Depleted';
-export type FabricArchiveStatus = 'Active' | 'Reserved' | 'Archived' | 'Depleted';
+export type FabricArchiveStatus =
+  | 'Active'
+  | 'Reserved'
+  | 'Low Yardage'
+  | 'Archived'
+  | 'Depleted';
 export type FabricDrape = 'Crisp' | 'Structured' | 'Fluid' | 'Soft' | 'Stretch';
 export type FabricOpacity = 'Sheer' | 'Semi-sheer' | 'Opaque';
 export type FabricRarity = 'Core' | 'Seasonal' | 'Rare' | 'One-off' | 'Archive';
