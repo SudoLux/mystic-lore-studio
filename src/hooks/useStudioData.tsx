@@ -21,6 +21,7 @@ import {
   getStudioData,
   hydrateStudioData,
   importStudioData,
+  previewStudioDataImport,
   resetStudioData,
   saveStudioData,
   updateFabricInData,
@@ -33,6 +34,7 @@ import {
   upsertLookbookPageInData,
   type StudioData,
   type StudioDataView,
+  type ImportPreview,
   type StoredProject,
 } from '../lib/studioStorage';
 import type {
@@ -59,6 +61,7 @@ type StudioDataContextValue = {
   deleteTask: (taskId: string) => void;
   exportData: () => string;
   importData: (serializedData: string) => void;
+  previewImportData: (serializedData: string) => ImportPreview;
   rawData: StudioData;
   resetData: () => void;
   saveLookbookPage: (lookbookPage: LookbookPage) => void;
@@ -93,6 +96,10 @@ export function StudioDataProvider({ children }: { children: ReactNode }) {
       saveData(importStudioData(serializedData));
     },
     [saveData],
+  );
+  const previewImportData = useCallback(
+    (serializedData: string) => previewStudioDataImport(serializedData),
+    [],
   );
 
   const createProject = useCallback((project: StoredProject) => {
@@ -257,6 +264,7 @@ export function StudioDataProvider({ children }: { children: ReactNode }) {
       deleteTask,
       exportData,
       importData,
+      previewImportData,
       rawData,
       resetData,
       saveLookbookPage,
@@ -282,6 +290,7 @@ export function StudioDataProvider({ children }: { children: ReactNode }) {
       deleteTask,
       exportData,
       importData,
+      previewImportData,
       rawData,
       resetData,
       saveLookbookPage,

@@ -25,6 +25,12 @@ import type {
 export const LOCAL_DATA_VERSION = 2;
 const STORAGE_KEY = 'mystic-lore-studio:data';
 
+export type AppSettings = {
+  backupReminderCadenceDays: number;
+  backupReminderCopy: string;
+  updatedAt: string;
+};
+
 export type StoredProject = Omit<
   ApparelProject,
   'linkedMaterials' | 'lookbookPages' | 'notes' | 'tasks'
@@ -36,7 +42,18 @@ export type StudioData = {
   lookbookPages: LookbookPage[];
   notes: StudioNote[];
   projects: StoredProject[];
+  settings: AppSettings;
   tasks: StudioTask[];
+  version: number;
+};
+
+export type ImportPreview = {
+  fabrics: number;
+  linkedMaterials: number;
+  lookbooks: number;
+  notes: number;
+  projects: number;
+  tasks: number;
   version: number;
 };
 
@@ -52,6 +69,7 @@ export function createSeedStudioData(): StudioData {
     lookbookPages: demoLookbookPages,
     notes: demoNotes,
     projects: demoProjects.map(stripProjectRelations),
+    settings: createDefaultAppSettings(),
     tasks: demoTasks,
     version: LOCAL_DATA_VERSION,
   };
@@ -87,9 +105,9 @@ export function getStudioData(): StudioData {
   }
 
   try {
-    const parsed = JSON.parse(stored) as StudioData;
+    const parsed = JSON.parse(stored);
 
-    if (!isStudioData(parsed)) {
+    if (!isStudioDataLike(parsed)) {
       const seedData = createSeedStudioData();
       saveStudioData(seedData);
       return seedData;
@@ -124,19 +142,31 @@ export function resetStudioData() {
 }
 
 export function exportStudioData(data: StudioData) {
-  return JSON.stringify(data, null, 2);
+  return JSON.stringify(
+    {
+      ...normalizeStudioData(data),
+      exportedAt: new Date().toISOString(),
+    },
+    null,
+    2,
+  );
 }
 
 export function importStudioData(serializedData: string) {
-  const parsed = JSON.parse(serializedData) as StudioData;
+  return parseStudioDataBackup(serializedData);
+}
 
-  if (!isStudioData(parsed)) {
-    throw new Error('Imported data is not a valid Mystic Lore Studio backup.');
-  }
+export function previewStudioDataImport(serializedData: string): ImportPreview {
+  const data = parseStudioDataBackup(serializedData);
 
   return {
-    ...parsed,
-    version: LOCAL_DATA_VERSION,
+    fabrics: data.fabrics.length,
+    linkedMaterials: data.linkedMaterials.length,
+    lookbooks: data.lookbookPages.length,
+    notes: data.notes.length,
+    projects: data.projects.length,
+    tasks: data.tasks.length,
+    version: data.version,
   };
 }
 
@@ -349,8 +379,10 @@ function canUseLocalStorage() {
 }
 
 function migrateStudioData(data: StudioData): StudioData {
-  if (data.version === LOCAL_DATA_VERSION) {
-    return data;
+  const normalizedData = normalizeStudioData(data);
+
+  if (normalizedData.version === LOCAL_DATA_VERSION) {
+    return normalizedData;
   }
 
   const seedProjectById = new Map(
@@ -358,8 +390,8 @@ function migrateStudioData(data: StudioData): StudioData {
   );
 
   return {
-    ...data,
-    projects: data.projects.map((project) =>
+    ...normalizedData,
+    projects: normalizedData.projects.map((project) =>
       normalizeStoredProject(project, seedProjectById.get(project.id)),
     ),
     version: LOCAL_DATA_VERSION,
@@ -426,10 +458,68 @@ function todayString() {
   return new Date().toISOString().slice(0, 10);
 }
 
-function isStudioData(value: StudioData): value is StudioData {
+function parseStudioDataBackup(serializedData: string): StudioData {
+  let parsed: unknown;
+
+  try {
+    parsed = JSON.parse(serializedData);
+  } catch {
+    throw new Error('This file is not valid JSON. Choose a Mystic Lore Studio backup file.');
+  }
+
+  if (!isStudioDataLike(parsed)) {
+    throw new Error(
+      'This JSON file is missing required studio data arrays. Choose a Mystic Lore Studio backup file.',
+    );
+  }
+
+  return migrateStudioData(parsed);
+}
+
+function normalizeStudioData(data: StudioData): StudioData {
+  return {
+    ...data,
+    settings: normalizeAppSettings(data.settings),
+    version: typeof data.version === 'number' ? data.version : LOCAL_DATA_VERSION,
+  };
+}
+
+function createDefaultAppSettings(): AppSettings {
+  return {
+    backupReminderCadenceDays: 14,
+    backupReminderCopy:
+      'Export a fresh backup after major project, fabric, task, or lookbook updates.',
+    updatedAt: todayString(),
+  };
+}
+
+function normalizeAppSettings(settings?: Partial<AppSettings>): AppSettings {
+  const defaultSettings = createDefaultAppSettings();
+
+  return {
+    backupReminderCadenceDays:
+      typeof settings?.backupReminderCadenceDays === 'number'
+        ? settings.backupReminderCadenceDays
+        : defaultSettings.backupReminderCadenceDays,
+    backupReminderCopy:
+      typeof settings?.backupReminderCopy === 'string' &&
+      settings.backupReminderCopy.trim().length > 0
+        ? settings.backupReminderCopy
+        : defaultSettings.backupReminderCopy,
+    updatedAt:
+      typeof settings?.updatedAt === 'string'
+        ? settings.updatedAt
+        : defaultSettings.updatedAt,
+  };
+}
+
+function isStudioDataLike(value: unknown): value is StudioData {
+  if (!isRecord(value)) {
+    return false;
+  }
+
   return Boolean(
-    value &&
-      Array.isArray(value.projects) &&
+    Array.isArray(value.projects) &&
       Array.isArray(value.fabrics) &&
       Array.isArray(value.tasks) &&
       Array.isArray(value.notes) &&
@@ -437,4 +527,8 @@ function isStudioData(value: StudioData): value is StudioData {
       Array.isArray(value.lookbookPages) &&
       typeof value.version === 'number',
   );
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null;
 }
