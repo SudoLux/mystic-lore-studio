@@ -1,4 +1,10 @@
-import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import {
+  useEffect,
+  useMemo,
+  useState,
+  type FormEvent,
+  type ReactNode,
+} from 'react';
 import {
   DndContext,
   PointerSensor,
@@ -27,6 +33,7 @@ import {
   Sparkles,
   Target,
   Trash2,
+  X,
 } from 'lucide-react';
 import { LinkedMaterialFormModal } from '../components/materials/LinkedMaterialFormModal';
 import { NoteFormModal } from '../components/notes/NoteFormModal';
@@ -49,6 +56,9 @@ import {
   type ApparelProject,
   type Fabric,
   type LinkedMaterial,
+  type LookbookFieldItem,
+  type LookbookPage,
+  type LookbookTemplate,
   type MaterialRole,
   type NoteCategory,
   type ProjectPhase,
@@ -99,6 +109,7 @@ export function ProjectDetailPage({
     updateNote,
     updateTask,
     updateTaskStatus,
+    saveLookbookPage,
   } = useStudioData();
   const [activeTab, setActiveTab] = useState<DetailTab>('overview');
   const project = projects.find((item) => item.id === projectId);
@@ -215,7 +226,9 @@ export function ProjectDetailPage({
           updateNote={updateNote}
         />
       ) : null}
-      {activeTab === 'lookbook' ? <LookbookTab project={project} /> : null}
+      {activeTab === 'lookbook' ? (
+        <LookbookTab project={project} saveLookbookPage={saveLookbookPage} />
+      ) : null}
     </section>
   );
 }
@@ -1605,18 +1618,29 @@ const noteCategoryCue: Record<NoteCategory, string> = {
   'Pattern Note': 'Documents draft changes, measurements, and pattern behavior.',
 };
 
-type LookbookTemplate = 'Editorial Hero' | 'Technical Showcase' | 'Development Story';
-
 const lookbookTemplates: LookbookTemplate[] = [
   'Editorial Hero',
   'Technical Showcase',
   'Development Story',
 ];
 
-function LookbookTab({ project }: { project: ApparelProject }) {
+function LookbookTab({
+  project,
+  saveLookbookPage,
+}: {
+  project: ApparelProject;
+  saveLookbookPage: (lookbookPage: LookbookPage) => void;
+}) {
+  const lookbookPage = getEditableLookbookPage(project);
   const [selectedTemplate, setSelectedTemplate] =
-    useState<LookbookTemplate>('Editorial Hero');
-  const preview = buildLookbookPreview(project, selectedTemplate);
+    useState<LookbookTemplate>(lookbookPage?.template ?? 'Editorial Hero');
+  const [isEditing, setIsEditing] = useState(false);
+
+  useEffect(() => {
+    setSelectedTemplate(lookbookPage?.template ?? 'Editorial Hero');
+  }, [lookbookPage?.id, lookbookPage?.template, project.id]);
+
+  const preview = buildLookbookPreview(project, selectedTemplate, lookbookPage);
 
   return (
     <div className="space-y-4">
@@ -1657,6 +1681,7 @@ function LookbookTab({ project }: { project: ApparelProject }) {
             </div>
             <Button
               icon={<Pencil aria-hidden="true" size={15} strokeWidth={1.9} />}
+              onClick={() => setIsEditing(true)}
               size="sm"
               variant="primary"
             >
@@ -1851,6 +1876,19 @@ function LookbookTab({ project }: { project: ApparelProject }) {
           </aside>
         </div>
       </section>
+      {isEditing ? (
+        <LookbookEditModal
+          lookbookPage={lookbookPage}
+          onClose={() => setIsEditing(false)}
+          onSave={(nextPage) => {
+            saveLookbookPage(nextPage);
+            setSelectedTemplate(nextPage.template ?? 'Editorial Hero');
+            setIsEditing(false);
+          }}
+          project={project}
+          selectedTemplate={selectedTemplate}
+        />
+      ) : null}
     </div>
   );
 }
@@ -1912,18 +1950,408 @@ function LookbookSpec({ label, value }: { label: string; value: string }) {
   );
 }
 
+type LookbookFormValues = {
+  credits: string;
+  designNotes: string;
+  displaySpecs: string;
+  garmentStory: string;
+  headline: string;
+  materialNotes: string;
+  stylingNotes: string;
+  subheadline: string;
+  template: LookbookTemplate;
+};
+
+function LookbookEditModal({
+  lookbookPage,
+  onClose,
+  onSave,
+  project,
+  selectedTemplate,
+}: {
+  lookbookPage?: LookbookPage;
+  onClose: () => void;
+  onSave: (lookbookPage: LookbookPage) => void;
+  project: ApparelProject;
+  selectedTemplate: LookbookTemplate;
+}) {
+  const [values, setValues] = useState<LookbookFormValues>(() =>
+    lookbookPageToFormValues(project, lookbookPage, selectedTemplate),
+  );
+
+  const updateValue = <Key extends keyof LookbookFormValues>(
+    key: Key,
+    value: LookbookFormValues[Key],
+  ) => {
+    setValues((current) => ({ ...current, [key]: value }));
+  };
+
+  const handleResetFromProject = () => {
+    setValues(projectFallbackToFormValues(project, values.template));
+  };
+
+  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    onSave(formValuesToLookbookPage(values, project, lookbookPage));
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 overflow-y-auto bg-midnight/82 px-3 py-4 backdrop-blur-xl sm:px-5 sm:py-6">
+      <div className="mx-auto max-w-5xl overflow-hidden rounded-3xl border border-bronze/30 bg-[linear-gradient(135deg,rgba(45,92,107,0.28),rgba(10,10,10,0.96),rgba(61,43,31,0.58))] shadow-[0_30px_100px_rgba(0,0,0,0.45)]">
+        <div className="sticky top-0 z-10 flex items-start justify-between gap-4 border-b border-bronze/24 bg-midnight/92 p-4 backdrop-blur-xl sm:p-6">
+          <div>
+            <p className="text-xs font-medium uppercase tracking-[0.16em] text-ember">
+              Edit Lookbook
+            </p>
+            <h2 className="mt-2 text-2xl font-semibold text-stardust">
+              {project.name} presentation
+            </h2>
+          </div>
+          <button
+            aria-label="Close lookbook editor"
+            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-bronze/30 bg-midnight/65 text-stardust/72 transition hover:border-ember/45 hover:text-stardust"
+            onClick={onClose}
+            type="button"
+          >
+            <X aria-hidden="true" size={18} strokeWidth={1.9} />
+          </button>
+        </div>
+
+        <form className="space-y-5 p-4 sm:p-6" onSubmit={handleSubmit}>
+          <LookbookFormSection title="Template and Lead Copy">
+            <LookbookSelect
+              label="Template"
+              onChange={(value) => updateValue('template', value as LookbookTemplate)}
+              options={lookbookTemplates}
+              value={values.template}
+            />
+            <LookbookInput
+              label="Headline"
+              onChange={(value) => updateValue('headline', value)}
+              value={values.headline}
+            />
+            <LookbookTextarea
+              label="Subheadline"
+              onChange={(value) => updateValue('subheadline', value)}
+              value={values.subheadline}
+            />
+            <LookbookTextarea
+              label="Garment story"
+              onChange={(value) => updateValue('garmentStory', value)}
+              value={values.garmentStory}
+            />
+          </LookbookFormSection>
+
+          <div className="grid gap-5 lg:grid-cols-2">
+            <LookbookFormSection title="Studio Notes">
+              <LookbookTextarea
+                helper="One note per line."
+                label="Design notes"
+                onChange={(value) => updateValue('designNotes', value)}
+                value={values.designNotes}
+              />
+              <LookbookTextarea
+                helper="One note per line."
+                label="Styling notes"
+                onChange={(value) => updateValue('stylingNotes', value)}
+                value={values.stylingNotes}
+              />
+            </LookbookFormSection>
+
+            <LookbookFormSection title="Materials">
+              <LookbookTextarea
+                helper="One material note per line."
+                label="Material notes"
+                onChange={(value) => updateValue('materialNotes', value)}
+                value={values.materialNotes}
+              />
+            </LookbookFormSection>
+          </div>
+
+          <div className="grid gap-5 lg:grid-cols-2">
+            <LookbookFormSection title="Credits">
+              <LookbookTextarea
+                helper="Use Label: Value on each line."
+                label="Credits"
+                onChange={(value) => updateValue('credits', value)}
+                value={values.credits}
+              />
+            </LookbookFormSection>
+            <LookbookFormSection title="Display Specs">
+              <LookbookTextarea
+                helper="Use Label: Value on each line."
+                label="Display specs"
+                onChange={(value) => updateValue('displaySpecs', value)}
+                value={values.displaySpecs}
+              />
+            </LookbookFormSection>
+          </div>
+
+          <div className="sticky bottom-0 -mx-4 -mb-4 flex flex-col gap-3 border-t border-bronze/24 bg-midnight/92 p-4 backdrop-blur-xl sm:-mx-6 sm:-mb-6 sm:flex-row sm:justify-between sm:p-6">
+            <Button onClick={handleResetFromProject} type="button" variant="secondary">
+              Reset from Project Data
+            </Button>
+            <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+              <Button onClick={onClose} type="button" variant="ghost">
+                Cancel
+              </Button>
+              <Button type="submit" variant="primary">
+                Save Lookbook
+              </Button>
+            </div>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+function LookbookFormSection({
+  children,
+  title,
+}: {
+  children: ReactNode;
+  title: string;
+}) {
+  return (
+    <section className="rounded-3xl border border-bronze/24 bg-stardust/[0.045] p-4 sm:p-5">
+      <h3 className="text-lg font-semibold text-stardust">{title}</h3>
+      <div className="mt-4 grid gap-4 md:grid-cols-2">{children}</div>
+    </section>
+  );
+}
+
+function LookbookInput({
+  label,
+  onChange,
+  value,
+}: {
+  label: string;
+  onChange: (value: string) => void;
+  value: string;
+}) {
+  return (
+    <label className="block">
+      <span className="mb-2 block text-xs font-medium uppercase tracking-[0.14em] text-stardust/42">
+        {label}
+      </span>
+      <input
+        className="min-h-12 w-full rounded-2xl border border-bronze/28 bg-midnight/55 px-4 text-sm text-stardust outline-none transition placeholder:text-stardust/32 focus:border-ember/60"
+        onChange={(event) => onChange(event.target.value)}
+        value={value}
+      />
+    </label>
+  );
+}
+
+function LookbookSelect({
+  label,
+  onChange,
+  options,
+  value,
+}: {
+  label: string;
+  onChange: (value: string) => void;
+  options: readonly string[];
+  value: string;
+}) {
+  return (
+    <label className="block">
+      <span className="mb-2 block text-xs font-medium uppercase tracking-[0.14em] text-stardust/42">
+        {label}
+      </span>
+      <select
+        className="min-h-12 w-full rounded-2xl border border-bronze/28 bg-midnight/55 px-4 text-sm text-stardust outline-none transition focus:border-ember/60"
+        onChange={(event) => onChange(event.target.value)}
+        value={value}
+      >
+        {options.map((option) => (
+          <option key={option} value={option}>
+            {option}
+          </option>
+        ))}
+      </select>
+    </label>
+  );
+}
+
+function LookbookTextarea({
+  helper,
+  label,
+  onChange,
+  value,
+}: {
+  helper?: string;
+  label: string;
+  onChange: (value: string) => void;
+  value: string;
+}) {
+  return (
+    <label className="block md:col-span-2">
+      <span className="mb-2 block text-xs font-medium uppercase tracking-[0.14em] text-stardust/42">
+        {label}
+      </span>
+      <textarea
+        className="min-h-32 w-full rounded-2xl border border-bronze/28 bg-midnight/55 px-4 py-3 text-sm leading-6 text-stardust outline-none transition placeholder:text-stardust/32 focus:border-ember/60"
+        onChange={(event) => onChange(event.target.value)}
+        value={value}
+      />
+      {helper ? (
+        <span className="mt-2 block text-xs text-stardust/42">{helper}</span>
+      ) : null}
+    </label>
+  );
+}
+
 function buildLookbookPreview(
+  project: ApparelProject,
+  template: LookbookTemplate,
+  lookbookPage?: LookbookPage,
+) {
+  const preferredPage =
+    lookbookPage ??
+    project.lookbookPages.find((page) => page.pageType === preferredPageType[template]) ??
+    project.lookbookPages[0];
+  const projectFallback = buildProjectLookbookFallback(project, template);
+  const headline = preferredPage?.headline || projectFallback.headline;
+  const subheadline =
+    preferredPage?.subheadline ||
+    preferredPage?.body ||
+    projectFallback.subheadline;
+  const materialNotes = (preferredPage?.materialNotes?.length
+    ? preferredPage.materialNotes.map((note) => ({
+        name: note.split(':')[0]?.trim() || 'Material Note',
+        notes: note,
+        role: 'Lookbook Note',
+        status: 'Saved',
+      }))
+    : projectFallback.materialNotes);
+
+  return {
+    credits: preferredPage?.credits?.length
+      ? preferredPage.credits
+      : projectFallback.credits,
+    designNotes: preferredPage?.designNotes?.length
+      ? preferredPage.designNotes
+      : projectFallback.designNotes,
+    detailPlaceholders: getLookbookDetailPlaceholders(template),
+    displaySpecs: preferredPage?.displaySpecs?.length
+      ? preferredPage.displaySpecs
+      : projectFallback.displaySpecs,
+    garmentStory:
+      preferredPage?.garmentStory ||
+      getTemplateGarmentStory(project, preferredPage?.body, template),
+    headline,
+    heroCaption: preferredPage?.layoutHint || project.silhouette,
+    materialNotes,
+    stylingNotes: preferredPage?.stylingNotes?.length
+      ? preferredPage.stylingNotes
+      : getTemplateStylingNotes(project, template),
+    subheadline,
+    visualClassName: lookbookVisualClass[template],
+  };
+}
+
+function getEditableLookbookPage(project: ApparelProject) {
+  return (
+    project.lookbookPages.find((page) => page.template) ??
+    project.lookbookPages[0]
+  );
+}
+
+function lookbookPageToFormValues(
+  project: ApparelProject,
+  lookbookPage: LookbookPage | undefined,
+  selectedTemplate: LookbookTemplate,
+): LookbookFormValues {
+  const template = lookbookPage?.template ?? selectedTemplate;
+  const fallback = projectFallbackToFormValues(project, template);
+
+  return {
+    credits: lookbookPage?.credits?.length
+      ? formatFieldItems(lookbookPage.credits)
+      : fallback.credits,
+    designNotes: lookbookPage?.designNotes?.length
+      ? lookbookPage.designNotes.join('\n')
+      : fallback.designNotes,
+    displaySpecs: lookbookPage?.displaySpecs?.length
+      ? formatFieldItems(lookbookPage.displaySpecs)
+      : fallback.displaySpecs,
+    garmentStory: lookbookPage?.garmentStory || fallback.garmentStory,
+    headline: lookbookPage?.headline || fallback.headline,
+    materialNotes: lookbookPage?.materialNotes?.length
+      ? lookbookPage.materialNotes.join('\n')
+      : fallback.materialNotes,
+    stylingNotes: lookbookPage?.stylingNotes?.length
+      ? lookbookPage.stylingNotes.join('\n')
+      : fallback.stylingNotes,
+    subheadline:
+      lookbookPage?.subheadline || lookbookPage?.body || fallback.subheadline,
+    template,
+  };
+}
+
+function projectFallbackToFormValues(
+  project: ApparelProject,
+  template: LookbookTemplate,
+): LookbookFormValues {
+  const fallback = buildProjectLookbookFallback(project, template);
+
+  return {
+    credits: formatFieldItems(fallback.credits),
+    designNotes: fallback.designNotes.join('\n'),
+    displaySpecs: formatFieldItems(fallback.displaySpecs),
+    garmentStory: fallback.garmentStory,
+    headline: fallback.headline,
+    materialNotes: fallback.materialNotes
+      .map((material) => `${material.name}: ${material.notes}`)
+      .join('\n'),
+    stylingNotes: fallback.stylingNotes.join('\n'),
+    subheadline: fallback.subheadline,
+    template,
+  };
+}
+
+function formValuesToLookbookPage(
+  values: LookbookFormValues,
+  project: ApparelProject,
+  existingPage?: LookbookPage,
+): LookbookPage {
+  const headline = values.headline.trim() || project.name;
+  const subheadline = values.subheadline.trim() || project.summary;
+
+  return {
+    ...existingPage,
+    body: subheadline,
+    credits: parseFieldItems(values.credits),
+    designNotes: parseList(values.designNotes),
+    displaySpecs: parseFieldItems(values.displaySpecs),
+    garmentStory: values.garmentStory.trim(),
+    headline,
+    id: existingPage?.id ?? createLookbookPageId(project.id),
+    layoutHint: `${values.template} presentation preview`,
+    materialNotes: parseList(values.materialNotes),
+    pageType: pageTypeByTemplate[values.template],
+    projectId: project.id,
+    stylingNotes: parseList(values.stylingNotes),
+    subheadline,
+    template: values.template,
+    title: `${project.name} lookbook preview`,
+    updatedAt: todayString(),
+  };
+}
+
+function buildProjectLookbookFallback(
   project: ApparelProject,
   template: LookbookTemplate,
 ) {
   const preferredPage =
     project.lookbookPages.find((page) => page.pageType === preferredPageType[template]) ??
     project.lookbookPages[0];
-  const headline = preferredPage?.headline || project.name;
-  const subheadline =
-    preferredPage?.body ||
-    `${project.designIntent} ${project.colorStory}`.trim() ||
-    project.summary;
+  const keyFeatures =
+    project.keyFeatures.length > 0
+      ? project.keyFeatures
+      : ['Silhouette study', 'Material direction', 'Studio construction notes'];
   const materialNotes = project.linkedMaterials
     .filter((material) => Boolean(material.materialName))
     .slice(0, 4)
@@ -1935,10 +2363,6 @@ function buildLookbookPreview(
       role: material.role,
       status: material.status,
     }));
-  const keyFeatures =
-    project.keyFeatures.length > 0
-      ? project.keyFeatures
-      : ['Silhouette study', 'Material direction', 'Studio construction notes'];
 
   return {
     credits: [
@@ -1951,7 +2375,6 @@ function buildLookbookPreview(
       project.colorStory,
       ...keyFeatures,
     ].filter(Boolean),
-    detailPlaceholders: getLookbookDetailPlaceholders(template),
     displaySpecs: [
       { label: 'Project', value: project.name },
       { label: 'Garment Type', value: project.garmentType },
@@ -1964,13 +2387,51 @@ function buildLookbookPreview(
       },
     ],
     garmentStory: getTemplateGarmentStory(project, preferredPage?.body, template),
-    headline,
-    heroCaption: preferredPage?.layoutHint || project.silhouette,
+    headline: preferredPage?.headline || project.name,
     materialNotes,
     stylingNotes: getTemplateStylingNotes(project, template),
-    subheadline,
-    visualClassName: lookbookVisualClass[template],
+    subheadline:
+      preferredPage?.body ||
+      `${project.designIntent} ${project.colorStory}`.trim() ||
+      project.summary,
   };
+}
+
+function parseList(value: string) {
+  return value
+    .split('\n')
+    .map((line) => line.trim())
+    .filter(Boolean);
+}
+
+function parseFieldItems(value: string): LookbookFieldItem[] {
+  return parseList(value).map((line) => {
+    const separatorIndex = line.indexOf(':');
+
+    if (separatorIndex === -1) {
+      return {
+        label: line,
+        value: '',
+      };
+    }
+
+    return {
+      label: line.slice(0, separatorIndex).trim(),
+      value: line.slice(separatorIndex + 1).trim(),
+    };
+  });
+}
+
+function formatFieldItems(items: LookbookFieldItem[]) {
+  return items.map((item) => `${item.label}: ${item.value}`).join('\n');
+}
+
+function createLookbookPageId(projectId: string) {
+  return `lookbook-${projectId}-${Date.now().toString(36)}`;
+}
+
+function todayString() {
+  return new Date().toISOString().slice(0, 10);
 }
 
 function getTemplateGarmentStory(
@@ -2087,6 +2548,12 @@ function getLookbookDetailPlaceholders(template: LookbookTemplate) {
 }
 
 const preferredPageType: Record<LookbookTemplate, string> = {
+  'Development Story': 'Editorial',
+  'Editorial Hero': 'Cover',
+  'Technical Showcase': 'Detail',
+};
+
+const pageTypeByTemplate: Record<LookbookTemplate, LookbookPage['pageType']> = {
   'Development Story': 'Editorial',
   'Editorial Hero': 'Cover',
   'Technical Showcase': 'Detail',

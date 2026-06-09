@@ -263,6 +263,24 @@ export function deleteNoteInData(data: StudioData, noteId: string): StudioData {
   };
 }
 
+export function upsertLookbookPageInData(
+  data: StudioData,
+  lookbookPage: LookbookPage,
+): StudioData {
+  const pageExists = data.lookbookPages.some(
+    (page) => page.id === lookbookPage.id,
+  );
+
+  return {
+    ...data,
+    lookbookPages: pageExists
+      ? data.lookbookPages.map((page) =>
+          page.id === lookbookPage.id ? lookbookPage : page,
+        )
+      : [lookbookPage, ...data.lookbookPages],
+  };
+}
+
 export function createLinkedMaterialInData(
   data: StudioData,
   linkedMaterial: LinkedMaterial,

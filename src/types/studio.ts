@@ -140,6 +140,14 @@ export type LookbookPageType =
   | 'Material Story'
   | 'Lineup'
   | 'Notes';
+export type LookbookTemplate =
+  | 'Editorial Hero'
+  | 'Technical Showcase'
+  | 'Development Story';
+export type LookbookFieldItem = {
+  label: string;
+  value: string;
+};
 
 export type LinkedMaterial = {
   id: string;
@@ -179,13 +187,22 @@ export type StudioNote = {
 };
 
 export type LookbookPage = {
+  credits?: LookbookFieldItem[];
+  designNotes?: string[];
+  displaySpecs?: LookbookFieldItem[];
+  garmentStory?: string;
   id: string;
+  materialNotes?: string[];
   projectId: string;
+  stylingNotes?: string[];
+  subheadline?: string;
+  template?: LookbookTemplate;
   title: string;
   pageType: LookbookPageType;
   headline: string;
   body: string;
   layoutHint: string;
+  updatedAt?: string;
 };
 
 export type Fabric = {
