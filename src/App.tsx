@@ -77,6 +77,10 @@ function App() {
     return () => window.removeEventListener('hashchange', handleHashChange);
   }, []);
 
+  useEffect(() => {
+    window.scrollTo({ left: 0, top: 0 });
+  }, [route.fabricId, route.page, route.projectId]);
+
   const navigateToPage = (page: PageId) => {
     window.history.pushState(null, '', '#');
     setRoute({ page });
