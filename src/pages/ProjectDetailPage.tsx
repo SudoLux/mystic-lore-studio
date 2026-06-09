@@ -1605,37 +1605,507 @@ const noteCategoryCue: Record<NoteCategory, string> = {
   'Pattern Note': 'Documents draft changes, measurements, and pattern behavior.',
 };
 
+type LookbookTemplate = 'Editorial Hero' | 'Technical Showcase' | 'Development Story';
+
+const lookbookTemplates: LookbookTemplate[] = [
+  'Editorial Hero',
+  'Technical Showcase',
+  'Development Story',
+];
+
 function LookbookTab({ project }: { project: ApparelProject }) {
+  const [selectedTemplate, setSelectedTemplate] =
+    useState<LookbookTemplate>('Editorial Hero');
+  const preview = buildLookbookPreview(project, selectedTemplate);
+
   return (
-    <div className="grid gap-4 lg:grid-cols-2">
-      {project.lookbookPages.map((page) => (
-        <Card className="transition duration-300 hover:border-ember/45" key={page.id}>
-          <div className="flex items-start justify-between gap-4">
-            <div>
-              <Badge variant="teal">{page.pageType}</Badge>
-              <h3 className="mt-4 text-lg font-semibold text-stardust">
-                {page.title}
-              </h3>
-            </div>
-            <Palette
-              aria-hidden="true"
-              className="text-ember"
-              size={20}
-              strokeWidth={1.9}
-            />
+    <div className="space-y-4">
+      <Card className="border-bronze/30 bg-[linear-gradient(135deg,rgba(27,58,99,0.22),rgba(10,10,10,0.5),rgba(61,43,31,0.34))]">
+        <div className="flex flex-col gap-5 xl:flex-row xl:items-end xl:justify-between">
+          <div>
+            <Badge variant="teal">Lookbook Preview</Badge>
+            <h2 className="mt-4 text-2xl font-semibold text-stardust">
+              Project presentation
+            </h2>
+            <p className="mt-3 max-w-2xl text-sm leading-6 text-stardust/62">
+              A responsive internal preview for editorial direction, garment
+              story, materials, styling, specs, and credits.
+            </p>
           </div>
-          <p className="mt-4 text-xl font-semibold leading-tight text-stardust">
-            {page.headline}
-          </p>
-          <p className="mt-3 text-sm leading-7 text-stardust/64">{page.body}</p>
-          <p className="mt-4 rounded-2xl border border-bronze/20 bg-midnight/32 p-4 text-sm leading-6 text-stardust/58">
-            {page.layoutHint}
-          </p>
-        </Card>
-      ))}
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+            <div className="flex rounded-2xl border border-bronze/25 bg-midnight/42 p-1">
+              {lookbookTemplates.map((template) => {
+                const isActive = selectedTemplate === template;
+
+                return (
+                  <button
+                    aria-pressed={isActive}
+                    className={cn(
+                      'min-h-10 rounded-xl px-3 text-xs font-medium transition duration-200 sm:text-sm',
+                      isActive
+                        ? 'bg-ember text-midnight shadow-[0_12px_30px_rgba(200,155,60,0.16)]'
+                        : 'text-stardust/60 hover:bg-stardust/7 hover:text-stardust',
+                    )}
+                    key={template}
+                    onClick={() => setSelectedTemplate(template)}
+                    type="button"
+                  >
+                    {template}
+                  </button>
+                );
+              })}
+            </div>
+            <Button
+              icon={<Pencil aria-hidden="true" size={15} strokeWidth={1.9} />}
+              size="sm"
+              variant="primary"
+            >
+              Edit Lookbook
+            </Button>
+          </div>
+        </div>
+      </Card>
+
+      <section
+        className={cn(
+          'overflow-hidden rounded-[2rem] border border-bronze/28 bg-stardust/[0.045] shadow-[0_28px_90px_rgba(0,0,0,0.26)]',
+          lookbookTemplateShell[selectedTemplate],
+        )}
+      >
+        <div className="grid min-h-[34rem] lg:grid-cols-[minmax(0,1.05fr)_minmax(22rem,0.95fr)]">
+          <div className="flex flex-col justify-between gap-12 p-5 sm:p-7 lg:p-8">
+            <div>
+              <div className="flex flex-wrap items-center gap-2">
+                <Badge variant="ember">{selectedTemplate}</Badge>
+                <Badge variant="bronze">{project.collection}</Badge>
+                <Badge variant="blue">{project.season}</Badge>
+              </div>
+              <p className="mt-8 text-xs font-medium uppercase tracking-[0.16em] text-ember">
+                Mystic Lore Studio / {project.garmentType}
+              </p>
+              <h2 className="mt-4 max-w-3xl text-4xl font-semibold leading-tight text-stardust sm:text-5xl">
+                {preview.headline}
+              </h2>
+              <p className="mt-5 max-w-2xl text-base leading-7 text-stardust/70">
+                {preview.subheadline}
+              </p>
+            </div>
+
+            <div className="grid gap-3 sm:grid-cols-3">
+              <LookbookMetric label="Phase" value={project.phase} />
+              <LookbookMetric label="Progress" value={`${project.progress}%`} />
+              <LookbookMetric label="Difficulty" value={project.difficulty} />
+            </div>
+          </div>
+
+          <div className="relative min-h-[24rem] overflow-hidden border-t border-bronze/20 lg:border-l lg:border-t-0">
+            <div className={cn('absolute inset-0', preview.visualClassName)} />
+            <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(237,227,207,0.07)_1px,transparent_1px),linear-gradient(0deg,rgba(237,227,207,0.055)_1px,transparent_1px)] [background-size:22px_22px]" />
+            <div className="relative z-10 flex h-full min-h-[24rem] flex-col justify-between p-5 sm:p-7">
+              <div className="flex items-center justify-between gap-3">
+                <Badge variant="teal">Gradient Placeholder</Badge>
+                <span className="rounded-full border border-stardust/15 bg-midnight/42 px-3 py-1 text-xs text-stardust/68">
+                  {project.targetDate ? formatDate(project.targetDate) : 'Undated'}
+                </span>
+              </div>
+              <div>
+                <div className="mb-5 grid grid-cols-3 gap-3">
+                  {preview.detailPlaceholders.map((detail) => (
+                    <div
+                      className={cn(
+                        'aspect-[4/5] rounded-2xl border border-stardust/14',
+                        detail.className,
+                      )}
+                      key={detail.label}
+                    >
+                      <span className="flex h-full items-end p-3 text-xs font-medium text-stardust/68">
+                        {detail.label}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+                <p className="max-w-lg text-2xl font-semibold leading-tight text-stardust">
+                  {preview.heroCaption}
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="grid gap-5 border-t border-bronze/20 p-5 sm:p-7 lg:grid-cols-[minmax(0,1fr)_minmax(20rem,0.62fr)] lg:p-8">
+          <div className="space-y-5">
+            <LookbookSection
+              icon={<BookOpen aria-hidden="true" size={18} strokeWidth={1.9} />}
+              title="Garment Story"
+            >
+              <p className="text-base leading-8 text-stardust/70">
+                {preview.garmentStory}
+              </p>
+            </LookbookSection>
+
+            <div className="grid gap-5 md:grid-cols-2">
+              <LookbookSection
+                icon={<Sparkles aria-hidden="true" size={18} strokeWidth={1.9} />}
+                title="Design Notes"
+              >
+                <LookbookList items={preview.designNotes} />
+              </LookbookSection>
+              <LookbookSection
+                icon={<Shirt aria-hidden="true" size={18} strokeWidth={1.9} />}
+                title="Styling Notes"
+              >
+                <LookbookList items={preview.stylingNotes} />
+              </LookbookSection>
+            </div>
+
+            <LookbookSection
+              icon={<Package aria-hidden="true" size={18} strokeWidth={1.9} />}
+              title="Material Notes"
+            >
+              {preview.materialNotes.length > 0 ? (
+                <div className="grid gap-3 md:grid-cols-2">
+                  {preview.materialNotes.map((material) => (
+                    <div
+                      className="rounded-2xl border border-bronze/18 bg-midnight/28 p-4"
+                      key={material.name}
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div>
+                          <p className="text-sm font-semibold text-stardust">
+                            {material.name}
+                          </p>
+                          <p className="mt-1 text-xs text-stardust/45">
+                            {material.role}
+                          </p>
+                        </div>
+                        <Badge variant="teal">{material.status}</Badge>
+                      </div>
+                      <p className="mt-3 text-sm leading-6 text-stardust/58">
+                        {material.notes}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="rounded-2xl border border-dashed border-bronze/25 bg-midnight/24 p-5 text-sm leading-6 text-stardust/54">
+                  Materials linked to this project will appear in the preview.
+                </p>
+              )}
+            </LookbookSection>
+          </div>
+
+          <aside className="space-y-5">
+            <LookbookSection
+              icon={<Palette aria-hidden="true" size={18} strokeWidth={1.9} />}
+              title="Detail Placeholders"
+            >
+              <div className="grid gap-3">
+                {preview.detailPlaceholders.map((detail) => (
+                  <div
+                    className="grid grid-cols-[5rem_1fr] overflow-hidden rounded-2xl border border-bronze/18 bg-midnight/28"
+                    key={detail.label}
+                  >
+                    <span className={cn('block min-h-20', detail.className)} />
+                    <div className="p-3">
+                      <p className="text-sm font-semibold text-stardust">
+                        {detail.label}
+                      </p>
+                      <p className="mt-1 text-xs leading-5 text-stardust/50">
+                        {detail.description}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </LookbookSection>
+
+            <LookbookSection
+              icon={<Layers3 aria-hidden="true" size={18} strokeWidth={1.9} />}
+              title="Display Specs"
+            >
+              <div className="grid gap-3">
+                {preview.displaySpecs.map((spec) => (
+                  <LookbookSpec
+                    key={spec.label}
+                    label={spec.label}
+                    value={spec.value}
+                  />
+                ))}
+              </div>
+            </LookbookSection>
+
+            <LookbookSection
+              icon={<Sparkles aria-hidden="true" size={18} strokeWidth={1.9} />}
+              title="Credits"
+            >
+              <div className="space-y-3">
+                {preview.credits.map((credit) => (
+                  <LookbookSpec
+                    key={credit.label}
+                    label={credit.label}
+                    value={credit.value}
+                  />
+                ))}
+              </div>
+            </LookbookSection>
+          </aside>
+        </div>
+      </section>
     </div>
   );
 }
+
+function LookbookSection({
+  children,
+  icon,
+  title,
+}: {
+  children: ReactNode;
+  icon: ReactNode;
+  title: string;
+}) {
+  return (
+    <section className="rounded-3xl border border-bronze/22 bg-midnight/28 p-5">
+      <div className="mb-4 flex items-center gap-3">
+        <span className="flex h-10 w-10 items-center justify-center rounded-2xl border border-bronze/25 bg-espresso/42 text-ember">
+          {icon}
+        </span>
+        <h3 className="text-lg font-semibold text-stardust">{title}</h3>
+      </div>
+      {children}
+    </section>
+  );
+}
+
+function LookbookList({ items }: { items: string[] }) {
+  return (
+    <ul className="space-y-3">
+      {items.map((item) => (
+        <li className="flex gap-3 text-sm leading-6 text-stardust/62" key={item}>
+          <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-ember" />
+          <span>{item}</span>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+function LookbookMetric({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-2xl border border-bronze/20 bg-midnight/35 p-4">
+      <p className="text-[0.68rem] font-medium uppercase tracking-[0.14em] text-stardust/42">
+        {label}
+      </p>
+      <p className="mt-2 truncate text-sm font-semibold text-stardust">{value}</p>
+    </div>
+  );
+}
+
+function LookbookSpec({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-2xl border border-bronze/18 bg-midnight/30 p-4">
+      <p className="text-[0.68rem] font-medium uppercase tracking-[0.14em] text-stardust/38">
+        {label}
+      </p>
+      <p className="mt-2 text-sm font-semibold leading-5 text-stardust">{value}</p>
+    </div>
+  );
+}
+
+function buildLookbookPreview(
+  project: ApparelProject,
+  template: LookbookTemplate,
+) {
+  const preferredPage =
+    project.lookbookPages.find((page) => page.pageType === preferredPageType[template]) ??
+    project.lookbookPages[0];
+  const headline = preferredPage?.headline || project.name;
+  const subheadline =
+    preferredPage?.body ||
+    `${project.designIntent} ${project.colorStory}`.trim() ||
+    project.summary;
+  const materialNotes = project.linkedMaterials
+    .filter((material) => Boolean(material.materialName))
+    .slice(0, 4)
+    .map((material) => ({
+      name: material.materialName,
+      notes:
+        material.notes ||
+        `${formatYardage(material.neededYards)} needed for ${material.role.toLowerCase()}.`,
+      role: material.role,
+      status: material.status,
+    }));
+  const keyFeatures =
+    project.keyFeatures.length > 0
+      ? project.keyFeatures
+      : ['Silhouette study', 'Material direction', 'Studio construction notes'];
+
+  return {
+    credits: [
+      { label: 'Creative Direction', value: 'Mystic Lore Studio' },
+      { label: 'Garment Development', value: project.collection },
+      { label: 'Presentation Status', value: project.status },
+    ],
+    designNotes: [
+      project.designIntent,
+      project.colorStory,
+      ...keyFeatures,
+    ].filter(Boolean),
+    detailPlaceholders: getLookbookDetailPlaceholders(template),
+    displaySpecs: [
+      { label: 'Project', value: project.name },
+      { label: 'Garment Type', value: project.garmentType },
+      { label: 'Collection', value: project.collection },
+      { label: 'Season', value: project.season },
+      { label: 'Current Phase', value: project.phase },
+      {
+        label: 'Target Date',
+        value: project.targetDate ? formatDate(project.targetDate) : 'Not scheduled',
+      },
+    ],
+    garmentStory: getTemplateGarmentStory(project, preferredPage?.body, template),
+    headline,
+    heroCaption: preferredPage?.layoutHint || project.silhouette,
+    materialNotes,
+    stylingNotes: getTemplateStylingNotes(project, template),
+    subheadline,
+    visualClassName: lookbookVisualClass[template],
+  };
+}
+
+function getTemplateGarmentStory(
+  project: ApparelProject,
+  pageBody: string | undefined,
+  template: LookbookTemplate,
+) {
+  if (template === 'Technical Showcase') {
+    return `${project.summary} The preview emphasizes construction intent, material roles, silhouette logic, and display-ready specifications.`;
+  }
+
+  if (template === 'Development Story') {
+    return `${project.generalNotes} The current phase is ${project.phase.toLowerCase()}, with the garment moving at ${project.progress}% completion.`;
+  }
+
+  return pageBody || `${project.summary} ${project.designIntent}`;
+}
+
+function getTemplateStylingNotes(
+  project: ApparelProject,
+  template: LookbookTemplate,
+) {
+  if (template === 'Technical Showcase') {
+    return [
+      `Show the ${project.silhouette.toLowerCase()} in a clean front view.`,
+      'Pair detail crops with material callouts and construction notes.',
+      'Keep trims, closures, and proportion decisions visible.',
+    ];
+  }
+
+  if (template === 'Development Story') {
+    return [
+      `Lead with the ${project.phase.toLowerCase()} milestone.`,
+      'Use process details to show how the garment arrived at its current shape.',
+      'Keep the next fit or construction question visible for studio review.',
+    ];
+  }
+
+  return [
+    `Style around the ${project.colorStory.toLowerCase()}`,
+    `Frame the ${project.garmentType.toLowerCase()} as part of ${project.collection}.`,
+    'Keep the garment dominant with quiet supporting material details.',
+  ];
+}
+
+function getLookbookDetailPlaceholders(template: LookbookTemplate) {
+  const shared = {
+    'Development Story': [
+      {
+        className:
+          'bg-[linear-gradient(145deg,rgba(154,108,60,0.8),rgba(10,10,10,0.62),rgba(200,155,60,0.34))]',
+        description: 'Pattern, fitting, or build-progress crop.',
+        label: 'Process Detail',
+      },
+      {
+        className:
+          'bg-[linear-gradient(145deg,rgba(45,92,107,0.82),rgba(10,10,10,0.62),rgba(27,58,99,0.58))]',
+        description: 'Construction decision or sample note.',
+        label: 'Studio Note',
+      },
+      {
+        className:
+          'bg-[linear-gradient(145deg,rgba(61,43,31,0.86),rgba(10,10,10,0.72),rgba(237,227,207,0.24))]',
+        description: 'Next iteration or review target.',
+        label: 'Revision Cue',
+      },
+    ],
+    'Editorial Hero': [
+      {
+        className:
+          'bg-[linear-gradient(145deg,rgba(200,155,60,0.58),rgba(10,10,10,0.68),rgba(27,58,99,0.68))]',
+        description: 'Full garment mood or editorial lead frame.',
+        label: 'Hero Crop',
+      },
+      {
+        className:
+          'bg-[linear-gradient(145deg,rgba(45,92,107,0.74),rgba(10,10,10,0.7),rgba(237,227,207,0.22))]',
+        description: 'Texture, trim, or surface close-up.',
+        label: 'Texture Detail',
+      },
+      {
+        className:
+          'bg-[linear-gradient(145deg,rgba(61,43,31,0.86),rgba(154,108,60,0.52),rgba(10,10,10,0.72))]',
+        description: 'Movement, fit, or styling angle.',
+        label: 'Styling Frame',
+      },
+    ],
+    'Technical Showcase': [
+      {
+        className:
+          'bg-[linear-gradient(145deg,rgba(27,58,99,0.82),rgba(10,10,10,0.68),rgba(45,92,107,0.5))]',
+        description: 'Front, side, or flat technical view.',
+        label: 'Spec View',
+      },
+      {
+        className:
+          'bg-[linear-gradient(145deg,rgba(237,227,207,0.4),rgba(10,10,10,0.66),rgba(154,108,60,0.54))]',
+        description: 'Seam, closure, pocket, or finish close-up.',
+        label: 'Build Detail',
+      },
+      {
+        className:
+          'bg-[linear-gradient(145deg,rgba(45,92,107,0.72),rgba(61,43,31,0.62),rgba(10,10,10,0.72))]',
+        description: 'Material allocation or trim reference.',
+        label: 'Material Callout',
+      },
+    ],
+  } satisfies Record<
+    LookbookTemplate,
+    Array<{ className: string; description: string; label: string }>
+  >;
+
+  return shared[template];
+}
+
+const preferredPageType: Record<LookbookTemplate, string> = {
+  'Development Story': 'Editorial',
+  'Editorial Hero': 'Cover',
+  'Technical Showcase': 'Detail',
+};
+
+const lookbookTemplateShell: Record<LookbookTemplate, string> = {
+  'Development Story': 'bg-[linear-gradient(135deg,rgba(61,43,31,0.44),rgba(10,10,10,0.94),rgba(27,58,99,0.24))]',
+  'Editorial Hero': 'bg-[linear-gradient(135deg,rgba(27,58,99,0.38),rgba(10,10,10,0.94),rgba(61,43,31,0.44))]',
+  'Technical Showcase': 'bg-[linear-gradient(135deg,rgba(45,92,107,0.34),rgba(10,10,10,0.94),rgba(27,58,99,0.34))]',
+};
+
+const lookbookVisualClass: Record<LookbookTemplate, string> = {
+  'Development Story':
+    'bg-[linear-gradient(145deg,rgba(154,108,60,0.86),rgba(10,10,10,0.72),rgba(27,58,99,0.58))]',
+  'Editorial Hero':
+    'bg-[linear-gradient(145deg,rgba(200,155,60,0.46),rgba(10,10,10,0.76),rgba(27,58,99,0.86),rgba(61,43,31,0.72))]',
+  'Technical Showcase':
+    'bg-[linear-gradient(145deg,rgba(45,92,107,0.82),rgba(10,10,10,0.72),rgba(237,227,207,0.22))]',
+};
 
 function BackButton({ onBack }: { onBack: () => void }) {
   return (
