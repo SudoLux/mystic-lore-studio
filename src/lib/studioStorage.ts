@@ -234,6 +234,29 @@ export function deleteTaskInData(data: StudioData, taskId: string): StudioData {
   };
 }
 
+export function createNoteInData(data: StudioData, note: StudioNote): StudioData {
+  return {
+    ...data,
+    notes: [note, ...data.notes],
+  };
+}
+
+export function updateNoteInData(data: StudioData, note: StudioNote): StudioData {
+  return {
+    ...data,
+    notes: data.notes.map((currentNote) =>
+      currentNote.id === note.id ? note : currentNote,
+    ),
+  };
+}
+
+export function deleteNoteInData(data: StudioData, noteId: string): StudioData {
+  return {
+    ...data,
+    notes: data.notes.filter((note) => note.id !== noteId),
+  };
+}
+
 export function updateTaskStatusInData(
   data: StudioData,
   taskId: string,

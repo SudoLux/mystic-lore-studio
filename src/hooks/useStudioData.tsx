@@ -8,9 +8,11 @@ import {
 } from 'react';
 import {
   createFabricInData,
+  createNoteInData,
   createProjectInData,
   createTaskInData,
   deleteFabricInData,
+  deleteNoteInData,
   deleteProjectInData,
   deleteTaskInData,
   exportStudioData,
@@ -20,6 +22,7 @@ import {
   resetStudioData,
   saveStudioData,
   updateFabricInData,
+  updateNoteInData,
   updateProjectInData,
   updateProjectPhaseInData,
   updateTaskInData,
@@ -28,14 +31,22 @@ import {
   type StudioDataView,
   type StoredProject,
 } from '../lib/studioStorage';
-import type { Fabric, ProjectPhase, StudioTask, TaskStatus } from '../types/studio';
+import type {
+  Fabric,
+  ProjectPhase,
+  StudioNote,
+  StudioTask,
+  TaskStatus,
+} from '../types/studio';
 
 type StudioDataContextValue = {
   createFabric: (fabric: Fabric) => void;
+  createNote: (note: StudioNote) => void;
   createProject: (project: StoredProject) => void;
   createTask: (task: StudioTask) => void;
   data: StudioDataView;
   deleteFabric: (fabricId: string) => void;
+  deleteNote: (noteId: string) => void;
   deleteProject: (projectId: string) => void;
   deleteTask: (taskId: string) => void;
   exportData: () => string;
@@ -44,6 +55,7 @@ type StudioDataContextValue = {
   resetData: () => void;
   saveData: (nextData: StudioData) => void;
   updateFabric: (fabric: Fabric) => void;
+  updateNote: (note: StudioNote) => void;
   updateProject: (project: StoredProject) => void;
   updateProjectPhase: (projectId: string, phase: ProjectPhase) => void;
   updateTask: (task: StudioTask) => void;
@@ -97,6 +109,14 @@ export function StudioDataProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
+  const createNote = useCallback((note: StudioNote) => {
+    setRawData((current) => {
+      const nextData = createNoteInData(current, note);
+      saveStudioData(nextData);
+      return nextData;
+    });
+  }, []);
+
   const updateProject = useCallback((project: StoredProject) => {
     setRawData((current) => {
       const nextData = updateProjectInData(current, project);
@@ -121,9 +141,25 @@ export function StudioDataProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
+  const updateNote = useCallback((note: StudioNote) => {
+    setRawData((current) => {
+      const nextData = updateNoteInData(current, note);
+      saveStudioData(nextData);
+      return nextData;
+    });
+  }, []);
+
   const deleteProject = useCallback((projectId: string) => {
     setRawData((current) => {
       const nextData = deleteProjectInData(current, projectId);
+      saveStudioData(nextData);
+      return nextData;
+    });
+  }, []);
+
+  const deleteNote = useCallback((noteId: string) => {
+    setRawData((current) => {
+      const nextData = deleteNoteInData(current, noteId);
       saveStudioData(nextData);
       return nextData;
     });
@@ -167,10 +203,12 @@ export function StudioDataProvider({ children }: { children: ReactNode }) {
   const value = useMemo<StudioDataContextValue>(
     () => ({
       createFabric,
+      createNote,
       createProject,
       createTask,
       data: hydrateStudioData(rawData),
       deleteFabric,
+      deleteNote,
       deleteProject,
       deleteTask,
       exportData,
@@ -179,6 +217,7 @@ export function StudioDataProvider({ children }: { children: ReactNode }) {
       resetData,
       saveData,
       updateFabric,
+      updateNote,
       updateProject,
       updateProjectPhase,
       updateTask,
@@ -186,9 +225,11 @@ export function StudioDataProvider({ children }: { children: ReactNode }) {
     }),
     [
       createFabric,
+      createNote,
       createProject,
       createTask,
       deleteFabric,
+      deleteNote,
       deleteProject,
       deleteTask,
       exportData,
@@ -197,6 +238,7 @@ export function StudioDataProvider({ children }: { children: ReactNode }) {
       resetData,
       saveData,
       updateFabric,
+      updateNote,
       updateProject,
       updateProjectPhase,
       updateTask,
