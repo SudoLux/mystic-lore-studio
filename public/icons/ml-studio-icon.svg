@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="title">
+  <title id="title">Mystic Lore Studio icon</title>
+  <rect width="512" height="512" rx="112" fill="#0A0A0A"/>
+  <path d="M96 382V130h64l96 140 96-140h64v252h-68V238l-72 106h-40l-72-106v144H96Z" fill="#EDE3CF"/>
+  <path d="M112 408h288" stroke="#C89B3C" stroke-width="24" stroke-linecap="round"/>
+  <path d="M116 104h280" stroke="#2D5C6B" stroke-width="18" stroke-linecap="round"/>
+  <circle cx="394" cy="110" r="20" fill="#C89B3C"/>
+</svg>
