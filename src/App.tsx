@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { AppShell } from './components/layout/AppShell';
 import { FabricFormModal } from './components/fabrics/FabricFormModal';
 import { ProjectFormModal } from './components/projects/ProjectFormModal';
+import { GlobalSearch } from './components/search/GlobalSearch';
 import { Button } from './components/shared/Button';
 import { navigationItems } from './data/navigation';
 import { useStudioData } from './hooks/useStudioData';
@@ -54,7 +55,7 @@ function App() {
   const {
     createFabric,
     createProject,
-    data: { projects },
+    data: { fabrics, projects },
     deleteFabric,
     deleteProject,
     updateFabric,
@@ -170,6 +171,14 @@ function App() {
     <>
       <AppShell
         activePage={route.page}
+        globalSearch={
+          <GlobalSearch
+            fabrics={fabrics}
+            onOpenFabric={openFabric}
+            onOpenProject={openProject}
+            projects={projects}
+          />
+        }
         navItems={navigationItems}
         onNavigate={navigateToPage}
       >

@@ -6,6 +6,7 @@ import type { NavItem, PageId } from '../../types/navigation';
 type AppShellProps = {
   activePage: PageId;
   children: ReactNode;
+  globalSearch?: ReactNode;
   navItems: NavItem[];
   onNavigate: (pageId: PageId) => void;
 };
@@ -13,6 +14,7 @@ type AppShellProps = {
 export function AppShell({
   activePage,
   children,
+  globalSearch,
   navItems,
   onNavigate,
 }: AppShellProps) {
@@ -26,7 +28,10 @@ export function AppShell({
             onNavigate={onNavigate}
           />
           <main className="min-w-0 px-4 pb-28 pt-5 sm:px-6 sm:pt-7 lg:px-8 lg:pb-8">
-            <div className="mx-auto w-full max-w-6xl">{children}</div>
+            <div className="mx-auto w-full max-w-6xl">
+              {globalSearch}
+              {children}
+            </div>
           </main>
         </div>
       </div>
