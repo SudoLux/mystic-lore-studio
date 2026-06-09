@@ -30,6 +30,7 @@ import {
   updateProjectPhaseInData,
   updateTaskInData,
   updateTaskStatusInData,
+  upsertLookbookPageInData,
   type StudioData,
   type StudioDataView,
   type StoredProject,
@@ -37,6 +38,7 @@ import {
 import type {
   Fabric,
   LinkedMaterial,
+  LookbookPage,
   ProjectPhase,
   StudioNote,
   StudioTask,
@@ -59,6 +61,7 @@ type StudioDataContextValue = {
   importData: (serializedData: string) => void;
   rawData: StudioData;
   resetData: () => void;
+  saveLookbookPage: (lookbookPage: LookbookPage) => void;
   saveData: (nextData: StudioData) => void;
   updateFabric: (fabric: Fabric) => void;
   updateLinkedMaterial: (linkedMaterial: LinkedMaterial) => void;
@@ -231,6 +234,14 @@ export function StudioDataProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
+  const saveLookbookPage = useCallback((lookbookPage: LookbookPage) => {
+    setRawData((current) => {
+      const nextData = upsertLookbookPageInData(current, lookbookPage);
+      saveStudioData(nextData);
+      return nextData;
+    });
+  }, []);
+
   const value = useMemo<StudioDataContextValue>(
     () => ({
       createFabric,
@@ -248,6 +259,7 @@ export function StudioDataProvider({ children }: { children: ReactNode }) {
       importData,
       rawData,
       resetData,
+      saveLookbookPage,
       saveData,
       updateFabric,
       updateLinkedMaterial,
@@ -272,6 +284,7 @@ export function StudioDataProvider({ children }: { children: ReactNode }) {
       importData,
       rawData,
       resetData,
+      saveLookbookPage,
       saveData,
       updateFabric,
       updateLinkedMaterial,
