@@ -257,6 +257,45 @@ export function deleteNoteInData(data: StudioData, noteId: string): StudioData {
   };
 }
 
+export function createLinkedMaterialInData(
+  data: StudioData,
+  linkedMaterial: LinkedMaterial,
+): StudioData {
+  return {
+    ...data,
+    linkedMaterials: [linkedMaterial, ...data.linkedMaterials],
+  };
+}
+
+export function updateLinkedMaterialInData(
+  data: StudioData,
+  linkedMaterial: LinkedMaterial,
+): StudioData {
+  return {
+    ...data,
+    linkedMaterials: data.linkedMaterials.map((currentMaterial) =>
+      currentMaterial.id === linkedMaterial.id ? linkedMaterial : currentMaterial,
+    ),
+  };
+}
+
+export function deleteLinkedMaterialInData(
+  data: StudioData,
+  linkedMaterialId: string,
+): StudioData {
+  return {
+    ...data,
+    linkedMaterials: data.linkedMaterials.filter(
+      (material) => material.id !== linkedMaterialId,
+    ),
+    tasks: data.tasks.map((task) =>
+      task.linkedMaterialId === linkedMaterialId
+        ? { ...task, linkedMaterialId: undefined }
+        : task,
+    ),
+  };
+}
+
 export function updateTaskStatusInData(
   data: StudioData,
   taskId: string,

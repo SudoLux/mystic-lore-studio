@@ -28,6 +28,7 @@ import {
   Target,
   Trash2,
 } from 'lucide-react';
+import { LinkedMaterialFormModal } from '../components/materials/LinkedMaterialFormModal';
 import { NoteFormModal } from '../components/notes/NoteFormModal';
 import { TaskFormModal } from '../components/tasks/TaskFormModal';
 import { Badge } from '../components/shared/Badge';
@@ -84,10 +85,13 @@ export function ProjectDetailPage({
 }: ProjectDetailPageProps) {
   const {
     data: { fabrics, projects },
+    createLinkedMaterial,
     createNote,
     createTask,
+    deleteLinkedMaterial,
     deleteNote,
     deleteTask,
+    updateLinkedMaterial,
     updateNote,
     updateTask,
     updateTaskStatus,
@@ -179,7 +183,14 @@ export function ProjectDetailPage({
         <OverviewTab project={project} />
       ) : null}
       {activeTab === 'materials' ? (
-        <MaterialsTab linkedMaterials={linkedMaterials} />
+        <MaterialsTab
+          createLinkedMaterial={createLinkedMaterial}
+          deleteLinkedMaterial={deleteLinkedMaterial}
+          fabrics={fabrics}
+          linkedMaterials={linkedMaterials}
+          project={project}
+          updateLinkedMaterial={updateLinkedMaterial}
+        />
       ) : null}
       {activeTab === 'tasks' ? (
         <TasksTab
@@ -453,7 +464,25 @@ function OverviewTab({ project }: { project: ApparelProject }) {
   );
 }
 
-function MaterialsTab({ linkedMaterials }: { linkedMaterials: LinkedMaterialRow[] }) {
+function MaterialsTab({
+  createLinkedMaterial,
+  deleteLinkedMaterial,
+  fabrics,
+  linkedMaterials,
+  project,
+  updateLinkedMaterial,
+}: {
+  createLinkedMaterial: (linkedMaterial: LinkedMaterial) => void;
+  deleteLinkedMaterial: (linkedMaterialId: string) => void;
+  fabrics: Fabric[];
+  linkedMaterials: LinkedMaterialRow[];
+  project: ApparelProject;
+  updateLinkedMaterial: (linkedMaterial: LinkedMaterial) => void;
+}) {
+  const [materialForm, setMaterialForm] =
+    useState<LinkedMaterialFormState | null>(null);
+  const [unlinkCandidate, setUnlinkCandidate] =
+    useState<LinkedMaterial | null>(null);
   const groups = materialRoles
     .map((role) => ({
       role,
@@ -479,8 +508,20 @@ function MaterialsTab({ linkedMaterials }: { linkedMaterials: LinkedMaterialRow[
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
-            <Button size="sm" variant="primary">Link Fabric</Button>
-            <Button size="sm" variant="secondary">Add Material</Button>
+            <Button
+              onClick={() => setMaterialForm({ mode: 'create' })}
+              size="sm"
+              variant="primary"
+            >
+              Link Fabric
+            </Button>
+            <Button
+              onClick={() => setMaterialForm({ mode: 'create' })}
+              size="sm"
+              variant="secondary"
+            >
+              Add Material
+            </Button>
             <Button size="sm" variant="secondary">Reserve Yardage</Button>
           </div>
         </div>
@@ -501,16 +542,70 @@ function MaterialsTab({ linkedMaterials }: { linkedMaterials: LinkedMaterialRow[
       </Card>
 
       {groups.map((group) => (
-        <MaterialRoleGroup group={group} key={group.role} />
+        <MaterialRoleGroup
+          group={group}
+          key={group.role}
+          onEditMaterial={(linkedMaterial) =>
+            setMaterialForm({ linkedMaterial, mode: 'edit' })
+          }
+          onUnlinkMaterial={setUnlinkCandidate}
+        />
       ))}
+      {groups.length === 0 ? (
+        <Card className="border-bronze/25 text-center">
+          <p className="text-lg font-semibold text-stardust">
+            No materials linked yet
+          </p>
+          <p className="mt-2 text-sm text-stardust/60">
+            Link a fabric from the vault to start building this garment material
+            ledger.
+          </p>
+        </Card>
+      ) : null}
+      {materialForm ? (
+        <LinkedMaterialFormModal
+          fabrics={fabrics}
+          linkedMaterial={materialForm.linkedMaterial}
+          mode={materialForm.mode}
+          onClose={() => setMaterialForm(null)}
+          onSubmit={(linkedMaterial) => {
+            if (materialForm.mode === 'create') {
+              createLinkedMaterial(linkedMaterial);
+            } else {
+              updateLinkedMaterial(linkedMaterial);
+            }
+
+            setMaterialForm(null);
+          }}
+          project={project}
+        />
+      ) : null}
+      {unlinkCandidate ? (
+        <UnlinkMaterialDialog
+          linkedMaterial={unlinkCandidate}
+          onCancel={() => setUnlinkCandidate(null)}
+          onConfirm={() => {
+            deleteLinkedMaterial(unlinkCandidate.id);
+            setUnlinkCandidate(null);
+          }}
+        />
+      ) : null}
     </div>
   );
 }
 
+type LinkedMaterialFormState =
+  | { linkedMaterial?: undefined; mode: 'create' }
+  | { linkedMaterial: LinkedMaterial; mode: 'edit' };
+
 function MaterialRoleGroup({
   group,
+  onEditMaterial,
+  onUnlinkMaterial,
 }: {
   group: { role: MaterialRole; rows: LinkedMaterialRow[] };
+  onEditMaterial: (linkedMaterial: LinkedMaterial) => void;
+  onUnlinkMaterial: (linkedMaterial: LinkedMaterial) => void;
 }) {
   return (
     <Card>
@@ -527,14 +622,27 @@ function MaterialRoleGroup({
       </div>
       <div className="grid gap-4 xl:grid-cols-2">
         {group.rows.map((row) => (
-          <MaterialCard key={row.allocation.id} row={row} />
+          <MaterialCard
+            key={row.allocation.id}
+            onEditMaterial={onEditMaterial}
+            onUnlinkMaterial={onUnlinkMaterial}
+            row={row}
+          />
         ))}
       </div>
     </Card>
   );
 }
 
-function MaterialCard({ row }: { row: LinkedMaterialRow }) {
+function MaterialCard({
+  onEditMaterial,
+  onUnlinkMaterial,
+  row,
+}: {
+  onEditMaterial: (linkedMaterial: LinkedMaterial) => void;
+  onUnlinkMaterial: (linkedMaterial: LinkedMaterial) => void;
+  row: LinkedMaterialRow;
+}) {
   const { allocation, fabric } = row;
   const availableYards = fabric
     ? fabric.totalYards - fabric.reservedYards - fabric.usedYards
@@ -616,7 +724,60 @@ function MaterialCard({ row }: { row: LinkedMaterialRow }) {
       ) : null}
 
       <p className="mt-4 text-sm leading-6 text-stardust/62">{notes}</p>
+      <div className="mt-5 flex flex-wrap gap-2 border-t border-bronze/18 pt-4">
+        <Button
+          icon={<Pencil aria-hidden="true" size={14} strokeWidth={1.9} />}
+          onClick={() => onEditMaterial(allocation)}
+          size="sm"
+          variant="ghost"
+        >
+          Edit Link
+        </Button>
+        <Button
+          icon={<Trash2 aria-hidden="true" size={14} strokeWidth={1.9} />}
+          onClick={() => onUnlinkMaterial(allocation)}
+          size="sm"
+          variant="ghost"
+        >
+          Unlink
+        </Button>
+      </div>
     </article>
+  );
+}
+
+function UnlinkMaterialDialog({
+  linkedMaterial,
+  onCancel,
+  onConfirm,
+}: {
+  linkedMaterial: LinkedMaterial;
+  onCancel: () => void;
+  onConfirm: () => void;
+}) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-midnight/82 px-4 py-5 backdrop-blur-xl sm:items-center">
+      <section className="w-full max-w-lg rounded-3xl border border-ember/40 bg-[linear-gradient(135deg,rgba(61,43,31,0.94),rgba(10,10,10,0.98),rgba(27,58,99,0.36))] p-5 shadow-[0_28px_90px_rgba(0,0,0,0.46)] sm:p-6">
+        <p className="text-xs font-medium uppercase tracking-[0.16em] text-ember">
+          Unlink Material
+        </p>
+        <h2 className="mt-3 text-2xl font-semibold text-stardust">
+          Unlink {linkedMaterial.materialName}?
+        </h2>
+        <p className="mt-3 text-sm leading-6 text-stardust/64">
+          This removes the fabric relationship from this project. The fabric
+          record remains in the vault.
+        </p>
+        <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+          <Button onClick={onCancel} variant="ghost">
+            Cancel
+          </Button>
+          <Button onClick={onConfirm} variant="primary">
+            Unlink Fabric
+          </Button>
+        </div>
+      </section>
+    </div>
   );
 }
 

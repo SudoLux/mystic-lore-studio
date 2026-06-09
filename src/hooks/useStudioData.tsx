@@ -8,10 +8,12 @@ import {
 } from 'react';
 import {
   createFabricInData,
+  createLinkedMaterialInData,
   createNoteInData,
   createProjectInData,
   createTaskInData,
   deleteFabricInData,
+  deleteLinkedMaterialInData,
   deleteNoteInData,
   deleteProjectInData,
   deleteTaskInData,
@@ -22,6 +24,7 @@ import {
   resetStudioData,
   saveStudioData,
   updateFabricInData,
+  updateLinkedMaterialInData,
   updateNoteInData,
   updateProjectInData,
   updateProjectPhaseInData,
@@ -33,6 +36,7 @@ import {
 } from '../lib/studioStorage';
 import type {
   Fabric,
+  LinkedMaterial,
   ProjectPhase,
   StudioNote,
   StudioTask,
@@ -41,11 +45,13 @@ import type {
 
 type StudioDataContextValue = {
   createFabric: (fabric: Fabric) => void;
+  createLinkedMaterial: (linkedMaterial: LinkedMaterial) => void;
   createNote: (note: StudioNote) => void;
   createProject: (project: StoredProject) => void;
   createTask: (task: StudioTask) => void;
   data: StudioDataView;
   deleteFabric: (fabricId: string) => void;
+  deleteLinkedMaterial: (linkedMaterialId: string) => void;
   deleteNote: (noteId: string) => void;
   deleteProject: (projectId: string) => void;
   deleteTask: (taskId: string) => void;
@@ -55,6 +61,7 @@ type StudioDataContextValue = {
   resetData: () => void;
   saveData: (nextData: StudioData) => void;
   updateFabric: (fabric: Fabric) => void;
+  updateLinkedMaterial: (linkedMaterial: LinkedMaterial) => void;
   updateNote: (note: StudioNote) => void;
   updateProject: (project: StoredProject) => void;
   updateProjectPhase: (projectId: string, phase: ProjectPhase) => void;
@@ -101,6 +108,14 @@ export function StudioDataProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
+  const createLinkedMaterial = useCallback((linkedMaterial: LinkedMaterial) => {
+    setRawData((current) => {
+      const nextData = createLinkedMaterialInData(current, linkedMaterial);
+      saveStudioData(nextData);
+      return nextData;
+    });
+  }, []);
+
   const createTask = useCallback((task: StudioTask) => {
     setRawData((current) => {
       const nextData = createTaskInData(current, task);
@@ -133,6 +148,14 @@ export function StudioDataProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
+  const updateLinkedMaterial = useCallback((linkedMaterial: LinkedMaterial) => {
+    setRawData((current) => {
+      const nextData = updateLinkedMaterialInData(current, linkedMaterial);
+      saveStudioData(nextData);
+      return nextData;
+    });
+  }, []);
+
   const updateTask = useCallback((task: StudioTask) => {
     setRawData((current) => {
       const nextData = updateTaskInData(current, task);
@@ -152,6 +175,14 @@ export function StudioDataProvider({ children }: { children: ReactNode }) {
   const deleteProject = useCallback((projectId: string) => {
     setRawData((current) => {
       const nextData = deleteProjectInData(current, projectId);
+      saveStudioData(nextData);
+      return nextData;
+    });
+  }, []);
+
+  const deleteLinkedMaterial = useCallback((linkedMaterialId: string) => {
+    setRawData((current) => {
+      const nextData = deleteLinkedMaterialInData(current, linkedMaterialId);
       saveStudioData(nextData);
       return nextData;
     });
@@ -203,11 +234,13 @@ export function StudioDataProvider({ children }: { children: ReactNode }) {
   const value = useMemo<StudioDataContextValue>(
     () => ({
       createFabric,
+      createLinkedMaterial,
       createNote,
       createProject,
       createTask,
       data: hydrateStudioData(rawData),
       deleteFabric,
+      deleteLinkedMaterial,
       deleteNote,
       deleteProject,
       deleteTask,
@@ -217,6 +250,7 @@ export function StudioDataProvider({ children }: { children: ReactNode }) {
       resetData,
       saveData,
       updateFabric,
+      updateLinkedMaterial,
       updateNote,
       updateProject,
       updateProjectPhase,
@@ -225,10 +259,12 @@ export function StudioDataProvider({ children }: { children: ReactNode }) {
     }),
     [
       createFabric,
+      createLinkedMaterial,
       createNote,
       createProject,
       createTask,
       deleteFabric,
+      deleteLinkedMaterial,
       deleteNote,
       deleteProject,
       deleteTask,
@@ -238,6 +274,7 @@ export function StudioDataProvider({ children }: { children: ReactNode }) {
       resetData,
       saveData,
       updateFabric,
+      updateLinkedMaterial,
       updateNote,
       updateProject,
       updateProjectPhase,
