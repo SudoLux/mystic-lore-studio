@@ -148,6 +148,16 @@ export type LookbookFieldItem = {
   label: string;
   value: string;
 };
+export type LocalImageAsset = {
+  dataUrl: string;
+  height?: number;
+  id: string;
+  mimeType: string;
+  name: string;
+  size: number;
+  updatedAt: string;
+  width?: number;
+};
 
 export type LinkedMaterial = {
   id: string;
@@ -191,6 +201,7 @@ export type LookbookPage = {
   designNotes?: string[];
   displaySpecs?: LookbookFieldItem[];
   garmentStory?: string;
+  heroImage?: LocalImageAsset;
   id: string;
   materialNotes?: string[];
   projectId: string;
@@ -220,6 +231,7 @@ export type Fabric = {
   stretch: FabricStretch;
   opacity: FabricOpacity;
   handFeel: string;
+  image?: LocalImageAsset;
   texture: string;
   structure: string;
   widthInches: number;
@@ -262,6 +274,8 @@ export type ApparelProject = {
   keyFeatures: string[];
   colorStory: string;
   generalNotes: string;
+  galleryImages?: LocalImageAsset[];
+  heroImage?: LocalImageAsset;
   tags: string[];
   startDate: string;
   targetDate?: string;
