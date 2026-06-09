@@ -41,6 +41,7 @@ import { TaskFormModal } from '../components/tasks/TaskFormModal';
 import { Badge } from '../components/shared/Badge';
 import { Button } from '../components/shared/Button';
 import { Card } from '../components/shared/Card';
+import { LocalImageUploader } from '../components/shared/LocalImageUploader';
 import { PageHeader } from '../components/shared/PageHeader';
 import { useStudioData } from '../hooks/useStudioData';
 import { cn } from '../lib/classes';
@@ -107,6 +108,7 @@ export function ProjectDetailPage({
     deleteTask,
     updateLinkedMaterial,
     updateNote,
+    updateProject,
     updateTask,
     updateTaskStatus,
     saveLookbookPage,
@@ -162,6 +164,7 @@ export function ProjectDetailPage({
         onBack={onBack}
         onDeleteProject={() => onDeleteProject(project)}
         onEditProject={() => onEditProject(project)}
+        onUpdateProject={updateProject}
         project={project}
       />
 
@@ -239,6 +242,7 @@ function ProjectHero({
   onBack,
   onDeleteProject,
   onEditProject,
+  onUpdateProject,
   project,
 }: {
   difficulty: string;
@@ -246,8 +250,11 @@ function ProjectHero({
   onBack: () => void;
   onDeleteProject: () => void;
   onEditProject: () => void;
+  onUpdateProject: (project: ApparelProject) => void;
   project: ApparelProject;
 }) {
+  const galleryImages = project.galleryImages ?? [];
+
   return (
     <Card className="overflow-hidden p-0" elevated>
       <div className="grid min-h-[26rem] lg:grid-cols-[1.08fr_0.92fr]">
@@ -302,11 +309,20 @@ function ProjectHero({
         </div>
 
         <div className="relative min-h-[21rem] overflow-hidden border-t border-bronze/20 bg-midnight/40 lg:border-l lg:border-t-0">
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_22%_18%,rgba(200,155,60,0.38),transparent_28%),radial-gradient(circle_at_82%_12%,rgba(45,92,107,0.42),transparent_32%),radial-gradient(circle_at_55%_82%,rgba(237,227,207,0.16),transparent_30%),linear-gradient(145deg,rgba(27,58,99,0.84),rgba(10,10,10,0.76),rgba(61,43,31,0.86))]" />
+          {project.heroImage ? (
+            <img
+              alt={project.heroImage.name}
+              className="absolute inset-0 h-full w-full object-cover"
+              src={project.heroImage.dataUrl}
+            />
+          ) : (
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_22%_18%,rgba(200,155,60,0.38),transparent_28%),radial-gradient(circle_at_82%_12%,rgba(45,92,107,0.42),transparent_32%),radial-gradient(circle_at_55%_82%,rgba(237,227,207,0.16),transparent_30%),linear-gradient(145deg,rgba(27,58,99,0.84),rgba(10,10,10,0.76),rgba(61,43,31,0.86))]" />
+          )}
+          <div className="absolute inset-0 bg-midnight/30" />
           <div className="absolute inset-6 rounded-[2rem] border border-stardust/12 bg-midnight/18 shadow-[inset_0_0_90px_rgba(237,227,207,0.06)]" />
           <div className="relative z-10 flex h-full min-h-[21rem] flex-col justify-between p-6">
             <div className="flex items-center justify-between gap-3">
-              <Badge variant="ember">Gradient Visual</Badge>
+                <Badge variant="ember">Gradient Visual</Badge>
               <span className="rounded-full border border-stardust/15 bg-midnight/42 px-3 py-1 text-xs text-stardust/66">
                 {formatDate(project.startDate)}
               </span>
@@ -341,6 +357,50 @@ function ProjectHero({
             </div>
           </div>
         </div>
+      </div>
+      <div className="grid gap-4 border-t border-bronze/20 p-5 sm:p-7 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)] lg:p-8">
+        <LocalImageUploader
+          description="Saved locally as a compressed data URL. The gradient remains when no image is saved."
+          label="Project Hero Image"
+          onRemove={() => onUpdateProject({ ...project, heroImage: undefined })}
+          onSave={(image) => onUpdateProject({ ...project, heroImage: image })}
+          value={project.heroImage}
+        />
+        <section className="rounded-3xl border border-bronze/24 bg-midnight/30 p-4">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+            <div>
+              <Badge variant="bronze">Project Gallery</Badge>
+              <p className="mt-2 text-sm leading-6 text-stardust/58">
+                Add up to three supporting images for construction, fit, or detail
+                reference.
+              </p>
+            </div>
+          </div>
+          <div className="mt-4 grid gap-3 md:grid-cols-3">
+            {[0, 1, 2].map((index) => (
+              <LocalImageUploader
+                compact
+                key={index}
+                label={`Gallery ${index + 1}`}
+                onRemove={() =>
+                  onUpdateProject({
+                    ...project,
+                    galleryImages: galleryImages.filter((_, itemIndex) => itemIndex !== index),
+                  })
+                }
+                onSave={(image) => {
+                  const nextImages = [...galleryImages];
+                  nextImages[index] = image;
+                  onUpdateProject({
+                    ...project,
+                    galleryImages: nextImages.filter(Boolean),
+                  });
+                }}
+                value={galleryImages[index]}
+              />
+            ))}
+          </div>
+        </section>
       </div>
     </Card>
   );
@@ -1641,6 +1701,14 @@ function LookbookTab({
   }, [lookbookPage?.id, lookbookPage?.template, project.id]);
 
   const preview = buildLookbookPreview(project, selectedTemplate, lookbookPage);
+  const saveLookbookImage = (image: LookbookPage['heroImage'] | undefined) => {
+    const baseValues = lookbookPageToFormValues(project, lookbookPage, selectedTemplate);
+
+    saveLookbookPage({
+      ...formValuesToLookbookPage(baseValues, project, lookbookPage),
+      heroImage: image,
+    });
+  };
 
   return (
     <div className="space-y-4">
@@ -1724,7 +1792,16 @@ function LookbookTab({
           </div>
 
           <div className="relative min-h-[24rem] overflow-hidden border-t border-bronze/20 lg:border-l lg:border-t-0">
-            <div className={cn('absolute inset-0', preview.visualClassName)} />
+            {preview.heroImage ? (
+              <img
+                alt={preview.heroImage.name}
+                className="absolute inset-0 h-full w-full object-cover"
+                src={preview.heroImage.dataUrl}
+              />
+            ) : (
+              <div className={cn('absolute inset-0', preview.visualClassName)} />
+            )}
+            <div className="absolute inset-0 bg-midnight/25" />
             <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(237,227,207,0.07)_1px,transparent_1px),linear-gradient(0deg,rgba(237,227,207,0.055)_1px,transparent_1px)] [background-size:22px_22px]" />
             <div className="relative z-10 flex h-full min-h-[24rem] flex-col justify-between p-5 sm:p-7">
               <div className="flex items-center justify-between gap-3">
@@ -1759,6 +1836,14 @@ function LookbookTab({
 
         <div className="grid gap-5 border-t border-bronze/20 p-5 sm:p-7 lg:grid-cols-[minmax(0,1fr)_minmax(20rem,0.62fr)] lg:p-8">
           <div className="space-y-5">
+            <LocalImageUploader
+              description="Optional lookbook-specific hero visual. The template gradient remains when no image is saved."
+              label="Lookbook Hero Visual"
+              onRemove={() => saveLookbookImage(undefined)}
+              onSave={saveLookbookImage}
+              value={preview.heroImage}
+            />
+
             <LookbookSection
               icon={<BookOpen aria-hidden="true" size={18} strokeWidth={1.9} />}
               title="Garment Story"
@@ -2243,6 +2328,7 @@ function buildLookbookPreview(
       getTemplateGarmentStory(project, preferredPage?.body, template),
     headline,
     heroCaption: preferredPage?.layoutHint || project.silhouette,
+    heroImage: preferredPage?.heroImage,
     materialNotes,
     stylingNotes: preferredPage?.stylingNotes?.length
       ? preferredPage.stylingNotes

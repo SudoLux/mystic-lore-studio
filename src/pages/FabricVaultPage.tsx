@@ -20,6 +20,7 @@ import {
 import { Badge } from '../components/shared/Badge';
 import { Button } from '../components/shared/Button';
 import { Card } from '../components/shared/Card';
+import { LocalImageUploader } from '../components/shared/LocalImageUploader';
 import { PageHeader } from '../components/shared/PageHeader';
 import { useStudioData } from '../hooks/useStudioData';
 import { cn } from '../lib/classes';
@@ -351,6 +352,16 @@ function FabricCard({
         )}
       >
         <div className="absolute inset-0 opacity-35 [background-image:linear-gradient(90deg,rgba(237,227,207,0.08)_1px,transparent_1px),linear-gradient(0deg,rgba(237,227,207,0.07)_1px,transparent_1px)] [background-size:18px_18px]" />
+        {fabric.image ? (
+          <>
+            <img
+              alt={fabric.image.name}
+              className="absolute inset-0 h-full w-full object-cover"
+              src={fabric.image.dataUrl}
+            />
+            <div className="absolute inset-0 bg-midnight/30" />
+          </>
+        ) : null}
         <div className="relative flex items-start justify-between gap-3">
           <Badge variant={fabric.archiveStatus === 'Archived' ? 'bronze' : 'teal'}>
             {fabric.archiveStatus}
@@ -522,6 +533,16 @@ function FabricDetailPage({
               getFabricVisualClass(fabric),
             )}
           >
+            {fabric.image ? (
+              <>
+                <img
+                  alt={fabric.image.name}
+                  className="absolute inset-0 h-full w-full object-cover"
+                  src={fabric.image.dataUrl}
+                />
+                <div className="absolute inset-0 bg-midnight/34" />
+              </>
+            ) : null}
             <div className="absolute inset-0 opacity-35 [background-image:linear-gradient(90deg,rgba(237,227,207,0.08)_1px,transparent_1px),linear-gradient(0deg,rgba(237,227,207,0.07)_1px,transparent_1px)] [background-size:18px_18px]" />
             <div className="relative">
               <Button
@@ -686,6 +707,14 @@ function FabricDetailPage({
 
       <div className="grid gap-5 xl:grid-cols-[minmax(0,1.05fr)_minmax(20rem,0.65fr)]">
         <div className="space-y-5">
+          <LocalImageUploader
+            description="Saved locally as a compressed data URL for this fabric record."
+            label="Fabric Image"
+            onRemove={() => onUpdateFabric({ ...fabric, image: undefined })}
+            onSave={(image) => onUpdateFabric({ ...fabric, image })}
+            value={fabric.image}
+          />
+
           <DetailSection
             icon={<Package aria-hidden="true" size={18} strokeWidth={1.9} />}
             title="Material Specifications"

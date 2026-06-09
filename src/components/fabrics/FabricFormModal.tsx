@@ -591,6 +591,7 @@ function formValuesToFabric(
     drape: values.drape,
     handFeel: values.handFeel.trim(),
     id: existingFabric?.id ?? createFabricId(safeName),
+    image: existingFabric?.image,
     loreNote: values.loreNote.trim(),
     moodTags,
     name: safeName,
