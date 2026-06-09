@@ -6,6 +6,12 @@ import {
   demoProjects,
   demoTasks,
 } from '../data/seedData';
+import {
+  calculateFabricYardage,
+  getDerivedFabricArchiveStatus,
+  getDerivedFabricStatus,
+  getDerivedFabricStorageStatus,
+} from './yardage';
 import type {
   ApparelProject,
   Fabric,
@@ -261,29 +267,29 @@ export function createLinkedMaterialInData(
   data: StudioData,
   linkedMaterial: LinkedMaterial,
 ): StudioData {
-  return {
+  return syncFabricYardageState({
     ...data,
     linkedMaterials: [linkedMaterial, ...data.linkedMaterials],
-  };
+  });
 }
 
 export function updateLinkedMaterialInData(
   data: StudioData,
   linkedMaterial: LinkedMaterial,
 ): StudioData {
-  return {
+  return syncFabricYardageState({
     ...data,
     linkedMaterials: data.linkedMaterials.map((currentMaterial) =>
       currentMaterial.id === linkedMaterial.id ? linkedMaterial : currentMaterial,
     ),
-  };
+  });
 }
 
 export function deleteLinkedMaterialInData(
   data: StudioData,
   linkedMaterialId: string,
 ): StudioData {
-  return {
+  return syncFabricYardageState({
     ...data,
     linkedMaterials: data.linkedMaterials.filter(
       (material) => material.id !== linkedMaterialId,
@@ -293,7 +299,7 @@ export function deleteLinkedMaterialInData(
         ? { ...task, linkedMaterialId: undefined }
         : task,
     ),
-  };
+  });
 }
 
 export function updateTaskStatusInData(
@@ -360,6 +366,46 @@ function normalizeStoredProject(
     targetWearer:
       partialProject.targetWearer ?? seedProject?.targetWearer ?? '',
   };
+}
+
+function syncFabricYardageState(data: StudioData): StudioData {
+  return {
+    ...data,
+    fabrics: data.fabrics.map((fabric) => {
+      const summary = calculateFabricYardage(
+        fabric,
+        data.linkedMaterials,
+        data.projects,
+      );
+      const archiveStatus = getDerivedFabricArchiveStatus(
+        fabric.archiveStatus,
+        summary,
+      );
+      const storageStatus = getDerivedFabricStorageStatus(
+        fabric.storageStatus,
+        summary,
+      );
+      const hasInventoryChange =
+        archiveStatus !== fabric.archiveStatus ||
+        storageStatus !== fabric.storageStatus ||
+        summary.reservedYards !== fabric.reservedYards ||
+        summary.usedYards !== fabric.usedYards;
+
+      return {
+        ...fabric,
+        archiveStatus,
+        reservedYards: summary.reservedYards,
+        status: getDerivedFabricStatus(summary, storageStatus),
+        storageStatus,
+        usedYards: summary.usedYards,
+        updatedAt: hasInventoryChange ? todayString() : fabric.updatedAt,
+      };
+    }),
+  };
+}
+
+function todayString() {
+  return new Date().toISOString().slice(0, 10);
 }
 
 function isStudioData(value: StudioData): value is StudioData {

@@ -10,9 +10,11 @@ import {
   type MaterialRole,
   type MaterialStatus,
 } from '../../types/studio';
+import { calculateFabricYardage } from '../../lib/yardage';
 
 type LinkedMaterialFormModalProps = {
   fabrics: Fabric[];
+  linkedMaterials: LinkedMaterial[];
   linkedMaterial?: LinkedMaterial;
   mode: 'create' | 'edit';
   onClose: () => void;
@@ -38,6 +40,7 @@ const textareaClassName =
 
 export function LinkedMaterialFormModal({
   fabrics,
+  linkedMaterials,
   linkedMaterial,
   mode,
   onClose,
@@ -50,10 +53,8 @@ export function LinkedMaterialFormModal({
       : getEmptyFormValues(fabrics),
   );
   const selectedFabric = fabrics.find((fabric) => fabric.id === values.fabricId);
-  const availableYards = selectedFabric
-    ? selectedFabric.totalYards -
-      selectedFabric.reservedYards -
-      selectedFabric.usedYards
+  const yardageSummary = selectedFabric
+    ? calculateFabricYardage(selectedFabric, linkedMaterials, [project])
     : undefined;
   const hasMissingLinkedFabric =
     Boolean(linkedMaterial?.fabricId) &&
@@ -69,11 +70,13 @@ export function LinkedMaterialFormModal({
           ]
         : []),
       ...fabrics.map((fabric) => ({
-        label: `${fabric.name} / ${formatNumber(getRemainingYards(fabric))} yd available`,
+        label: `${fabric.name} / ${formatNumber(
+          calculateFabricYardage(fabric, linkedMaterials, [project]).availableYards,
+        )} yd available`,
         value: fabric.id,
       })),
     ],
-    [fabrics, hasMissingLinkedFabric, linkedMaterial],
+    [fabrics, hasMissingLinkedFabric, linkedMaterial, linkedMaterials, project],
   );
 
   const updateValue = <Key extends keyof LinkedMaterialFormValues>(
@@ -143,9 +146,9 @@ export function LinkedMaterialFormModal({
               label="Fabric yardage available"
               onChange={() => undefined}
               value={
-                availableYards === undefined
+                yardageSummary === undefined
                   ? 'Unavailable'
-                  : `${formatNumber(availableYards)} yd`
+                  : `${formatNumber(yardageSummary.availableYards)} yd`
               }
             />
           </FormSection>
@@ -363,9 +366,6 @@ function createLinkedMaterialId(projectId: string, fabricName = 'material') {
   return `link-${slug || 'material'}-${Date.now().toString(36)}`;
 }
 
-function getRemainingYards(fabric: Fabric) {
-  return Math.max(0, fabric.totalYards - fabric.reservedYards - fabric.usedYards);
-}
 
 function parseNumber(value: string) {
   const parsed = Number(value);

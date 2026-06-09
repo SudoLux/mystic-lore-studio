@@ -38,6 +38,10 @@ import { PageHeader } from '../components/shared/PageHeader';
 import { useStudioData } from '../hooks/useStudioData';
 import { cn } from '../lib/classes';
 import {
+  calculateFabricYardage,
+  hasInsufficientYardage,
+} from '../lib/yardage';
+import {
   materialRoles,
   noteCategories,
   projectPhases,
@@ -84,7 +88,7 @@ export function ProjectDetailPage({
   projectId,
 }: ProjectDetailPageProps) {
   const {
-    data: { fabrics, projects },
+    data: { fabrics, linkedMaterials: allLinkedMaterials, projects },
     createLinkedMaterial,
     createNote,
     createTask,
@@ -118,7 +122,7 @@ export function ProjectDetailPage({
                 : undefined,
             }))
         : [],
-    [project],
+    [project, fabricById],
   );
 
   if (!project) {
@@ -185,9 +189,11 @@ export function ProjectDetailPage({
       {activeTab === 'materials' ? (
         <MaterialsTab
           createLinkedMaterial={createLinkedMaterial}
+          allLinkedMaterials={allLinkedMaterials}
           deleteLinkedMaterial={deleteLinkedMaterial}
           fabrics={fabrics}
           linkedMaterials={linkedMaterials}
+          projects={projects}
           project={project}
           updateLinkedMaterial={updateLinkedMaterial}
         />
@@ -465,17 +471,21 @@ function OverviewTab({ project }: { project: ApparelProject }) {
 }
 
 function MaterialsTab({
+  allLinkedMaterials,
   createLinkedMaterial,
   deleteLinkedMaterial,
   fabrics,
   linkedMaterials,
+  projects,
   project,
   updateLinkedMaterial,
 }: {
+  allLinkedMaterials: LinkedMaterial[];
   createLinkedMaterial: (linkedMaterial: LinkedMaterial) => void;
   deleteLinkedMaterial: (linkedMaterialId: string) => void;
   fabrics: Fabric[];
   linkedMaterials: LinkedMaterialRow[];
+  projects: ApparelProject[];
   project: ApparelProject;
   updateLinkedMaterial: (linkedMaterial: LinkedMaterial) => void;
 }) {
@@ -490,8 +500,36 @@ function MaterialsTab({
     }))
     .filter((group) => group.rows.length > 0);
   const warningCount = linkedMaterials.filter((item) =>
-    hasYardageWarning(item.allocation, item.fabric),
+    hasYardageWarning(item.allocation, item.fabric, allLinkedMaterials, projects),
   ).length;
+
+  const handleReserveYardage = (allocation: LinkedMaterial) => {
+    updateLinkedMaterial({
+      ...allocation,
+      reservedYards: allocation.neededYards,
+      status: 'Reserved',
+    });
+  };
+
+  const handleMarkCut = (allocation: LinkedMaterial) => {
+    updateLinkedMaterial({
+      ...allocation,
+      status: 'Cut',
+    });
+  };
+
+  const handleMarkUsed = (allocation: LinkedMaterial) => {
+    updateLinkedMaterial({
+      ...allocation,
+      reservedYards: 0,
+      status: 'Used',
+      usedYards: Math.max(
+        allocation.usedYards,
+        allocation.reservedYards,
+        allocation.neededYards,
+      ),
+    });
+  };
 
   return (
     <div className="space-y-4">
@@ -522,7 +560,13 @@ function MaterialsTab({
             >
               Add Material
             </Button>
-            <Button size="sm" variant="secondary">Reserve Yardage</Button>
+            <Button
+              onClick={() => setMaterialForm({ mode: 'create' })}
+              size="sm"
+              variant="secondary"
+            >
+              Reserve Yardage
+            </Button>
           </div>
         </div>
         {warningCount > 0 ? (
@@ -544,11 +588,16 @@ function MaterialsTab({
       {groups.map((group) => (
         <MaterialRoleGroup
           group={group}
+          allLinkedMaterials={allLinkedMaterials}
           key={group.role}
           onEditMaterial={(linkedMaterial) =>
             setMaterialForm({ linkedMaterial, mode: 'edit' })
           }
+          onMarkCut={handleMarkCut}
+          onMarkUsed={handleMarkUsed}
+          onReserveYardage={handleReserveYardage}
           onUnlinkMaterial={setUnlinkCandidate}
+          projects={projects}
         />
       ))}
       {groups.length === 0 ? (
@@ -565,6 +614,7 @@ function MaterialsTab({
       {materialForm ? (
         <LinkedMaterialFormModal
           fabrics={fabrics}
+          linkedMaterials={allLinkedMaterials}
           linkedMaterial={materialForm.linkedMaterial}
           mode={materialForm.mode}
           onClose={() => setMaterialForm(null)}
@@ -599,13 +649,23 @@ type LinkedMaterialFormState =
   | { linkedMaterial: LinkedMaterial; mode: 'edit' };
 
 function MaterialRoleGroup({
+  allLinkedMaterials,
   group,
   onEditMaterial,
+  onMarkCut,
+  onMarkUsed,
+  onReserveYardage,
   onUnlinkMaterial,
+  projects,
 }: {
+  allLinkedMaterials: LinkedMaterial[];
   group: { role: MaterialRole; rows: LinkedMaterialRow[] };
   onEditMaterial: (linkedMaterial: LinkedMaterial) => void;
+  onMarkCut: (linkedMaterial: LinkedMaterial) => void;
+  onMarkUsed: (linkedMaterial: LinkedMaterial) => void;
+  onReserveYardage: (linkedMaterial: LinkedMaterial) => void;
   onUnlinkMaterial: (linkedMaterial: LinkedMaterial) => void;
+  projects: ApparelProject[];
 }) {
   return (
     <Card>
@@ -623,9 +683,14 @@ function MaterialRoleGroup({
       <div className="grid gap-4 xl:grid-cols-2">
         {group.rows.map((row) => (
           <MaterialCard
+            allLinkedMaterials={allLinkedMaterials}
             key={row.allocation.id}
             onEditMaterial={onEditMaterial}
+            onMarkCut={onMarkCut}
+            onMarkUsed={onMarkUsed}
+            onReserveYardage={onReserveYardage}
             onUnlinkMaterial={onUnlinkMaterial}
+            projects={projects}
             row={row}
           />
         ))}
@@ -635,19 +700,29 @@ function MaterialRoleGroup({
 }
 
 function MaterialCard({
+  allLinkedMaterials,
   onEditMaterial,
+  onMarkCut,
+  onMarkUsed,
+  onReserveYardage,
   onUnlinkMaterial,
+  projects,
   row,
 }: {
+  allLinkedMaterials: LinkedMaterial[];
   onEditMaterial: (linkedMaterial: LinkedMaterial) => void;
+  onMarkCut: (linkedMaterial: LinkedMaterial) => void;
+  onMarkUsed: (linkedMaterial: LinkedMaterial) => void;
+  onReserveYardage: (linkedMaterial: LinkedMaterial) => void;
   onUnlinkMaterial: (linkedMaterial: LinkedMaterial) => void;
+  projects: ApparelProject[];
   row: LinkedMaterialRow;
 }) {
   const { allocation, fabric } = row;
-  const availableYards = fabric
-    ? fabric.totalYards - fabric.reservedYards - fabric.usedYards
+  const yardageSummary = fabric
+    ? calculateFabricYardage(fabric, allLinkedMaterials, projects)
     : undefined;
-  const hasWarning = hasYardageWarning(allocation, fabric);
+  const hasWarning = hasInsufficientYardage(allocation, yardageSummary);
   const displayName = fabric?.name ?? allocation.materialName;
   const notes = allocation.notes ?? fabric?.notes ?? 'No material notes yet.';
 
@@ -701,9 +776,9 @@ function MaterialCard({
         <MiniMetric
           label={fabric ? 'Available' : 'Available'}
           value={
-            availableYards === undefined
+            yardageSummary === undefined
               ? 'Not linked'
-              : formatYardage(availableYards)
+              : formatYardage(yardageSummary.availableYards)
           }
         />
       </div>
@@ -724,7 +799,39 @@ function MaterialCard({
       ) : null}
 
       <p className="mt-4 text-sm leading-6 text-stardust/62">{notes}</p>
+      {yardageSummary ? (
+        <div className="mt-4 rounded-2xl border border-bronze/18 bg-espresso/22 p-3 text-xs leading-5 text-stardust/54">
+          <span className="font-medium text-stardust/72">Calculation:</span>{' '}
+          {formatYardage(yardageSummary.totalYards)} total -{' '}
+          {formatYardage(yardageSummary.reservedYards)} reserved -{' '}
+          {formatYardage(yardageSummary.usedYards)} used ={' '}
+          <span className={hasWarning ? 'text-ember' : 'text-stardust/72'}>
+            {formatYardage(yardageSummary.availableYards)} available
+          </span>
+        </div>
+      ) : null}
       <div className="mt-5 flex flex-wrap gap-2 border-t border-bronze/18 pt-4">
+        <Button
+          onClick={() => onReserveYardage(allocation)}
+          size="sm"
+          variant="secondary"
+        >
+          Reserve Yardage
+        </Button>
+        <Button
+          onClick={() => onMarkCut(allocation)}
+          size="sm"
+          variant="secondary"
+        >
+          Mark as Cut
+        </Button>
+        <Button
+          onClick={() => onMarkUsed(allocation)}
+          size="sm"
+          variant="secondary"
+        >
+          Mark as Used
+        </Button>
         <Button
           icon={<Pencil aria-hidden="true" size={14} strokeWidth={1.9} />}
           onClick={() => onEditMaterial(allocation)}
@@ -1618,14 +1725,20 @@ function getFabricSwatch(fabric: Fabric) {
   return swatches[fabric.colorFamily] ?? 'linear-gradient(135deg,#C89B3C,#2D5C6B)';
 }
 
-function hasYardageWarning(allocation: LinkedMaterial, fabric?: Fabric) {
-  if (!fabric || allocation.neededYards <= 0) {
+function hasYardageWarning(
+  allocation: LinkedMaterial,
+  fabric: Fabric | undefined,
+  allLinkedMaterials: LinkedMaterial[],
+  projects: ApparelProject[],
+) {
+  if (!fabric) {
     return false;
   }
 
-  const availableYards = fabric.totalYards - fabric.reservedYards - fabric.usedYards;
-
-  return allocation.neededYards > availableYards;
+  return hasInsufficientYardage(
+    allocation,
+    calculateFabricYardage(fabric, allLinkedMaterials, projects),
+  );
 }
 
 function formatYardage(value: number) {
