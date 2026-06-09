@@ -28,6 +28,7 @@ import {
   Target,
   Trash2,
 } from 'lucide-react';
+import { NoteFormModal } from '../components/notes/NoteFormModal';
 import { TaskFormModal } from '../components/tasks/TaskFormModal';
 import { Badge } from '../components/shared/Badge';
 import { Button } from '../components/shared/Button';
@@ -83,8 +84,11 @@ export function ProjectDetailPage({
 }: ProjectDetailPageProps) {
   const {
     data: { fabrics, projects },
+    createNote,
     createTask,
+    deleteNote,
     deleteTask,
+    updateNote,
     updateTask,
     updateTaskStatus,
   } = useStudioData();
@@ -186,7 +190,14 @@ export function ProjectDetailPage({
           updateTaskStatus={updateTaskStatus}
         />
       ) : null}
-      {activeTab === 'notes' ? <NotesTab project={project} /> : null}
+      {activeTab === 'notes' ? (
+        <NotesTab
+          createNote={createNote}
+          deleteNote={deleteNote}
+          project={project}
+          updateNote={updateNote}
+        />
+      ) : null}
       {activeTab === 'lookbook' ? <LookbookTab project={project} /> : null}
     </section>
   );
@@ -1042,10 +1053,23 @@ const categoryStyles: Record<TaskCategory, string> = {
   Admin: 'border-stardust/24 bg-midnight/45 text-stardust/68',
 };
 
-function NotesTab({ project }: { project: ApparelProject }) {
+function NotesTab({
+  createNote,
+  deleteNote,
+  project,
+  updateNote,
+}: {
+  createNote: (note: StudioNote) => void;
+  deleteNote: (noteId: string) => void;
+  project: ApparelProject;
+  updateNote: (note: StudioNote) => void;
+}) {
   const [selectedCategory, setSelectedCategory] = useState<NoteCategory | 'All'>(
     'All',
   );
+  const [noteForm, setNoteForm] = useState<NoteFormState | null>(null);
+  const [deleteNoteCandidate, setDeleteNoteCandidate] =
+    useState<StudioNote | null>(null);
   const sortedNotes = [...project.notes].sort((a, b) =>
     b.createdAt.localeCompare(a.createdAt),
   );
@@ -1068,7 +1092,14 @@ function NotesTab({ project }: { project: ApparelProject }) {
               build history for this garment.
             </p>
           </div>
-          <Button size="sm" variant="primary">Add Note</Button>
+          <Button
+            icon={<Plus aria-hidden="true" size={16} strokeWidth={1.9} />}
+            onClick={() => setNoteForm({ mode: 'create' })}
+            size="sm"
+            variant="primary"
+          >
+            Add Note
+          </Button>
         </div>
         <div className="mt-5 flex gap-2 overflow-x-auto pb-1">
           {(['All', ...noteCategories] as Array<NoteCategory | 'All'>).map(
@@ -1113,7 +1144,14 @@ function NotesTab({ project }: { project: ApparelProject }) {
       {visibleNotes.length > 0 ? (
         <div className="grid gap-4 xl:grid-cols-2">
           {visibleNotes.map((note) => (
-            <NoteJournalCard key={note.id} note={note} />
+            <NoteJournalCard
+              key={note.id}
+              note={note}
+              onDeleteNote={setDeleteNoteCandidate}
+              onEditNote={(selectedNote) =>
+                setNoteForm({ mode: 'edit', note: selectedNote })
+              }
+            />
           ))}
         </div>
       ) : (
@@ -1122,15 +1160,55 @@ function NotesTab({ project }: { project: ApparelProject }) {
             No notes in this category
           </p>
           <p className="mt-2 text-sm text-stardust/60">
-            Choose another category or add a note when note creation is enabled.
+            Choose another category or add a note for this project journal.
           </p>
         </Card>
       )}
+      {noteForm ? (
+        <NoteFormModal
+          mode={noteForm.mode}
+          note={noteForm.note}
+          onClose={() => setNoteForm(null)}
+          onSubmit={(note) => {
+            if (noteForm.mode === 'create') {
+              createNote(note);
+            } else {
+              updateNote(note);
+            }
+
+            setSelectedCategory(note.category);
+            setNoteForm(null);
+          }}
+          project={project}
+        />
+      ) : null}
+      {deleteNoteCandidate ? (
+        <DeleteNoteDialog
+          note={deleteNoteCandidate}
+          onCancel={() => setDeleteNoteCandidate(null)}
+          onConfirm={() => {
+            deleteNote(deleteNoteCandidate.id);
+            setDeleteNoteCandidate(null);
+          }}
+        />
+      ) : null}
     </div>
   );
 }
 
-function NoteJournalCard({ note }: { note: StudioNote }) {
+type NoteFormState =
+  | { mode: 'create'; note?: undefined }
+  | { mode: 'edit'; note: StudioNote };
+
+function NoteJournalCard({
+  note,
+  onDeleteNote,
+  onEditNote,
+}: {
+  note: StudioNote;
+  onDeleteNote: (note: StudioNote) => void;
+  onEditNote: (note: StudioNote) => void;
+}) {
   return (
     <article className="group relative overflow-hidden rounded-3xl border border-bronze/25 bg-stardust/[0.055] p-5 text-stardust shadow-[0_20px_60px_rgba(0,0,0,0.18)] backdrop-blur-xl transition duration-300 hover:-translate-y-1 hover:border-ember/45 hover:bg-stardust/[0.075]">
       <div
@@ -1160,7 +1238,59 @@ function NoteJournalCard({ note }: { note: StudioNote }) {
           {noteCategoryCue[note.category]}
         </p>
       </div>
+      <div className="mt-5 flex flex-wrap gap-2 border-t border-bronze/18 pt-4">
+        <Button
+          icon={<Pencil aria-hidden="true" size={14} strokeWidth={1.9} />}
+          onClick={() => onEditNote(note)}
+          size="sm"
+          variant="ghost"
+        >
+          Edit
+        </Button>
+        <Button
+          icon={<Trash2 aria-hidden="true" size={14} strokeWidth={1.9} />}
+          onClick={() => onDeleteNote(note)}
+          size="sm"
+          variant="ghost"
+        >
+          Delete
+        </Button>
+      </div>
     </article>
+  );
+}
+
+function DeleteNoteDialog({
+  note,
+  onCancel,
+  onConfirm,
+}: {
+  note: StudioNote;
+  onCancel: () => void;
+  onConfirm: () => void;
+}) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-midnight/82 px-4 py-5 backdrop-blur-xl sm:items-center">
+      <section className="w-full max-w-lg rounded-3xl border border-ember/40 bg-[linear-gradient(135deg,rgba(61,43,31,0.94),rgba(10,10,10,0.98),rgba(27,58,99,0.36))] p-5 shadow-[0_28px_90px_rgba(0,0,0,0.46)] sm:p-6">
+        <p className="text-xs font-medium uppercase tracking-[0.16em] text-ember">
+          Delete Note
+        </p>
+        <h2 className="mt-3 text-2xl font-semibold text-stardust">
+          Delete {note.title}?
+        </h2>
+        <p className="mt-3 text-sm leading-6 text-stardust/64">
+          This removes the journal entry from this project and local studio data.
+        </p>
+        <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+          <Button onClick={onCancel} variant="ghost">
+            Cancel
+          </Button>
+          <Button onClick={onConfirm} variant="primary">
+            Delete Note
+          </Button>
+        </div>
+      </section>
+    </div>
   );
 }
 
