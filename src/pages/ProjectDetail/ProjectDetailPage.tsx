@@ -41,6 +41,7 @@ import { TaskFormModal } from '../../components/projects/TaskFormModal';
 import { Badge } from '../../components/shared/Badge';
 import { Button } from '../../components/shared/Button';
 import { Card } from '../../components/shared/Card';
+import { ImageSlot } from '../../components/shared/ImageSlot';
 import { LocalImageUploader } from '../../components/shared/LocalImageUploader';
 import { PageHeader } from '../../components/shared/PageHeader';
 import { useStudioData } from '../../hooks/useStudioData';
@@ -308,21 +309,23 @@ function ProjectHero({
           </div>
         </div>
 
-        <div className="relative min-h-[21rem] overflow-hidden border-t border-bronze/20 bg-midnight/40 lg:border-l lg:border-t-0">
-          {project.heroImage ? (
-            <img
-              alt={project.heroImage.name}
-              className="absolute inset-0 h-full w-full object-cover"
-              src={project.heroImage.dataUrl}
-            />
-          ) : (
-            <div className="absolute inset-0 bg-[radial-gradient(circle_at_22%_18%,rgba(200,155,60,0.38),transparent_28%),radial-gradient(circle_at_82%_12%,rgba(45,92,107,0.42),transparent_32%),radial-gradient(circle_at_55%_82%,rgba(237,227,207,0.16),transparent_30%),linear-gradient(145deg,rgba(27,58,99,0.84),rgba(10,10,10,0.76),rgba(61,43,31,0.86))]" />
-          )}
-          <div className="absolute inset-0 bg-midnight/30" />
+        <ImageSlot
+          actionClassName="right-5 top-5 bottom-auto"
+          aspectClassName=""
+          className="min-h-[21rem] rounded-none border-0 border-t border-bronze/20 bg-midnight/40 lg:border-l lg:border-t-0"
+          label="Project Hero"
+          onRemove={() => onUpdateProject({ ...project, heroImage: undefined })}
+          onSave={(image) => onUpdateProject({ ...project, heroImage: image })}
+          placeholderClassName="bg-[radial-gradient(circle_at_22%_18%,rgba(200,155,60,0.38),transparent_28%),radial-gradient(circle_at_82%_12%,rgba(45,92,107,0.42),transparent_32%),radial-gradient(circle_at_55%_82%,rgba(237,227,207,0.16),transparent_30%),linear-gradient(145deg,rgba(27,58,99,0.84),rgba(10,10,10,0.76),rgba(61,43,31,0.86))]"
+          placeholderText="Add a hero image."
+          value={project.heroImage}
+        >
           <div className="absolute inset-6 rounded-[2rem] border border-stardust/12 bg-midnight/18 shadow-[inset_0_0_90px_rgba(237,227,207,0.06)]" />
-          <div className="relative z-10 flex h-full min-h-[21rem] flex-col justify-between p-6">
-            <div className="flex items-center justify-between gap-3">
-                <Badge variant="ember">Gradient Visual</Badge>
+          <div className="relative flex h-full min-h-[21rem] flex-col justify-between p-6">
+            <div className="flex items-center justify-between gap-3 pr-36">
+              <Badge variant="ember">
+                {project.heroImage ? 'Hero Image' : 'Gradient Visual'}
+              </Badge>
               <span className="rounded-full border border-stardust/15 bg-midnight/42 px-3 py-1 text-xs text-stardust/66">
                 {formatDate(project.startDate)}
               </span>
@@ -356,16 +359,9 @@ function ProjectHero({
               </div>
             </div>
           </div>
-        </div>
+        </ImageSlot>
       </div>
-      <div className="grid gap-4 border-t border-bronze/20 p-5 sm:p-7 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)] lg:p-8">
-        <LocalImageUploader
-          description="Saved locally as a compressed data URL. The gradient remains when no image is saved."
-          label="Project Hero Image"
-          onRemove={() => onUpdateProject({ ...project, heroImage: undefined })}
-          onSave={(image) => onUpdateProject({ ...project, heroImage: image })}
-          value={project.heroImage}
-        />
+      <div className="border-t border-bronze/20 p-5 sm:p-7 lg:p-8">
         <section className="rounded-3xl border border-bronze/28 bg-[linear-gradient(145deg,rgba(10,10,10,0.42),rgba(61,43,31,0.18))] p-4 shadow-[inset_0_1px_0_rgba(237,227,207,0.035)]">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
             <div>
@@ -1791,21 +1787,23 @@ function LookbookTab({
             </div>
           </div>
 
-          <div className="relative min-h-[24rem] overflow-hidden border-t border-bronze/20 lg:border-l lg:border-t-0">
-            {preview.heroImage ? (
-              <img
-                alt={preview.heroImage.name}
-                className="absolute inset-0 h-full w-full object-cover"
-                src={preview.heroImage.dataUrl}
-              />
-            ) : (
-              <div className={cn('absolute inset-0', preview.visualClassName)} />
-            )}
-            <div className="absolute inset-0 bg-midnight/25" />
-            <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(237,227,207,0.07)_1px,transparent_1px),linear-gradient(0deg,rgba(237,227,207,0.055)_1px,transparent_1px)] [background-size:22px_22px]" />
-            <div className="relative z-10 flex h-full min-h-[24rem] flex-col justify-between p-5 sm:p-7">
-              <div className="flex items-center justify-between gap-3">
-                <Badge variant="teal">Gradient Placeholder</Badge>
+          <ImageSlot
+            actionClassName="right-5 top-5 bottom-auto"
+            aspectClassName=""
+            className="min-h-[24rem] rounded-none border-0 border-t border-bronze/20 lg:border-l lg:border-t-0"
+            label="Lookbook Hero"
+            onRemove={() => saveLookbookImage(undefined)}
+            onSave={saveLookbookImage}
+            placeholderClassName={preview.visualClassName}
+            placeholderText="Add a lookbook hero visual."
+            value={preview.heroImage}
+          >
+            <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(90deg,rgba(237,227,207,0.07)_1px,transparent_1px),linear-gradient(0deg,rgba(237,227,207,0.055)_1px,transparent_1px)] [background-size:22px_22px]" />
+            <div className="relative flex h-full min-h-[24rem] flex-col justify-between p-5 sm:p-7">
+              <div className="flex items-center justify-between gap-3 pr-36">
+                <Badge variant="teal">
+                  {preview.heroImage ? 'Lookbook Visual' : 'Gradient Placeholder'}
+                </Badge>
                 <span className="rounded-full border border-stardust/15 bg-midnight/42 px-3 py-1 text-xs text-stardust/68">
                   {project.targetDate ? formatDate(project.targetDate) : 'Undated'}
                 </span>
@@ -1831,19 +1829,11 @@ function LookbookTab({
                 </p>
               </div>
             </div>
-          </div>
+          </ImageSlot>
         </div>
 
         <div className="grid gap-5 border-t border-bronze/20 p-5 sm:p-7 lg:grid-cols-[minmax(0,1fr)_minmax(20rem,0.62fr)] lg:p-8">
           <div className="space-y-5">
-            <LocalImageUploader
-              description="Optional lookbook-specific hero visual. The template gradient remains when no image is saved."
-              label="Lookbook Hero Visual"
-              onRemove={() => saveLookbookImage(undefined)}
-              onSave={saveLookbookImage}
-              value={preview.heroImage}
-            />
-
             <LookbookSection
               icon={<BookOpen aria-hidden="true" size={18} strokeWidth={1.9} />}
               title="Garment Story"
