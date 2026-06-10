@@ -1,4 +1,4 @@
-import { PlaceholderPage } from './PlaceholderPage';
+import { PlaceholderPage } from '../shared/PlaceholderPage';
 
 export function LookbooksPage() {
   return (

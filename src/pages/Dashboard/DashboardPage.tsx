@@ -12,14 +12,14 @@ import {
   Shirt,
   Sparkles,
 } from 'lucide-react';
-import { Badge } from '../components/shared/Badge';
-import { Button } from '../components/shared/Button';
-import { Card } from '../components/shared/Card';
-import { PageHeader } from '../components/shared/PageHeader';
-import { useStudioData } from '../hooks/useStudioData';
-import { LOW_YARDAGE_THRESHOLD, calculateFabricYardage } from '../lib/yardage';
-import { projectPhases, type ApparelProject } from '../types/studio';
-import type { PageId } from '../types/navigation';
+import { Badge } from '../../components/shared/Badge';
+import { Button } from '../../components/shared/Button';
+import { Card } from '../../components/shared/Card';
+import { PageHeader } from '../../components/shared/PageHeader';
+import { useStudioData } from '../../hooks/useStudioData';
+import { LOW_YARDAGE_THRESHOLD, calculateFabricYardage } from '../../lib/yardage';
+import { projectPhases, type ApparelProject } from '../../types/studio';
+import type { PageId } from '../../types/navigation';
 
 type DashboardPageProps = {
   onAddFabric: () => void;

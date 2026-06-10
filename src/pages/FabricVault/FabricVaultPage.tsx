@@ -17,20 +17,20 @@ import {
   Sparkles,
   Trash2,
 } from 'lucide-react';
-import { Badge } from '../components/shared/Badge';
-import { Button } from '../components/shared/Button';
-import { Card } from '../components/shared/Card';
-import { LocalImageUploader } from '../components/shared/LocalImageUploader';
-import { PageHeader } from '../components/shared/PageHeader';
-import { useStudioData } from '../hooks/useStudioData';
-import { cn } from '../lib/classes';
+import { Badge } from '../../components/shared/Badge';
+import { Button } from '../../components/shared/Button';
+import { Card } from '../../components/shared/Card';
+import { LocalImageUploader } from '../../components/shared/LocalImageUploader';
+import { PageHeader } from '../../components/shared/PageHeader';
+import { useStudioData } from '../../hooks/useStudioData';
+import { cn } from '../../lib/classes';
 import {
   LOW_YARDAGE_THRESHOLD,
   calculateFabricYardage,
   getDerivedFabricStatus,
   isLowYardage as hasLowAvailableYardage,
-} from '../lib/yardage';
-import type { ApparelProject, Fabric, LinkedMaterial } from '../types/studio';
+} from '../../lib/yardage';
+import type { ApparelProject, Fabric, LinkedMaterial } from '../../types/studio';
 
 type FabricVaultPageProps = {
   fabricId?: string;

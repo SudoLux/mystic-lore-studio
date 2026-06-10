@@ -7,12 +7,12 @@ import {
   Search,
   SlidersHorizontal,
 } from 'lucide-react';
-import { Badge } from '../components/shared/Badge';
-import { Button } from '../components/shared/Button';
-import { Card } from '../components/shared/Card';
-import { PageHeader } from '../components/shared/PageHeader';
-import { useStudioData } from '../hooks/useStudioData';
-import { cn } from '../lib/classes';
+import { Badge } from '../../components/shared/Badge';
+import { Button } from '../../components/shared/Button';
+import { Card } from '../../components/shared/Card';
+import { PageHeader } from '../../components/shared/PageHeader';
+import { useStudioData } from '../../hooks/useStudioData';
+import { cn } from '../../lib/classes';
 import {
   garmentTypes,
   projectPhases,
@@ -23,7 +23,7 @@ import {
   type ProjectPhase,
   type ProjectStatus,
   type TaskPriority,
-} from '../types/studio';
+} from '../../types/studio';
 
 type ProjectsPageProps = {
   onNewProject: () => void;
