@@ -532,6 +532,7 @@ function FabricDetailPage({
             aspectClassName=""
             className="min-h-80 rounded-none border-0 border-b border-bronze/20 lg:border-b-0 lg:border-r"
             label="Fabric Image"
+            labelClassName="left-auto right-5 top-5"
             onRemove={() => onUpdateFabric({ ...fabric, image: undefined })}
             onSave={(image) => onUpdateFabric({ ...fabric, image })}
             placeholderClassName={getFabricVisualClass(fabric)}
