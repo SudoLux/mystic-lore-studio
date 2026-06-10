@@ -6,12 +6,12 @@ import {
   ShieldCheck,
   Upload,
 } from 'lucide-react';
-import { Badge } from '../components/shared/Badge';
-import { Button } from '../components/shared/Button';
-import { Card } from '../components/shared/Card';
-import { PageHeader } from '../components/shared/PageHeader';
-import { useStudioData } from '../hooks/useStudioData';
-import type { ImportPreview } from '../lib/studioStorage';
+import { Badge } from '../../components/shared/Badge';
+import { Button } from '../../components/shared/Button';
+import { Card } from '../../components/shared/Card';
+import { PageHeader } from '../../components/shared/PageHeader';
+import { useStudioData } from '../../hooks/useStudioData';
+import type { ImportPreview } from '../../lib/studioStorage';
 
 type ImportCandidate = {
   fileName: string;

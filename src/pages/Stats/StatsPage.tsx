@@ -8,16 +8,16 @@ import {
   Package,
   Shirt,
 } from 'lucide-react';
-import { Badge } from '../components/shared/Badge';
-import { Card } from '../components/shared/Card';
-import { PageHeader } from '../components/shared/PageHeader';
-import { useStudioData } from '../hooks/useStudioData';
-import { cn } from '../lib/classes';
+import { Badge } from '../../components/shared/Badge';
+import { Card } from '../../components/shared/Card';
+import { PageHeader } from '../../components/shared/PageHeader';
+import { useStudioData } from '../../hooks/useStudioData';
+import { cn } from '../../lib/classes';
 import {
   LOW_YARDAGE_THRESHOLD,
   calculateFabricYardage,
   isLowYardage,
-} from '../lib/yardage';
+} from '../../lib/yardage';
 import {
   garmentTypes,
   projectPhases,
@@ -25,7 +25,7 @@ import {
   type ApparelProject,
   type Fabric,
   type StudioTask,
-} from '../types/studio';
+} from '../../types/studio';
 
 type CountRow = {
   label: string;

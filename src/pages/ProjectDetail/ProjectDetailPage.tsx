@@ -35,20 +35,20 @@ import {
   Trash2,
   X,
 } from 'lucide-react';
-import { LinkedMaterialFormModal } from '../components/materials/LinkedMaterialFormModal';
-import { NoteFormModal } from '../components/notes/NoteFormModal';
-import { TaskFormModal } from '../components/tasks/TaskFormModal';
-import { Badge } from '../components/shared/Badge';
-import { Button } from '../components/shared/Button';
-import { Card } from '../components/shared/Card';
-import { LocalImageUploader } from '../components/shared/LocalImageUploader';
-import { PageHeader } from '../components/shared/PageHeader';
-import { useStudioData } from '../hooks/useStudioData';
-import { cn } from '../lib/classes';
+import { LinkedMaterialFormModal } from '../../components/projects/LinkedMaterialFormModal';
+import { NoteFormModal } from '../../components/projects/NoteFormModal';
+import { TaskFormModal } from '../../components/projects/TaskFormModal';
+import { Badge } from '../../components/shared/Badge';
+import { Button } from '../../components/shared/Button';
+import { Card } from '../../components/shared/Card';
+import { LocalImageUploader } from '../../components/shared/LocalImageUploader';
+import { PageHeader } from '../../components/shared/PageHeader';
+import { useStudioData } from '../../hooks/useStudioData';
+import { cn } from '../../lib/classes';
 import {
   calculateFabricYardage,
   hasInsufficientYardage,
-} from '../lib/yardage';
+} from '../../lib/yardage';
 import {
   materialRoles,
   noteCategories,
@@ -68,7 +68,7 @@ import {
   type TaskCategory,
   type TaskPriority,
   type TaskStatus,
-} from '../types/studio';
+} from '../../types/studio';
 
 type ProjectDetailPageProps = {
   onBack: () => void;

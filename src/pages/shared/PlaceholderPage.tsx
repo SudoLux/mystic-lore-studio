@@ -1,6 +1,6 @@
-import { Badge } from '../components/shared/Badge';
-import { Card } from '../components/shared/Card';
-import { PageHeader } from '../components/shared/PageHeader';
+import { Badge } from '../../components/shared/Badge';
+import { Card } from '../../components/shared/Card';
+import { PageHeader } from '../../components/shared/PageHeader';
 
 type Metric = {
   label: string;

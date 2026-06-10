@@ -16,12 +16,12 @@ import {
   Layers3,
   Shirt,
 } from 'lucide-react';
-import { Badge } from '../components/shared/Badge';
-import { Card } from '../components/shared/Card';
-import { PageHeader } from '../components/shared/PageHeader';
-import { useStudioData } from '../hooks/useStudioData';
-import { cn } from '../lib/classes';
-import { projectPhases, type ApparelProject, type ProjectPhase } from '../types/studio';
+import { Badge } from '../../components/shared/Badge';
+import { Card } from '../../components/shared/Card';
+import { PageHeader } from '../../components/shared/PageHeader';
+import { useStudioData } from '../../hooks/useStudioData';
+import { cn } from '../../lib/classes';
+import { projectPhases, type ApparelProject, type ProjectPhase } from '../../types/studio';
 
 export function KanbanPage() {
   const {
