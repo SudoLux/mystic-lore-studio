@@ -1,4 +1,4 @@
-import { ImagePlus, Trash2, UploadCloud } from 'lucide-react';
+import { Check, ImagePlus, Trash2, UploadCloud, X } from 'lucide-react';
 import { useRef, useState } from 'react';
 import { cn } from '../../lib/classes';
 import { createLocalImageAsset, type ImageProcessingError } from '../../lib/localImages';
@@ -27,6 +27,7 @@ export function LocalImageUploader({
   const [pendingImage, setPendingImage] = useState<LocalImageAsset | null>(null);
   const [error, setError] = useState<string | null>(null);
   const visibleImage = pendingImage ?? value;
+  const uploadLabel = value ? 'Replace' : compact ? 'Add Image' : 'Upload Image';
 
   const handleFileChange = async (file?: File) => {
     setError(null);
@@ -51,10 +52,15 @@ export function LocalImageUploader({
     <section
       className={cn(
         'rounded-3xl border border-bronze/28 bg-[linear-gradient(145deg,rgba(10,10,10,0.44),rgba(61,43,31,0.16))] p-4 shadow-[inset_0_1px_0_rgba(237,227,207,0.035)]',
-        compact ? 'space-y-3' : 'space-y-4',
+        compact ? 'space-y-3 rounded-2xl p-3' : 'space-y-4',
       )}
     >
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+      <div
+        className={cn(
+          'flex flex-col gap-3',
+          compact ? 'items-start' : 'sm:flex-row sm:items-start sm:justify-between',
+        )}
+      >
         <div>
           <div className="flex flex-wrap items-center gap-2">
             <Badge variant="bronze">{label}</Badge>
@@ -75,20 +81,24 @@ export function LocalImageUploader({
           ref={inputRef}
           type="file"
         />
-        <Button
-          icon={<UploadCloud aria-hidden="true" size={15} strokeWidth={1.9} />}
-          onClick={() => inputRef.current?.click()}
-          size="sm"
-          variant="secondary"
-        >
-          {value ? 'Replace Image' : 'Upload Image'}
-        </Button>
+        {!compact ? (
+          <Button
+            icon={<UploadCloud aria-hidden="true" size={15} strokeWidth={1.9} />}
+            onClick={() => inputRef.current?.click()}
+            size="sm"
+            variant="secondary"
+          >
+            {uploadLabel}
+          </Button>
+        ) : null}
       </div>
 
       <div
         className={cn(
-          'relative overflow-hidden rounded-2xl border border-bronze/20 bg-espresso/35',
-          compact ? 'aspect-[16/9]' : 'aspect-[5/3]',
+          'relative overflow-hidden rounded-2xl border bg-espresso/35',
+          compact
+            ? 'aspect-[16/9] border-bronze/24'
+            : 'aspect-[5/3] border-bronze/20',
         )}
       >
         {visibleImage ? (
@@ -98,15 +108,27 @@ export function LocalImageUploader({
             src={visibleImage.dataUrl}
           />
         ) : (
-          <div className="flex h-full flex-col items-center justify-center gap-3 bg-[radial-gradient(circle_at_20%_10%,rgba(200,155,60,0.22),transparent_30%),linear-gradient(135deg,rgba(27,58,99,0.58),rgba(10,10,10,0.72),rgba(61,43,31,0.72))] p-5 text-center">
+          <div
+            className={cn(
+              'flex h-full flex-col items-center justify-center bg-[radial-gradient(circle_at_20%_10%,rgba(200,155,60,0.22),transparent_30%),linear-gradient(135deg,rgba(27,58,99,0.58),rgba(10,10,10,0.72),rgba(61,43,31,0.72))] text-center',
+              compact ? 'gap-2 p-4' : 'gap-3 p-5',
+            )}
+          >
             <ImagePlus
               aria-hidden="true"
               className="text-ember"
-              size={26}
+              size={compact ? 22 : 26}
               strokeWidth={1.8}
             />
-            <p className="text-sm leading-6 text-stardust/58">
-              Placeholder gradient shown until an image is saved.
+            <p
+              className={cn(
+                'leading-6 text-stardust/58',
+                compact ? 'text-xs' : 'text-sm',
+              )}
+            >
+              {compact
+                ? 'Add a reference image.'
+                : 'Placeholder gradient shown until an image is saved.'}
             </p>
           </div>
         )}
@@ -123,19 +145,50 @@ export function LocalImageUploader({
         </p>
       ) : null}
 
-      <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
+      <div
+        className={cn(
+          'flex gap-2',
+          compact ? 'flex-wrap items-center justify-end' : 'flex-col sm:flex-row sm:justify-end',
+        )}
+      >
+        {compact ? (
+          <Button
+            className="min-h-9 flex-1 rounded-xl border-bronze/35 bg-midnight/48 px-3 text-xs text-stardust hover:border-ember/45 hover:shadow-[0_10px_28px_rgba(200,155,60,0.1)] sm:flex-none"
+            icon={<UploadCloud aria-hidden="true" size={14} strokeWidth={1.9} />}
+            onClick={() => inputRef.current?.click()}
+            size="sm"
+            variant="secondary"
+          >
+            {uploadLabel}
+          </Button>
+        ) : null}
         {pendingImage ? (
           <>
             <Button
+              className={cn(
+                compact &&
+                  'min-h-9 flex-1 rounded-xl px-3 text-xs sm:flex-none',
+              )}
+              icon={compact ? <X aria-hidden="true" size={14} strokeWidth={1.9} /> : undefined}
               onClick={() => setPendingImage(null)}
               size="sm"
               type="button"
               variant="ghost"
             >
-              Cancel Preview
+              {compact ? 'Cancel' : 'Cancel Preview'}
             </Button>
             <Button
-              icon={<UploadCloud aria-hidden="true" size={15} strokeWidth={1.9} />}
+              className={cn(
+                compact &&
+                  'min-h-9 flex-1 rounded-xl px-3 text-xs sm:flex-none',
+              )}
+              icon={
+                compact ? (
+                  <Check aria-hidden="true" size={14} strokeWidth={1.9} />
+                ) : (
+                  <UploadCloud aria-hidden="true" size={15} strokeWidth={1.9} />
+                )
+              }
               onClick={() => {
                 onSave(pendingImage);
                 setPendingImage(null);
@@ -144,19 +197,23 @@ export function LocalImageUploader({
               type="button"
               variant="primary"
             >
-              Save Image
+              {compact ? 'Save' : 'Save Image'}
             </Button>
           </>
         ) : null}
         {value && !pendingImage ? (
           <Button
-            icon={<Trash2 aria-hidden="true" size={15} strokeWidth={1.9} />}
+            className={cn(
+              compact &&
+                'min-h-9 flex-1 rounded-xl border-bronze/30 bg-midnight/32 px-3 text-xs sm:flex-none',
+            )}
+            icon={<Trash2 aria-hidden="true" size={compact ? 14 : 15} strokeWidth={1.9} />}
             onClick={onRemove}
             size="sm"
             type="button"
             variant="ghost"
           >
-            Remove Image
+            {compact ? 'Remove' : 'Remove Image'}
           </Button>
         ) : null}
       </div>
