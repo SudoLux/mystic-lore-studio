@@ -11,6 +11,12 @@
   "categories": ["productivity", "design", "fashion"],
   "icons": [
     {
+      "src": "/icons/mystic-lore-logo.png",
+      "sizes": "500x500",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
       "src": "/icons/ml-studio-icon.svg",
       "sizes": "any",
       "type": "image/svg+xml",

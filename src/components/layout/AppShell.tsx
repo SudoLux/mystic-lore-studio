@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { BrandLockup } from './BrandLockup';
 import { MobileNav } from './MobileNav';
 import { Sidebar } from './Sidebar';
 import type { NavItem, PageId } from '../../types/navigation';
@@ -29,6 +30,12 @@ export function AppShell({
           />
           <main className="min-w-0 px-4 pb-28 pt-5 sm:px-6 sm:pt-7 lg:px-8 lg:pb-8 xl:px-10">
             <div className="mx-auto w-full max-w-[88rem]">
+              <div className="mb-4 rounded-3xl border border-bronze/24 bg-midnight/52 p-3 shadow-[0_16px_45px_rgba(0,0,0,0.22),inset_0_1px_0_rgba(237,227,207,0.035)] backdrop-blur-xl lg:hidden">
+                <BrandLockup
+                  size="mobile"
+                  subtitle="Apparel project studio"
+                />
+              </div>
               {globalSearch}
               {children}
             </div>
