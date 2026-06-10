@@ -347,9 +347,9 @@ function ProjectHero({
                   <span className="text-stardust/62">Project progress</span>
                   <span className="font-medium text-ember">{project.progress}%</span>
                 </div>
-                <div className="h-2 overflow-hidden rounded-full bg-stardust/12">
+                <div className="studio-progress-track">
                   <div
-                    className="h-full rounded-full bg-[linear-gradient(90deg,#C89B3C,#2D5C6B,#EDE3CF)]"
+                    className="studio-progress-fill"
                     style={{ width: `${project.progress}%` }}
                   />
                 </div>
@@ -366,7 +366,7 @@ function ProjectHero({
           onSave={(image) => onUpdateProject({ ...project, heroImage: image })}
           value={project.heroImage}
         />
-        <section className="rounded-3xl border border-bronze/24 bg-midnight/30 p-4">
+        <section className="rounded-3xl border border-bronze/28 bg-[linear-gradient(145deg,rgba(10,10,10,0.42),rgba(61,43,31,0.18))] p-4 shadow-[inset_0_1px_0_rgba(237,227,207,0.035)]">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
             <div>
               <Badge variant="bronze">Project Gallery</Badge>
@@ -431,16 +431,16 @@ function PhasePath({ currentPhase }: { currentPhase: ProjectPhase }) {
                 {index < projectPhases.length - 1 ? (
                   <span
                     className={cn(
-                      'absolute left-1/2 top-4 h-px w-full',
+                      'absolute left-1/2 top-4 h-px w-full transition duration-300',
                       isComplete
-                        ? 'bg-ember shadow-[0_0_14px_rgba(200,155,60,0.65)]'
+                        ? 'bg-[linear-gradient(90deg,#C89B3C,#EDE3CF)] shadow-[0_0_16px_rgba(200,155,60,0.58)]'
                         : 'bg-bronze/28',
                     )}
                   />
                 ) : null}
                 <span
                   className={cn(
-                    'relative z-10 flex h-8 w-8 items-center justify-center rounded-full border text-xs font-semibold transition duration-300',
+                    'relative z-10 flex h-8 w-8 items-center justify-center rounded-full border text-xs font-semibold shadow-[inset_0_1px_0_rgba(237,227,207,0.06)] transition duration-300',
                     isCurrent
                       ? 'border-ember bg-ember text-midnight shadow-[0_0_28px_rgba(200,155,60,0.5)]'
                       : isComplete
@@ -802,7 +802,7 @@ function MaterialCard({
   return (
     <article
       className={cn(
-        'rounded-3xl border bg-midnight/30 p-4 transition duration-300 hover:-translate-y-1 hover:bg-midnight/44',
+        'rounded-3xl border bg-[linear-gradient(145deg,rgba(10,10,10,0.44),rgba(61,43,31,0.16))] p-4 shadow-[inset_0_1px_0_rgba(237,227,207,0.035)] transition duration-300 hover:-translate-y-1 hover:bg-midnight/46',
         hasWarning
           ? 'border-ember/45 shadow-[0_18px_50px_rgba(200,155,60,0.1)]'
           : 'border-bronze/22 hover:border-ember/35',
@@ -1179,7 +1179,7 @@ function TaskBoardColumn({
   return (
     <section
       className={cn(
-        'flex w-[17.25rem] shrink-0 flex-col rounded-3xl border bg-stardust/[0.045] p-3 backdrop-blur-xl transition duration-300 sm:w-[20rem]',
+        'flex w-[17.25rem] shrink-0 flex-col rounded-3xl border bg-[linear-gradient(145deg,rgba(237,227,207,0.055),rgba(10,10,10,0.2))] p-3 shadow-[0_20px_70px_rgba(0,0,0,0.24),inset_0_1px_0_rgba(237,227,207,0.035)] backdrop-blur-xl transition duration-300 sm:w-[20rem]',
         isOver
           ? 'border-ember/60 bg-ember/10 shadow-[0_22px_70px_rgba(200,155,60,0.12)]'
           : 'border-bronze/24',
@@ -1247,7 +1247,7 @@ function TaskBoardCard({
   return (
     <article
       className={cn(
-        'touch-none rounded-2xl border border-bronze/25 bg-midnight/42 p-4 text-stardust shadow-[0_16px_45px_rgba(0,0,0,0.2)] transition duration-200 hover:-translate-y-1 hover:border-ember/45 hover:bg-midnight/58',
+        'touch-none rounded-2xl border border-bronze/28 bg-[linear-gradient(145deg,rgba(10,10,10,0.48),rgba(61,43,31,0.18))] p-4 text-stardust shadow-[0_16px_48px_rgba(0,0,0,0.24),inset_0_1px_0_rgba(237,227,207,0.035)] transition duration-200 hover:-translate-y-1 hover:border-ember/48 hover:bg-midnight/60',
         isDragging &&
           'z-30 scale-[1.02] border-ember/70 opacity-90 shadow-[0_24px_70px_rgba(200,155,60,0.16)]',
       )}
@@ -1551,7 +1551,7 @@ function NoteJournalCard({
   onEditNote: (note: StudioNote) => void;
 }) {
   return (
-    <article className="group relative overflow-hidden rounded-3xl border border-bronze/25 bg-stardust/[0.055] p-5 text-stardust shadow-[0_20px_60px_rgba(0,0,0,0.18)] backdrop-blur-xl transition duration-300 hover:-translate-y-1 hover:border-ember/45 hover:bg-stardust/[0.075]">
+    <article className="group relative overflow-hidden rounded-3xl border border-bronze/28 bg-[linear-gradient(145deg,rgba(237,227,207,0.068),rgba(10,10,10,0.22))] p-5 text-stardust shadow-[0_22px_70px_rgba(0,0,0,0.24),inset_0_1px_0_rgba(237,227,207,0.045)] backdrop-blur-xl transition duration-300 hover:-translate-y-1 hover:border-ember/48 hover:bg-stardust/[0.08]">
       <div
         className={cn(
           'absolute inset-x-0 top-0 h-1',
@@ -1761,7 +1761,7 @@ function LookbookTab({
 
       <section
         className={cn(
-          'overflow-hidden rounded-[2rem] border border-bronze/28 bg-stardust/[0.045] shadow-[0_28px_90px_rgba(0,0,0,0.26)]',
+          'overflow-hidden rounded-[2rem] border border-bronze/30 bg-[linear-gradient(145deg,rgba(237,227,207,0.06),rgba(10,10,10,0.2))] shadow-[0_30px_100px_rgba(0,0,0,0.32),inset_0_1px_0_rgba(237,227,207,0.045)]',
           lookbookTemplateShell[selectedTemplate],
         )}
       >
@@ -1988,7 +1988,7 @@ function LookbookSection({
   title: string;
 }) {
   return (
-    <section className="rounded-3xl border border-bronze/22 bg-midnight/28 p-5">
+    <section className="rounded-3xl border border-bronze/26 bg-[linear-gradient(145deg,rgba(10,10,10,0.4),rgba(61,43,31,0.14))] p-5 shadow-[inset_0_1px_0_rgba(237,227,207,0.035)]">
       <div className="mb-4 flex items-center gap-3">
         <span className="flex h-10 w-10 items-center justify-center rounded-2xl border border-bronze/25 bg-espresso/42 text-ember">
           {icon}
@@ -2199,7 +2199,7 @@ function LookbookFormSection({
   title: string;
 }) {
   return (
-    <section className="rounded-3xl border border-bronze/24 bg-stardust/[0.045] p-4 sm:p-5">
+    <section className="rounded-3xl border border-bronze/28 bg-[linear-gradient(145deg,rgba(237,227,207,0.06),rgba(10,10,10,0.18))] p-4 shadow-[inset_0_1px_0_rgba(237,227,207,0.035)] sm:p-5">
       <h3 className="text-lg font-semibold text-stardust">{title}</h3>
       <div className="mt-4 grid gap-4 md:grid-cols-2">{children}</div>
     </section>

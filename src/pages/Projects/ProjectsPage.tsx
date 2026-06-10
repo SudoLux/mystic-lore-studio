@@ -296,12 +296,12 @@ function ProjectGalleryCard({
 
   return (
     <button
-      className="studio-project-card group min-h-[31rem] overflow-hidden rounded-3xl border border-bronze/25 bg-stardust/[0.055] text-left text-stardust shadow-[0_24px_70px_rgba(0,0,0,0.22)] backdrop-blur-xl transition duration-300 hover:-translate-y-1.5 hover:border-ember/55 hover:bg-stardust/[0.075] hover:shadow-[0_28px_90px_rgba(200,155,60,0.12)]"
+      className="studio-project-card group min-h-[31rem] overflow-hidden rounded-3xl border border-bronze/28 bg-[linear-gradient(145deg,rgba(237,227,207,0.068),rgba(10,10,10,0.24))] text-left text-stardust shadow-[0_26px_80px_rgba(0,0,0,0.28),inset_0_1px_0_rgba(237,227,207,0.045)] backdrop-blur-xl transition duration-300 hover:-translate-y-1.5 hover:border-ember/60 hover:bg-stardust/[0.08] hover:shadow-[0_30px_96px_rgba(200,155,60,0.14),0_18px_70px_rgba(0,0,0,0.34)]"
       onClick={() => onOpenProject(project.id)}
       style={style}
       type="button"
     >
-      <div className="h-36 border-b border-bronze/20 bg-[radial-gradient(circle_at_20%_10%,rgba(200,155,60,0.34),transparent_30%),radial-gradient(circle_at_88%_18%,rgba(45,92,107,0.36),transparent_34%),linear-gradient(135deg,rgba(27,58,99,0.74),rgba(10,10,10,0.72),rgba(61,43,31,0.82))] p-4">
+      <div className="h-40 border-b border-bronze/24 bg-[radial-gradient(circle_at_20%_10%,rgba(200,155,60,0.38),transparent_30%),radial-gradient(circle_at_88%_18%,rgba(45,92,107,0.38),transparent_34%),linear-gradient(135deg,rgba(27,58,99,0.76),rgba(10,10,10,0.72),rgba(61,43,31,0.86))] p-4 shadow-[inset_0_-1px_0_rgba(237,227,207,0.05)]">
         <div className="flex items-start justify-between gap-3">
           <Badge variant={project.status === 'Blocked' ? 'ember' : 'teal'}>
             {project.status}
@@ -345,9 +345,9 @@ function ProjectGalleryCard({
             <span className="text-stardust/52">Build progress</span>
             <span className="font-medium text-ember">{project.progress}%</span>
           </div>
-          <div className="h-2 overflow-hidden rounded-full bg-stardust/10">
+          <div className="studio-progress-track">
             <div
-              className="h-full rounded-full bg-[linear-gradient(90deg,#C89B3C,#2D5C6B,#EDE3CF)] transition-all duration-500"
+              className="studio-progress-fill"
               style={{ width: `${project.progress}%` }}
             />
           </div>
@@ -374,7 +374,7 @@ function ProjectListCard({
 
   return (
     <button
-      className="studio-project-card group grid w-full gap-4 rounded-2xl border border-bronze/25 bg-stardust/[0.055] p-4 text-left text-stardust shadow-[0_18px_55px_rgba(0,0,0,0.18)] backdrop-blur-xl transition duration-300 hover:-translate-y-1 hover:border-ember/50 hover:bg-stardust/[0.075] sm:grid-cols-[minmax(0,1.2fr)_minmax(0,0.9fr)_auto]"
+      className="studio-project-card group grid w-full gap-4 rounded-2xl border border-bronze/28 bg-[linear-gradient(145deg,rgba(237,227,207,0.062),rgba(10,10,10,0.2))] p-4 text-left text-stardust shadow-[0_20px_62px_rgba(0,0,0,0.22),inset_0_1px_0_rgba(237,227,207,0.04)] backdrop-blur-xl transition duration-300 hover:-translate-y-1 hover:border-ember/52 hover:bg-stardust/[0.08] sm:grid-cols-[minmax(0,1.2fr)_minmax(0,0.9fr)_auto]"
       onClick={() => onOpenProject(project.id)}
       style={style}
       type="button"
@@ -413,9 +413,9 @@ function ProjectListCard({
             <span className="text-stardust/52">Progress</span>
             <span className="text-ember">{project.progress}%</span>
           </div>
-          <div className="h-2 overflow-hidden rounded-full bg-stardust/10">
+          <div className="studio-progress-track">
             <div
-              className="h-full rounded-full bg-[linear-gradient(90deg,#C89B3C,#2D5C6B)]"
+              className="studio-progress-fill"
               style={{ width: `${project.progress}%` }}
             />
           </div>

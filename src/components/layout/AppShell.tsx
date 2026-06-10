@@ -20,7 +20,7 @@ export function AppShell({
 }: AppShellProps) {
   return (
     <div className="min-h-screen overflow-hidden bg-midnight text-stardust">
-      <div className="min-h-screen bg-[linear-gradient(115deg,rgba(27,58,99,0.28)_0%,rgba(10,10,10,0)_36%),linear-gradient(245deg,rgba(154,108,60,0.16)_0%,rgba(10,10,10,0)_32%)]">
+      <div className="min-h-screen bg-[radial-gradient(circle_at_8%_0%,rgba(200,155,60,0.08),transparent_24rem),linear-gradient(115deg,rgba(27,58,99,0.24)_0%,rgba(10,10,10,0)_38%),linear-gradient(245deg,rgba(154,108,60,0.14)_0%,rgba(10,10,10,0)_34%)]">
         <div className="mx-auto grid min-h-screen w-full max-w-[1760px] lg:grid-cols-[18rem_minmax(0,1fr)]">
           <Sidebar
             activePage={activePage}

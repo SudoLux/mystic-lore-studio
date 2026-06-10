@@ -50,7 +50,7 @@ export function LocalImageUploader({
   return (
     <section
       className={cn(
-        'rounded-3xl border border-bronze/24 bg-midnight/30 p-4',
+        'rounded-3xl border border-bronze/28 bg-[linear-gradient(145deg,rgba(10,10,10,0.44),rgba(61,43,31,0.16))] p-4 shadow-[inset_0_1px_0_rgba(237,227,207,0.035)]',
         compact ? 'space-y-3' : 'space-y-4',
       )}
     >

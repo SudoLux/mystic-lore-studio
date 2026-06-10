@@ -186,7 +186,7 @@ export function DashboardPage({
 
           return (
             <Card
-              className="group min-h-44 transition duration-300 hover:-translate-y-1 hover:border-ember/45 hover:bg-stardust/[0.075] xl:col-span-2"
+              className="group min-h-44 transition duration-300 hover:-translate-y-1 hover:border-ember/48 hover:bg-stardust/[0.08] hover:shadow-[0_28px_90px_rgba(200,155,60,0.09)] xl:col-span-2"
               key={stat.label}
             >
               <div className="flex h-full flex-col justify-between gap-5">
@@ -305,9 +305,9 @@ export function DashboardPage({
                     </span>
                     <span className="text-sm text-ember">{item.count}</span>
                   </div>
-                  <div className="h-2 overflow-hidden rounded-full bg-stardust/10">
+                  <div className="studio-progress-track">
                     <div
-                      className="h-full rounded-full bg-[linear-gradient(90deg,#C89B3C,#2D5C6B)]"
+                      className="studio-progress-fill"
                       style={{
                         width: `${Math.max((item.count / projects.length) * 100, 8)}%`,
                       }}
@@ -395,7 +395,7 @@ export function DashboardPage({
 
 function ProjectFeatureCard({ project }: { project: ApparelProject }) {
   return (
-    <article className="group rounded-2xl border border-bronze/25 bg-midnight/36 p-4 transition duration-300 hover:-translate-y-1 hover:border-ember/45 hover:bg-midnight/48">
+    <article className="group rounded-2xl border border-bronze/28 bg-[linear-gradient(145deg,rgba(10,10,10,0.44),rgba(61,43,31,0.2))] p-4 shadow-[inset_0_1px_0_rgba(237,227,207,0.035)] transition duration-300 hover:-translate-y-1 hover:border-ember/48 hover:bg-midnight/50">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <p className="truncate text-base font-semibold text-stardust">
@@ -420,9 +420,9 @@ function ProjectFeatureCard({ project }: { project: ApparelProject }) {
           <span className="text-stardust/52">{project.phase}</span>
           <span className="font-medium text-ember">{project.progress}%</span>
         </div>
-        <div className="h-2 overflow-hidden rounded-full bg-stardust/10">
+        <div className="studio-progress-track">
           <div
-            className="h-full rounded-full bg-[linear-gradient(90deg,#C89B3C,#EDE3CF)]"
+            className="studio-progress-fill"
             style={{ width: `${project.progress}%` }}
           />
         </div>

@@ -340,14 +340,14 @@ function FabricCard({
 
   return (
     <button
-      className="studio-project-card group min-h-[35rem] overflow-hidden rounded-3xl border border-bronze/25 bg-stardust/[0.055] text-left text-stardust shadow-[0_24px_70px_rgba(0,0,0,0.22)] backdrop-blur-xl transition duration-300 hover:-translate-y-1.5 hover:border-ember/55 hover:bg-stardust/[0.075] hover:shadow-[0_28px_90px_rgba(200,155,60,0.12)]"
+      className="studio-project-card group min-h-[35rem] overflow-hidden rounded-3xl border border-bronze/28 bg-[linear-gradient(145deg,rgba(237,227,207,0.068),rgba(10,10,10,0.24))] text-left text-stardust shadow-[0_26px_80px_rgba(0,0,0,0.28),inset_0_1px_0_rgba(237,227,207,0.045)] backdrop-blur-xl transition duration-300 hover:-translate-y-1.5 hover:border-ember/60 hover:bg-stardust/[0.08] hover:shadow-[0_30px_96px_rgba(200,155,60,0.14),0_18px_70px_rgba(0,0,0,0.34)]"
       onClick={() => onOpenFabric(fabric.id)}
       style={style}
       type="button"
     >
       <div
         className={cn(
-          'relative h-40 overflow-hidden border-b border-bronze/20 p-4',
+          'relative h-44 overflow-hidden border-b border-bronze/24 p-4 shadow-[inset_0_-1px_0_rgba(237,227,207,0.05)]',
           getFabricVisualClass(fabric),
         )}
       >
@@ -423,10 +423,10 @@ function FabricCard({
               {formatNumber(yardage.availableYards)} of {formatNumber(fabric.totalYards)} yd
             </span>
           </div>
-          <div className="h-2 overflow-hidden rounded-full bg-stardust/10">
+          <div className="studio-progress-track">
             <div
               className={cn(
-                'h-full rounded-full transition-all duration-500',
+                'h-full rounded-full shadow-[0_0_18px_rgba(200,155,60,0.28)] transition-all duration-500',
                 lowYardage
                   ? 'bg-[linear-gradient(90deg,#C89B3C,#9A6C3C)]'
                   : 'bg-[linear-gradient(90deg,#2D5C6B,#C89B3C,#EDE3CF)]',
