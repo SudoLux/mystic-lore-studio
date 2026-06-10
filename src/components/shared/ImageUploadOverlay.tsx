@@ -1,4 +1,4 @@
-import { ImagePlus, Loader2 } from 'lucide-react';
+import { ImagePlus } from 'lucide-react';
 import { cn } from '../../lib/classes';
 import { ImageActionsMenu } from './ImageActionsMenu';
 
@@ -7,10 +7,10 @@ type ImageUploadOverlayProps = {
   canRemove: boolean;
   compact?: boolean;
   error?: string | null;
-  fileSizeLabel?: string;
   hasImage: boolean;
   hasPendingImage: boolean;
   label: string;
+  labelClassName?: string;
   onCancelPreview: () => void;
   onConfirmPreview: () => void;
   onRemove: () => void;
@@ -23,10 +23,10 @@ export function ImageUploadOverlay({
   canRemove,
   compact = false,
   error,
-  fileSizeLabel,
   hasImage,
   hasPendingImage,
   label,
+  labelClassName,
   onCancelPreview,
   onConfirmPreview,
   onRemove,
@@ -46,21 +46,15 @@ export function ImageUploadOverlay({
         )}
       />
 
-      <div className="pointer-events-none absolute left-3 top-3 z-20 flex flex-wrap items-center gap-2">
+      <div
+        className={cn(
+          'pointer-events-none absolute left-3 top-3 z-20 flex flex-wrap items-center gap-2',
+          labelClassName,
+        )}
+      >
         <span className="rounded-full border border-bronze/38 bg-midnight/58 px-3 py-1 text-xs font-medium text-stardust shadow-[inset_0_1px_0_rgba(237,227,207,0.05)] backdrop-blur-xl">
           {label}
         </span>
-        {fileSizeLabel ? (
-          <span className="rounded-full border border-stardust/12 bg-midnight/42 px-2.5 py-1 text-xs text-stardust/58 backdrop-blur-xl">
-            {fileSizeLabel}
-          </span>
-        ) : null}
-        {hasPendingImage ? (
-          <span className="inline-flex items-center gap-1.5 rounded-full border border-ember/45 bg-ember/18 px-2.5 py-1 text-xs font-medium text-ember backdrop-blur-xl">
-            <Loader2 aria-hidden="true" className="animate-spin" size={12} />
-            Preview
-          </span>
-        ) : null}
       </div>
 
       {!hasImage ? (
@@ -89,7 +83,7 @@ export function ImageUploadOverlay({
 
       <div
         className={cn(
-          'absolute bottom-3 right-3 z-30 transition duration-200',
+          'absolute bottom-3 left-3 right-3 z-30 flex justify-end transition duration-200',
           shouldKeepVisible
             ? 'opacity-100'
             : 'opacity-100 md:opacity-0 md:group-hover/image-slot:opacity-100 md:group-focus-within/image-slot:opacity-100',

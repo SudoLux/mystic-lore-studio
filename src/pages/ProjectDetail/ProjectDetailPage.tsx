@@ -322,10 +322,7 @@ function ProjectHero({
         >
           <div className="absolute inset-6 rounded-[2rem] border border-stardust/12 bg-midnight/18 shadow-[inset_0_0_90px_rgba(237,227,207,0.06)]" />
           <div className="relative flex h-full min-h-[21rem] flex-col justify-between p-6">
-            <div className="flex items-center justify-between gap-3 pr-36">
-              <Badge variant="ember">
-                {project.heroImage ? 'Hero Image' : 'Gradient Visual'}
-              </Badge>
+            <div className="flex items-center justify-end gap-3">
               <span className="rounded-full border border-stardust/15 bg-midnight/42 px-3 py-1 text-xs text-stardust/66">
                 {formatDate(project.startDate)}
               </span>
@@ -1800,10 +1797,7 @@ function LookbookTab({
           >
             <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(90deg,rgba(237,227,207,0.07)_1px,transparent_1px),linear-gradient(0deg,rgba(237,227,207,0.055)_1px,transparent_1px)] [background-size:22px_22px]" />
             <div className="relative flex h-full min-h-[24rem] flex-col justify-between p-5 sm:p-7">
-              <div className="flex items-center justify-between gap-3 pr-36">
-                <Badge variant="teal">
-                  {preview.heroImage ? 'Lookbook Visual' : 'Gradient Placeholder'}
-                </Badge>
+              <div className="flex items-center justify-end gap-3">
                 <span className="rounded-full border border-stardust/15 bg-midnight/42 px-3 py-1 text-xs text-stardust/68">
                   {project.targetDate ? formatDate(project.targetDate) : 'Undated'}
                 </span>

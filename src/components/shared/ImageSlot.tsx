@@ -12,6 +12,7 @@ type ImageSlotProps = {
   compact?: boolean;
   imageClassName?: string;
   label: string;
+  labelClassName?: string;
   onRemove: () => void;
   onSave: (image: LocalImageAsset) => void;
   placeholderClassName?: string;
@@ -27,6 +28,7 @@ export function ImageSlot({
   compact = false,
   imageClassName,
   label,
+  labelClassName,
   onRemove,
   onSave,
   placeholderClassName,
@@ -108,10 +110,10 @@ export function ImageSlot({
         canRemove={Boolean(value)}
         compact={compact}
         error={error}
-        fileSizeLabel={visibleImage ? formatFileSize(visibleImage.size) : undefined}
         hasImage={Boolean(visibleImage)}
         hasPendingImage={Boolean(pendingImage)}
         label={label}
+        labelClassName={labelClassName}
         onCancelPreview={() => {
           setPendingImage(null);
           setError(null);
@@ -137,12 +139,4 @@ export function ImageSlot({
       {children ? <div className="relative z-20 h-full">{children}</div> : null}
     </div>
   );
-}
-
-function formatFileSize(size: number) {
-  if (size < 1024 * 1024) {
-    return `${Math.round(size / 1024)} KB`;
-  }
-
-  return `${(size / (1024 * 1024)).toFixed(1)} MB`;
 }
