@@ -8,10 +8,14 @@ type BadgeProps = HTMLAttributes<HTMLSpanElement> & {
 };
 
 const badgeVariants: Record<BadgeVariant, string> = {
-  ember: 'border-ember/35 bg-ember/12 text-ember',
-  teal: 'border-nebula/45 bg-nebula/18 text-stardust',
-  blue: 'border-celestial/55 bg-celestial/26 text-stardust',
-  bronze: 'border-bronze/45 bg-bronze/16 text-stardust',
+  ember:
+    'border-ember/40 bg-ember/13 text-ember shadow-[inset_0_1px_0_rgba(237,227,207,0.045)]',
+  teal:
+    'border-nebula/50 bg-nebula/20 text-stardust shadow-[inset_0_1px_0_rgba(237,227,207,0.045)]',
+  blue:
+    'border-celestial/60 bg-celestial/28 text-stardust shadow-[inset_0_1px_0_rgba(237,227,207,0.045)]',
+  bronze:
+    'border-bronze/48 bg-bronze/18 text-stardust shadow-[inset_0_1px_0_rgba(237,227,207,0.04)]',
 };
 
 export function Badge({
@@ -23,7 +27,7 @@ export function Badge({
   return (
     <span
       className={cn(
-        'inline-flex max-w-full items-center rounded-full border px-3 py-1 text-left text-xs font-medium leading-5',
+        'inline-flex max-w-full items-center rounded-full border px-3 py-1 text-left text-[0.72rem] font-medium leading-5 tracking-[0.035em]',
         badgeVariants[variant],
         className,
       )}

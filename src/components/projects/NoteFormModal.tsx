@@ -116,7 +116,7 @@ function FormSection({
   title: string;
 }) {
   return (
-    <section className="rounded-3xl border border-bronze/24 bg-stardust/[0.045] p-4 sm:p-5">
+    <section className="rounded-3xl border border-bronze/28 bg-[linear-gradient(145deg,rgba(237,227,207,0.06),rgba(10,10,10,0.18))] p-4 shadow-[inset_0_1px_0_rgba(237,227,207,0.035)] sm:p-5">
       <h3 className="text-lg font-semibold text-stardust">{title}</h3>
       <div className="mt-4 grid gap-4 md:grid-cols-2">{children}</div>
     </section>

@@ -12,11 +12,11 @@ type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
 
 const buttonVariants: Record<ButtonVariant, string> = {
   primary:
-    'border-ember/55 bg-ember text-midnight shadow-[0_14px_30px_rgba(200,155,60,0.18)] hover:bg-stardust',
+    'border-ember/60 bg-[linear-gradient(135deg,#C89B3C,#EDE3CF)] text-midnight shadow-[0_16px_34px_rgba(200,155,60,0.2),inset_0_1px_0_rgba(255,255,255,0.34)] hover:border-stardust/70 hover:shadow-[0_20px_44px_rgba(200,155,60,0.28),inset_0_1px_0_rgba(255,255,255,0.38)]',
   secondary:
-    'border-bronze/45 bg-espresso/60 text-stardust hover:border-ember/45 hover:bg-espresso',
+    'border-bronze/46 bg-[linear-gradient(145deg,rgba(61,43,31,0.76),rgba(10,10,10,0.42))] text-stardust shadow-[inset_0_1px_0_rgba(237,227,207,0.05)] hover:border-ember/50 hover:bg-espresso',
   ghost:
-    'border-transparent bg-transparent text-stardust/68 hover:border-bronze/35 hover:bg-stardust/6 hover:text-stardust',
+    'border-transparent bg-transparent text-stardust/70 hover:border-bronze/38 hover:bg-stardust/[0.075] hover:text-stardust',
 };
 
 const buttonSizes: Record<ButtonSize, string> = {
@@ -36,7 +36,7 @@ export function Button({
   return (
     <button
       className={cn(
-        'inline-flex items-center justify-center gap-2 rounded-xl border font-medium transition duration-200 disabled:opacity-45',
+        'inline-flex items-center justify-center gap-2 rounded-xl border font-medium transition duration-200 hover:-translate-y-0.5 active:translate-y-0 disabled:pointer-events-none disabled:translate-y-0 disabled:opacity-45',
         buttonVariants[variant],
         buttonSizes[size],
         className,

@@ -169,14 +169,14 @@ function KanbanColumn({
   return (
     <section
       className={cn(
-        'flex w-[17.25rem] shrink-0 flex-col rounded-3xl border bg-stardust/[0.045] p-3 backdrop-blur-xl transition duration-300 sm:w-[20rem]',
+        'flex w-[17.25rem] shrink-0 flex-col rounded-3xl border bg-[linear-gradient(145deg,rgba(237,227,207,0.055),rgba(10,10,10,0.2))] p-3 shadow-[0_20px_70px_rgba(0,0,0,0.24),inset_0_1px_0_rgba(237,227,207,0.035)] backdrop-blur-xl transition duration-300 sm:w-[20rem]',
         isOver
           ? 'border-ember/60 bg-ember/10 shadow-[0_22px_70px_rgba(200,155,60,0.12)]'
           : 'border-bronze/24',
       )}
       ref={setNodeRef}
     >
-      <div className="mb-3 flex items-start justify-between gap-3 rounded-2xl border border-bronze/20 bg-midnight/35 p-3">
+      <div className="mb-3 flex items-start justify-between gap-3 rounded-2xl border border-bronze/24 bg-midnight/42 p-3">
         <div className="min-w-0">
           <p className="truncate text-sm font-semibold text-stardust">{phase}</p>
           <p className="mt-1 text-xs text-stardust/45">
@@ -218,7 +218,7 @@ function KanbanProjectCard({ project }: { project: ApparelProject }) {
   return (
     <article
       className={cn(
-        'touch-none rounded-2xl border border-bronze/25 bg-midnight/42 p-4 text-stardust shadow-[0_16px_45px_rgba(0,0,0,0.2)] transition duration-200 hover:-translate-y-1 hover:border-ember/45 hover:bg-midnight/58',
+        'touch-none rounded-2xl border border-bronze/28 bg-[linear-gradient(145deg,rgba(10,10,10,0.48),rgba(61,43,31,0.18))] p-4 text-stardust shadow-[0_16px_48px_rgba(0,0,0,0.24),inset_0_1px_0_rgba(237,227,207,0.035)] transition duration-200 hover:-translate-y-1 hover:border-ember/48 hover:bg-midnight/60',
         isDragging && 'z-30 scale-[1.02] border-ember/70 opacity-90 shadow-[0_24px_70px_rgba(200,155,60,0.16)]',
       )}
       ref={setNodeRef}
@@ -261,9 +261,9 @@ function KanbanProjectCard({ project }: { project: ApparelProject }) {
           <span className="text-stardust/46">Progress</span>
           <span className="font-medium text-ember">{project.progress}%</span>
         </div>
-        <div className="h-2 overflow-hidden rounded-full bg-stardust/10">
+        <div className="studio-progress-track">
           <div
-            className="h-full rounded-full bg-[linear-gradient(90deg,#C89B3C,#2D5C6B,#EDE3CF)]"
+            className="studio-progress-fill"
             style={{ width: `${project.progress}%` }}
           />
         </div>

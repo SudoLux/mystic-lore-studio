@@ -253,7 +253,7 @@ function StatCard({
   value: number | string;
 }) {
   return (
-    <Card className="group min-h-44 transition duration-300 hover:-translate-y-1 hover:border-ember/45 hover:bg-stardust/[0.075]">
+    <Card className="group min-h-44 transition duration-300 hover:-translate-y-1 hover:border-ember/48 hover:bg-stardust/[0.08] hover:shadow-[0_28px_90px_rgba(200,155,60,0.09)]">
       <div className="flex h-full flex-col justify-between gap-5">
         <div className="flex items-start justify-between gap-3">
           <Badge variant="ember">{label}</Badge>
@@ -331,9 +331,9 @@ function BarList({
                 </span>
                 <span className="text-sm text-ember">{row.value}</span>
               </div>
-              <div className="h-2 overflow-hidden rounded-full bg-stardust/10">
+              <div className="studio-progress-track">
                 <div
-                  className="h-full rounded-full bg-[linear-gradient(90deg,#C89B3C,#2D5C6B,#EDE3CF)]"
+                  className="studio-progress-fill"
                   style={{ width: `${Math.max(percent, row.value > 0 ? 7 : 0)}%` }}
                 />
               </div>
@@ -367,9 +367,9 @@ function ReadinessMeter({
         <p className="text-sm font-semibold text-stardust">{label}</p>
         <span className="text-sm font-semibold text-ember">{percent}%</span>
       </div>
-      <div className="mt-3 h-2 overflow-hidden rounded-full bg-stardust/10">
+      <div className="studio-progress-track mt-3">
         <div
-          className="h-full rounded-full bg-[linear-gradient(90deg,#C89B3C,#2D5C6B)]"
+          className="studio-progress-fill"
           style={{ width: `${percent}%` }}
         />
       </div>

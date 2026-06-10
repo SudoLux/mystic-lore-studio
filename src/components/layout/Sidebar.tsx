@@ -1,7 +1,7 @@
-import { Sparkles } from 'lucide-react';
 import { cn } from '../../lib/classes';
 import type { NavItem, PageId } from '../../types/navigation';
 import { Badge } from '../shared/Badge';
+import { BrandLockup } from './BrandLockup';
 
 type SidebarProps = {
   activePage: PageId;
@@ -13,17 +13,7 @@ export function Sidebar({ activePage, navItems, onNavigate }: SidebarProps) {
   return (
     <aside className="sticky top-0 hidden h-screen border-r border-bronze/30 bg-midnight/80 px-5 py-6 backdrop-blur-xl lg:flex lg:flex-col">
       <div className="mb-8">
-        <div className="mb-5 flex items-center gap-3">
-          <div className="flex h-11 w-11 items-center justify-center rounded-2xl border border-ember/40 bg-espresso/70 text-ember shadow-[0_12px_35px_rgba(200,155,60,0.12)]">
-            <Sparkles aria-hidden="true" size={21} strokeWidth={1.8} />
-          </div>
-          <div>
-            <p className="text-sm font-semibold text-stardust">
-              Mystic Lore
-            </p>
-            <p className="text-xs text-stardust/58">Studio control center</p>
-          </div>
-        </div>
+        <BrandLockup className="mb-5" size="sidebar" />
         <Badge variant="ember">Studio</Badge>
       </div>
 

@@ -6,6 +6,7 @@ import {
   ShieldCheck,
   Upload,
 } from 'lucide-react';
+import { BrandLockup } from '../../components/layout/BrandLockup';
 import { Badge } from '../../components/shared/Badge';
 import { Button } from '../../components/shared/Button';
 import { Card } from '../../components/shared/Card';
@@ -144,7 +145,7 @@ export function SettingsPage() {
         />
       </div>
 
-      <Card className="border-bronze/30 bg-[linear-gradient(135deg,rgba(27,58,99,0.22),rgba(10,10,10,0.48),rgba(61,43,31,0.36))]" elevated>
+      <Card className="border-bronze/32 bg-[linear-gradient(135deg,rgba(27,58,99,0.22),rgba(10,10,10,0.52),rgba(61,43,31,0.4))]" elevated>
         <div className="grid gap-6 xl:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
           <div>
             <Badge variant="ember">Backup Vault</Badge>
@@ -155,7 +156,7 @@ export function SettingsPage() {
               Backups include projects, fabrics, tasks, notes, linked material
               allocations, lookbooks, app settings, and data version metadata.
             </p>
-            <p className="mt-3 rounded-2xl border border-bronze/22 bg-midnight/32 p-4 text-sm leading-6 text-stardust/62">
+            <p className="mt-3 rounded-2xl border border-bronze/26 bg-midnight/38 p-4 text-sm leading-6 text-stardust/64 shadow-[inset_0_1px_0_rgba(237,227,207,0.035)]">
               {rawData.settings.backupReminderCopy} A good rhythm is every{' '}
               {rawData.settings.backupReminderCadenceDays} days, and always before
               large import or cleanup sessions.
@@ -230,9 +231,14 @@ export function SettingsPage() {
         />
       ) : null}
 
-      <Card className="border-ember/30 bg-[linear-gradient(135deg,rgba(27,58,99,0.24),rgba(61,43,31,0.58))]" elevated>
+      <Card className="border-ember/32 bg-[linear-gradient(135deg,rgba(27,58,99,0.24),rgba(61,43,31,0.62))]" elevated>
         <div className="grid gap-5 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)] lg:items-center">
           <div>
+            <BrandLockup
+              className="mb-5"
+              size="settings"
+              subtitle="Installed app identity"
+            />
             <Badge variant="teal">Progressive Web App</Badge>
             <h2 className="mt-4 text-2xl font-semibold text-stardust">
               Mystic Lore Studio can run from an installed app window.

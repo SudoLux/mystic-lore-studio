@@ -82,8 +82,8 @@ export function GlobalSearch({
 
   return (
     <section className="relative z-30 mb-5">
-      <div className="rounded-3xl border border-bronze/24 bg-midnight/48 p-3 shadow-[0_18px_55px_rgba(0,0,0,0.18)] backdrop-blur-xl">
-        <label className="flex min-h-12 items-center gap-3 rounded-2xl border border-bronze/24 bg-stardust/[0.055] px-4 transition focus-within:border-ember/55">
+      <div className="rounded-3xl border border-bronze/28 bg-[linear-gradient(145deg,rgba(10,10,10,0.58),rgba(61,43,31,0.16))] p-3 shadow-[0_20px_70px_rgba(0,0,0,0.24),inset_0_1px_0_rgba(237,227,207,0.035)] backdrop-blur-xl">
+        <label className="flex min-h-12 items-center gap-3 rounded-2xl border border-bronze/28 bg-stardust/[0.06] px-4 transition focus-within:border-ember/60 focus-within:bg-stardust/[0.08]">
           <Search
             aria-hidden="true"
             className="shrink-0 text-ember"
@@ -111,7 +111,7 @@ export function GlobalSearch({
       </div>
 
       {hasQuery ? (
-        <div className="studio-scrollbar fixed inset-x-3 top-3 z-50 max-h-[calc(100dvh-1.5rem)] overflow-y-auto rounded-3xl border border-bronze/28 bg-[linear-gradient(135deg,rgba(27,58,99,0.26),rgba(10,10,10,0.98),rgba(61,43,31,0.54))] p-4 shadow-[0_28px_90px_rgba(0,0,0,0.46)] backdrop-blur-2xl sm:absolute sm:left-0 sm:right-0 sm:top-[calc(100%+0.5rem)] sm:max-h-[70vh]">
+        <div className="studio-scrollbar fixed inset-x-3 top-3 z-50 max-h-[calc(100dvh-1.5rem)] overflow-y-auto rounded-3xl border border-bronze/32 bg-[linear-gradient(135deg,rgba(27,58,99,0.26),rgba(10,10,10,0.98),rgba(61,43,31,0.58))] p-4 shadow-[0_30px_100px_rgba(0,0,0,0.5),inset_0_1px_0_rgba(237,227,207,0.05)] backdrop-blur-2xl sm:absolute sm:left-0 sm:right-0 sm:top-[calc(100%+0.5rem)] sm:max-h-[70vh]">
           <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
             <div>
               <Badge variant="teal">Global Search</Badge>
