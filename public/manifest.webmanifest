@@ -12,7 +12,7 @@
   "icons": [
     {
       "src": "/icons/mystic-lore-logo.png",
-      "sizes": "500x500",
+      "sizes": "1000x1000",
       "type": "image/png",
       "purpose": "any"
     },
