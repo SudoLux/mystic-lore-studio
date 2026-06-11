@@ -44,8 +44,14 @@ import { Card } from '../../components/shared/Card';
 import { ImageSlot } from '../../components/shared/ImageSlot';
 import { LocalImageUploader } from '../../components/shared/LocalImageUploader';
 import { PageHeader } from '../../components/shared/PageHeader';
+import { StoredImage } from '../../components/shared/StoredImage';
 import { useStudioData } from '../../hooks/useStudioData';
 import { cn } from '../../lib/classes';
+import {
+  getFabricImage,
+  getLookbookHeroImage,
+  getProjectGalleryImages,
+} from '../../lib/imageAssets';
 import {
   calculateFabricYardage,
   hasInsufficientYardage,
@@ -254,7 +260,7 @@ function ProjectHero({
   onUpdateProject: (project: ApparelProject) => void;
   project: ApparelProject;
 }) {
-  const galleryImages = project.galleryImages ?? [];
+  const galleryImages = getProjectGalleryImages(project);
 
   return (
     <Card className="overflow-hidden p-0" elevated>
@@ -791,6 +797,7 @@ function MaterialCard({
   const hasWarning = hasInsufficientYardage(allocation, yardageSummary);
   const displayName = fabric?.name ?? allocation.materialName;
   const notes = allocation.notes ?? fabric?.notes ?? 'No material notes yet.';
+  const fabricImage = getFabricImage(fabric);
 
   return (
     <article
@@ -803,9 +810,16 @@ function MaterialCard({
     >
       <div className="flex items-start gap-4">
         <span
-          className="h-14 w-14 shrink-0 rounded-2xl border border-stardust/20 bg-espresso/60"
+          className="h-14 w-14 shrink-0 overflow-hidden rounded-2xl border border-stardust/20 bg-espresso/60"
           style={{ background: fabric ? getFabricSwatch(fabric) : undefined }}
-        />
+        >
+          {fabricImage ? (
+            <StoredImage
+              asset={fabricImage}
+              className="h-full w-full object-cover"
+            />
+          ) : null}
+        </span>
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div className="min-w-0">
@@ -1788,12 +1802,13 @@ function LookbookTab({
             actionClassName="right-5 top-5 bottom-auto"
             aspectClassName=""
             className="min-h-[24rem] rounded-none border-0 border-t border-bronze/20 lg:border-l lg:border-t-0"
+            fallbackValue={preview.heroImage}
             label="Lookbook Hero"
             onRemove={() => saveLookbookImage(undefined)}
             onSave={saveLookbookImage}
             placeholderClassName={preview.visualClassName}
             placeholderText="Add a lookbook hero visual."
-            value={preview.heroImage}
+            value={lookbookPage?.heroImage}
           >
             <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(90deg,rgba(237,227,207,0.07)_1px,transparent_1px),linear-gradient(0deg,rgba(237,227,207,0.055)_1px,transparent_1px)] [background-size:22px_22px]" />
             <div className="relative flex h-full min-h-[24rem] flex-col justify-between p-5 sm:p-7">
@@ -1807,12 +1822,18 @@ function LookbookTab({
                   {preview.detailPlaceholders.map((detail) => (
                     <div
                       className={cn(
-                        'aspect-[4/5] rounded-2xl border border-stardust/14',
+                        'relative aspect-[4/5] overflow-hidden rounded-2xl border border-stardust/14',
                         detail.className,
                       )}
                       key={detail.label}
                     >
-                      <span className="flex h-full items-end p-3 text-xs font-medium text-stardust/68">
+                      {detail.image ? (
+                        <StoredImage
+                          asset={detail.image}
+                          className="absolute inset-0 h-full w-full object-cover"
+                        />
+                      ) : null}
+                      <span className="relative flex h-full items-end bg-[linear-gradient(180deg,transparent,rgba(10,10,10,0.58))] p-3 text-xs font-medium text-stardust/78">
                         {detail.label}
                       </span>
                     </div>
@@ -1899,7 +1920,19 @@ function LookbookTab({
                     className="grid grid-cols-[5rem_1fr] overflow-hidden rounded-2xl border border-bronze/18 bg-midnight/28"
                     key={detail.label}
                   >
-                    <span className={cn('block min-h-20', detail.className)} />
+                    <span
+                      className={cn(
+                        'relative block min-h-20 overflow-hidden',
+                        detail.className,
+                      )}
+                    >
+                      {detail.image ? (
+                        <StoredImage
+                          asset={detail.image}
+                          className="absolute inset-0 h-full w-full object-cover"
+                        />
+                      ) : null}
+                    </span>
                     <div className="p-3">
                       <p className="text-sm font-semibold text-stardust">
                         {detail.label}
@@ -2296,6 +2329,8 @@ function buildLookbookPreview(
       }))
     : projectFallback.materialNotes);
 
+  const galleryImages = getProjectGalleryImages(project);
+
   return {
     credits: preferredPage?.credits?.length
       ? preferredPage.credits
@@ -2303,7 +2338,12 @@ function buildLookbookPreview(
     designNotes: preferredPage?.designNotes?.length
       ? preferredPage.designNotes
       : projectFallback.designNotes,
-    detailPlaceholders: getLookbookDetailPlaceholders(template),
+    detailPlaceholders: getLookbookDetailPlaceholders(template).map(
+      (detail, index) => ({
+        ...detail,
+        image: galleryImages[index],
+      }),
+    ),
     displaySpecs: preferredPage?.displaySpecs?.length
       ? preferredPage.displaySpecs
       : projectFallback.displaySpecs,
@@ -2312,7 +2352,7 @@ function buildLookbookPreview(
       getTemplateGarmentStory(project, preferredPage?.body, template),
     headline,
     heroCaption: preferredPage?.layoutHint || project.silhouette,
-    heroImage: preferredPage?.heroImage,
+    heroImage: getLookbookHeroImage(project, preferredPage),
     materialNotes,
     stylingNotes: preferredPage?.stylingNotes?.length
       ? preferredPage.stylingNotes

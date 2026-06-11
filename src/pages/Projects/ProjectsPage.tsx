@@ -11,8 +11,10 @@ import { Badge } from '../../components/shared/Badge';
 import { Button } from '../../components/shared/Button';
 import { Card } from '../../components/shared/Card';
 import { PageHeader } from '../../components/shared/PageHeader';
+import { StoredImage } from '../../components/shared/StoredImage';
 import { useStudioData } from '../../hooks/useStudioData';
 import { cn } from '../../lib/classes';
+import { getProjectHeroImage } from '../../lib/imageAssets';
 import {
   garmentTypes,
   projectPhases,
@@ -293,6 +295,7 @@ function ProjectGalleryCard({
   const fabrics = getProjectFabrics(project, fabricById);
   const difficulty = getDifficulty(project);
   const lastUpdated = getLastUpdated(project);
+  const heroImage = getProjectHeroImage(project);
 
   return (
     <button
@@ -302,12 +305,11 @@ function ProjectGalleryCard({
       type="button"
     >
       <div className="relative h-40 overflow-hidden border-b border-bronze/24 bg-[radial-gradient(circle_at_20%_10%,rgba(200,155,60,0.38),transparent_30%),radial-gradient(circle_at_88%_18%,rgba(45,92,107,0.38),transparent_34%),linear-gradient(135deg,rgba(27,58,99,0.76),rgba(10,10,10,0.72),rgba(61,43,31,0.86))] p-4 shadow-[inset_0_-1px_0_rgba(237,227,207,0.05)]">
-        {project.heroImage ? (
+        {heroImage ? (
           <>
-            <img
-              alt={project.heroImage.name}
+            <StoredImage
+              asset={heroImage}
               className="absolute inset-0 h-full w-full object-cover transition duration-500 group-hover:scale-[1.03]"
-              src={project.heroImage.dataUrl}
             />
             <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(10,10,10,0.34),rgba(10,10,10,0.16),rgba(10,10,10,0.52))]" />
           </>
@@ -381,14 +383,25 @@ function ProjectListCard({
   style: React.CSSProperties;
 }) {
   const fabrics = getProjectFabrics(project, fabricById);
+  const heroImage = getProjectHeroImage(project);
 
   return (
     <button
-      className="studio-project-card group grid w-full gap-4 rounded-2xl border border-bronze/28 bg-[linear-gradient(145deg,rgba(237,227,207,0.062),rgba(10,10,10,0.2))] p-4 text-left text-stardust shadow-[0_20px_62px_rgba(0,0,0,0.22),inset_0_1px_0_rgba(237,227,207,0.04)] backdrop-blur-xl transition duration-300 hover:-translate-y-1 hover:border-ember/52 hover:bg-stardust/[0.08] sm:grid-cols-[minmax(0,1.2fr)_minmax(0,0.9fr)_auto]"
+      className="studio-project-card group grid w-full gap-4 rounded-2xl border border-bronze/28 bg-[linear-gradient(145deg,rgba(237,227,207,0.062),rgba(10,10,10,0.2))] p-4 text-left text-stardust shadow-[0_20px_62px_rgba(0,0,0,0.22),inset_0_1px_0_rgba(237,227,207,0.04)] backdrop-blur-xl transition duration-300 hover:-translate-y-1 hover:border-ember/52 hover:bg-stardust/[0.08] sm:grid-cols-[6rem_minmax(0,1.2fr)_minmax(0,0.9fr)_auto]"
       onClick={() => onOpenProject(project.id)}
       style={style}
       type="button"
     >
+      <div className="relative h-28 overflow-hidden rounded-xl border border-bronze/20 bg-[linear-gradient(135deg,rgba(27,58,99,0.66),rgba(10,10,10,0.72),rgba(61,43,31,0.76))] sm:h-full sm:min-h-24">
+        {heroImage ? (
+          <StoredImage
+            asset={heroImage}
+            className="h-full w-full object-cover transition duration-500 group-hover:scale-[1.04]"
+          />
+        ) : null}
+        <div className="absolute inset-0 bg-[linear-gradient(180deg,transparent,rgba(10,10,10,0.32))]" />
+      </div>
+
       <div className="min-w-0">
         <div className="flex flex-wrap items-center gap-2">
           <Badge variant={project.status === 'Blocked' ? 'ember' : 'teal'}>

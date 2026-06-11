@@ -21,8 +21,10 @@ import {
 import { Badge } from '../../components/shared/Badge';
 import { Card } from '../../components/shared/Card';
 import { PageHeader } from '../../components/shared/PageHeader';
+import { StoredImage } from '../../components/shared/StoredImage';
 import { useStudioData } from '../../hooks/useStudioData';
 import { cn } from '../../lib/classes';
+import { getProjectHeroImage } from '../../lib/imageAssets';
 import { projectPhases, type ApparelProject, type ProjectPhase } from '../../types/studio';
 
 export function KanbanPage() {
@@ -242,7 +244,7 @@ function KanbanProjectCard({ project }: { project: ApparelProject }) {
   return (
     <article
       className={cn(
-        'touch-none rounded-2xl border border-bronze/28 bg-[linear-gradient(145deg,rgba(10,10,10,0.48),rgba(61,43,31,0.18))] p-4 text-stardust shadow-[0_16px_48px_rgba(0,0,0,0.24),inset_0_1px_0_rgba(237,227,207,0.035)] transition-[border-color,background-color,box-shadow,opacity,transform] duration-150 hover:-translate-y-1 hover:border-ember/48 hover:bg-midnight/60',
+        'touch-none overflow-hidden rounded-2xl border border-bronze/28 bg-[linear-gradient(145deg,rgba(10,10,10,0.48),rgba(61,43,31,0.18))] text-stardust shadow-[0_16px_48px_rgba(0,0,0,0.24),inset_0_1px_0_rgba(237,227,207,0.035)] transition-[border-color,background-color,box-shadow,opacity,transform] duration-150 hover:-translate-y-1 hover:border-ember/48 hover:bg-midnight/60',
         isDragging &&
           'scale-[0.985] border-ember/45 opacity-35 shadow-[inset_0_0_0_1px_rgba(200,155,60,0.16)]',
       )}
@@ -257,7 +259,7 @@ function KanbanProjectCard({ project }: { project: ApparelProject }) {
 
 function KanbanProjectDragPreview({ project }: { project: ApparelProject }) {
   return (
-    <article className="pointer-events-none w-[17.25rem] rotate-[0.35deg] scale-[1.035] rounded-2xl border border-ember/75 bg-[linear-gradient(145deg,rgba(10,10,10,0.94),rgba(45,92,107,0.24),rgba(61,43,31,0.54))] p-4 text-stardust shadow-[0_34px_110px_rgba(0,0,0,0.52),0_0_44px_rgba(200,155,60,0.22),0_0_34px_rgba(45,92,107,0.18),inset_0_1px_0_rgba(237,227,207,0.08)] backdrop-blur-xl sm:w-[20rem]">
+    <article className="pointer-events-none w-[17.25rem] rotate-[0.35deg] scale-[1.035] overflow-hidden rounded-2xl border border-ember/75 bg-[linear-gradient(145deg,rgba(10,10,10,0.94),rgba(45,92,107,0.24),rgba(61,43,31,0.54))] text-stardust shadow-[0_34px_110px_rgba(0,0,0,0.52),0_0_44px_rgba(200,155,60,0.22),0_0_34px_rgba(45,92,107,0.18),inset_0_1px_0_rgba(237,227,207,0.08)] backdrop-blur-xl sm:w-[20rem]">
       <KanbanProjectCardContent project={project} isPreview />
     </article>
   );
@@ -271,63 +273,75 @@ function KanbanProjectCardContent({
   project: ApparelProject;
 }) {
   const materialCount = project.linkedMaterials.length;
+  const heroImage = getProjectHeroImage(project);
 
   return (
     <>
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <p className="truncate text-base font-semibold text-stardust">
-            {project.name}
-          </p>
-          <p className="mt-1 text-xs text-stardust/48">
-            {project.garmentType}
-          </p>
-        </div>
-        <GripVertical
-          aria-hidden="true"
-          className={cn(
-            'shrink-0 transition duration-150',
-            isPreview ? 'text-ember/80' : 'text-stardust/35',
-          )}
-          size={18}
-          strokeWidth={1.8}
-        />
+      <div className="relative h-24 overflow-hidden border-b border-bronze/18 bg-[linear-gradient(135deg,rgba(27,58,99,0.64),rgba(10,10,10,0.7),rgba(61,43,31,0.72))]">
+        {heroImage ? (
+          <StoredImage
+            asset={heroImage}
+            className="h-full w-full object-cover"
+          />
+        ) : null}
+        <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(10,10,10,0.08),rgba(10,10,10,0.52))]" />
       </div>
-
-      <div className="mt-4 flex flex-wrap gap-2">
-        <Badge variant={project.status === 'Blocked' ? 'ember' : 'teal'}>
-          {project.status}
-        </Badge>
-        <Badge variant={project.priority === 'Critical' ? 'ember' : 'blue'}>
-          {project.priority}
-        </Badge>
-      </div>
-
-      <p className="mt-4 line-clamp-2 text-sm leading-6 text-stardust/58">
-        {project.summary}
-      </p>
-
-      <div className="mt-4">
-        <div className="mb-2 flex items-center justify-between text-xs">
-          <span className="text-stardust/46">Progress</span>
-          <span className="font-medium text-ember">{project.progress}%</span>
-        </div>
-        <div className="studio-progress-track">
-          <div
-            className="studio-progress-fill"
-            style={{ width: `${project.progress}%` }}
+      <div className="p-4">
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <p className="truncate text-base font-semibold text-stardust">
+              {project.name}
+            </p>
+            <p className="mt-1 text-xs text-stardust/48">
+              {project.garmentType}
+            </p>
+          </div>
+          <GripVertical
+            aria-hidden="true"
+            className={cn(
+              'shrink-0 transition duration-150',
+              isPreview ? 'text-ember/80' : 'text-stardust/35',
+            )}
+            size={18}
+            strokeWidth={1.8}
           />
         </div>
-      </div>
 
-      <div className="mt-4 flex items-center justify-between gap-3 rounded-xl border border-bronze/18 bg-espresso/24 px-3 py-2 text-xs text-stardust/55">
-        <span>{materialCount} linked materials</span>
-        {project.status === 'Blocked' ? (
-          <span className="inline-flex items-center gap-1 text-ember">
-            <AlertCircle aria-hidden="true" size={13} strokeWidth={1.9} />
-            Blocked
-          </span>
-        ) : null}
+        <div className="mt-4 flex flex-wrap gap-2">
+          <Badge variant={project.status === 'Blocked' ? 'ember' : 'teal'}>
+            {project.status}
+          </Badge>
+          <Badge variant={project.priority === 'Critical' ? 'ember' : 'blue'}>
+            {project.priority}
+          </Badge>
+        </div>
+
+        <p className="mt-4 line-clamp-2 text-sm leading-6 text-stardust/58">
+          {project.summary}
+        </p>
+
+        <div className="mt-4">
+          <div className="mb-2 flex items-center justify-between text-xs">
+            <span className="text-stardust/46">Progress</span>
+            <span className="font-medium text-ember">{project.progress}%</span>
+          </div>
+          <div className="studio-progress-track">
+            <div
+              className="studio-progress-fill"
+              style={{ width: `${project.progress}%` }}
+            />
+          </div>
+        </div>
+
+        <div className="mt-4 flex items-center justify-between gap-3 rounded-xl border border-bronze/18 bg-espresso/24 px-3 py-2 text-xs text-stardust/55">
+          <span>{materialCount} linked materials</span>
+          {project.status === 'Blocked' ? (
+            <span className="inline-flex items-center gap-1 text-ember">
+              <AlertCircle aria-hidden="true" size={13} strokeWidth={1.9} />
+              Blocked
+            </span>
+          ) : null}
+        </div>
       </div>
     </>
   );
