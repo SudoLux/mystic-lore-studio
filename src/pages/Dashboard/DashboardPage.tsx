@@ -16,7 +16,9 @@ import { Badge } from '../../components/shared/Badge';
 import { Button } from '../../components/shared/Button';
 import { Card } from '../../components/shared/Card';
 import { PageHeader } from '../../components/shared/PageHeader';
+import { StoredImage } from '../../components/shared/StoredImage';
 import { useStudioData } from '../../hooks/useStudioData';
+import { getProjectHeroImage } from '../../lib/imageAssets';
 import { LOW_YARDAGE_THRESHOLD, calculateFabricYardage } from '../../lib/yardage';
 import { projectPhases, type ApparelProject } from '../../types/studio';
 import type { PageId } from '../../types/navigation';
@@ -327,25 +329,28 @@ export function DashboardPage({
           <div className="mt-6 grid gap-3 sm:grid-cols-2">
             {recentlyUpdatedProjects.map((project) => (
               <div
-                className="rounded-2xl border border-bronze/20 bg-midnight/32 p-4 transition duration-300 hover:border-ember/35 hover:bg-midnight/45"
+                className="overflow-hidden rounded-2xl border border-bronze/20 bg-midnight/32 transition duration-300 hover:border-ember/35 hover:bg-midnight/45"
                 key={project.id}
               >
-                <div className="flex items-start justify-between gap-3">
-                  <div className="min-w-0">
-                    <p className="truncate text-sm font-semibold text-stardust">
-                      {project.name}
-                    </p>
-                    <p className="mt-1 text-xs text-stardust/52">
-                      Updated {formatDate(latestProjectDate(project))}
-                    </p>
+                <ProjectImageBand project={project} className="h-24" />
+                <div className="p-4">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-semibold text-stardust">
+                        {project.name}
+                      </p>
+                      <p className="mt-1 text-xs text-stardust/52">
+                        Updated {formatDate(latestProjectDate(project))}
+                      </p>
+                    </div>
+                    <Badge variant={project.status === 'Blocked' ? 'ember' : 'teal'}>
+                      {project.status}
+                    </Badge>
                   </div>
-                  <Badge variant={project.status === 'Blocked' ? 'ember' : 'teal'}>
-                    {project.status}
-                  </Badge>
+                  <p className="mt-4 line-clamp-2 text-sm leading-6 text-stardust/62">
+                    {project.summary}
+                  </p>
                 </div>
-                <p className="mt-4 line-clamp-2 text-sm leading-6 text-stardust/62">
-                  {project.summary}
-                </p>
               </div>
             ))}
           </div>
@@ -395,39 +400,66 @@ export function DashboardPage({
 
 function ProjectFeatureCard({ project }: { project: ApparelProject }) {
   return (
-    <article className="group rounded-2xl border border-bronze/28 bg-[linear-gradient(145deg,rgba(10,10,10,0.44),rgba(61,43,31,0.2))] p-4 shadow-[inset_0_1px_0_rgba(237,227,207,0.035)] transition duration-300 hover:-translate-y-1 hover:border-ember/48 hover:bg-midnight/50">
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <p className="truncate text-base font-semibold text-stardust">
-            {project.name}
-          </p>
-          <p className="mt-1 text-xs text-stardust/50">
-            {project.garmentType} • {project.collection}
-          </p>
-        </div>
-        <ArrowRight
-          aria-hidden="true"
-          className="text-ember opacity-60 transition duration-300 group-hover:translate-x-1 group-hover:opacity-100"
-          size={18}
-          strokeWidth={1.9}
-        />
-      </div>
-      <p className="mt-4 line-clamp-3 min-h-16 text-sm leading-6 text-stardust/62">
-        {project.summary}
-      </p>
-      <div className="mt-5">
-        <div className="mb-2 flex items-center justify-between text-xs">
-          <span className="text-stardust/52">{project.phase}</span>
-          <span className="font-medium text-ember">{project.progress}%</span>
-        </div>
-        <div className="studio-progress-track">
-          <div
-            className="studio-progress-fill"
-            style={{ width: `${project.progress}%` }}
+    <article className="group overflow-hidden rounded-2xl border border-bronze/28 bg-[linear-gradient(145deg,rgba(10,10,10,0.44),rgba(61,43,31,0.2))] shadow-[inset_0_1px_0_rgba(237,227,207,0.035)] transition duration-300 hover:-translate-y-1 hover:border-ember/48 hover:bg-midnight/50">
+      <ProjectImageBand project={project} className="h-28" />
+      <div className="p-4">
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <p className="truncate text-base font-semibold text-stardust">
+              {project.name}
+            </p>
+            <p className="mt-1 text-xs text-stardust/50">
+              {project.garmentType} • {project.collection}
+            </p>
+          </div>
+          <ArrowRight
+            aria-hidden="true"
+            className="text-ember opacity-60 transition duration-300 group-hover:translate-x-1 group-hover:opacity-100"
+            size={18}
+            strokeWidth={1.9}
           />
+        </div>
+        <p className="mt-4 line-clamp-3 min-h-16 text-sm leading-6 text-stardust/62">
+          {project.summary}
+        </p>
+        <div className="mt-5">
+          <div className="mb-2 flex items-center justify-between text-xs">
+            <span className="text-stardust/52">{project.phase}</span>
+            <span className="font-medium text-ember">{project.progress}%</span>
+          </div>
+          <div className="studio-progress-track">
+            <div
+              className="studio-progress-fill"
+              style={{ width: `${project.progress}%` }}
+            />
+          </div>
         </div>
       </div>
     </article>
+  );
+}
+
+function ProjectImageBand({
+  className,
+  project,
+}: {
+  className: string;
+  project: ApparelProject;
+}) {
+  const heroImage = getProjectHeroImage(project);
+
+  return (
+    <div
+      className={`${className} relative overflow-hidden border-b border-bronze/20 bg-[radial-gradient(circle_at_20%_10%,rgba(200,155,60,0.28),transparent_30%),linear-gradient(135deg,rgba(27,58,99,0.68),rgba(10,10,10,0.72),rgba(61,43,31,0.76))]`}
+    >
+      {heroImage ? (
+        <StoredImage
+          asset={heroImage}
+          className="h-full w-full object-cover transition duration-500 group-hover:scale-[1.03]"
+        />
+      ) : null}
+      <div className="absolute inset-0 bg-[linear-gradient(180deg,transparent,rgba(10,10,10,0.34))]" />
+    </div>
   );
 }
 

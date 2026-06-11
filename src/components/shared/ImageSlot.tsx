@@ -1,8 +1,10 @@
 import { useRef, useState, type MouseEvent, type ReactNode } from 'react';
 import { cn } from '../../lib/classes';
+import { isUsableImageAsset } from '../../lib/imageAssets';
 import { createLocalImageAsset, type ImageProcessingError } from '../../lib/localImages';
 import type { LocalImageAsset } from '../../types/studio';
 import { ImageUploadOverlay } from './ImageUploadOverlay';
+import { StoredImage } from './StoredImage';
 
 type ImageSlotProps = {
   actionClassName?: string;
@@ -10,6 +12,7 @@ type ImageSlotProps = {
   children?: ReactNode;
   className?: string;
   compact?: boolean;
+  fallbackValue?: LocalImageAsset;
   imageClassName?: string;
   label: string;
   labelClassName?: string;
@@ -26,6 +29,7 @@ export function ImageSlot({
   children,
   className,
   compact = false,
+  fallbackValue,
   imageClassName,
   label,
   labelClassName,
@@ -38,7 +42,11 @@ export function ImageSlot({
   const inputRef = useRef<HTMLInputElement>(null);
   const [pendingImage, setPendingImage] = useState<LocalImageAsset | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const visibleImage = pendingImage ?? value;
+  const storedImage = isUsableImageAsset(value) ? value : undefined;
+  const fallbackImage = isUsableImageAsset(fallbackValue)
+    ? fallbackValue
+    : undefined;
+  const visibleImage = pendingImage ?? storedImage ?? fallbackImage;
 
   const openFilePicker = () => inputRef.current?.click();
 
@@ -90,24 +98,22 @@ export function ImageSlot({
         type="file"
       />
 
+      <div
+        className={cn(
+          'absolute inset-0 bg-[radial-gradient(circle_at_20%_10%,rgba(200,155,60,0.22),transparent_30%),linear-gradient(135deg,rgba(27,58,99,0.58),rgba(10,10,10,0.72),rgba(61,43,31,0.72))]',
+          placeholderClassName,
+        )}
+      />
       {visibleImage ? (
-        <img
-          alt={visibleImage.name}
-          className={cn('absolute inset-0 h-full w-full object-cover', imageClassName)}
-          src={visibleImage.dataUrl}
+        <StoredImage
+          asset={visibleImage}
+          className={cn('absolute inset-0', imageClassName)}
         />
-      ) : (
-        <div
-          className={cn(
-            'absolute inset-0 bg-[radial-gradient(circle_at_20%_10%,rgba(200,155,60,0.22),transparent_30%),linear-gradient(135deg,rgba(27,58,99,0.58),rgba(10,10,10,0.72),rgba(61,43,31,0.72))]',
-            placeholderClassName,
-          )}
-        />
-      )}
+      ) : null}
 
       <ImageUploadOverlay
         actionClassName={actionClassName}
-        canRemove={Boolean(value)}
+        canRemove={Boolean(storedImage)}
         compact={compact}
         error={error}
         hasImage={Boolean(visibleImage)}

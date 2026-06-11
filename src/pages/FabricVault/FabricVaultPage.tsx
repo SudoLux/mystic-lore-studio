@@ -22,8 +22,10 @@ import { Button } from '../../components/shared/Button';
 import { Card } from '../../components/shared/Card';
 import { ImageSlot } from '../../components/shared/ImageSlot';
 import { PageHeader } from '../../components/shared/PageHeader';
+import { StoredImage } from '../../components/shared/StoredImage';
 import { useStudioData } from '../../hooks/useStudioData';
 import { cn } from '../../lib/classes';
+import { getFabricImage } from '../../lib/imageAssets';
 import {
   LOW_YARDAGE_THRESHOLD,
   calculateFabricYardage,
@@ -337,6 +339,7 @@ function FabricCard({
 }) {
   const yardage = calculateFabricYardage(fabric, linkedMaterials, projects);
   const lowYardage = isLowYardage(fabric, linkedMaterials, projects);
+  const fabricImage = getFabricImage(fabric);
 
   return (
     <button
@@ -352,12 +355,11 @@ function FabricCard({
         )}
       >
         <div className="absolute inset-0 opacity-35 [background-image:linear-gradient(90deg,rgba(237,227,207,0.08)_1px,transparent_1px),linear-gradient(0deg,rgba(237,227,207,0.07)_1px,transparent_1px)] [background-size:18px_18px]" />
-        {fabric.image ? (
+        {fabricImage ? (
           <>
-            <img
-              alt={fabric.image.name}
+            <StoredImage
+              asset={fabricImage}
               className="absolute inset-0 h-full w-full object-cover"
-              src={fabric.image.dataUrl}
             />
             <div className="absolute inset-0 bg-midnight/30" />
           </>
