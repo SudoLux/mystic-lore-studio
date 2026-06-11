@@ -455,7 +455,7 @@ function ProjectImageBand({
       {heroImage ? (
         <StoredImage
           asset={heroImage}
-          className="h-full w-full object-cover transition duration-500 group-hover:scale-[1.03]"
+          className="h-full w-full object-cover transition duration-500 group-hover:[transform:scale(calc(var(--image-zoom)*1.03))]"
         />
       ) : null}
       <div className="absolute inset-0 bg-[linear-gradient(180deg,transparent,rgba(10,10,10,0.34))]" />

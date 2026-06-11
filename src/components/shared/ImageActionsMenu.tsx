@@ -1,11 +1,13 @@
-import { Check, ImagePlus, RotateCcw, Trash2, X } from 'lucide-react';
+import { Check, ImagePlus, SlidersHorizontal, RotateCcw, Trash2, X } from 'lucide-react';
 import { cn } from '../../lib/classes';
 
 type ImageActionsMenuProps = {
   canRemove: boolean;
+  canAdjust: boolean;
   compact?: boolean;
   hasPendingImage: boolean;
   onCancelPreview: () => void;
+  onAdjust: () => void;
   onConfirmPreview: () => void;
   onRemove: () => void;
   onUpload: () => void;
@@ -15,9 +17,11 @@ const actionButtonClassName =
   'inline-flex min-h-9 items-center justify-center gap-1.5 rounded-xl border px-3 text-xs font-medium text-stardust shadow-[0_12px_30px_rgba(0,0,0,0.22),inset_0_1px_0_rgba(237,227,207,0.05)] backdrop-blur-xl transition duration-200 hover:-translate-y-0.5 hover:border-ember/55 hover:bg-stardust/[0.08] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ember/70';
 
 export function ImageActionsMenu({
+  canAdjust,
   canRemove,
   compact = false,
   hasPendingImage,
+  onAdjust,
   onCancelPreview,
   onConfirmPreview,
   onRemove,
@@ -56,6 +60,20 @@ export function ImageActionsMenu({
 
   return (
     <div className={cn('flex flex-wrap justify-end gap-2', compact && 'w-full')}>
+      {canAdjust ? (
+        <button
+          className={cn(
+            actionButtonClassName,
+            'border-ember/42 bg-midnight/58 text-stardust',
+            compact && 'flex-1 sm:flex-none',
+          )}
+          onClick={onAdjust}
+          type="button"
+        >
+          <SlidersHorizontal aria-hidden="true" size={14} strokeWidth={1.9} />
+          Adjust
+        </button>
+      ) : null}
       <button
         className={cn(
           actionButtonClassName,

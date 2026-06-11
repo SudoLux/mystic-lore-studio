@@ -4,6 +4,7 @@ import { ImageActionsMenu } from './ImageActionsMenu';
 
 type ImageUploadOverlayProps = {
   actionClassName?: string;
+  canAdjust: boolean;
   canRemove: boolean;
   compact?: boolean;
   error?: string | null;
@@ -11,6 +12,7 @@ type ImageUploadOverlayProps = {
   hasPendingImage: boolean;
   label: string;
   labelClassName?: string;
+  onAdjust: () => void;
   onCancelPreview: () => void;
   onConfirmPreview: () => void;
   onRemove: () => void;
@@ -20,6 +22,7 @@ type ImageUploadOverlayProps = {
 
 export function ImageUploadOverlay({
   actionClassName,
+  canAdjust,
   canRemove,
   compact = false,
   error,
@@ -27,6 +30,7 @@ export function ImageUploadOverlay({
   hasPendingImage,
   label,
   labelClassName,
+  onAdjust,
   onCancelPreview,
   onConfirmPreview,
   onRemove,
@@ -91,9 +95,11 @@ export function ImageUploadOverlay({
         )}
       >
         <ImageActionsMenu
+          canAdjust={canAdjust}
           canRemove={canRemove}
           compact={compact}
           hasPendingImage={hasPendingImage}
+          onAdjust={onAdjust}
           onCancelPreview={onCancelPreview}
           onConfirmPreview={onConfirmPreview}
           onRemove={onRemove}

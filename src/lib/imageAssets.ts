@@ -5,6 +5,20 @@ import type {
   LookbookPage,
 } from '../types/studio';
 
+export const defaultImageDisplay = {
+  objectFit: 'cover' as const,
+  objectPositionX: 50,
+  objectPositionY: 50,
+  zoom: 1,
+};
+
+export type ImageDisplaySettings = {
+  objectFit: 'cover' | 'contain';
+  objectPositionX: number;
+  objectPositionY: number;
+  zoom: number;
+};
+
 export function isUsableImageAsset(
   image: LocalImageAsset | null | undefined,
 ): image is LocalImageAsset {
@@ -36,4 +50,26 @@ export function getLookbookHeroImage(
   return isUsableImageAsset(lookbookPage?.heroImage)
     ? lookbookPage.heroImage
     : getProjectHeroImage(project);
+}
+
+export function getImageDisplay(asset: LocalImageAsset): ImageDisplaySettings {
+  return {
+    objectFit: asset.objectFit === 'contain' ? 'contain' : 'cover',
+    objectPositionX: clampNumber(asset.objectPositionX, 50, 0, 100),
+    objectPositionY: clampNumber(asset.objectPositionY, 50, 0, 100),
+    zoom: clampNumber(asset.zoom, 1, 1, 2.5),
+  };
+}
+
+function clampNumber(
+  value: number | undefined,
+  fallback: number,
+  minimum: number,
+  maximum: number,
+) {
+  if (typeof value !== 'number' || !Number.isFinite(value)) {
+    return fallback;
+  }
+
+  return Math.min(Math.max(value, minimum), maximum);
 }

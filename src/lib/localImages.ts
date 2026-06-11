@@ -51,9 +51,13 @@ export async function createLocalImageAsset(file: File): Promise<LocalImageAsset
     id: `image-${Date.now().toString(36)}`,
     mimeType: dataUrl.slice(5, dataUrl.indexOf(';')),
     name: file.name,
+    objectFit: 'cover',
+    objectPositionX: 50,
+    objectPositionY: 50,
     size: estimateDataUrlBytes(dataUrl),
     updatedAt: new Date().toISOString(),
     width,
+    zoom: 1,
   };
 }
 
