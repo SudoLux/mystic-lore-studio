@@ -309,7 +309,7 @@ function ProjectGalleryCard({
           <>
             <StoredImage
               asset={heroImage}
-              className="absolute inset-0 h-full w-full object-cover transition duration-500 group-hover:scale-[1.03]"
+              className="absolute inset-0 h-full w-full object-cover transition duration-500 group-hover:[transform:scale(calc(var(--image-zoom)*1.03))]"
             />
             <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(10,10,10,0.34),rgba(10,10,10,0.16),rgba(10,10,10,0.52))]" />
           </>
@@ -396,7 +396,7 @@ function ProjectListCard({
         {heroImage ? (
           <StoredImage
             asset={heroImage}
-            className="h-full w-full object-cover transition duration-500 group-hover:scale-[1.04]"
+            className="h-full w-full object-cover transition duration-500 group-hover:[transform:scale(calc(var(--image-zoom)*1.04))]"
           />
         ) : null}
         <div className="absolute inset-0 bg-[linear-gradient(180deg,transparent,rgba(10,10,10,0.32))]" />

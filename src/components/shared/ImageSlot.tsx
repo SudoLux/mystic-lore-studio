@@ -3,6 +3,7 @@ import { cn } from '../../lib/classes';
 import { isUsableImageAsset } from '../../lib/imageAssets';
 import { createLocalImageAsset, type ImageProcessingError } from '../../lib/localImages';
 import type { LocalImageAsset } from '../../types/studio';
+import { ImageAdjustModal } from './ImageAdjustModal';
 import { ImageUploadOverlay } from './ImageUploadOverlay';
 import { StoredImage } from './StoredImage';
 
@@ -42,6 +43,7 @@ export function ImageSlot({
   const inputRef = useRef<HTMLInputElement>(null);
   const [pendingImage, setPendingImage] = useState<LocalImageAsset | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [isAdjusting, setIsAdjusting] = useState(false);
   const storedImage = isUsableImageAsset(value) ? value : undefined;
   const fallbackImage = isUsableImageAsset(fallbackValue)
     ? fallbackValue
@@ -113,6 +115,7 @@ export function ImageSlot({
 
       <ImageUploadOverlay
         actionClassName={actionClassName}
+        canAdjust={Boolean(storedImage)}
         canRemove={Boolean(storedImage)}
         compact={compact}
         error={error}
@@ -120,6 +123,7 @@ export function ImageSlot({
         hasPendingImage={Boolean(pendingImage)}
         label={label}
         labelClassName={labelClassName}
+        onAdjust={() => setIsAdjusting(true)}
         onCancelPreview={() => {
           setPendingImage(null);
           setError(null);
@@ -143,6 +147,19 @@ export function ImageSlot({
       />
 
       {children ? <div className="relative z-20 h-full">{children}</div> : null}
+
+      {isAdjusting && storedImage ? (
+        <ImageAdjustModal
+          asset={storedImage}
+          label={label}
+          onClose={() => setIsAdjusting(false)}
+          onSave={(adjustedImage) => {
+            onSave(adjustedImage);
+            setIsAdjusting(false);
+          }}
+          previewAspectClassName={aspectClassName || 'aspect-video'}
+        />
+      ) : null}
     </div>
   );
 }

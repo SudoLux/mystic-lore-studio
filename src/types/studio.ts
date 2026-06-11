@@ -154,9 +154,13 @@ export type LocalImageAsset = {
   id: string;
   mimeType: string;
   name: string;
+  objectFit?: 'cover' | 'contain';
+  objectPositionX?: number;
+  objectPositionY?: number;
   size: number;
   updatedAt: string;
   width?: number;
+  zoom?: number;
 };
 
 export type LinkedMaterial = {
