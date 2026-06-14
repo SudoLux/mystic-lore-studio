@@ -7,6 +7,7 @@ import type {
 
 export const defaultImageDisplay = {
   objectFit: 'cover' as const,
+  overlayIntensity: 'auto' as const,
   objectPositionX: 50,
   objectPositionY: 50,
   zoom: 1,
@@ -14,6 +15,7 @@ export const defaultImageDisplay = {
 
 export type ImageDisplaySettings = {
   objectFit: 'cover' | 'contain';
+  overlayIntensity: 'auto' | 'light' | 'strong';
   objectPositionX: number;
   objectPositionY: number;
   zoom: number;
@@ -55,6 +57,10 @@ export function getLookbookHeroImage(
 export function getImageDisplay(asset: LocalImageAsset): ImageDisplaySettings {
   return {
     objectFit: asset.objectFit === 'contain' ? 'contain' : 'cover',
+    overlayIntensity:
+      asset.overlayIntensity === 'light' || asset.overlayIntensity === 'strong'
+        ? asset.overlayIntensity
+        : 'auto',
     objectPositionX: clampNumber(asset.objectPositionX, 50, 0, 100),
     objectPositionY: clampNumber(asset.objectPositionY, 50, 0, 100),
     zoom: clampNumber(asset.zoom, 1, 1, 2.5),

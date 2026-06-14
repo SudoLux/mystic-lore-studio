@@ -42,6 +42,7 @@ import { Badge } from '../../components/shared/Badge';
 import { Button } from '../../components/shared/Button';
 import { Card } from '../../components/shared/Card';
 import { ImageSlot } from '../../components/shared/ImageSlot';
+import { ImageReadabilityOverlay } from '../../components/shared/ImageReadabilityOverlay';
 import { LocalImageUploader } from '../../components/shared/LocalImageUploader';
 import { PageHeader } from '../../components/shared/PageHeader';
 import { StoredImage } from '../../components/shared/StoredImage';
@@ -324,12 +325,13 @@ function ProjectHero({
           onSave={(image) => onUpdateProject({ ...project, heroImage: image })}
           placeholderClassName="bg-[radial-gradient(circle_at_22%_18%,rgba(200,155,60,0.38),transparent_28%),radial-gradient(circle_at_82%_12%,rgba(45,92,107,0.42),transparent_32%),radial-gradient(circle_at_55%_82%,rgba(237,227,207,0.16),transparent_30%),linear-gradient(145deg,rgba(27,58,99,0.84),rgba(10,10,10,0.76),rgba(61,43,31,0.86))]"
           placeholderText="Add a hero image."
+          readabilityVariant="hero"
           value={project.heroImage}
         >
           <div className="absolute inset-6 rounded-[2rem] border border-stardust/12 bg-midnight/18 shadow-[inset_0_0_90px_rgba(237,227,207,0.06)]" />
           <div className="relative flex h-full min-h-[21rem] flex-col justify-between p-6">
             <div className="flex items-center justify-end gap-3">
-              <span className="rounded-full border border-stardust/15 bg-midnight/42 px-3 py-1 text-xs text-stardust/66">
+              <span className="rounded-full border border-stardust/18 bg-midnight/72 px-3 py-1 text-xs text-stardust/88 shadow-[0_8px_24px_rgba(0,0,0,0.3)] backdrop-blur-xl">
                 {formatDate(project.startDate)}
               </span>
             </div>
@@ -1808,12 +1810,13 @@ function LookbookTab({
             onSave={saveLookbookImage}
             placeholderClassName={preview.visualClassName}
             placeholderText="Add a lookbook hero visual."
+            readabilityVariant="hero"
             value={lookbookPage?.heroImage}
           >
             <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(90deg,rgba(237,227,207,0.07)_1px,transparent_1px),linear-gradient(0deg,rgba(237,227,207,0.055)_1px,transparent_1px)] [background-size:22px_22px]" />
             <div className="relative flex h-full min-h-[24rem] flex-col justify-between p-5 sm:p-7">
               <div className="flex items-center justify-end gap-3">
-                <span className="rounded-full border border-stardust/15 bg-midnight/42 px-3 py-1 text-xs text-stardust/68">
+                <span className="rounded-full border border-stardust/18 bg-midnight/72 px-3 py-1 text-xs text-stardust/88 shadow-[0_8px_24px_rgba(0,0,0,0.3)] backdrop-blur-xl">
                   {project.targetDate ? formatDate(project.targetDate) : 'Undated'}
                 </span>
               </div>
@@ -1833,7 +1836,11 @@ function LookbookTab({
                           className="absolute inset-0 h-full w-full object-cover"
                         />
                       ) : null}
-                      <span className="relative flex h-full items-end bg-[linear-gradient(180deg,transparent,rgba(10,10,10,0.58))] p-3 text-xs font-medium text-stardust/78">
+                      <ImageReadabilityOverlay
+                        asset={detail.image}
+                        variant="card"
+                      />
+                      <span className="relative z-10 flex h-full items-end p-3 text-xs font-medium text-stardust/90 [text-shadow:0_2px_12px_rgba(0,0,0,0.98)]">
                         {detail.label}
                       </span>
                     </div>

@@ -16,6 +16,7 @@ import { Badge } from '../../components/shared/Badge';
 import { Button } from '../../components/shared/Button';
 import { Card } from '../../components/shared/Card';
 import { PageHeader } from '../../components/shared/PageHeader';
+import { ImageReadabilityOverlay } from '../../components/shared/ImageReadabilityOverlay';
 import { StoredImage } from '../../components/shared/StoredImage';
 import { useStudioData } from '../../hooks/useStudioData';
 import { getProjectHeroImage } from '../../lib/imageAssets';
@@ -458,7 +459,7 @@ function ProjectImageBand({
           className="h-full w-full object-cover transition duration-500 group-hover:[transform:scale(calc(var(--image-zoom)*1.03))]"
         />
       ) : null}
-      <div className="absolute inset-0 bg-[linear-gradient(180deg,transparent,rgba(10,10,10,0.34))]" />
+      <ImageReadabilityOverlay asset={heroImage} variant="card" />
     </div>
   );
 }

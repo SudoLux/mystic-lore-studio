@@ -43,7 +43,7 @@ export function ImageUploadOverlay({
     <>
       <div
         className={cn(
-          'pointer-events-none absolute inset-0 z-10 bg-[linear-gradient(180deg,rgba(10,10,10,0.48)_0%,rgba(10,10,10,0.08)_38%,rgba(10,10,10,0.58)_100%)] transition duration-200',
+          'pointer-events-none absolute inset-0 z-10 bg-[linear-gradient(180deg,rgba(10,10,10,0.34)_0%,rgba(10,10,10,0.03)_38%,rgba(10,10,10,0.44)_100%)] transition duration-200',
           shouldKeepVisible
             ? 'opacity-100'
             : 'opacity-100 md:opacity-0 md:group-hover/image-slot:opacity-100 md:group-focus-within/image-slot:opacity-100',
@@ -56,7 +56,7 @@ export function ImageUploadOverlay({
           labelClassName,
         )}
       >
-        <span className="rounded-full border border-bronze/38 bg-midnight/58 px-3 py-1 text-xs font-medium text-stardust shadow-[inset_0_1px_0_rgba(237,227,207,0.05)] backdrop-blur-xl">
+        <span className="rounded-full border border-bronze/46 bg-midnight/78 px-3 py-1 text-xs font-medium text-stardust shadow-[0_8px_24px_rgba(0,0,0,0.32),inset_0_1px_0_rgba(237,227,207,0.06)] backdrop-blur-xl">
           {label}
         </span>
       </div>

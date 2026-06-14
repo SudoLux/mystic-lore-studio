@@ -52,6 +52,7 @@ export async function createLocalImageAsset(file: File): Promise<LocalImageAsset
     mimeType: dataUrl.slice(5, dataUrl.indexOf(';')),
     name: file.name,
     objectFit: 'cover',
+    overlayIntensity: 'auto',
     objectPositionX: 50,
     objectPositionY: 50,
     size: estimateDataUrlBytes(dataUrl),

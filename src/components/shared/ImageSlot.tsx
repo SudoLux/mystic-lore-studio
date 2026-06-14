@@ -4,6 +4,7 @@ import { isUsableImageAsset } from '../../lib/imageAssets';
 import { createLocalImageAsset, type ImageProcessingError } from '../../lib/localImages';
 import type { LocalImageAsset } from '../../types/studio';
 import { ImageAdjustModal } from './ImageAdjustModal';
+import { ImageReadabilityOverlay } from './ImageReadabilityOverlay';
 import { ImageUploadOverlay } from './ImageUploadOverlay';
 import { StoredImage } from './StoredImage';
 
@@ -21,6 +22,7 @@ type ImageSlotProps = {
   onSave: (image: LocalImageAsset) => void;
   placeholderClassName?: string;
   placeholderText?: string;
+  readabilityVariant?: 'card' | 'controls' | 'hero';
   value?: LocalImageAsset;
 };
 
@@ -38,6 +40,7 @@ export function ImageSlot({
   onSave,
   placeholderClassName,
   placeholderText,
+  readabilityVariant = 'controls',
   value,
 }: ImageSlotProps) {
   const inputRef = useRef<HTMLInputElement>(null);
@@ -112,6 +115,11 @@ export function ImageSlot({
           className={cn('absolute inset-0', imageClassName)}
         />
       ) : null}
+      <ImageReadabilityOverlay
+        asset={visibleImage}
+        className="z-[2]"
+        variant={readabilityVariant}
+      />
 
       <ImageUploadOverlay
         actionClassName={actionClassName}
@@ -146,7 +154,11 @@ export function ImageSlot({
         placeholderText={placeholderText}
       />
 
-      {children ? <div className="relative z-20 h-full">{children}</div> : null}
+      {children ? (
+        <div className="relative z-20 h-full [text-shadow:0_2px_14px_rgba(0,0,0,0.92)]">
+          {children}
+        </div>
+      ) : null}
 
       {isAdjusting && storedImage ? (
         <ImageAdjustModal

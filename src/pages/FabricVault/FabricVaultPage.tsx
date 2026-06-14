@@ -21,6 +21,7 @@ import { Badge } from '../../components/shared/Badge';
 import { Button } from '../../components/shared/Button';
 import { Card } from '../../components/shared/Card';
 import { ImageSlot } from '../../components/shared/ImageSlot';
+import { ImageReadabilityOverlay } from '../../components/shared/ImageReadabilityOverlay';
 import { PageHeader } from '../../components/shared/PageHeader';
 import { StoredImage } from '../../components/shared/StoredImage';
 import { useStudioData } from '../../hooks/useStudioData';
@@ -356,23 +357,24 @@ function FabricCard({
       >
         <div className="absolute inset-0 opacity-35 [background-image:linear-gradient(90deg,rgba(237,227,207,0.08)_1px,transparent_1px),linear-gradient(0deg,rgba(237,227,207,0.07)_1px,transparent_1px)] [background-size:18px_18px]" />
         {fabricImage ? (
-          <>
-            <StoredImage
-              asset={fabricImage}
-              className="absolute inset-0 h-full w-full object-cover"
-            />
-            <div className="absolute inset-0 bg-midnight/30" />
-          </>
+          <StoredImage
+            asset={fabricImage}
+            className="absolute inset-0 h-full w-full object-cover"
+          />
         ) : null}
-        <div className="relative flex items-start justify-between gap-3">
-          <Badge variant={fabric.archiveStatus === 'Archived' ? 'bronze' : 'teal'}>
+        <ImageReadabilityOverlay asset={fabricImage} variant="card" />
+        <div className="relative z-10 flex items-start justify-between gap-3 [text-shadow:0_2px_12px_rgba(0,0,0,0.95)]">
+          <Badge
+            className="bg-midnight/72 backdrop-blur-xl"
+            variant={fabric.archiveStatus === 'Archived' ? 'bronze' : 'teal'}
+          >
             {fabric.archiveStatus}
           </Badge>
-          <span className="rounded-full border border-stardust/15 bg-midnight/45 px-3 py-1 text-xs font-medium text-stardust/72">
+          <span className="rounded-full border border-stardust/18 bg-midnight/72 px-3 py-1 text-xs font-medium text-stardust/86 shadow-[0_8px_24px_rgba(0,0,0,0.34)] backdrop-blur-xl">
             {formatDate(fabric.updatedAt)}
           </span>
         </div>
-        <div className="relative mt-14 flex items-end justify-between gap-4">
+        <div className="relative z-10 mt-14 flex items-end justify-between gap-4 [text-shadow:0_2px_14px_rgba(0,0,0,0.96)]">
           <div>
             <p className="text-xs font-medium uppercase tracking-[0.14em] text-stardust/58">
               {fabric.category}
@@ -539,6 +541,7 @@ function FabricDetailPage({
             onSave={(image) => onUpdateFabric({ ...fabric, image })}
             placeholderClassName={getFabricVisualClass(fabric)}
             placeholderText="Add a fabric image."
+            readabilityVariant="hero"
             value={fabric.image}
           >
             <div className="pointer-events-none absolute inset-0 opacity-35 [background-image:linear-gradient(90deg,rgba(237,227,207,0.08)_1px,transparent_1px),linear-gradient(0deg,rgba(237,227,207,0.07)_1px,transparent_1px)] [background-size:18px_18px]" />

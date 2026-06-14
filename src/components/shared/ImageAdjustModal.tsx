@@ -13,6 +13,7 @@ import { cn } from '../../lib/classes';
 import { defaultImageDisplay, getImageDisplay } from '../../lib/imageAssets';
 import type { LocalImageAsset } from '../../types/studio';
 import { Button } from './Button';
+import { ImageReadabilityOverlay } from './ImageReadabilityOverlay';
 import { StoredImage } from './StoredImage';
 
 type ImageAdjustModalProps = {
@@ -71,7 +72,11 @@ export function ImageAdjustModal({
     setDraft((current) => ({ ...current, ...values }));
   };
 
-  const resetDisplay = () => updateDraft(defaultImageDisplay);
+  const resetDisplay = () =>
+    updateDraft({
+      ...defaultImageDisplay,
+      overlayIntensity: display.overlayIntensity,
+    });
 
   return createPortal(
     <div
@@ -116,6 +121,7 @@ export function ImageAdjustModal({
                   asset={draft}
                   className="absolute inset-0 transition-transform duration-150"
                 />
+                <ImageReadabilityOverlay asset={draft} variant="hero" />
                 <div className="pointer-events-none absolute inset-0 border-[8px] border-midnight/12" />
                 <span className="absolute bottom-3 left-3 rounded-full border border-stardust/16 bg-midnight/66 px-3 py-1 text-xs text-stardust/72 backdrop-blur-xl">
                   {display.objectFit === 'cover' ? 'Fill Frame' : 'Fit Entire Image'} ·{' '}
@@ -126,6 +132,27 @@ export function ImageAdjustModal({
             </div>
 
             <div className="space-y-5">
+              <ControlGroup label="Text Overlay">
+                <div className="grid grid-cols-3 rounded-2xl border border-bronze/28 bg-midnight/46 p-1">
+                  {(['auto', 'light', 'strong'] as const).map((intensity) => (
+                    <FitButton
+                      active={display.overlayIntensity === intensity}
+                      key={intensity}
+                      label={
+                        intensity === 'auto'
+                          ? 'Auto'
+                          : intensity === 'light'
+                            ? 'Light'
+                            : 'Strong'
+                      }
+                      onClick={() =>
+                        updateDraft({ overlayIntensity: intensity })
+                      }
+                    />
+                  ))}
+                </div>
+              </ControlGroup>
+
               <ControlGroup label="Fit Mode">
                 <div className="grid grid-cols-2 rounded-2xl border border-bronze/28 bg-midnight/46 p-1">
                   <FitButton
