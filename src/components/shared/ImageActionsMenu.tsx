@@ -14,7 +14,7 @@ type ImageActionsMenuProps = {
 };
 
 const actionButtonClassName =
-  'inline-flex min-h-9 items-center justify-center gap-1.5 rounded-xl border px-3 text-xs font-medium text-stardust shadow-[0_12px_30px_rgba(0,0,0,0.22),inset_0_1px_0_rgba(237,227,207,0.05)] backdrop-blur-xl transition duration-200 hover:-translate-y-0.5 hover:border-ember/55 hover:bg-stardust/[0.08] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ember/70';
+  'inline-flex min-h-11 items-center justify-center gap-1.5 rounded-xl border px-3 text-xs font-medium text-stardust shadow-[0_12px_30px_rgba(0,0,0,0.22),inset_0_1px_0_rgba(237,227,207,0.05)] backdrop-blur-xl transition duration-200 hover:-translate-y-0.5 hover:border-ember/55 hover:bg-stardust/[0.08] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ember/70 md:min-h-9';
 
 export function ImageActionsMenu({
   canAdjust,
