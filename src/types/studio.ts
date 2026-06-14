@@ -155,6 +155,7 @@ export type LocalImageAsset = {
   mimeType: string;
   name: string;
   objectFit?: 'cover' | 'contain';
+  overlayIntensity?: 'auto' | 'light' | 'strong';
   objectPositionX?: number;
   objectPositionY?: number;
   size: number;

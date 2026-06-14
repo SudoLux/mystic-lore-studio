@@ -11,6 +11,7 @@ import { Badge } from '../../components/shared/Badge';
 import { Button } from '../../components/shared/Button';
 import { Card } from '../../components/shared/Card';
 import { PageHeader } from '../../components/shared/PageHeader';
+import { ImageReadabilityOverlay } from '../../components/shared/ImageReadabilityOverlay';
 import { StoredImage } from '../../components/shared/StoredImage';
 import { useStudioData } from '../../hooks/useStudioData';
 import { cn } from '../../lib/classes';
@@ -306,19 +307,20 @@ function ProjectGalleryCard({
     >
       <div className="relative h-40 overflow-hidden border-b border-bronze/24 bg-[radial-gradient(circle_at_20%_10%,rgba(200,155,60,0.38),transparent_30%),radial-gradient(circle_at_88%_18%,rgba(45,92,107,0.38),transparent_34%),linear-gradient(135deg,rgba(27,58,99,0.76),rgba(10,10,10,0.72),rgba(61,43,31,0.86))] p-4 shadow-[inset_0_-1px_0_rgba(237,227,207,0.05)]">
         {heroImage ? (
-          <>
-            <StoredImage
-              asset={heroImage}
-              className="absolute inset-0 h-full w-full object-cover transition duration-500 group-hover:[transform:scale(calc(var(--image-zoom)*1.03))]"
-            />
-            <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(10,10,10,0.34),rgba(10,10,10,0.16),rgba(10,10,10,0.52))]" />
-          </>
+          <StoredImage
+            asset={heroImage}
+            className="absolute inset-0 h-full w-full object-cover transition duration-500 group-hover:[transform:scale(calc(var(--image-zoom)*1.03))]"
+          />
         ) : null}
-        <div className="relative z-10 flex items-start justify-between gap-3">
-          <Badge variant={project.status === 'Blocked' ? 'ember' : 'teal'}>
+        <ImageReadabilityOverlay asset={heroImage} variant="card" />
+        <div className="relative z-10 flex items-start justify-between gap-3 [text-shadow:0_2px_12px_rgba(0,0,0,0.95)]">
+          <Badge
+            className="bg-midnight/72 backdrop-blur-xl"
+            variant={project.status === 'Blocked' ? 'ember' : 'teal'}
+          >
             {project.status}
           </Badge>
-          <span className="rounded-full border border-stardust/15 bg-midnight/45 px-3 py-1 text-xs font-medium text-stardust/72">
+          <span className="rounded-full border border-stardust/18 bg-midnight/72 px-3 py-1 text-xs font-medium text-stardust/86 shadow-[0_8px_24px_rgba(0,0,0,0.34)] backdrop-blur-xl">
             {lastUpdated}
           </span>
         </div>
@@ -399,7 +401,7 @@ function ProjectListCard({
             className="h-full w-full object-cover transition duration-500 group-hover:[transform:scale(calc(var(--image-zoom)*1.04))]"
           />
         ) : null}
-        <div className="absolute inset-0 bg-[linear-gradient(180deg,transparent,rgba(10,10,10,0.32))]" />
+        <ImageReadabilityOverlay asset={heroImage} variant="card" />
       </div>
 
       <div className="min-w-0">

@@ -21,6 +21,7 @@ import {
 import { Badge } from '../../components/shared/Badge';
 import { Card } from '../../components/shared/Card';
 import { PageHeader } from '../../components/shared/PageHeader';
+import { ImageReadabilityOverlay } from '../../components/shared/ImageReadabilityOverlay';
 import { StoredImage } from '../../components/shared/StoredImage';
 import { useStudioData } from '../../hooks/useStudioData';
 import { cn } from '../../lib/classes';
@@ -284,7 +285,7 @@ function KanbanProjectCardContent({
             className="h-full w-full object-cover"
           />
         ) : null}
-        <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(10,10,10,0.08),rgba(10,10,10,0.52))]" />
+        <ImageReadabilityOverlay asset={heroImage} variant="card" />
       </div>
       <div className="p-4">
         <div className="flex items-start justify-between gap-3">

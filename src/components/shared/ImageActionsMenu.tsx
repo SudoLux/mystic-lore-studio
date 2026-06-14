@@ -33,7 +33,7 @@ export function ImageActionsMenu({
         <button
           className={cn(
             actionButtonClassName,
-            'border-bronze/35 bg-midnight/58 text-stardust/82',
+            'border-bronze/42 bg-midnight/78 text-stardust/92',
             compact && 'flex-1 sm:flex-none',
           )}
           onClick={onCancelPreview}
@@ -64,7 +64,7 @@ export function ImageActionsMenu({
         <button
           className={cn(
             actionButtonClassName,
-            'border-ember/42 bg-midnight/58 text-stardust',
+            'border-ember/48 bg-midnight/78 text-stardust',
             compact && 'flex-1 sm:flex-none',
           )}
           onClick={onAdjust}
@@ -77,7 +77,7 @@ export function ImageActionsMenu({
       <button
         className={cn(
           actionButtonClassName,
-          'border-bronze/40 bg-midnight/58',
+          'border-bronze/46 bg-midnight/78',
           compact && 'flex-1 sm:flex-none',
         )}
         onClick={onUpload}
@@ -94,7 +94,7 @@ export function ImageActionsMenu({
         <button
           className={cn(
             actionButtonClassName,
-            'border-bronze/30 bg-midnight/42 text-stardust/78 hover:border-ember/45',
+            'border-bronze/36 bg-midnight/72 text-stardust/86 hover:border-ember/45',
             compact && 'flex-1 sm:flex-none',
           )}
           onClick={onRemove}
