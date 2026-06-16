@@ -1,5 +1,8 @@
+import { useRef, type ReactNode } from 'react';
 import {
   ArrowRight,
+  ChevronLeft,
+  ChevronRight,
   BookOpen,
   Boxes,
   CheckCircle2,
@@ -444,15 +447,10 @@ function FeaturedGarmentsSection({
           project={heroProject}
         />
 
-        <div className="mt-4 grid gap-3 md:grid-cols-2 2xl:grid-cols-3">
-          {supportingProjects.map((project) => (
-            <FeaturedProjectCard
-              key={project.id}
-              onOpenProject={onOpenProject}
-              project={project}
-            />
-          ))}
-        </div>
+        <FeaturedProjectCarousel
+          onOpenProject={onOpenProject}
+          projects={supportingProjects}
+        />
       </div>
     </Card>
   );
@@ -466,13 +464,13 @@ function FeaturedGarmentHero({
   project: ApparelProject;
 }) {
   const heroImage = getProjectHeroImage(project);
-  const featureChips = project.keyFeatures.slice(0, 4);
+  const featureChips = project.keyFeatures.slice(0, 3);
   const materialCount = project.linkedMaterials.length;
 
   return (
-    <article className="group mt-5 overflow-hidden rounded-[1.75rem] border border-ember/38 bg-[linear-gradient(145deg,rgba(10,10,10,0.56),rgba(61,43,31,0.2))] shadow-[0_28px_90px_rgba(0,0,0,0.34),inset_0_1px_0_rgba(237,227,207,0.055)] transition duration-300 hover:border-ember/60 hover:shadow-[0_34px_110px_rgba(200,155,60,0.12),0_24px_90px_rgba(0,0,0,0.38)]">
-      <div className="grid min-h-[32rem] lg:grid-cols-[0.9fr_1.1fr]">
-        <div className="flex flex-col justify-between gap-8 p-5 sm:p-7 lg:p-8">
+    <article className="group mt-5 overflow-hidden rounded-[1.75rem] border border-ember/38 bg-[linear-gradient(145deg,rgba(10,10,10,0.56),rgba(61,43,31,0.2))] shadow-[0_22px_70px_rgba(0,0,0,0.3),inset_0_1px_0_rgba(237,227,207,0.055)] transition duration-300 hover:border-ember/60 hover:shadow-[0_28px_86px_rgba(200,155,60,0.11),0_20px_70px_rgba(0,0,0,0.34)]">
+      <div className="grid lg:grid-cols-[minmax(0,1fr)_minmax(17rem,23rem)]">
+        <div className="flex flex-col justify-between gap-6 p-5 sm:p-6 lg:p-7">
           <div>
             <div className="flex flex-wrap gap-2">
               <Badge variant={project.status === 'Blocked' ? 'ember' : 'teal'}>
@@ -482,18 +480,18 @@ function FeaturedGarmentHero({
               <Badge variant="blue">{project.garmentType}</Badge>
             </div>
 
-            <h3 className="mt-6 text-4xl font-semibold leading-[1.05] text-stardust sm:text-5xl lg:text-6xl">
+            <h3 className="mt-5 text-3xl font-semibold leading-[1.08] text-stardust sm:text-4xl lg:text-5xl">
               {project.name}
             </h3>
-            <p className="mt-4 text-sm font-medium uppercase tracking-[0.16em] text-ember/82">
+            <p className="mt-3 text-xs font-medium uppercase tracking-[0.16em] text-ember/82">
               {project.collection || project.season}
             </p>
-            <p className="mt-5 max-w-xl text-base leading-7 text-stardust/70">
+            <p className="mt-4 line-clamp-3 max-w-2xl text-sm leading-6 text-stardust/70 sm:text-base">
               {project.designIntent || project.summary}
             </p>
 
             {featureChips.length > 0 ? (
-              <div className="mt-6 flex flex-wrap gap-2">
+              <div className="mt-4 flex flex-wrap gap-2">
                 {featureChips.map((feature) => (
                   <span
                     className="rounded-full border border-bronze/28 bg-midnight/42 px-3 py-1.5 text-xs font-medium text-stardust/72"
@@ -507,7 +505,7 @@ function FeaturedGarmentHero({
           </div>
 
           <div>
-            <div className="grid gap-3 sm:grid-cols-3">
+            <div className="grid grid-cols-3 gap-2">
               <HeroMeta label="Progress" value={`${project.progress}%`} />
               <HeroMeta
                 label="Materials"
@@ -522,12 +520,12 @@ function FeaturedGarmentHero({
               </div>
               <div className="studio-progress-track">
                 <div
-                  className="studio-progress-fill transition-[width] duration-700"
+                  className="studio-progress-fill transition-[width] duration-700 motion-safe:animate-[pulse_2.8s_ease-in-out_infinite]"
                   style={{ width: `${project.progress}%` }}
                 />
               </div>
             </div>
-            <div className="mt-6 flex flex-wrap gap-2">
+            <div className="mt-5 flex flex-wrap gap-2">
               <Button
                 className="min-h-11 md:min-h-10"
                 icon={<ArrowRight aria-hidden="true" size={16} strokeWidth={1.9} />}
@@ -541,7 +539,7 @@ function FeaturedGarmentHero({
           </div>
         </div>
 
-        <div className="relative min-h-[24rem] overflow-hidden border-t border-bronze/24 bg-[radial-gradient(circle_at_20%_10%,rgba(200,155,60,0.34),transparent_30%),radial-gradient(circle_at_84%_18%,rgba(45,92,107,0.42),transparent_34%),linear-gradient(135deg,rgba(27,58,99,0.78),rgba(10,10,10,0.7),rgba(61,43,31,0.82))] lg:min-h-full lg:border-l lg:border-t-0">
+        <div className="relative aspect-[16/9] max-h-[14rem] min-h-[11rem] overflow-hidden border-t border-bronze/24 bg-[radial-gradient(circle_at_20%_10%,rgba(200,155,60,0.34),transparent_30%),radial-gradient(circle_at_84%_18%,rgba(45,92,107,0.42),transparent_34%),linear-gradient(135deg,rgba(27,58,99,0.78),rgba(10,10,10,0.7),rgba(61,43,31,0.82))] sm:aspect-[4/3] sm:max-h-[18rem] sm:min-h-[16rem] lg:h-full lg:max-h-none lg:border-l lg:border-t-0">
           {heroImage ? (
             <StoredImage
               asset={heroImage}
@@ -550,13 +548,13 @@ function FeaturedGarmentHero({
           ) : null}
           <ImageReadabilityOverlay asset={heroImage} variant="hero" />
           <div className="absolute inset-6 rounded-[2rem] border border-stardust/12 bg-midnight/12 shadow-[inset_0_0_90px_rgba(237,227,207,0.06)]" />
-          <div className="relative z-10 flex h-full min-h-[24rem] flex-col justify-end p-5 [text-shadow:0_2px_16px_rgba(0,0,0,0.95)] sm:p-7">
+          <div className="relative z-10 flex h-full flex-col justify-end p-5 [text-shadow:0_2px_16px_rgba(0,0,0,0.95)] sm:p-6">
             <div className="max-w-lg">
               <p className="text-xs font-medium uppercase tracking-[0.16em] text-stardust/66">
                 Featured garment
               </p>
-              <p className="mt-3 text-2xl font-semibold leading-tight text-stardust sm:text-3xl">
-                {project.summary}
+              <p className="mt-3 text-lg font-semibold leading-tight text-stardust sm:text-2xl">
+                {project.progress}% complete / {project.phase}
               </p>
             </div>
           </div>
@@ -566,7 +564,89 @@ function FeaturedGarmentHero({
   );
 }
 
-function FeaturedProjectCard({
+function FeaturedProjectCarousel({
+  onOpenProject,
+  projects,
+}: {
+  onOpenProject: (projectId: string) => void;
+  projects: ApparelProject[];
+}) {
+  const scrollerRef = useRef<HTMLDivElement>(null);
+
+  if (projects.length === 0) {
+    return null;
+  }
+
+  const scrollByCard = (direction: 'left' | 'right') => {
+    scrollerRef.current?.scrollBy({
+      behavior: 'smooth',
+      left: direction === 'left' ? -320 : 320,
+    });
+  };
+
+  return (
+    <section className="mt-4">
+      <div className="mb-3 flex items-center justify-between gap-3">
+        <p className="text-xs font-medium uppercase tracking-[0.16em] text-stardust/44">
+          Supporting features
+        </p>
+        <div className="hidden gap-2 sm:flex">
+          <CarouselButton label="Scroll left" onClick={() => scrollByCard('left')}>
+            <ChevronLeft aria-hidden="true" size={16} strokeWidth={1.9} />
+          </CarouselButton>
+          <CarouselButton label="Scroll right" onClick={() => scrollByCard('right')}>
+            <ChevronRight aria-hidden="true" size={16} strokeWidth={1.9} />
+          </CarouselButton>
+        </div>
+      </div>
+      <div className="relative">
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-y-0 left-0 z-10 w-8 bg-gradient-to-r from-midnight/90 to-transparent"
+        />
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-y-0 right-0 z-10 w-8 bg-gradient-to-l from-midnight/90 to-transparent"
+        />
+        <div
+          className="studio-scrollbar flex snap-x gap-3 overflow-x-auto scroll-smooth pb-2"
+          ref={scrollerRef}
+        >
+          {projects.map((project) => (
+            <FeaturedProjectMiniCard
+              key={project.id}
+              onOpenProject={onOpenProject}
+              project={project}
+            />
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function CarouselButton({
+  children,
+  label,
+  onClick,
+}: {
+  children: ReactNode;
+  label: string;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      aria-label={label}
+      className="flex h-9 w-9 items-center justify-center rounded-xl border border-bronze/30 bg-midnight/42 text-stardust/70 transition duration-200 hover:border-ember/45 hover:bg-stardust/[0.08] hover:text-ember"
+      onClick={onClick}
+      type="button"
+    >
+      {children}
+    </button>
+  );
+}
+
+function FeaturedProjectMiniCard({
   onOpenProject,
   project,
 }: {
@@ -574,9 +654,9 @@ function FeaturedProjectCard({
   project: ApparelProject;
 }) {
   return (
-    <article className="group flex min-h-[23rem] flex-col overflow-hidden rounded-2xl border border-bronze/28 bg-[linear-gradient(145deg,rgba(10,10,10,0.44),rgba(61,43,31,0.2))] shadow-[inset_0_1px_0_rgba(237,227,207,0.035)] transition duration-300 hover:-translate-y-1 hover:border-ember/48 hover:bg-midnight/50">
-      <ProjectImageBand project={project} className="h-28" />
-      <div className="flex flex-1 flex-col p-4">
+    <article className="group flex min-h-[18.5rem] w-[17.5rem] shrink-0 snap-start flex-col overflow-hidden rounded-2xl border border-bronze/28 bg-[linear-gradient(145deg,rgba(10,10,10,0.44),rgba(61,43,31,0.2))] shadow-[inset_0_1px_0_rgba(237,227,207,0.035)] transition duration-300 hover:-translate-y-1 hover:border-ember/48 hover:bg-midnight/50 sm:w-[20rem] xl:w-[22rem]">
+      <ProjectImageBand project={project} className="h-20" />
+      <div className="flex flex-1 flex-col p-3.5">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
             <p className="line-clamp-2 text-base font-semibold leading-snug text-stardust">
@@ -596,7 +676,7 @@ function FeaturedProjectCard({
         <p className="mt-4 line-clamp-3 min-h-16 text-sm leading-6 text-stardust/62">
           {project.summary}
         </p>
-        <div className="mt-auto pt-5">
+        <div className="mt-auto pt-4">
           <div className="mb-2 flex items-center justify-between text-xs">
             <span className="text-stardust/52">{project.phase}</span>
             <span className="font-medium text-ember">{project.progress}%</span>
@@ -628,11 +708,13 @@ function FeaturedProjectCard({
 
 function HeroMeta({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-2xl border border-bronze/22 bg-midnight/34 p-3">
-      <p className="text-xs font-medium uppercase tracking-[0.14em] text-stardust/40">
+    <div className="min-w-0 rounded-2xl border border-bronze/22 bg-midnight/34 p-2.5 sm:p-3">
+      <p className="truncate text-[0.64rem] font-medium uppercase tracking-[0.14em] text-stardust/40 sm:text-xs">
         {label}
       </p>
-      <p className="mt-2 truncate text-sm font-semibold text-stardust">{value}</p>
+      <p className="mt-2 truncate text-xs font-semibold text-stardust sm:text-sm">
+        {value}
+      </p>
     </div>
   );
 }

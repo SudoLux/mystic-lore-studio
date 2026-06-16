@@ -11,7 +11,7 @@ type SidebarProps = {
 
 export function Sidebar({ activePage, navItems, onNavigate }: SidebarProps) {
   return (
-    <aside className="sticky top-0 hidden h-screen border-r border-bronze/30 bg-midnight/80 px-5 py-6 backdrop-blur-xl lg:flex lg:flex-col">
+    <aside className="hidden min-h-screen border-r border-bronze/30 bg-midnight/80 px-5 py-6 backdrop-blur-xl lg:flex lg:flex-col">
       <div className="mb-8">
         <BrandLockup className="mb-5" size="sidebar" />
         <Badge variant="ember">Studio</Badge>
