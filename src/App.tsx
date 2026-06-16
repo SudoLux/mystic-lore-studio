@@ -137,6 +137,7 @@ function App() {
           onAddFabric={openNewFabricForm}
           onNavigate={navigateToPage}
           onNewProject={openNewProjectForm}
+          onOpenProject={openProject}
         />
       ),
       projects: route.projectId ? (

@@ -28,6 +28,7 @@ type DashboardPageProps = {
   onAddFabric: () => void;
   onNavigate: (pageId: PageId) => void;
   onNewProject: () => void;
+  onOpenProject: (projectId: string) => void;
 };
 
 const productionPhases = new Set([
@@ -67,6 +68,7 @@ export function DashboardPage({
   onAddFabric,
   onNavigate,
   onNewProject,
+  onOpenProject,
 }: DashboardPageProps) {
   const {
     data: { fabrics, linkedMaterials, projects, tasks },
@@ -87,9 +89,11 @@ export function DashboardPage({
       calculateFabricYardage(fabric, linkedMaterials, projects).availableYards <
       LOW_YARDAGE_THRESHOLD,
   );
-  const featuredProjects = [...projects]
-    .sort((a, b) => b.progress - a.progress)
-    .slice(0, 3);
+  const heroProject = getHeroProject(projects);
+  const supportingFeaturedProjects = getSupportingFeaturedProjects(
+    projects,
+    heroProject?.id,
+  );
   const recentlyUpdatedProjects = [...projects]
     .sort((a, b) => latestProjectDate(b).localeCompare(latestProjectDate(a)))
     .slice(0, 4);
@@ -215,26 +219,13 @@ export function DashboardPage({
         })}
       </div>
 
-      <div className="grid gap-4 xl:grid-cols-[1.35fr_0.8fr]">
-        <Card className="bg-[linear-gradient(145deg,rgba(27,58,99,0.35),rgba(45,92,107,0.18)_46%,rgba(61,43,31,0.62))]" elevated>
-          <div className="flex h-full flex-col justify-between gap-10">
-            <div>
-              <Badge variant="ember">Featured Garments</Badge>
-              <h2 className="mt-5 max-w-2xl text-2xl font-semibold leading-tight text-stardust sm:text-3xl">
-                The pieces carrying the collection signal right now.
-              </h2>
-              <p className="mt-5 max-w-xl text-sm leading-7 text-stardust/68 sm:text-base">
-                Ranked by progress so the strongest project momentum stays in
-                immediate view.
-              </p>
-            </div>
-            <div className="grid gap-3 lg:grid-cols-3">
-              {featuredProjects.map((project) => (
-                <ProjectFeatureCard key={project.id} project={project} />
-              ))}
-            </div>
-          </div>
-        </Card>
+      <div className="grid gap-4 2xl:grid-cols-[minmax(0,1fr)_24rem]">
+        <FeaturedGarmentsSection
+          heroProject={heroProject}
+          onNewProject={onNewProject}
+          onOpenProject={onOpenProject}
+          supportingProjects={supportingFeaturedProjects}
+        />
 
         <Card>
           <div className="flex h-full flex-col justify-between">
@@ -399,14 +390,196 @@ export function DashboardPage({
   );
 }
 
-function ProjectFeatureCard({ project }: { project: ApparelProject }) {
+function FeaturedGarmentsSection({
+  heroProject,
+  onNewProject,
+  onOpenProject,
+  supportingProjects,
+}: {
+  heroProject?: ApparelProject;
+  onNewProject: () => void;
+  onOpenProject: (projectId: string) => void;
+  supportingProjects: ApparelProject[];
+}) {
+  if (!heroProject) {
+    return (
+      <Card
+        className="flex min-h-[34rem] items-center justify-center border-ember/30 bg-[radial-gradient(circle_at_24%_18%,rgba(200,155,60,0.22),transparent_30%),linear-gradient(145deg,rgba(27,58,99,0.24),rgba(10,10,10,0.58),rgba(61,43,31,0.38))] text-center"
+        elevated
+      >
+        <div className="max-w-lg">
+          <Badge variant="ember">Featured Garments</Badge>
+          <h2 className="mt-5 text-3xl font-semibold leading-tight text-stardust">
+            Your featured garment will appear here once a project is added.
+          </h2>
+          <p className="mt-4 text-sm leading-7 text-stardust/62">
+            Start a garment record and the dashboard will automatically surface
+            the strongest current project.
+          </p>
+          <Button className="mt-7" onClick={onNewProject} variant="primary">
+            Create Project
+          </Button>
+        </div>
+      </Card>
+    );
+  }
+
   return (
-    <article className="group overflow-hidden rounded-2xl border border-bronze/28 bg-[linear-gradient(145deg,rgba(10,10,10,0.44),rgba(61,43,31,0.2))] shadow-[inset_0_1px_0_rgba(237,227,207,0.035)] transition duration-300 hover:-translate-y-1 hover:border-ember/48 hover:bg-midnight/50">
+    <Card className="overflow-hidden p-0" elevated>
+      <div className="bg-[radial-gradient(circle_at_18%_12%,rgba(200,155,60,0.18),transparent_30%),linear-gradient(145deg,rgba(27,58,99,0.28),rgba(10,10,10,0.58),rgba(61,43,31,0.44))] p-4 sm:p-5 lg:p-6">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <Badge variant="ember">Featured Garments</Badge>
+            <h2 className="mt-4 max-w-2xl text-2xl font-semibold leading-tight text-stardust sm:text-3xl">
+              The collection signal, staged like an editorial lead.
+            </h2>
+          </div>
+          <p className="max-w-md text-sm leading-6 text-stardust/58">
+            Selected from active projects by progress, then latest studio update.
+          </p>
+        </div>
+
+        <FeaturedGarmentHero
+          onOpenProject={onOpenProject}
+          project={heroProject}
+        />
+
+        <div className="mt-4 grid gap-3 md:grid-cols-2 2xl:grid-cols-3">
+          {supportingProjects.map((project) => (
+            <FeaturedProjectCard
+              key={project.id}
+              onOpenProject={onOpenProject}
+              project={project}
+            />
+          ))}
+        </div>
+      </div>
+    </Card>
+  );
+}
+
+function FeaturedGarmentHero({
+  onOpenProject,
+  project,
+}: {
+  onOpenProject: (projectId: string) => void;
+  project: ApparelProject;
+}) {
+  const heroImage = getProjectHeroImage(project);
+  const featureChips = project.keyFeatures.slice(0, 4);
+  const materialCount = project.linkedMaterials.length;
+
+  return (
+    <article className="group mt-5 overflow-hidden rounded-[1.75rem] border border-ember/38 bg-[linear-gradient(145deg,rgba(10,10,10,0.56),rgba(61,43,31,0.2))] shadow-[0_28px_90px_rgba(0,0,0,0.34),inset_0_1px_0_rgba(237,227,207,0.055)] transition duration-300 hover:border-ember/60 hover:shadow-[0_34px_110px_rgba(200,155,60,0.12),0_24px_90px_rgba(0,0,0,0.38)]">
+      <div className="grid min-h-[32rem] lg:grid-cols-[0.9fr_1.1fr]">
+        <div className="flex flex-col justify-between gap-8 p-5 sm:p-7 lg:p-8">
+          <div>
+            <div className="flex flex-wrap gap-2">
+              <Badge variant={project.status === 'Blocked' ? 'ember' : 'teal'}>
+                {project.status}
+              </Badge>
+              <Badge variant="bronze">{project.phase}</Badge>
+              <Badge variant="blue">{project.garmentType}</Badge>
+            </div>
+
+            <h3 className="mt-6 text-4xl font-semibold leading-[1.05] text-stardust sm:text-5xl lg:text-6xl">
+              {project.name}
+            </h3>
+            <p className="mt-4 text-sm font-medium uppercase tracking-[0.16em] text-ember/82">
+              {project.collection || project.season}
+            </p>
+            <p className="mt-5 max-w-xl text-base leading-7 text-stardust/70">
+              {project.designIntent || project.summary}
+            </p>
+
+            {featureChips.length > 0 ? (
+              <div className="mt-6 flex flex-wrap gap-2">
+                {featureChips.map((feature) => (
+                  <span
+                    className="rounded-full border border-bronze/28 bg-midnight/42 px-3 py-1.5 text-xs font-medium text-stardust/72"
+                    key={feature}
+                  >
+                    {feature}
+                  </span>
+                ))}
+              </div>
+            ) : null}
+          </div>
+
+          <div>
+            <div className="grid gap-3 sm:grid-cols-3">
+              <HeroMeta label="Progress" value={`${project.progress}%`} />
+              <HeroMeta
+                label="Materials"
+                value={`${materialCount} linked`}
+              />
+              <HeroMeta label="Season" value={project.season} />
+            </div>
+            <div className="mt-5">
+              <div className="mb-2 flex items-center justify-between text-xs">
+                <span className="text-stardust/54">Studio progress</span>
+                <span className="font-medium text-ember">{project.progress}%</span>
+              </div>
+              <div className="studio-progress-track">
+                <div
+                  className="studio-progress-fill transition-[width] duration-700"
+                  style={{ width: `${project.progress}%` }}
+                />
+              </div>
+            </div>
+            <div className="mt-6 flex flex-wrap gap-2">
+              <Button
+                className="min-h-11 md:min-h-10"
+                icon={<ArrowRight aria-hidden="true" size={16} strokeWidth={1.9} />}
+                onClick={() => onOpenProject(project.id)}
+                size="sm"
+                variant="primary"
+              >
+                View Project
+              </Button>
+            </div>
+          </div>
+        </div>
+
+        <div className="relative min-h-[24rem] overflow-hidden border-t border-bronze/24 bg-[radial-gradient(circle_at_20%_10%,rgba(200,155,60,0.34),transparent_30%),radial-gradient(circle_at_84%_18%,rgba(45,92,107,0.42),transparent_34%),linear-gradient(135deg,rgba(27,58,99,0.78),rgba(10,10,10,0.7),rgba(61,43,31,0.82))] lg:min-h-full lg:border-l lg:border-t-0">
+          {heroImage ? (
+            <StoredImage
+              asset={heroImage}
+              className="absolute inset-0 h-full w-full object-cover transition duration-700 group-hover:[transform:scale(calc(var(--image-zoom)*1.035))]"
+            />
+          ) : null}
+          <ImageReadabilityOverlay asset={heroImage} variant="hero" />
+          <div className="absolute inset-6 rounded-[2rem] border border-stardust/12 bg-midnight/12 shadow-[inset_0_0_90px_rgba(237,227,207,0.06)]" />
+          <div className="relative z-10 flex h-full min-h-[24rem] flex-col justify-end p-5 [text-shadow:0_2px_16px_rgba(0,0,0,0.95)] sm:p-7">
+            <div className="max-w-lg">
+              <p className="text-xs font-medium uppercase tracking-[0.16em] text-stardust/66">
+                Featured garment
+              </p>
+              <p className="mt-3 text-2xl font-semibold leading-tight text-stardust sm:text-3xl">
+                {project.summary}
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </article>
+  );
+}
+
+function FeaturedProjectCard({
+  onOpenProject,
+  project,
+}: {
+  onOpenProject: (projectId: string) => void;
+  project: ApparelProject;
+}) {
+  return (
+    <article className="group flex min-h-[23rem] flex-col overflow-hidden rounded-2xl border border-bronze/28 bg-[linear-gradient(145deg,rgba(10,10,10,0.44),rgba(61,43,31,0.2))] shadow-[inset_0_1px_0_rgba(237,227,207,0.035)] transition duration-300 hover:-translate-y-1 hover:border-ember/48 hover:bg-midnight/50">
       <ProjectImageBand project={project} className="h-28" />
-      <div className="p-4">
+      <div className="flex flex-1 flex-col p-4">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
-            <p className="truncate text-base font-semibold text-stardust">
+            <p className="line-clamp-2 text-base font-semibold leading-snug text-stardust">
               {project.name}
             </p>
             <p className="mt-1 text-xs text-stardust/50">
@@ -423,7 +596,7 @@ function ProjectFeatureCard({ project }: { project: ApparelProject }) {
         <p className="mt-4 line-clamp-3 min-h-16 text-sm leading-6 text-stardust/62">
           {project.summary}
         </p>
-        <div className="mt-5">
+        <div className="mt-auto pt-5">
           <div className="mb-2 flex items-center justify-between text-xs">
             <span className="text-stardust/52">{project.phase}</span>
             <span className="font-medium text-ember">{project.progress}%</span>
@@ -435,8 +608,32 @@ function ProjectFeatureCard({ project }: { project: ApparelProject }) {
             />
           </div>
         </div>
+        <button
+          className="mt-4 inline-flex min-h-11 items-center justify-between rounded-xl border border-bronze/28 bg-midnight/36 px-3 text-xs font-medium text-stardust/76 transition duration-300 hover:border-ember/45 hover:bg-stardust/[0.08] hover:text-stardust md:min-h-10"
+          onClick={() => onOpenProject(project.id)}
+          type="button"
+        >
+          View Project
+          <ArrowRight
+            aria-hidden="true"
+            className="text-ember transition duration-300 group-hover:translate-x-1"
+            size={15}
+            strokeWidth={1.9}
+          />
+        </button>
       </div>
     </article>
+  );
+}
+
+function HeroMeta({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-2xl border border-bronze/22 bg-midnight/34 p-3">
+      <p className="text-xs font-medium uppercase tracking-[0.14em] text-stardust/40">
+        {label}
+      </p>
+      <p className="mt-2 truncate text-sm font-semibold text-stardust">{value}</p>
+    </div>
   );
 }
 
@@ -487,9 +684,34 @@ function SectionHeading({
 function latestProjectDate(project: ApparelProject) {
   return (
     [...project.notes]
-      .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
-      .at(0)?.createdAt ?? project.startDate
+      .map((note) => note.updatedAt ?? note.createdAt)
+      .sort((a, b) => b.localeCompare(a))
+      .at(0) ?? project.startDate
   );
+}
+
+function compareFeaturedProjects(a: ApparelProject, b: ApparelProject) {
+  return (
+    b.progress - a.progress ||
+    latestProjectDate(b).localeCompare(latestProjectDate(a))
+  );
+}
+
+function getHeroProject(projects: ApparelProject[]) {
+  const activeProjects = projects.filter((project) => project.status === 'Active');
+  const candidates = activeProjects.length > 0 ? activeProjects : projects;
+
+  return [...candidates].sort(compareFeaturedProjects).at(0);
+}
+
+function getSupportingFeaturedProjects(
+  projects: ApparelProject[],
+  heroProjectId?: string,
+) {
+  return [...projects]
+    .filter((project) => project.id !== heroProjectId)
+    .sort(compareFeaturedProjects)
+    .slice(0, 3);
 }
 
 function formatDate(date: string) {
