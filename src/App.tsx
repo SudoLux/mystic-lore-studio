@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { CloudOff } from 'lucide-react';
 import { AppShell } from './components/layout/AppShell';
 import { FabricFormModal } from './components/fabrics/FabricFormModal';
 import { ProjectFormModal } from './components/projects/ProjectFormModal';
@@ -6,6 +7,7 @@ import { GlobalSearch } from './components/layout/GlobalSearch';
 import { Button } from './components/shared/Button';
 import { navigationItems } from './data/navigation';
 import { useStudioData } from './hooks/useStudioData';
+import { supabaseConfigStatus } from './lib/supabase';
 import { DashboardPage } from './pages/Dashboard';
 import { FabricVaultPage } from './pages/FabricVault';
 import { KanbanPage } from './pages/Kanban';
@@ -187,6 +189,7 @@ function App() {
         navItems={navigationItems}
         onNavigate={navigateToPage}
       >
+        {!supabaseConfigStatus.isConfigured ? <SupabaseEnvWarning /> : null}
         {currentPage}
       </AppShell>
       {projectForm ? (
@@ -248,6 +251,39 @@ function App() {
         />
       ) : null}
     </>
+  );
+}
+
+function SupabaseEnvWarning() {
+  return (
+    <section className="mb-4 rounded-3xl border border-ember/30 bg-[linear-gradient(135deg,rgba(200,155,60,0.11),rgba(10,10,10,0.82),rgba(45,92,107,0.14))] p-4 text-stardust shadow-[0_18px_55px_rgba(0,0,0,0.24),inset_0_1px_0_rgba(237,227,207,0.045)]">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start">
+        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-ember/32 bg-midnight/48 text-ember">
+          <CloudOff aria-hidden="true" size={18} strokeWidth={1.9} />
+        </span>
+        <div className="min-w-0">
+          <p className="text-sm font-semibold text-stardust">
+            Supabase cloud sync is waiting for configuration.
+          </p>
+          <p className="mt-1 text-sm leading-6 text-stardust/62">
+            Local browser storage is still active. Add{' '}
+            <code className="rounded-lg border border-bronze/22 bg-midnight/45 px-1.5 py-0.5 text-xs text-ember">
+              VITE_SUPABASE_URL
+            </code>{' '}
+            and{' '}
+            <code className="rounded-lg border border-bronze/22 bg-midnight/45 px-1.5 py-0.5 text-xs text-ember">
+              VITE_SUPABASE_ANON_KEY
+            </code>{' '}
+            to enable the cloud sync foundation.
+          </p>
+          <ul className="mt-2 list-inside list-disc text-xs leading-5 text-stardust/52">
+            {supabaseConfigStatus.issues.map((issue) => (
+              <li key={issue}>{issue}</li>
+            ))}
+          </ul>
+        </div>
+      </div>
+    </section>
   );
 }
 
