@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { LogOut } from 'lucide-react';
 import { BrandLockup } from './BrandLockup';
 import { MobileNav } from './MobileNav';
 import { Sidebar } from './Sidebar';
@@ -10,6 +11,8 @@ type AppShellProps = {
   globalSearch?: ReactNode;
   navItems: NavItem[];
   onNavigate: (pageId: PageId) => void;
+  onSignOut?: () => void;
+  userEmail?: string;
 };
 
 export function AppShell({
@@ -18,6 +21,8 @@ export function AppShell({
   globalSearch,
   navItems,
   onNavigate,
+  onSignOut,
+  userEmail,
 }: AppShellProps) {
   return (
     <div className="min-h-screen overflow-hidden bg-midnight text-stardust">
@@ -27,14 +32,28 @@ export function AppShell({
             activePage={activePage}
             navItems={navItems}
             onNavigate={onNavigate}
+            onSignOut={onSignOut}
+            userEmail={userEmail}
           />
           <main className="min-w-0 px-4 pb-28 pt-5 sm:px-6 sm:pt-7 lg:px-8 lg:pb-8 xl:px-10">
             <div className="mx-auto w-full max-w-[88rem]">
               <div className="mb-4 rounded-3xl border border-bronze/24 bg-midnight/52 p-3 shadow-[0_16px_45px_rgba(0,0,0,0.22),inset_0_1px_0_rgba(237,227,207,0.035)] backdrop-blur-xl lg:hidden">
-                <BrandLockup
-                  size="mobile"
-                  subtitle="Apparel project studio"
-                />
+                <div className="flex items-center justify-between gap-3">
+                  <BrandLockup
+                    size="mobile"
+                    subtitle={userEmail ?? 'Apparel project studio'}
+                  />
+                  {onSignOut ? (
+                    <button
+                      aria-label="Sign out"
+                      className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-bronze/28 bg-midnight/42 text-stardust/66 transition hover:border-ember/42 hover:text-ember"
+                      onClick={onSignOut}
+                      type="button"
+                    >
+                      <LogOut aria-hidden="true" size={17} strokeWidth={1.9} />
+                    </button>
+                  ) : null}
+                </div>
               </div>
               {globalSearch}
               {children}

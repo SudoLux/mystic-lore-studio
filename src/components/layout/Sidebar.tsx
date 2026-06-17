@@ -2,14 +2,23 @@ import { cn } from '../../lib/classes';
 import type { NavItem, PageId } from '../../types/navigation';
 import { Badge } from '../shared/Badge';
 import { BrandLockup } from './BrandLockup';
+import { LogOut } from 'lucide-react';
 
 type SidebarProps = {
   activePage: PageId;
   navItems: NavItem[];
   onNavigate: (pageId: PageId) => void;
+  onSignOut?: () => void;
+  userEmail?: string;
 };
 
-export function Sidebar({ activePage, navItems, onNavigate }: SidebarProps) {
+export function Sidebar({
+  activePage,
+  navItems,
+  onNavigate,
+  onSignOut,
+  userEmail,
+}: SidebarProps) {
   return (
     <aside className="hidden min-h-screen border-r border-bronze/30 bg-midnight/80 px-5 py-6 backdrop-blur-xl lg:flex lg:flex-col">
       <div className="mb-8">
@@ -64,6 +73,19 @@ export function Sidebar({ activePage, navItems, onNavigate }: SidebarProps) {
           Garment, material, and presentation workspaces are staged for the next
           collection cycle.
         </p>
+        {userEmail ? (
+          <p className="mt-4 truncate text-xs text-stardust/42">{userEmail}</p>
+        ) : null}
+        {onSignOut ? (
+          <button
+            className="mt-4 inline-flex min-h-10 w-full items-center justify-center gap-2 rounded-xl border border-bronze/30 bg-midnight/42 px-3 text-sm font-medium text-stardust/68 transition hover:border-ember/42 hover:bg-stardust/[0.07] hover:text-stardust"
+            onClick={onSignOut}
+            type="button"
+          >
+            <LogOut aria-hidden="true" size={16} strokeWidth={1.9} />
+            Sign Out
+          </button>
+        ) : null}
       </div>
     </aside>
   );

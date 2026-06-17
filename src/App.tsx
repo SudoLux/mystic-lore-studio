@@ -6,8 +6,11 @@ import { ProjectFormModal } from './components/projects/ProjectFormModal';
 import { GlobalSearch } from './components/layout/GlobalSearch';
 import { Button } from './components/shared/Button';
 import { navigationItems } from './data/navigation';
+import { useAuth } from './hooks/useAuth';
 import { useStudioData } from './hooks/useStudioData';
+import { StudioDataProvider } from './hooks/useStudioData';
 import { supabaseConfigStatus } from './lib/supabase';
+import { AuthScreen } from './pages/Auth/AuthScreen';
 import { DashboardPage } from './pages/Dashboard';
 import { FabricVaultPage } from './pages/FabricVault';
 import { KanbanPage } from './pages/Kanban';
@@ -54,6 +57,20 @@ function getInitialRoute(): AppRoute {
 }
 
 function App() {
+  const { isLoading, session } = useAuth();
+
+  if (isLoading || !session) {
+    return <AuthScreen />;
+  }
+
+  return (
+    <StudioDataProvider>
+      <StudioApp />
+    </StudioDataProvider>
+  );
+}
+
+function StudioApp() {
   const {
     createFabric,
     createProject,
@@ -63,9 +80,11 @@ function App() {
     updateFabric,
     updateProject,
   } = useStudioData();
+  const { signOut, user } = useAuth();
   const [route, setRoute] = useState<AppRoute>(getInitialRoute);
   const [fabricForm, setFabricForm] = useState<FabricFormState | null>(null);
   const [projectForm, setProjectForm] = useState<ProjectFormState | null>(null);
+  const [authActionError, setAuthActionError] = useState<string | null>(null);
   const [deleteFabricCandidate, setDeleteFabricCandidate] =
     useState<Fabric | null>(null);
   const [deleteProjectCandidate, setDeleteProjectCandidate] =
@@ -132,6 +151,20 @@ function App() {
     setDeleteFabricCandidate(fabric);
   };
 
+  const handleSignOut = async () => {
+    setAuthActionError(null);
+
+    try {
+      await signOut();
+    } catch (error) {
+      setAuthActionError(
+        error instanceof Error
+          ? error.message
+          : 'Unable to sign out. Please try again.',
+      );
+    }
+  };
+
   const currentPage = useMemo(() => {
     const pages: Record<PageId, ReactNode> = {
       dashboard: (
@@ -188,7 +221,14 @@ function App() {
         }
         navItems={navigationItems}
         onNavigate={navigateToPage}
+        onSignOut={handleSignOut}
+        userEmail={user?.email}
       >
+        {authActionError ? (
+          <section className="mb-4 rounded-3xl border border-ember/30 bg-ember/10 p-4 text-sm leading-6 text-stardust/72">
+            {authActionError}
+          </section>
+        ) : null}
         {!supabaseConfigStatus.isConfigured ? <SupabaseEnvWarning /> : null}
         {currentPage}
       </AppShell>
