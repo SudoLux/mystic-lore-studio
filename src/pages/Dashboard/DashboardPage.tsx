@@ -468,9 +468,9 @@ function FeaturedGarmentHero({
   const materialCount = project.linkedMaterials.length;
 
   return (
-    <article className="group mt-5 overflow-hidden rounded-[1.75rem] border border-ember/38 bg-[linear-gradient(145deg,rgba(10,10,10,0.56),rgba(61,43,31,0.2))] shadow-[0_22px_70px_rgba(0,0,0,0.3),inset_0_1px_0_rgba(237,227,207,0.055)] transition duration-300 hover:border-ember/60 hover:shadow-[0_28px_86px_rgba(200,155,60,0.11),0_20px_70px_rgba(0,0,0,0.34)]">
-      <div className="grid lg:grid-cols-[minmax(0,1fr)_minmax(17rem,23rem)]">
-        <div className="flex flex-col justify-between gap-6 p-5 sm:p-6 lg:p-7">
+    <article className="group mt-5 overflow-hidden rounded-[1.65rem] border border-ember/36 bg-[linear-gradient(145deg,rgba(10,10,10,0.62),rgba(61,43,31,0.22))] shadow-[0_22px_70px_rgba(0,0,0,0.3),inset_0_1px_0_rgba(237,227,207,0.055)] transition duration-300 hover:border-ember/56 hover:shadow-[0_28px_86px_rgba(200,155,60,0.11),0_20px_70px_rgba(0,0,0,0.34)]">
+      <div className="grid xl:grid-cols-[minmax(0,1.08fr)_minmax(20rem,0.92fr)]">
+        <div className="flex flex-col justify-between gap-5 p-5 sm:p-6 xl:p-7">
           <div>
             <div className="flex flex-wrap gap-2">
               <Badge variant={project.status === 'Blocked' ? 'ember' : 'teal'}>
@@ -480,13 +480,13 @@ function FeaturedGarmentHero({
               <Badge variant="blue">{project.garmentType}</Badge>
             </div>
 
-            <h3 className="mt-5 text-3xl font-semibold leading-[1.08] text-stardust sm:text-4xl lg:text-5xl">
+            <h3 className="mt-5 text-3xl font-semibold leading-[1.08] text-stardust sm:text-4xl xl:text-[2.8rem]">
               {project.name}
             </h3>
             <p className="mt-3 text-xs font-medium uppercase tracking-[0.16em] text-ember/82">
               {project.collection || project.season}
             </p>
-            <p className="mt-4 line-clamp-3 max-w-2xl text-sm leading-6 text-stardust/70 sm:text-base">
+            <p className="mt-4 line-clamp-3 max-w-3xl text-sm leading-6 text-stardust/70 sm:text-base xl:max-w-2xl">
               {project.designIntent || project.summary}
             </p>
 
@@ -539,7 +539,7 @@ function FeaturedGarmentHero({
           </div>
         </div>
 
-        <div className="relative aspect-[16/9] max-h-[14rem] min-h-[11rem] overflow-hidden border-t border-bronze/24 bg-[radial-gradient(circle_at_20%_10%,rgba(200,155,60,0.34),transparent_30%),radial-gradient(circle_at_84%_18%,rgba(45,92,107,0.42),transparent_34%),linear-gradient(135deg,rgba(27,58,99,0.78),rgba(10,10,10,0.7),rgba(61,43,31,0.82))] sm:aspect-[4/3] sm:max-h-[18rem] sm:min-h-[16rem] lg:h-full lg:max-h-none lg:border-l lg:border-t-0">
+        <div className="relative h-44 overflow-hidden border-t border-bronze/20 bg-[radial-gradient(circle_at_20%_10%,rgba(200,155,60,0.32),transparent_30%),radial-gradient(circle_at_84%_18%,rgba(45,92,107,0.4),transparent_34%),linear-gradient(135deg,rgba(27,58,99,0.76),rgba(10,10,10,0.72),rgba(61,43,31,0.78))] sm:h-[14.5rem] md:h-[16rem] xl:h-full xl:min-h-[22rem] xl:border-l xl:border-t-0">
           {heroImage ? (
             <StoredImage
               asset={heroImage}
@@ -547,13 +547,13 @@ function FeaturedGarmentHero({
             />
           ) : null}
           <ImageReadabilityOverlay asset={heroImage} variant="hero" />
-          <div className="absolute inset-6 rounded-[2rem] border border-stardust/12 bg-midnight/12 shadow-[inset_0_0_90px_rgba(237,227,207,0.06)]" />
-          <div className="relative z-10 flex h-full flex-col justify-end p-5 [text-shadow:0_2px_16px_rgba(0,0,0,0.95)] sm:p-6">
-            <div className="max-w-lg">
+          <div className="absolute inset-4 rounded-[1.3rem] border border-stardust/10 bg-midnight/10 shadow-[inset_0_0_70px_rgba(237,227,207,0.045)] sm:inset-5 xl:inset-6 xl:rounded-[1.6rem]" />
+          <div className="relative z-10 flex h-full flex-col justify-end p-4 [text-shadow:0_2px_16px_rgba(0,0,0,0.95)] sm:p-5 xl:p-6">
+            <div className="max-w-lg rounded-2xl border border-stardust/10 bg-midnight/22 px-4 py-3 backdrop-blur-sm">
               <p className="text-xs font-medium uppercase tracking-[0.16em] text-stardust/66">
                 Featured garment
               </p>
-              <p className="mt-3 text-lg font-semibold leading-tight text-stardust sm:text-2xl">
+              <p className="mt-2 text-lg font-semibold leading-tight text-stardust sm:text-xl xl:text-2xl">
                 {project.progress}% complete / {project.phase}
               </p>
             </div>
@@ -709,10 +709,10 @@ function FeaturedProjectMiniCard({
 function HeroMeta({ label, value }: { label: string; value: string }) {
   return (
     <div className="min-w-0 rounded-2xl border border-bronze/22 bg-midnight/34 p-2.5 sm:p-3">
-      <p className="truncate text-[0.64rem] font-medium uppercase tracking-[0.14em] text-stardust/40 sm:text-xs">
+      <p className="truncate text-[0.55rem] font-medium uppercase tracking-[0.08em] text-stardust/40 sm:text-xs sm:tracking-[0.14em]">
         {label}
       </p>
-      <p className="mt-2 truncate text-xs font-semibold text-stardust sm:text-sm">
+      <p className="mt-2 truncate text-[0.72rem] font-semibold text-stardust sm:text-sm">
         {value}
       </p>
     </div>
