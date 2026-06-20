@@ -1,15 +1,15 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import App from './App';
-import { StudioDataProvider } from './hooks/useStudioData';
+import { AuthProvider } from './hooks/useAuth';
 import { registerServiceWorker } from './lib/pwa';
 import './styles/index.css';
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <StudioDataProvider>
+    <AuthProvider>
       <App />
-    </StudioDataProvider>
+    </AuthProvider>
   </StrictMode>,
 );
 
