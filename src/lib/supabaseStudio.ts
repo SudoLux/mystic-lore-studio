@@ -224,11 +224,14 @@ async function uploadImage(userId: string, parentPath: string, image: LocalImage
     return image;
   }
 
-  const storagePath = `users/${userId}/${parentPath}/${image.id}.webp`;
-  const blob = await dataUrlToWebpBlob(source);
+  const blob = await dataUrlToBlob(source);
+  const mimeType = getUploadMimeType(blob.type || image.mimeType);
+  const extension =
+    mimeType === 'image/webp' ? 'webp' : mimeType === 'image/png' ? 'png' : 'jpg';
+  const storagePath = `users/${userId}/${parentPath}/${image.id}.${extension}`;
   const { error } = await requireSupabase()
     .storage.from(IMAGE_BUCKET)
-    .upload(storagePath, blob, { contentType: 'image/webp', upsert: true });
+    .upload(storagePath, blob, { contentType: mimeType, upsert: true });
 
   if (error) {
     throw new Error(`Could not upload ${image.name}: ${error.message}`);
@@ -237,7 +240,7 @@ async function uploadImage(userId: string, parentPath: string, image: LocalImage
   return withSignedUrl(
     {
       ...image,
-      mimeType: 'image/webp',
+      mimeType,
       size: blob.size,
       storagePath,
       uploadDataUrl: undefined,
@@ -731,27 +734,22 @@ function timestamp(record: { updatedAt?: string; createdAt?: string }) {
   return Date.parse(record.updatedAt ?? record.createdAt ?? '1970-01-01') || 0;
 }
 
-async function dataUrlToWebpBlob(dataUrl: string) {
-  if (dataUrl.startsWith('data:image/webp')) return fetch(dataUrl).then((response) => response.blob());
-  const image = await new Promise<HTMLImageElement>((resolve, reject) => {
-    const element = new Image();
-    element.onload = () => resolve(element);
-    element.onerror = () => reject(new Error('Could not convert a legacy image.'));
-    element.src = dataUrl;
-  });
-  const canvas = document.createElement('canvas');
-  canvas.width = image.width;
-  canvas.height = image.height;
-  const context = canvas.getContext('2d');
-  if (!context) throw new Error('Could not prepare a legacy image.');
-  context.drawImage(image, 0, 0);
-  return new Promise<Blob>((resolve, reject) =>
-    canvas.toBlob(
-      (blob) => (blob ? resolve(blob) : reject(new Error('Could not encode a legacy image.'))),
-      'image/webp',
-      0.82,
-    ),
-  );
+async function dataUrlToBlob(dataUrl: string) {
+  const response = await fetch(dataUrl);
+
+  if (!response.ok) {
+    throw new Error('Could not prepare the optimized image for upload.');
+  }
+
+  return response.blob();
+}
+
+function getUploadMimeType(value: string): 'image/jpeg' | 'image/png' | 'image/webp' {
+  if (value === 'image/webp' || value === 'image/png') {
+    return value;
+  }
+
+  return 'image/jpeg';
 }
 
 function idMap(rows: CloudRow[]) {
