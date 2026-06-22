@@ -14,6 +14,10 @@ import { PageHeader } from '../../components/shared/PageHeader';
 import { useStudioData } from '../../hooks/useStudioData';
 import { cn } from '../../lib/classes';
 import {
+  formatStudioDate,
+  studioDateTimestamp,
+} from '../../lib/dates';
+import {
   LOW_YARDAGE_THRESHOLD,
   calculateFabricYardage,
   isLowYardage,
@@ -491,7 +495,10 @@ function getTaskStats(tasks: StudioTask[]) {
     totalTasks: tasks.length,
     upcomingDueDates: openTasks
       .filter((task) => Boolean(task.dueDate))
-      .sort((a, b) => String(a.dueDate).localeCompare(String(b.dueDate)))
+      .sort(
+        (a, b) =>
+          studioDateTimestamp(a.dueDate) - studioDateTimestamp(b.dueDate),
+      )
       .slice(0, 8),
   };
 }
@@ -580,11 +587,11 @@ function countByDynamicValue<T>(
 }
 
 function formatDate(date: string) {
-  return new Intl.DateTimeFormat('en-US', {
-    month: 'short',
+  return formatStudioDate(date, {
     day: 'numeric',
+    month: 'short',
     year: 'numeric',
-  }).format(new Date(`${date}T00:00:00`));
+  });
 }
 
 function formatCurrency(value: number) {

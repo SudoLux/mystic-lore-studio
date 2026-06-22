@@ -26,6 +26,10 @@ import { PageHeader } from '../../components/shared/PageHeader';
 import { StoredImage } from '../../components/shared/StoredImage';
 import { useStudioData } from '../../hooks/useStudioData';
 import { cn } from '../../lib/classes';
+import {
+  formatStudioDate,
+  studioDateTimestamp,
+} from '../../lib/dates';
 import { getFabricImage } from '../../lib/imageAssets';
 import {
   LOW_YARDAGE_THRESHOLD,
@@ -1091,7 +1095,7 @@ function sortFabrics(
     );
   }
 
-  return b.updatedAt.localeCompare(a.updatedAt);
+  return studioDateTimestamp(b.updatedAt) - studioDateTimestamp(a.updatedAt);
 }
 
 function getUniqueValues<T extends keyof Fabric>(fabrics: Fabric[], key: T) {
@@ -1128,11 +1132,11 @@ function getFabricVisualClass(fabric: Fabric) {
 }
 
 function formatDate(date: string) {
-  return new Intl.DateTimeFormat('en-US', {
-    month: 'short',
+  return formatStudioDate(date, {
     day: 'numeric',
+    month: 'short',
     year: 'numeric',
-  }).format(new Date(`${date}T00:00:00`));
+  });
 }
 
 function formatCurrency(value: number) {

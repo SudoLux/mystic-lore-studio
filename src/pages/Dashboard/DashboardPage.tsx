@@ -22,6 +22,10 @@ import { PageHeader } from '../../components/shared/PageHeader';
 import { ImageReadabilityOverlay } from '../../components/shared/ImageReadabilityOverlay';
 import { StoredImage } from '../../components/shared/StoredImage';
 import { useStudioData } from '../../hooks/useStudioData';
+import {
+  formatStudioDate as formatDate,
+  studioDateTimestamp,
+} from '../../lib/dates';
 import { getProjectHeroImage } from '../../lib/imageAssets';
 import { LOW_YARDAGE_THRESHOLD, calculateFabricYardage } from '../../lib/yardage';
 import { projectPhases, type ApparelProject } from '../../types/studio';
@@ -98,7 +102,11 @@ export function DashboardPage({
     heroProject?.id,
   );
   const recentlyUpdatedProjects = [...projects]
-    .sort((a, b) => latestProjectDate(b).localeCompare(latestProjectDate(a)))
+    .sort(
+      (a, b) =>
+        studioDateTimestamp(latestProjectDate(b)) -
+        studioDateTimestamp(latestProjectDate(a)),
+    )
     .slice(0, 4);
   const nextTasks = [...tasks]
     .filter((task) => task.status !== 'Done')
@@ -764,18 +772,22 @@ function SectionHeading({
 }
 
 function latestProjectDate(project: ApparelProject) {
-  return (
-    [...project.notes]
-      .map((note) => note.updatedAt ?? note.createdAt)
-      .sort((a, b) => b.localeCompare(a))
-      .at(0) ?? project.startDate
+  return project.notes.reduce(
+    (latest, note) => {
+      const candidate = note.updatedAt ?? note.createdAt;
+      return studioDateTimestamp(candidate) > studioDateTimestamp(latest)
+        ? candidate
+        : latest;
+    },
+    project.startDate,
   );
 }
 
 function compareFeaturedProjects(a: ApparelProject, b: ApparelProject) {
   return (
     b.progress - a.progress ||
-    latestProjectDate(b).localeCompare(latestProjectDate(a))
+    studioDateTimestamp(latestProjectDate(b)) -
+      studioDateTimestamp(latestProjectDate(a))
   );
 }
 
@@ -794,13 +806,6 @@ function getSupportingFeaturedProjects(
     .filter((project) => project.id !== heroProjectId)
     .sort(compareFeaturedProjects)
     .slice(0, 3);
-}
-
-function formatDate(date: string) {
-  return new Intl.DateTimeFormat('en-US', {
-    month: 'short',
-    day: 'numeric',
-  }).format(new Date(`${date}T00:00:00`));
 }
 
 function formatNumber(value: number) {

@@ -49,6 +49,10 @@ import { StoredImage } from '../../components/shared/StoredImage';
 import { useStudioData } from '../../hooks/useStudioData';
 import { cn } from '../../lib/classes';
 import {
+  formatStudioDate,
+  studioDateTimestamp,
+} from '../../lib/dates';
+import {
   getFabricImage,
   getLookbookHeroImage,
   getProjectGalleryImages,
@@ -1421,7 +1425,7 @@ function NotesTab({
   const [deleteNoteCandidate, setDeleteNoteCandidate] =
     useState<StudioNote | null>(null);
   const sortedNotes = [...project.notes].sort((a, b) =>
-    b.createdAt.localeCompare(a.createdAt),
+    studioDateTimestamp(b.createdAt) - studioDateTimestamp(a.createdAt),
   );
   const visibleNotes =
     selectedCategory === 'All'
@@ -2804,11 +2808,11 @@ function formatYardage(value: number) {
 }
 
 function formatDate(date: string) {
-  return new Intl.DateTimeFormat('en-US', {
-    month: 'short',
+  return formatStudioDate(date, {
     day: 'numeric',
+    month: 'short',
     year: 'numeric',
-  }).format(new Date(`${date}T00:00:00`));
+  });
 }
 
 function formatNumber(value: number) {
