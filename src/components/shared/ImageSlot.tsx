@@ -47,6 +47,7 @@ export function ImageSlot({
   const [pendingImage, setPendingImage] = useState<LocalImageAsset | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isAdjusting, setIsAdjusting] = useState(false);
+  const [isOptimizing, setIsOptimizing] = useState(false);
   const storedImage = isUsableImageAsset(value) ? value : undefined;
   const fallbackImage = isUsableImageAsset(fallbackValue)
     ? fallbackValue
@@ -63,11 +64,13 @@ export function ImageSlot({
     }
 
     try {
+      setIsOptimizing(true);
       setPendingImage(await createLocalImageAsset(file));
     } catch (caughtError) {
       const imageError = caughtError as ImageProcessingError;
       setError(imageError.message || 'Could not prepare this image.');
     } finally {
+      setIsOptimizing(false);
       if (inputRef.current) {
         inputRef.current.value = '';
       }
@@ -96,7 +99,7 @@ export function ImageSlot({
       onClick={handleSlotClick}
     >
       <input
-        accept="image/*"
+        accept="image/jpeg,image/png,image/webp,image/heic,image/heif,.heic,.heif"
         className="sr-only"
         onChange={(event) => handleFileChange(event.target.files?.[0])}
         ref={inputRef}
@@ -152,6 +155,14 @@ export function ImageSlot({
         }}
         onUpload={openFilePicker}
         placeholderText={placeholderText}
+        processingMessage={
+          isOptimizing
+            ? 'Optimizing image…'
+            : storedImage?.uploadState === 'pending'
+              ? 'Uploading image…'
+              : null
+        }
+        processingIsBlocking={isOptimizing}
       />
 
       {children ? (

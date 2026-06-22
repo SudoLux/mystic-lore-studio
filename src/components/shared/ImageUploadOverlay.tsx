@@ -1,4 +1,4 @@
-import { ImagePlus } from 'lucide-react';
+import { ImagePlus, LoaderCircle } from 'lucide-react';
 import { cn } from '../../lib/classes';
 import { ImageActionsMenu } from './ImageActionsMenu';
 
@@ -18,6 +18,8 @@ type ImageUploadOverlayProps = {
   onRemove: () => void;
   onUpload: () => void;
   placeholderText?: string;
+  processingMessage?: string | null;
+  processingIsBlocking?: boolean;
 };
 
 export function ImageUploadOverlay({
@@ -36,6 +38,8 @@ export function ImageUploadOverlay({
   onRemove,
   onUpload,
   placeholderText = 'Add an image directly to this slot.',
+  processingMessage,
+  processingIsBlocking = false,
 }: ImageUploadOverlayProps) {
   const shouldKeepVisible = !hasImage || hasPendingImage || Boolean(error);
 
@@ -83,6 +87,31 @@ export function ImageUploadOverlay({
         <p className="absolute inset-x-3 bottom-16 z-30 rounded-2xl border border-ember/40 bg-midnight/82 px-3 py-2 text-xs leading-5 text-ember shadow-[0_16px_42px_rgba(0,0,0,0.28)] backdrop-blur-xl">
           {error}
         </p>
+      ) : null}
+
+      {processingMessage ? (
+        <div
+          className={cn(
+            'absolute inset-0 flex items-center justify-center p-4',
+            processingIsBlocking
+              ? 'pointer-events-auto z-40 bg-midnight/48 backdrop-blur-[2px]'
+              : 'pointer-events-none z-20',
+          )}
+        >
+          <div
+            aria-live="polite"
+            className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-ember/48 bg-midnight/88 px-4 text-sm font-medium text-stardust shadow-[0_16px_42px_rgba(0,0,0,0.36)]"
+            role="status"
+          >
+            <LoaderCircle
+              aria-hidden="true"
+              className="animate-spin text-ember"
+              size={17}
+              strokeWidth={1.9}
+            />
+            {processingMessage}
+          </div>
+        </div>
       ) : null}
 
       <div
