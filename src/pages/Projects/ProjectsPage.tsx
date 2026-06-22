@@ -15,6 +15,10 @@ import { ImageReadabilityOverlay } from '../../components/shared/ImageReadabilit
 import { StoredImage } from '../../components/shared/StoredImage';
 import { useStudioData } from '../../hooks/useStudioData';
 import { cn } from '../../lib/classes';
+import {
+  formatStudioDate as formatDate,
+  studioDateTimestamp,
+} from '../../lib/dates';
 import { getProjectHeroImage } from '../../lib/imageAssets';
 import {
   garmentTypes,
@@ -533,7 +537,7 @@ function getDifficulty(project: ApparelProject) {
 
 function getLastUpdated(project: ApparelProject) {
   const latestNote = [...project.notes].sort((a, b) =>
-    b.createdAt.localeCompare(a.createdAt),
+    studioDateTimestamp(b.createdAt) - studioDateTimestamp(a.createdAt),
   )[0];
 
   return formatDate(latestNote?.createdAt ?? project.startDate);
@@ -550,11 +554,4 @@ function getFabricSwatch(fabric: Fabric) {
   };
 
   return swatches[fabric.colorFamily] ?? 'linear-gradient(135deg,#C89B3C,#2D5C6B)';
-}
-
-function formatDate(date: string) {
-  return new Intl.DateTimeFormat('en-US', {
-    month: 'short',
-    day: 'numeric',
-  }).format(new Date(`${date}T00:00:00`));
 }

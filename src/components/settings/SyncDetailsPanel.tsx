@@ -9,6 +9,7 @@ import {
   X,
 } from 'lucide-react';
 import type { SyncProgress } from '../../hooks/useStudioData';
+import { formatStudioDate } from '../../lib/dates';
 import type { SyncPhase, SyncStatus } from '../../lib/studioSyncStorage';
 import { Button } from '../shared/Button';
 
@@ -234,8 +235,8 @@ function statusTitle(status: SyncStatus) {
 }
 
 function formatTime(value: string) {
-  return new Intl.DateTimeFormat(undefined, {
+  return formatStudioDate(value, {
     dateStyle: 'medium',
     timeStyle: 'short',
-  }).format(new Date(value));
+  });
 }
