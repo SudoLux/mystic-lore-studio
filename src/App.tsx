@@ -7,6 +7,10 @@ import { ProjectFormModal } from './components/projects/ProjectFormModal';
 import { GlobalSearch } from './components/layout/GlobalSearch';
 import { Button } from './components/shared/Button';
 import { CloudMigrationModal } from './components/settings/CloudMigrationModal';
+import {
+  SyncDetailsPanel,
+  SyncProgressToast,
+} from './components/settings/SyncDetailsPanel';
 import { navigationItems } from './data/navigation';
 import { useAuth } from './hooks/useAuth';
 import { useStudioData } from './hooks/useStudioData';
@@ -75,18 +79,24 @@ function App() {
 function StudioApp() {
   const {
     acceptCloudMigration,
+    cancelSync,
     createFabric,
     createProject,
     data: { fabrics, projects },
     deleteFabric,
     deleteProject,
     dismissCloudMigration,
+    exportData,
+    failedOperationCount,
+    lastSyncedAt,
     migrationAvailable,
     migrationInProgress,
     pendingCount,
     rawData,
     retrySync,
     syncError,
+    syncPhase,
+    syncProgress,
     syncStatus,
     updateFabric,
     updateProject,
@@ -96,6 +106,7 @@ function StudioApp() {
   const [fabricForm, setFabricForm] = useState<FabricFormState | null>(null);
   const [projectForm, setProjectForm] = useState<ProjectFormState | null>(null);
   const [authActionError, setAuthActionError] = useState<string | null>(null);
+  const [syncDetailsOpen, setSyncDetailsOpen] = useState(false);
   const [deleteFabricCandidate, setDeleteFabricCandidate] =
     useState<Fabric | null>(null);
   const [deleteProjectCandidate, setDeleteProjectCandidate] =
@@ -116,6 +127,20 @@ function StudioApp() {
   const navigateToPage = (page: PageId) => {
     window.history.pushState(null, '', '#');
     setRoute({ page });
+  };
+
+  const exportBackup = () => {
+    const blob = new Blob([exportData()], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+
+    link.href = url;
+    link.download = `mystic-lore-studio-backup-${timestamp}.json`;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
   };
 
   const openProject = (projectId: string) => {
@@ -236,7 +261,7 @@ function StudioApp() {
         syncStatus={
           <SyncStatusIndicator
             error={syncError}
-            onRetry={() => void retrySync()}
+            onOpen={() => setSyncDetailsOpen(true)}
             pendingCount={pendingCount}
             status={syncStatus}
           />
@@ -259,6 +284,28 @@ function StudioApp() {
           onDismiss={dismissCloudMigration}
         />
       ) : null}
+      {syncStatus === 'syncing' && pendingCount > 0 ? (
+        <SyncProgressToast
+          onOpen={() => setSyncDetailsOpen(true)}
+          pendingCount={pendingCount}
+          phase={syncPhase}
+          progress={syncProgress}
+        />
+      ) : null}
+      <SyncDetailsPanel
+        error={syncError}
+        failedCount={failedOperationCount}
+        isOpen={syncDetailsOpen}
+        lastSyncedAt={lastSyncedAt}
+        onCancel={cancelSync}
+        onClose={() => setSyncDetailsOpen(false)}
+        onExport={exportBackup}
+        onRetry={() => void retrySync()}
+        pendingCount={pendingCount}
+        phase={syncPhase}
+        progress={syncProgress}
+        status={syncStatus}
+      />
       {projectForm ? (
         <ProjectFormModal
           mode={projectForm.mode}

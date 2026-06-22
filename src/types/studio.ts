@@ -149,6 +149,7 @@ export type LookbookFieldItem = {
   value: string;
 };
 export type LocalImageAsset = {
+  blobKey?: string;
   dataUrl?: string;
   height?: number;
   id: string;
@@ -163,7 +164,14 @@ export type LocalImageAsset = {
   signedUrlExpiresAt?: string;
   storagePath?: string;
   uploadDataUrl?: string;
-  uploadState?: 'local' | 'pending' | 'uploaded' | 'error';
+  uploadError?: string;
+  uploadState?:
+    | 'local'
+    | 'pending'
+    | 'queued'
+    | 'uploading'
+    | 'uploaded'
+    | 'error';
   updatedAt: string;
   width?: number;
   zoom?: number;

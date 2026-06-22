@@ -1,4 +1,4 @@
-import { ImagePlus, LoaderCircle } from 'lucide-react';
+import { Clock3, ImagePlus, LoaderCircle } from 'lucide-react';
 import { cn } from '../../lib/classes';
 import { ImageActionsMenu } from './ImageActionsMenu';
 
@@ -19,6 +19,7 @@ type ImageUploadOverlayProps = {
   onUpload: () => void;
   placeholderText?: string;
   processingMessage?: string | null;
+  processingIsActive?: boolean;
   processingIsBlocking?: boolean;
 };
 
@@ -39,6 +40,7 @@ export function ImageUploadOverlay({
   onUpload,
   placeholderText = 'Add an image directly to this slot.',
   processingMessage,
+  processingIsActive = false,
   processingIsBlocking = false,
 }: ImageUploadOverlayProps) {
   const shouldKeepVisible = !hasImage || hasPendingImage || Boolean(error);
@@ -103,12 +105,21 @@ export function ImageUploadOverlay({
             className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-ember/48 bg-midnight/88 px-4 text-sm font-medium text-stardust shadow-[0_16px_42px_rgba(0,0,0,0.36)]"
             role="status"
           >
-            <LoaderCircle
-              aria-hidden="true"
-              className="animate-spin text-ember"
-              size={17}
-              strokeWidth={1.9}
-            />
+            {processingIsActive ? (
+              <LoaderCircle
+                aria-hidden="true"
+                className="animate-spin text-ember"
+                size={17}
+                strokeWidth={1.9}
+              />
+            ) : (
+              <Clock3
+                aria-hidden="true"
+                className="text-ember"
+                size={17}
+                strokeWidth={1.9}
+              />
+            )}
             {processingMessage}
           </div>
         </div>

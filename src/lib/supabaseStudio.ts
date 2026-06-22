@@ -1,5 +1,6 @@
 import { supabase } from './supabase';
 import { createSeedStudioData, type StoredProject, type StudioData } from './studioStorage';
+import { deleteImageBlob, getImageBlob } from './imageBlobStore';
 import type {
   Fabric,
   LinkedMaterial,
@@ -9,16 +10,130 @@ import type {
   StudioTask,
   YardageEntry,
 } from '../types/studio';
-import type { SyncDeletion } from './studioSyncStorage';
+import {
+  isImageOperation,
+  type SyncEntity,
+  type SyncImagePayload,
+  type SyncOperation,
+  type SyncPhase,
+} from './studioSyncStorage';
 
 const IMAGE_BUCKET = 'project-images';
 const SIGNED_URL_SECONDS = 60 * 60;
+const DATABASE_TIMEOUT_MS = 15_000;
+const IMAGE_TIMEOUT_MS = 45_000;
+const RETRY_DELAYS_MS = [1_000, 2_000, 4_000] as const;
+const RECORD_BATCH_SIZE = 50;
+const IMAGE_CONCURRENCY = 2;
+const REQUIRED_TABLES = [
+  'profiles',
+  'projects',
+  'fabrics',
+  'materials',
+  'tasks',
+  'notes',
+  'lookbook_pages',
+  'yardage_entries',
+  'project_images',
+] as const;
 
 type CloudRow = Record<string, unknown>;
 type CloudSnapshot = {
   data: StudioData;
   hasCloudData: boolean;
 };
+
+export type CloudReadinessIssue =
+  | 'authentication'
+  | 'bucket-missing'
+  | 'network'
+  | 'permissions'
+  | 'schema-missing'
+  | 'timeout'
+  | 'unknown';
+
+export type CloudReadiness = {
+  issue?: CloudReadinessIssue;
+  message: string;
+  ready: boolean;
+};
+
+export type SyncExecutionFailure = {
+  error: string;
+  issue: CloudReadinessIssue;
+  operationIds: string[];
+};
+
+export type SyncExecutionResult = {
+  cancelled: boolean;
+  completedOperationIds: string[];
+  failures: SyncExecutionFailure[];
+  imageUpdates: Array<{ image: LocalImageAsset; payload: SyncImagePayload }>;
+};
+
+export type SyncExecutionCallbacks = {
+  isCancelled?: () => boolean;
+  onImageState?: (payload: SyncImagePayload, state: 'uploading') => void;
+  onPhase?: (phase: SyncPhase, completed: number, total: number) => void;
+};
+
+export async function checkCloudSyncReadiness(
+  userId: string,
+): Promise<CloudReadiness> {
+  const client = requireSupabase();
+
+  try {
+    const { data: sessionData, error: sessionError } = await withTimeout(
+      client.auth.getSession(),
+      DATABASE_TIMEOUT_MS,
+      'Supabase authentication timed out.',
+    );
+
+    if (sessionError || !sessionData.session || sessionData.session.user.id !== userId) {
+      return {
+        issue: 'authentication',
+        message: 'Your Supabase session expired. Sign in again before syncing.',
+        ready: false,
+      };
+    }
+
+    await Promise.all(
+      REQUIRED_TABLES.map((table) =>
+        databaseRequest<CloudRow[]>(`validate ${table}`, () =>
+          client.from(table).select('id').limit(1),
+        ),
+      ),
+    );
+
+    await storageRequest('validate image storage', () =>
+      client.storage.from(IMAGE_BUCKET).list(`users/${userId}`, { limit: 1 }),
+    );
+
+    return {
+      message: 'Supabase tables and private image storage are ready.',
+      ready: true,
+    };
+  } catch (error) {
+    const cloudError = normalizeCloudError(error);
+    return {
+      issue: cloudError.issue,
+      message: cloudError.message,
+      ready: false,
+    };
+  }
+}
+
+export async function markCloudMigrationComplete(userId: string) {
+  await databaseRequest('record cloud migration completion', () =>
+    requireSupabase().from('profiles').upsert(
+      {
+        cloud_migration_completed_at: new Date().toISOString(),
+        user_id: userId,
+      },
+      { onConflict: 'user_id' },
+    ),
+  );
+}
 
 export async function fetchCloudStudioData(userId: string): Promise<CloudSnapshot> {
   const client = requireSupabase();
@@ -34,18 +149,14 @@ export async function fetchCloudStudioData(userId: string): Promise<CloudSnapsho
   ] as const;
   const results = await Promise.all(
     tableNames.map((table) =>
-      client.from(table).select('*').eq('user_id', userId),
+      databaseRequest<CloudRow[]>(`load ${table}`, () =>
+        client.from(table).select('*').eq('user_id', userId),
+      ),
     ),
   );
 
-  results.forEach((result, index) => {
-    if (result.error) {
-      throw new Error(`Could not load ${tableNames[index]}: ${result.error.message}`);
-    }
-  });
-
   const [projectRows, fabricRows, materialRows, taskRows, noteRows, lookbookRows, yardageRows, imageRows] =
-    results.map((result) => (result.data ?? []) as CloudRow[]);
+    results.map((result) => result ?? []);
   const projectClientById = idMap(projectRows);
   const fabricClientById = idMap(fabricRows);
   const materialClientById = idMap(materialRows);
@@ -87,81 +198,462 @@ export async function fetchCloudStudioData(userId: string): Promise<CloudSnapsho
 
   return {
     data,
-    hasCloudData: tableNames.some((_, index) => (results[index].data?.length ?? 0) > 0),
+    hasCloudData: results.some((result) => result.length > 0),
   };
 }
 
 export async function refreshSignedImageUrl(storagePath: string) {
-  const { data, error } = await requireSupabase()
-    .storage.from(IMAGE_BUCKET)
-    .createSignedUrl(storagePath, SIGNED_URL_SECONDS);
-
-  if (error) {
-    throw new Error(`Could not refresh image access: ${error.message}`);
-  }
+  const data = await storageRequest('refresh image access', () =>
+    requireSupabase()
+      .storage.from(IMAGE_BUCKET)
+      .createSignedUrl(storagePath, SIGNED_URL_SECONDS),
+  );
 
   return data.signedUrl;
 }
 
-export async function pushStudioSnapshot(
+export async function executeSyncOperations(
   userId: string,
-  snapshot: StudioData,
-  deletions: SyncDeletion[] = [],
-) {
-  const client = requireSupabase();
-  const prepared = await uploadSnapshotImages(userId, snapshot);
-  const projects = prepared.projects.map((project) => projectPayload(userId, project));
-  const fabrics = prepared.fabrics.map((fabric) => fabricPayload(userId, fabric));
+  operations: SyncOperation[],
+  callbacks: SyncExecutionCallbacks = {},
+): Promise<SyncExecutionResult> {
+  const result: SyncExecutionResult = {
+    cancelled: false,
+    completedOperationIds: [],
+    failures: [],
+    imageUpdates: [],
+  };
+  const upserts = operations.filter((operation) => operation.action === 'upsert');
+  const deletions = operations.filter((operation) => operation.action === 'delete');
+  const recordUpserts = upserts.filter((operation) => !isImageOperation(operation));
+  const imageUpserts = upserts.filter(isImageOperation);
+  const total = operations.length;
 
-  await upsertRows('projects', projects);
-  await upsertRows('fabrics', fabrics);
+  callbacks.onPhase?.('preparing', 0, total);
 
-  const projectIds = await fetchUuidMap('projects', userId);
-  const fabricIds = await fetchUuidMap('fabrics', userId);
-  const materials = prepared.linkedMaterials.map((material) =>
-    materialPayload(userId, material, projectIds, fabricIds),
-  );
+  let maps: CloudIdMaps;
 
-  await upsertRows('materials', materials);
-  const materialIds = await fetchUuidMap('materials', userId);
-
-  await Promise.all([
-    upsertRows(
-      'tasks',
-      prepared.tasks.map((task) => taskPayload(userId, task, projectIds, materialIds)),
-    ),
-    upsertRows(
-      'notes',
-      prepared.notes.map((note) => notePayload(userId, note, projectIds)),
-    ),
-    upsertRows(
-      'lookbook_pages',
-      prepared.lookbookPages.map((page) => lookbookPayload(userId, page, projectIds)),
-    ),
-    upsertRows(
-      'yardage_entries',
-      prepared.yardageEntries.map((entry) =>
-        yardagePayload(userId, entry, projectIds, fabricIds, materialIds),
-      ),
-    ),
-    upsertRows('project_images', projectImagePayloads(userId, prepared, projectIds)),
-  ]);
-
-  await applyDeletions(userId, deletions);
-
-  const { error: profileError } = await client.from('profiles').upsert(
-    {
-      cloud_migration_completed_at: new Date().toISOString(),
-      user_id: userId,
-    },
-    { onConflict: 'user_id' },
-  );
-
-  if (profileError) {
-    throw new Error(`Could not record cloud migration: ${profileError.message}`);
+  try {
+    maps = await fetchCloudIdMaps(userId);
+  } catch (error) {
+    return failedResult(result, operations, error);
   }
 
-  return prepared;
+  callbacks.onPhase?.('saving-records', 0, total);
+
+  for (const entity of RECORD_UPSERT_ORDER) {
+    const entityOperations = recordUpserts.filter(
+      (operation) => operation.entity === entity,
+    );
+
+    for (const batch of chunks(entityOperations, RECORD_BATCH_SIZE)) {
+      if (batch.length === 0) continue;
+      if (callbacks.isCancelled?.()) {
+        result.cancelled = true;
+        return result;
+      }
+
+      try {
+        await upsertOperationBatch(userId, entity, batch, maps);
+        result.completedOperationIds.push(...batch.map((operation) => operation.id));
+        callbacks.onPhase?.(
+          'saving-records',
+          result.completedOperationIds.length,
+          total,
+        );
+      } catch (error) {
+        return failedResult(result, batch, error);
+      }
+    }
+  }
+
+  if (imageUpserts.length > 0) {
+    callbacks.onPhase?.(
+      'uploading-images',
+      result.completedOperationIds.length,
+      total,
+    );
+    const imageResults = await mapWithConcurrency(
+      imageUpserts,
+      IMAGE_CONCURRENCY,
+      async (operation) => {
+        if (callbacks.isCancelled?.()) {
+          return { cancelled: true as const, operation };
+        }
+
+        try {
+          callbacks.onImageState?.(
+            operation.payload as SyncImagePayload,
+            'uploading',
+          );
+          const update = await upsertImageOperation(userId, operation, maps);
+          return { operation, update };
+        } catch (error) {
+          return { error, operation };
+        }
+      },
+    );
+
+    imageResults.forEach((imageResult) => {
+      if ('cancelled' in imageResult) {
+        result.cancelled = true;
+        return;
+      }
+
+      if ('error' in imageResult) {
+        const cloudError = normalizeCloudError(imageResult.error);
+        result.failures.push({
+          error: cloudError.message,
+          issue: cloudError.issue,
+          operationIds: [imageResult.operation.id],
+        });
+        return;
+      }
+
+      result.completedOperationIds.push(imageResult.operation.id);
+      result.imageUpdates.push(imageResult.update);
+      callbacks.onPhase?.(
+        'uploading-images',
+        result.completedOperationIds.length,
+        total,
+      );
+    });
+  }
+
+  callbacks.onPhase?.(
+    'saving-records',
+    result.completedOperationIds.length,
+    total,
+  );
+  const orderedDeletions = [...deletions].sort(
+    (left, right) =>
+      DELETE_ORDER.indexOf(left.entity) - DELETE_ORDER.indexOf(right.entity),
+  );
+
+  for (const operation of orderedDeletions) {
+    if (callbacks.isCancelled?.()) {
+      result.cancelled = true;
+      return result;
+    }
+
+    try {
+      await executeDeleteOperation(userId, operation);
+      result.completedOperationIds.push(operation.id);
+      callbacks.onPhase?.(
+        'saving-records',
+        result.completedOperationIds.length,
+        total,
+      );
+    } catch (error) {
+      const cloudError = normalizeCloudError(error);
+      result.failures.push({
+        error: cloudError.message,
+        issue: cloudError.issue,
+        operationIds: [operation.id],
+      });
+    }
+  }
+
+  return result;
+}
+
+const RECORD_UPSERT_ORDER: SyncEntity[] = [
+  'project',
+  'fabric',
+  'material',
+  'task',
+  'note',
+  'lookbook',
+  'yardage',
+];
+const DELETE_ORDER: SyncEntity[] = [
+  'project_image',
+  'fabric_image',
+  'task',
+  'note',
+  'yardage',
+  'lookbook',
+  'material',
+  'project',
+  'fabric',
+];
+const TABLE_BY_ENTITY: Partial<Record<SyncEntity, string>> = {
+  fabric: 'fabrics',
+  lookbook: 'lookbook_pages',
+  material: 'materials',
+  note: 'notes',
+  project: 'projects',
+  project_image: 'project_images',
+  task: 'tasks',
+  yardage: 'yardage_entries',
+};
+
+type CloudIdMaps = {
+  fabrics: Map<string, string>;
+  materials: Map<string, string>;
+  projects: Map<string, string>;
+};
+
+async function fetchCloudIdMaps(userId: string): Promise<CloudIdMaps> {
+  const [projects, fabrics, materials] = await Promise.all([
+    fetchUuidMap('projects', userId),
+    fetchUuidMap('fabrics', userId),
+    fetchUuidMap('materials', userId),
+  ]);
+
+  return { fabrics, materials, projects };
+}
+
+async function upsertOperationBatch(
+  userId: string,
+  entity: SyncEntity,
+  operations: SyncOperation[],
+  maps: CloudIdMaps,
+) {
+  const table = TABLE_BY_ENTITY[entity];
+
+  if (!table) {
+    throw new Error(`Unsupported sync entity: ${entity}.`);
+  }
+
+  const rows = operations.map((operation) =>
+    operationPayload(userId, entity, operation.payload, maps),
+  );
+  const returned = await databaseRequest<CloudRow[]>(`save ${entity}`, () =>
+    requireSupabase()
+      .from(table)
+      .upsert(rows, { onConflict: 'user_id,client_id' })
+      .select('id,client_id'),
+  );
+
+  if (entity === 'project' || entity === 'fabric' || entity === 'material') {
+    const target =
+      entity === 'project'
+        ? maps.projects
+        : entity === 'fabric'
+          ? maps.fabrics
+          : maps.materials;
+    returned.forEach((row) =>
+      target.set(asString(row.client_id), asString(row.id)),
+    );
+  }
+}
+
+function operationPayload(
+  userId: string,
+  entity: SyncEntity,
+  payload: unknown,
+  maps: CloudIdMaps,
+) {
+  switch (entity) {
+    case 'project':
+      return projectPayload(userId, payload as StoredProject);
+    case 'fabric':
+      return fabricPayload(userId, payload as Fabric);
+    case 'material':
+      return materialPayload(
+        userId,
+        payload as LinkedMaterial,
+        maps.projects,
+        maps.fabrics,
+      );
+    case 'task':
+      return taskPayload(
+        userId,
+        payload as StudioTask,
+        maps.projects,
+        maps.materials,
+      );
+    case 'note':
+      return notePayload(userId, payload as StudioNote, maps.projects);
+    case 'lookbook':
+      return lookbookPayload(userId, payload as LookbookPage, maps.projects);
+    case 'yardage':
+      return yardagePayload(
+        userId,
+        payload as YardageEntry,
+        maps.projects,
+        maps.fabrics,
+        maps.materials,
+      );
+    default:
+      throw new Error(`Unsupported record payload: ${entity}.`);
+  }
+}
+
+async function upsertImageOperation(
+  userId: string,
+  operation: SyncOperation,
+  maps: CloudIdMaps,
+) {
+  const payload = operation.payload as SyncImagePayload;
+  const uploaded = await uploadImageAsset(userId, payload);
+
+  if (operation.entity === 'fabric_image') {
+    const fabricRows = await databaseRequest<CloudRow[]>(
+      'load fabric image metadata',
+      () =>
+        requireSupabase()
+          .from('fabrics')
+          .select('metadata')
+          .eq('user_id', userId)
+          .eq('client_id', payload.ownerId)
+          .limit(1),
+    );
+    await databaseRequest('save fabric image metadata', () =>
+      requireSupabase()
+        .from('fabrics')
+        .update(
+          fabricImageUpdatePayload(
+            uploaded,
+            asRecord(fabricRows[0]?.metadata),
+          ),
+        )
+        .eq('user_id', userId)
+        .eq('client_id', payload.ownerId),
+    );
+  } else {
+    const projectId = payload.projectId
+      ? maps.projects.get(payload.projectId)
+      : undefined;
+
+    await databaseRequest('save project image metadata', () =>
+      requireSupabase()
+        .from('project_images')
+        .upsert(
+          imagePayload(
+            userId,
+            projectId,
+            uploaded,
+            payload.slotType,
+            payload.order,
+          ),
+          { onConflict: 'user_id,client_id' },
+        ),
+    );
+  }
+
+  if (payload.image.blobKey) {
+    await deleteImageBlob(payload.image.blobKey).catch(() => undefined);
+  }
+
+  return { image: uploaded, payload };
+}
+
+async function uploadImageAsset(userId: string, payload: SyncImagePayload) {
+  const image = payload.image;
+
+  if (image.storagePath && !image.blobKey && !image.uploadDataUrl) {
+    return {
+      ...image,
+      uploadError: undefined,
+      uploadState: 'uploaded' as const,
+    };
+  }
+
+  const blob = await imageUploadBlob(image);
+
+  if (!blob) {
+    throw new Error(`The queued image ${image.name} is missing its local upload data.`);
+  }
+
+  const mimeType = getUploadMimeType(blob.type || image.mimeType);
+  const extension =
+    mimeType === 'image/webp' ? 'webp' : mimeType === 'image/png' ? 'png' : 'jpg';
+  const ownerPath =
+    payload.ownerType === 'fabric'
+      ? `fabrics/${payload.ownerId}`
+      : `projects/${payload.projectId ?? payload.ownerId}`;
+  const storagePath = `users/${userId}/${ownerPath}/${image.id}.${extension}`;
+
+  await storageRequest(`upload ${image.name}`, () =>
+    requireSupabase()
+      .storage.from(IMAGE_BUCKET)
+      .upload(storagePath, blob, { contentType: mimeType, upsert: true }),
+  );
+
+  return {
+    ...image,
+    blobKey: undefined,
+    mimeType,
+    size: blob.size,
+    storagePath,
+    uploadDataUrl: undefined,
+    uploadError: undefined,
+    uploadState: 'uploaded' as const,
+    updatedAt: new Date().toISOString(),
+  };
+}
+
+async function imageUploadBlob(image: LocalImageAsset) {
+  if (image.blobKey) {
+    const blob = await getImageBlob(image.blobKey);
+    if (blob) return blob;
+  }
+
+  const source = image.uploadDataUrl ?? image.dataUrl;
+  return source ? dataUrlToBlob(source) : null;
+}
+
+function fabricImageUpdatePayload(
+  image: LocalImageAsset,
+  currentMetadata: Record<string, unknown>,
+) {
+  return {
+    image_filename: image.name,
+    image_fit: image.objectFit ?? 'cover',
+    image_height: image.height ?? null,
+    image_mime_type: image.mimeType,
+    image_path: image.storagePath,
+    image_position_x: image.objectPositionX ?? 50,
+    image_position_y: image.objectPositionY ?? 50,
+    image_size_bytes: image.size,
+    image_width: image.width ?? null,
+    image_zoom: image.zoom ?? 1,
+    metadata: {
+      ...currentMetadata,
+      image: {
+        id: image.id,
+        offlinePreviewDataUrl: image.dataUrl,
+        overlayIntensity: image.overlayIntensity,
+        updatedAt: image.updatedAt,
+      },
+    },
+    updated_at: image.updatedAt,
+  };
+}
+
+async function executeDeleteOperation(userId: string, operation: SyncOperation) {
+  if (operation.storagePaths?.length) {
+    await storageRequest('delete image data', () =>
+      requireSupabase().storage.from(IMAGE_BUCKET).remove(operation.storagePaths!),
+    );
+  }
+
+  const table = TABLE_BY_ENTITY[operation.entity];
+  if (!table || operation.entity === 'fabric_image') return;
+
+  await databaseRequest(`delete ${operation.entity}`, () =>
+    requireSupabase()
+      .from(table)
+      .delete()
+      .eq('user_id', userId)
+      .eq('client_id', operation.clientId),
+  );
+}
+
+function failedResult(
+  result: SyncExecutionResult,
+  operations: SyncOperation[],
+  error: unknown,
+) {
+  const cloudError = normalizeCloudError(error);
+  result.failures.push({
+    error: cloudError.message,
+    issue: cloudError.issue,
+    operationIds: operations.map((operation) => operation.id),
+  });
+  return result;
 }
 
 export function mergeByNewest(cloud: StudioData, local: StudioData): StudioData {
@@ -177,78 +669,6 @@ export function mergeByNewest(cloud: StudioData, local: StudioData): StudioData 
     version: Math.max(cloud.version, local.version),
     yardageEntries: mergeRecords(cloud.yardageEntries, local.yardageEntries),
   };
-}
-
-async function uploadSnapshotImages(userId: string, data: StudioData): Promise<StudioData> {
-  const projects = await Promise.all(
-    data.projects.map(async (project) => ({
-      ...project,
-      galleryImages: await Promise.all(
-        (project.galleryImages ?? []).map((image) =>
-          uploadImage(userId, `projects/${project.id}`, image),
-        ),
-      ),
-      heroImage: project.heroImage
-        ? await uploadImage(userId, `projects/${project.id}`, project.heroImage)
-        : undefined,
-    })),
-  );
-  const fabrics = await Promise.all(
-    data.fabrics.map(async (fabric) => ({
-      ...fabric,
-      image: fabric.image
-        ? await uploadImage(userId, `fabrics/${fabric.id}`, fabric.image)
-        : undefined,
-    })),
-  );
-  const lookbookPages = await Promise.all(
-    data.lookbookPages.map(async (page) => ({
-      ...page,
-      heroImage: page.heroImage
-        ? await uploadImage(userId, `projects/${page.projectId}`, page.heroImage)
-        : undefined,
-    })),
-  );
-
-  return { ...data, fabrics, lookbookPages, projects };
-}
-
-async function uploadImage(userId: string, parentPath: string, image: LocalImageAsset) {
-  if (image.storagePath && !image.uploadDataUrl && image.uploadState !== 'pending') {
-    return image.remoteUrl ? image : withSignedUrl(image, image.storagePath);
-  }
-
-  const source = image.uploadDataUrl ?? image.dataUrl;
-
-  if (!source) {
-    return image;
-  }
-
-  const blob = await dataUrlToBlob(source);
-  const mimeType = getUploadMimeType(blob.type || image.mimeType);
-  const extension =
-    mimeType === 'image/webp' ? 'webp' : mimeType === 'image/png' ? 'png' : 'jpg';
-  const storagePath = `users/${userId}/${parentPath}/${image.id}.${extension}`;
-  const { error } = await requireSupabase()
-    .storage.from(IMAGE_BUCKET)
-    .upload(storagePath, blob, { contentType: mimeType, upsert: true });
-
-  if (error) {
-    throw new Error(`Could not upload ${image.name}: ${error.message}`);
-  }
-
-  return withSignedUrl(
-    {
-      ...image,
-      mimeType,
-      size: blob.size,
-      storagePath,
-      uploadDataUrl: undefined,
-      uploadState: 'uploaded' as const,
-      updatedAt: new Date().toISOString(),
-    },
-    storagePath,
-  );
 }
 
 async function withSignedUrl(image: LocalImageAsset, storagePath: string) {
@@ -302,40 +722,6 @@ async function applyProjectImages(
   });
 }
 
-function projectImagePayloads(
-  userId: string,
-  data: StudioData,
-  projectIds: Map<string, string>,
-) {
-  const rows: Record<string, unknown>[] = [];
-
-  data.projects.forEach((project) => {
-    if (project.heroImage?.storagePath) {
-      rows.push(imagePayload(userId, projectIds.get(project.id), project.heroImage, 'hero', 0));
-    }
-    project.galleryImages?.forEach((image, index) => {
-      if (image.storagePath) {
-        rows.push(imagePayload(userId, projectIds.get(project.id), image, `gallery:${index}`, index));
-      }
-    });
-  });
-  data.lookbookPages.forEach((page) => {
-    if (page.heroImage?.storagePath) {
-      rows.push(
-        imagePayload(
-          userId,
-          projectIds.get(page.projectId),
-          page.heroImage,
-          `lookbook:${page.id}:hero`,
-          0,
-        ),
-      );
-    }
-  });
-
-  return rows;
-}
-
 function imagePayload(
   userId: string,
   projectId: string | undefined,
@@ -368,52 +754,15 @@ function imagePayload(
   };
 }
 
-async function applyDeletions(userId: string, deletions: SyncDeletion[]) {
-  const client = requireSupabase();
-  const tableByEntity: Partial<Record<SyncDeletion['entity'], string>> = {
-    fabric: 'fabrics',
-    lookbook: 'lookbook_pages',
-    material: 'materials',
-    note: 'notes',
-    project: 'projects',
-    project_image: 'project_images',
-    task: 'tasks',
-    yardage: 'yardage_entries',
-  };
-
-  for (const deletion of deletions) {
-    if (deletion.storagePaths?.length) {
-      const { error } = await client.storage.from(IMAGE_BUCKET).remove(deletion.storagePaths);
-      if (error) throw new Error(`Could not remove image: ${error.message}`);
-    }
-
-    const table = tableByEntity[deletion.entity];
-    if (!table) continue;
-    const { error } = await client
-      .from(table)
-      .delete()
-      .eq('user_id', userId)
-      .eq('client_id', deletion.clientId);
-    if (error) throw new Error(`Could not delete ${deletion.entity}: ${error.message}`);
-  }
-}
-
-async function upsertRows(table: string, rows: Record<string, unknown>[]) {
-  if (rows.length === 0) return;
-  const { error } = await requireSupabase()
-    .from(table)
-    .upsert(rows, { onConflict: 'user_id,client_id' });
-  if (error) throw new Error(`Could not sync ${table}: ${error.message}`);
-}
-
 async function fetchUuidMap(table: string, userId: string) {
-  const { data, error } = await requireSupabase()
-    .from(table)
-    .select('id,client_id')
-    .eq('user_id', userId);
-  if (error) throw new Error(`Could not resolve ${table}: ${error.message}`);
+  const data = await databaseRequest<CloudRow[]>(`resolve ${table}`, () =>
+    requireSupabase()
+      .from(table)
+      .select('id,client_id')
+      .eq('user_id', userId),
+  );
   return new Map(
-    ((data ?? []) as CloudRow[]).map((row) => [asString(row.client_id), asString(row.id)]),
+    data.map((row) => [asString(row.client_id), asString(row.id)]),
   );
 }
 
@@ -750,6 +1099,231 @@ function getUploadMimeType(value: string): 'image/jpeg' | 'image/png' | 'image/w
   }
 
   return 'image/jpeg';
+}
+
+type RequestErrorLike = {
+  code?: string;
+  message?: string;
+  status?: number;
+  statusCode?: number | string;
+};
+
+class CloudSyncRequestError extends Error {
+  issue: CloudReadinessIssue;
+  retryable: boolean;
+
+  constructor(
+    message: string,
+    issue: CloudReadinessIssue,
+    retryable = false,
+  ) {
+    super(message);
+    this.name = 'CloudSyncRequestError';
+    this.issue = issue;
+    this.retryable = retryable;
+  }
+}
+
+async function databaseRequest<T>(
+  label: string,
+  factory: () => PromiseLike<{ data: T | null; error: RequestErrorLike | null }>,
+) {
+  return requestWithRetry(async () => {
+    const result = await factory();
+
+    if (result.error) {
+      throw requestError(result.error, label);
+    }
+
+    return result.data ?? ([] as T);
+  }, DATABASE_TIMEOUT_MS, `Database request timed out while trying to ${label}.`);
+}
+
+async function storageRequest<T>(
+  label: string,
+  factory: () => PromiseLike<{ data: T | null; error: RequestErrorLike | null }>,
+) {
+  return requestWithRetry(async () => {
+    const result = await factory();
+
+    if (result.error) {
+      throw requestError(result.error, label);
+    }
+
+    return result.data as T;
+  }, IMAGE_TIMEOUT_MS, `Image request timed out while trying to ${label}.`);
+}
+
+async function requestWithRetry<T>(
+  factory: () => Promise<T>,
+  timeoutMs: number,
+  timeoutMessage: string,
+) {
+  let lastError: unknown;
+
+  for (let attempt = 0; attempt <= RETRY_DELAYS_MS.length; attempt += 1) {
+    try {
+      return await withTimeout(factory(), timeoutMs, timeoutMessage);
+    } catch (error) {
+      const cloudError = normalizeCloudError(error);
+      lastError = cloudError;
+
+      if (!cloudError.retryable || attempt === RETRY_DELAYS_MS.length) {
+        throw cloudError;
+      }
+
+      await delay(RETRY_DELAYS_MS[attempt]);
+    }
+  }
+
+  throw normalizeCloudError(lastError);
+}
+
+function withTimeout<T>(promise: PromiseLike<T>, timeoutMs: number, message: string) {
+  return new Promise<T>((resolve, reject) => {
+    const timeout = window.setTimeout(
+      () => reject(new CloudSyncRequestError(message, 'timeout', true)),
+      timeoutMs,
+    );
+
+    Promise.resolve(promise).then(
+      (value) => {
+        window.clearTimeout(timeout);
+        resolve(value);
+      },
+      (error) => {
+        window.clearTimeout(timeout);
+        reject(error);
+      },
+    );
+  });
+}
+
+function requestError(error: RequestErrorLike, label: string) {
+  const status = Number(error.status ?? error.statusCode ?? 0);
+  const rawMessage = error.message ?? `Could not ${label}.`;
+  const message = `Could not ${label}: ${rawMessage}`;
+
+  if (error.code === 'PGRST205' || rawMessage.includes('schema cache')) {
+    return new CloudSyncRequestError(
+      'Cloud sync is not installed in Supabase yet. Apply both Mystic Lore Studio SQL migrations, then retry.',
+      'schema-missing',
+    );
+  }
+
+  if (rawMessage.toLowerCase().includes('bucket not found')) {
+    return new CloudSyncRequestError(
+      'The private project-images bucket is missing. Apply the cloud sync Storage migration, then retry.',
+      'bucket-missing',
+    );
+  }
+
+  if (status === 401) {
+    return new CloudSyncRequestError(
+      'Your Supabase session expired. Sign in again before syncing.',
+      'authentication',
+    );
+  }
+
+  if (status === 403 || rawMessage.toLowerCase().includes('row-level security')) {
+    return new CloudSyncRequestError(
+      `Supabase denied access while trying to ${label}. Check the Mystic Lore Studio RLS policies.`,
+      'permissions',
+    );
+  }
+
+  return new CloudSyncRequestError(
+    message,
+    status === 0 || status === 408 || status === 429 || status >= 500
+      ? 'network'
+      : 'unknown',
+    status === 0 || status === 408 || status === 429 || status >= 500,
+  );
+}
+
+function normalizeCloudError(error: unknown) {
+  if (error instanceof CloudSyncRequestError) {
+    return error;
+  }
+
+  const record =
+    error && typeof error === 'object' ? (error as RequestErrorLike) : {};
+  const message =
+    error instanceof Error
+      ? error.message
+      : record.message ?? 'Cloud sync failed unexpectedly.';
+  const lowerMessage = message.toLowerCase();
+
+  if (lowerMessage.includes('schema cache') || lowerMessage.includes("table 'public.")) {
+    return new CloudSyncRequestError(
+      'Cloud sync is not installed in Supabase yet. Apply both Mystic Lore Studio SQL migrations, then retry.',
+      'schema-missing',
+    );
+  }
+
+  if (lowerMessage.includes('bucket not found')) {
+    return new CloudSyncRequestError(
+      'The private project-images bucket is missing. Apply the cloud sync Storage migration, then retry.',
+      'bucket-missing',
+    );
+  }
+
+  if (lowerMessage.includes('timed out')) {
+    return new CloudSyncRequestError(message, 'timeout', true);
+  }
+
+  if (
+    lowerMessage.includes('failed to fetch') ||
+    lowerMessage.includes('network') ||
+    lowerMessage.includes('load failed')
+  ) {
+    return new CloudSyncRequestError(
+      'Supabase could not be reached. Your changes remain queued locally and will retry when the connection returns.',
+      'network',
+      true,
+    );
+  }
+
+  return new CloudSyncRequestError(message, 'unknown');
+}
+
+function delay(milliseconds: number | undefined) {
+  return new Promise<void>((resolve) =>
+    window.setTimeout(resolve, milliseconds ?? 0),
+  );
+}
+
+function chunks<T>(values: T[], size: number) {
+  const result: T[][] = [];
+
+  for (let index = 0; index < values.length; index += size) {
+    result.push(values.slice(index, index + size));
+  }
+
+  return result;
+}
+
+async function mapWithConcurrency<T, R>(
+  values: T[],
+  concurrency: number,
+  worker: (value: T) => Promise<R>,
+) {
+  const results = new Array<R>(values.length);
+  let nextIndex = 0;
+
+  const runners = Array.from(
+    { length: Math.min(concurrency, values.length) },
+    async () => {
+      while (nextIndex < values.length) {
+        const index = nextIndex;
+        nextIndex += 1;
+        results[index] = await worker(values[index]);
+      }
+    },
+  );
+
+  await Promise.all(runners);
+  return results;
 }
 
 function idMap(rows: CloudRow[]) {

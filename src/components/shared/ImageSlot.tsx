@@ -129,7 +129,7 @@ export function ImageSlot({
         canAdjust={Boolean(storedImage)}
         canRemove={Boolean(storedImage)}
         compact={compact}
-        error={error}
+        error={error ?? storedImage?.uploadError}
         hasImage={Boolean(visibleImage)}
         hasPendingImage={Boolean(pendingImage)}
         label={label}
@@ -158,9 +158,15 @@ export function ImageSlot({
         processingMessage={
           isOptimizing
             ? 'Optimizing image…'
-            : storedImage?.uploadState === 'pending'
+            : storedImage?.uploadState === 'uploading'
               ? 'Uploading image…'
+              : storedImage?.uploadState === 'queued' ||
+                  storedImage?.uploadState === 'pending'
+                ? 'Queued for cloud sync'
               : null
+        }
+        processingIsActive={
+          isOptimizing || storedImage?.uploadState === 'uploading'
         }
         processingIsBlocking={isOptimizing}
       />
