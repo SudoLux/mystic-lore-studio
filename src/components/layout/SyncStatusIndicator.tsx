@@ -5,13 +5,13 @@ import type { SyncStatus } from '../../lib/studioSyncStorage';
 export function SyncStatusIndicator({
   className,
   error,
-  onRetry,
+  onOpen,
   pendingCount,
   status,
 }: {
   className?: string;
   error?: string | null;
-  onRetry: () => void;
+  onOpen: () => void;
   pendingCount: number;
   status: SyncStatus;
 }) {
@@ -30,8 +30,8 @@ export function SyncStatusIndicator({
         config.tone,
         className,
       )}
-      onClick={onRetry}
-      title={error ?? 'Refresh cloud sync'}
+      onClick={onOpen}
+      title={error ?? 'Open cloud sync details'}
       type="button"
     >
       <Icon

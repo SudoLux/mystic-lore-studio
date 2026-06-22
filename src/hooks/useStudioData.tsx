@@ -40,21 +40,32 @@ import {
   type StudioDataView,
 } from '../lib/studioStorage';
 import {
+  checkCloudSyncReadiness,
+  executeSyncOperations,
   fetchCloudStudioData,
+  markCloudMigrationComplete,
   mergeByNewest,
-  pushStudioSnapshot,
 } from '../lib/supabaseStudio';
 import {
-  clearSyncOutbox,
+  buildDataSyncOperations,
+  buildMigrationOperations,
+  enqueueSyncOperations,
+  failedSyncOperationCount,
   getMigrationDecision,
-  getSyncOutbox,
+  getSyncQueue,
   hasMeaningfulLocalData,
+  hydrateSyncQueue,
+  markSyncOperationsFailed,
+  migrateQueuedImagePayloads,
+  migrateStudioImagePayloads,
   preserveLegacyBackup,
-  saveSyncOutbox,
+  removeSyncOperations,
   setMigrationDecision,
+  syncQueueCount,
   type SyncDeletion,
+  type SyncImagePayload,
+  type SyncPhase,
   type SyncStatus,
-  type StudioSyncOutbox,
 } from '../lib/studioSyncStorage';
 import type {
   Fabric,
@@ -68,8 +79,14 @@ import type {
   YardageEntry,
 } from '../types/studio';
 
+export type SyncProgress = {
+  completed: number;
+  total: number;
+};
+
 type StudioDataContextValue = {
   acceptCloudMigration: () => Promise<void>;
+  cancelSync: () => void;
   createFabric: (fabric: Fabric) => void;
   createLinkedMaterial: (linkedMaterial: LinkedMaterial) => void;
   createNote: (note: StudioNote) => void;
@@ -83,7 +100,9 @@ type StudioDataContextValue = {
   deleteTask: (taskId: string) => void;
   dismissCloudMigration: () => void;
   exportData: () => string;
+  failedOperationCount: number;
   importData: (serializedData: string) => void;
+  lastSyncedAt: string | null;
   migrationAvailable: boolean;
   migrationInProgress: boolean;
   pendingCount: number;
@@ -95,6 +114,8 @@ type StudioDataContextValue = {
   saveData: (nextData: StudioData) => void;
   saveLookbookPage: (lookbookPage: LookbookPage) => void;
   syncError: string | null;
+  syncPhase: SyncPhase;
+  syncProgress: SyncProgress;
   syncStatus: SyncStatus;
   updateFabric: (fabric: Fabric) => void;
   updateLinkedMaterial: (linkedMaterial: LinkedMaterial) => void;
@@ -117,13 +138,29 @@ export function StudioDataProvider({
   const [rawData, setRawData] = useState<StudioData>(() => getStudioData(userId));
   const [migrationAvailable, setMigrationAvailable] = useState(false);
   const [migrationInProgress, setMigrationInProgress] = useState(false);
+  const initialQueue = getSyncQueue(userId);
   const [pendingCount, setPendingCount] = useState(() =>
-    outboxCount(getSyncOutbox(userId)),
+    syncQueueCount(initialQueue),
+  );
+  const [failedOperationCount, setFailedOperationCount] = useState(() =>
+    failedSyncOperationCount(initialQueue),
   );
   const [syncError, setSyncError] = useState<string | null>(null);
+  const [syncPhase, setSyncPhase] = useState<SyncPhase>('idle');
+  const [syncProgress, setSyncProgress] = useState<SyncProgress>({
+    completed: 0,
+    total: syncQueueCount(initialQueue),
+  });
   const [syncStatus, setSyncStatus] = useState<SyncStatus>('syncing');
+  const [lastSyncedAt, setLastSyncedAt] = useState<string | null>(null);
   const cloudReadyRef = useRef(false);
-  const flushingRef = useRef(false);
+  const readinessConfirmedRef = useRef(false);
+  const migrationInProgressRef = useRef(false);
+  const cancelRequestedRef = useRef(false);
+  const flushPromiseRef = useRef<Promise<boolean> | null>(null);
+  const flushFunctionRef = useRef<() => Promise<boolean>>(() =>
+    Promise.resolve(false),
+  );
   const rawDataRef = useRef(rawData);
 
   const saveLocalData = useCallback(
@@ -135,44 +172,198 @@ export function StudioDataProvider({
     [userId],
   );
 
-  const flushOutbox = useCallback(async () => {
-    if (flushingRef.current) return false;
-    const outbox = getSyncOutbox(userId);
-    setPendingCount(outboxCount(outbox));
-    if (!outbox) return true;
+  const refreshQueueState = useCallback(() => {
+    const queue = getSyncQueue(userId);
+    setPendingCount(syncQueueCount(queue));
+    setFailedOperationCount(failedSyncOperationCount(queue));
+    return queue;
+  }, [userId]);
+
+  const applyImageState = useCallback(
+    (
+      payload: SyncImagePayload,
+      state: LocalImageAsset['uploadState'],
+      error?: string,
+      replacement?: LocalImageAsset,
+    ) => {
+      saveLocalData(
+        replaceImage(rawDataRef.current, payload, (image) => ({
+          ...(replacement ?? image),
+          uploadError: error,
+          uploadState: state,
+        })),
+      );
+    },
+    [saveLocalData],
+  );
+
+  const performQueueDrain = useCallback(async () => {
     if (!navigator.onLine) {
       setSyncStatus('offline');
+      setSyncPhase('idle');
       return false;
     }
 
-    flushingRef.current = true;
+    cancelRequestedRef.current = false;
     setSyncError(null);
     setSyncStatus('syncing');
 
-    try {
-      const cloud = await fetchCloudStudioData(userId);
-      const merged = applyDeletionTombstones(
-        mergeByNewest(cloud.data, outbox.snapshot),
-        effectiveDeletions(cloud.data, outbox.deletions),
-      );
-      const deletions = effectiveDeletions(cloud.data, outbox.deletions);
-      const synced = await pushStudioSnapshot(userId, merged, deletions);
-      clearSyncOutbox(userId);
+    if (!readinessConfirmedRef.current) {
+      setSyncPhase('validating');
+      const readiness = await checkCloudSyncReadiness(userId);
+
+      if (!readiness.ready) {
+        setSyncError(readiness.message);
+        setSyncStatus('error');
+        setSyncPhase('idle');
+        setMigrationInProgress(false);
+        migrationInProgressRef.current = false;
+        readinessConfirmedRef.current = false;
+        return false;
+      }
+
+      readinessConfirmedRef.current = true;
       cloudReadyRef.current = true;
+    }
+
+    while (!cancelRequestedRef.current) {
+      await migrateQueuedImagePayloads(userId);
+      const queue = refreshQueueState();
+
+      if (!queue || queue.operations.length === 0) {
+        break;
+      }
+
+      const execution = await executeSyncOperations(
+        userId,
+        queue.operations,
+        {
+          isCancelled: () => cancelRequestedRef.current,
+          onImageState: (payload, state) => applyImageState(payload, state),
+          onPhase: (phase, completed, total) => {
+            setSyncPhase(phase);
+            setSyncProgress({ completed, total });
+          },
+        },
+      );
+
+      if (execution.completedOperationIds.length > 0) {
+        removeSyncOperations(userId, execution.completedOperationIds);
+      }
+      execution.imageUpdates.forEach(({ image, payload }) =>
+        applyImageState(payload, 'uploaded', undefined, image),
+      );
+
+      if (execution.failures.length > 0) {
+        execution.failures.forEach((failure) => {
+          const failedQueue = getSyncQueue(userId);
+          const failedIds = new Set(failure.operationIds);
+          failedQueue?.operations
+            .filter(
+              (operation) =>
+                failedIds.has(operation.id) && operation.payload,
+            )
+            .forEach((operation) => {
+              if (
+                operation.entity === 'project_image' ||
+                operation.entity === 'fabric_image'
+              ) {
+                applyImageState(
+                  operation.payload as SyncImagePayload,
+                  'error',
+                  failure.error,
+                );
+              }
+            });
+          markSyncOperationsFailed(
+            userId,
+            failure.operationIds,
+            failure.error,
+          );
+        });
+        refreshQueueState();
+        setSyncError(execution.failures[0].error);
+        setSyncStatus('error');
+        setSyncPhase('idle');
+        setMigrationInProgress(false);
+        migrationInProgressRef.current = false;
+        return false;
+      }
+
+      refreshQueueState();
+
+      if (execution.cancelled) {
+        setSyncStatus('offline');
+        setSyncPhase('idle');
+        setMigrationInProgress(false);
+        migrationInProgressRef.current = false;
+        return false;
+      }
+    }
+
+    if (cancelRequestedRef.current) {
+      setSyncStatus('offline');
+      setSyncPhase('idle');
+      setMigrationInProgress(false);
+      migrationInProgressRef.current = false;
+      return false;
+    }
+
+    if (migrationInProgressRef.current) {
+      setSyncPhase('verifying');
+      const cloud = await fetchCloudStudioData(userId);
+
+      if (!getSyncQueue(userId)) {
+        saveLocalData(mergeByNewest(cloud.data, rawDataRef.current));
+      }
+      await markCloudMigrationComplete(userId);
       setMigrationDecision(userId, 'completed');
-      setMigrationAvailable(false);
-      setPendingCount(0);
-      setSyncStatus('synced');
-      saveLocalData(synced);
-      return true;
-    } catch (error) {
+      setMigrationInProgress(false);
+      migrationInProgressRef.current = false;
+    }
+
+    setPendingCount(0);
+    setFailedOperationCount(0);
+    setSyncProgress({ completed: 0, total: 0 });
+    setSyncPhase('idle');
+    setSyncStatus('synced');
+    setSyncError(null);
+    setLastSyncedAt(new Date().toISOString());
+    return true;
+  }, [applyImageState, refreshQueueState, saveLocalData, userId]);
+
+  const flushQueue = useCallback(() => {
+    if (flushPromiseRef.current) {
+      return flushPromiseRef.current;
+    }
+
+    let completedSuccessfully = false;
+    const promise = performQueueDrain().then((completed) => {
+      completedSuccessfully = completed;
+      return completed;
+    }).catch((error) => {
       setSyncError(errorMessage(error));
       setSyncStatus(navigator.onLine ? 'error' : 'offline');
+      setSyncPhase('idle');
+      setMigrationInProgress(false);
+      migrationInProgressRef.current = false;
       return false;
-    } finally {
-      flushingRef.current = false;
-    }
-  }, [saveLocalData, userId]);
+    }).finally(() => {
+      flushPromiseRef.current = null;
+
+      if (
+        completedSuccessfully &&
+        getSyncQueue(userId) &&
+        navigator.onLine &&
+        !cancelRequestedRef.current
+      ) {
+        window.setTimeout(() => void flushFunctionRef.current(), 0);
+      }
+    });
+    flushPromiseRef.current = promise;
+    return promise;
+  }, [performQueueDrain, userId]);
+  flushFunctionRef.current = flushQueue;
 
   const refreshCloud = useCallback(async () => {
     if (!navigator.onLine) {
@@ -180,50 +371,106 @@ export function StudioDataProvider({
       return;
     }
 
-    setSyncError(null);
     setSyncStatus('syncing');
+    setSyncPhase('validating');
+    setSyncError(null);
+    const readiness = await checkCloudSyncReadiness(userId);
+
+    if (!readiness.ready) {
+      setSyncError(readiness.message);
+      setSyncStatus('error');
+      setSyncPhase('idle');
+      readinessConfirmedRef.current = false;
+      return;
+    }
+
+    readinessConfirmedRef.current = true;
+    cloudReadyRef.current = true;
+
+    if (getSyncQueue(userId)) {
+      await flushQueue();
+      return;
+    }
 
     try {
       const cloud = await fetchCloudStudioData(userId);
-      const outbox = getSyncOutbox(userId);
+      const meaningful = hasMeaningfulLocalData(rawDataRef.current);
+      const migrationPending = getMigrationDecision(userId) === 'pending';
 
-      if (cloud.hasCloudData) {
-        preserveLegacyBackup(userId);
-        cloudReadyRef.current = true;
-        if (outbox) {
-          await flushOutbox();
-        } else {
-          saveLocalData({
-            ...cloud.data,
-            settings: rawDataRef.current.settings,
-          });
-          setSyncStatus('synced');
-        }
+      if (!cloud.hasCloudData && meaningful && migrationPending) {
+        setMigrationAvailable(true);
+        setSyncStatus('offline');
+        setSyncPhase('idle');
         return;
       }
 
-      const meaningful = hasMeaningfulLocalData(rawDataRef.current);
-      setMigrationAvailable(
-        meaningful && getMigrationDecision(userId) === 'pending',
-      );
-      setSyncStatus('offline');
+      if (cloud.hasCloudData) {
+        preserveLegacyBackup(userId);
+        const merged = mergeByNewest(cloud.data, rawDataRef.current);
+        const resolved = {
+          ...merged,
+          settings: rawDataRef.current.settings,
+        };
+        saveLocalData(resolved);
+        setMigrationDecision(userId, 'completed');
+
+        const localNewerOperations = buildDataSyncOperations(
+          cloud.data,
+          resolved,
+        );
+        if (localNewerOperations.length > 0) {
+          const queue = enqueueSyncOperations(userId, localNewerOperations);
+          setPendingCount(syncQueueCount(queue));
+          setFailedOperationCount(failedSyncOperationCount(queue));
+          await flushQueue();
+          return;
+        }
+      }
+
+      setSyncStatus('synced');
+      setSyncPhase('idle');
+      setLastSyncedAt(new Date().toISOString());
     } catch (error) {
       setSyncError(errorMessage(error));
       setSyncStatus(navigator.onLine ? 'error' : 'offline');
+      setSyncPhase('idle');
     }
-  }, [flushOutbox, saveLocalData, userId]);
+  }, [flushQueue, saveLocalData, userId]);
 
   useEffect(() => {
-    void refreshCloud();
+    let active = true;
+
+    void hydrateSyncQueue(userId)
+      .then((queue) => {
+        if (!active) return;
+        setPendingCount(syncQueueCount(queue));
+        setFailedOperationCount(failedSyncOperationCount(queue));
+        return migrateStudioImagePayloads(rawDataRef.current);
+      })
+      .then((migrated) => {
+        if (!active || !migrated) return;
+        saveLocalData(mergeMigratedImagePayloads(rawDataRef.current, migrated));
+        return migrateQueuedImagePayloads(userId);
+      })
+      .then(() => {
+        if (active) void refreshCloud();
+      })
+      .catch((error) => {
+        if (!active) return;
+        setSyncError(errorMessage(error));
+        setSyncStatus('error');
+      });
+
     const refresh = () =>
-      void (getSyncOutbox(userId) ? flushOutbox() : refreshCloud());
+      void (getSyncQueue(userId) ? flushQueue() : refreshCloud());
     window.addEventListener('focus', refresh);
     window.addEventListener('online', refresh);
     return () => {
+      active = false;
       window.removeEventListener('focus', refresh);
       window.removeEventListener('online', refresh);
     };
-  }, [flushOutbox, refreshCloud, userId]);
+  }, [flushQueue, refreshCloud, saveLocalData, userId]);
 
   const commitData = useCallback(
     (nextData: StudioData, deletions: SyncDeletion[] = []) => {
@@ -234,12 +481,23 @@ export function StudioDataProvider({
         ...deletions,
         ...collectImageDeletions(current, withYardage),
       ];
+      const operations = buildDataSyncOperations(
+        current,
+        withYardage,
+        allDeletions,
+      );
       saveLocalData(withYardage);
 
-      if (cloudReadyRef.current) {
-        const outbox = saveSyncOutbox(userId, withYardage, allDeletions);
-        setPendingCount(outboxCount(outbox));
-        void flushOutbox();
+      if (
+        operations.length > 0 &&
+        (cloudReadyRef.current ||
+          getMigrationDecision(userId) === 'completed' ||
+          Boolean(getSyncQueue(userId)))
+      ) {
+        const queue = enqueueSyncOperations(userId, operations);
+        setPendingCount(syncQueueCount(queue));
+        setFailedOperationCount(failedSyncOperationCount(queue));
+        void flushQueue();
       } else if (
         hasMeaningfulLocalData(withYardage) &&
         getMigrationDecision(userId) === 'pending'
@@ -248,7 +506,7 @@ export function StudioDataProvider({
         setSyncStatus('offline');
       }
     },
-    [flushOutbox, saveLocalData, userId],
+    [flushQueue, saveLocalData, userId],
   );
 
   const mutate = useCallback(
@@ -260,14 +518,53 @@ export function StudioDataProvider({
   );
 
   const acceptCloudMigration = useCallback(async () => {
+    setMigrationAvailable(false);
     setMigrationInProgress(true);
-    cloudReadyRef.current = true;
-    const outbox = saveSyncOutbox(userId, rawDataRef.current);
-    setPendingCount(outboxCount(outbox));
-    const succeeded = await flushOutbox();
-    if (succeeded) setMigrationDecision(userId, 'completed');
-    setMigrationInProgress(false);
-  }, [flushOutbox, userId]);
+    migrationInProgressRef.current = true;
+    setSyncError(null);
+    setSyncStatus('syncing');
+    setSyncPhase('validating');
+
+    try {
+      const readiness = await checkCloudSyncReadiness(userId);
+
+      if (!readiness.ready) {
+        setSyncError(readiness.message);
+        setSyncStatus('error');
+        setSyncPhase('idle');
+        setMigrationInProgress(false);
+        migrationInProgressRef.current = false;
+        readinessConfirmedRef.current = false;
+        return;
+      }
+
+      readinessConfirmedRef.current = true;
+      cloudReadyRef.current = true;
+      setSyncPhase('preparing');
+      preserveLegacyBackup(userId);
+      const migrated = await migrateStudioImagePayloads(rawDataRef.current);
+      const migrationData = mergeMigratedImagePayloads(
+        rawDataRef.current,
+        migrated,
+      );
+      saveLocalData(migrationData);
+      const queue = enqueueSyncOperations(
+        userId,
+        buildMigrationOperations(migrationData),
+      );
+      setPendingCount(syncQueueCount(queue));
+      setFailedOperationCount(failedSyncOperationCount(queue));
+      setSyncProgress({ completed: 0, total: syncQueueCount(queue) });
+      void flushQueue();
+    } catch (error) {
+      setSyncError(errorMessage(error));
+      setSyncStatus(navigator.onLine ? 'error' : 'offline');
+      setSyncPhase('idle');
+      setMigrationInProgress(false);
+      migrationInProgressRef.current = false;
+      readinessConfirmedRef.current = false;
+    }
+  }, [flushQueue, saveLocalData, userId]);
 
   const dismissCloudMigration = useCallback(() => {
     setMigrationDecision(userId, 'dismissed');
@@ -283,9 +580,31 @@ export function StudioDataProvider({
   }, [userId]);
 
   const retrySync = useCallback(async () => {
-    if (getSyncOutbox(userId)) await flushOutbox();
-    else await refreshCloud();
-  }, [flushOutbox, refreshCloud, userId]);
+    cancelRequestedRef.current = false;
+    readinessConfirmedRef.current = false;
+    const queue = getSyncQueue(userId);
+
+    if (queue) {
+      const resetOperations = queue.operations.map((operation) => ({
+        ...operation,
+        attempts: 0,
+        lastError: undefined,
+      }));
+      enqueueSyncOperations(userId, resetOperations);
+      await flushQueue();
+    } else {
+      await refreshCloud();
+    }
+  }, [flushQueue, refreshCloud, userId]);
+
+  const cancelSync = useCallback(() => {
+    cancelRequestedRef.current = true;
+    setMigrationInProgress(false);
+    migrationInProgressRef.current = false;
+    setSyncPhase('idle');
+    setSyncStatus('offline');
+    setSyncError(null);
+  }, []);
 
   const saveData = useCallback((data: StudioData) => commitData(data), [commitData]);
   const resetData = useCallback(() => saveLocalData(resetStudioData(userId)), [saveLocalData, userId]);
@@ -323,6 +642,7 @@ export function StudioDataProvider({
 
   const value = useMemo<StudioDataContextValue>(() => ({
     acceptCloudMigration,
+    cancelSync,
     createFabric,
     createLinkedMaterial,
     createNote,
@@ -336,7 +656,9 @@ export function StudioDataProvider({
     deleteTask,
     dismissCloudMigration,
     exportData,
+    failedOperationCount,
     importData,
+    lastSyncedAt,
     migrationAvailable,
     migrationInProgress,
     pendingCount,
@@ -348,6 +670,8 @@ export function StudioDataProvider({
     saveData,
     saveLookbookPage,
     syncError,
+    syncPhase,
+    syncProgress,
     syncStatus,
     updateFabric,
     updateLinkedMaterial,
@@ -356,7 +680,7 @@ export function StudioDataProvider({
     updateProjectPhase,
     updateTask,
     updateTaskStatus,
-  }), [acceptCloudMigration, createFabric, createLinkedMaterial, createNote, createProject, createTask, deleteFabric, deleteLinkedMaterial, deleteNote, deleteProject, deleteTask, dismissCloudMigration, exportData, importData, migrationAvailable, migrationInProgress, pendingCount, previewImportData, rawData, reopenCloudMigration, resetData, retrySync, saveData, saveLookbookPage, syncError, syncStatus, updateFabric, updateLinkedMaterial, updateNote, updateProject, updateProjectPhase, updateTask, updateTaskStatus]);
+  }), [acceptCloudMigration, cancelSync, createFabric, createLinkedMaterial, createNote, createProject, createTask, deleteFabric, deleteLinkedMaterial, deleteNote, deleteProject, deleteTask, dismissCloudMigration, exportData, failedOperationCount, importData, lastSyncedAt, migrationAvailable, migrationInProgress, pendingCount, previewImportData, rawData, reopenCloudMigration, resetData, retrySync, saveData, saveLookbookPage, syncError, syncPhase, syncProgress, syncStatus, updateFabric, updateLinkedMaterial, updateNote, updateProject, updateProjectPhase, updateTask, updateTaskStatus]);
 
   return <StudioDataContext.Provider value={value}>{children}</StudioDataContext.Provider>;
 }
@@ -396,7 +720,7 @@ function stampCollection<T extends { id: string; createdAt?: string; updatedAt?:
 
 function comparable(value: unknown) {
   return JSON.stringify(value, (key, item) =>
-    ['createdAt', 'updatedAt', 'remoteUrl', 'signedUrlExpiresAt', 'uploadState'].includes(key)
+    ['createdAt', 'updatedAt', 'remoteUrl', 'signedUrlExpiresAt', 'uploadError', 'uploadState'].includes(key)
       ? undefined
       : item,
   );
@@ -468,6 +792,51 @@ function imageMap(data: StudioData) {
   return images;
 }
 
+function replaceImage(
+  data: StudioData,
+  payload: SyncImagePayload,
+  replace: (image: LocalImageAsset) => LocalImageAsset,
+): StudioData {
+  if (payload.ownerType === 'fabric') {
+    return {
+      ...data,
+      fabrics: data.fabrics.map((fabric) =>
+        fabric.id === payload.ownerId && fabric.image
+          ? { ...fabric, image: replace(fabric.image) }
+          : fabric,
+      ),
+    };
+  }
+
+  if (payload.ownerType === 'lookbook') {
+    return {
+      ...data,
+      lookbookPages: data.lookbookPages.map((page) =>
+        page.id === payload.ownerId && page.heroImage
+          ? { ...page, heroImage: replace(page.heroImage) }
+          : page,
+      ),
+    };
+  }
+
+  return {
+    ...data,
+    projects: data.projects.map((project) => {
+      if (project.id !== payload.ownerId) return project;
+      return {
+        ...project,
+        galleryImages: project.galleryImages?.map((image) =>
+          image.id === payload.image.id ? replace(image) : image,
+        ),
+        heroImage:
+          project.heroImage?.id === payload.image.id
+            ? replace(project.heroImage)
+            : project.heroImage,
+      };
+    }),
+  };
+}
+
 function projectImagePaths(data: StudioData, project?: StoredProject) {
   if (!project) return [];
   return [
@@ -481,61 +850,41 @@ function projectImagePaths(data: StudioData, project?: StoredProject) {
     .filter((path): path is string => Boolean(path));
 }
 
-function effectiveDeletions(
-  cloud: StudioData,
-  deletions: SyncDeletion[],
-) {
-  const collections: Partial<
-    Record<SyncDeletion['entity'], Array<{ id: string; updatedAt?: string }>>
-  > = {
-    fabric: cloud.fabrics,
-    lookbook: cloud.lookbookPages,
-    material: cloud.linkedMaterials,
-    note: cloud.notes,
-    project: cloud.projects,
-    task: cloud.tasks,
-    yardage: cloud.yardageEntries,
-  };
-
-  return deletions.filter((deletion) => {
-    const record = collections[deletion.entity]?.find(
-      (item) => item.id === deletion.clientId,
-    );
-    return !record ||
-      Date.parse(deletion.deletedAt) >= Date.parse(record.updatedAt ?? '1970-01-01');
+function mergeMigratedImagePayloads(base: StudioData, migrated: StudioData) {
+  const migratedImages = new Map<string, LocalImageAsset>();
+  migrated.projects.forEach((project) => {
+    if (project.heroImage) migratedImages.set(project.heroImage.id, project.heroImage);
+    project.galleryImages?.forEach((image) => migratedImages.set(image.id, image));
   });
+  migrated.lookbookPages.forEach((page) => {
+    if (page.heroImage) migratedImages.set(page.heroImage.id, page.heroImage);
+  });
+  migrated.fabrics.forEach((fabric) => {
+    if (fabric.image) migratedImages.set(fabric.image.id, fabric.image);
+  });
+  const replace = (image: LocalImageAsset | undefined) =>
+    image ? migratedImages.get(image.id) ?? image : undefined;
+
+  return {
+    ...base,
+    fabrics: base.fabrics.map((fabric) => ({
+      ...fabric,
+      image: replace(fabric.image),
+    })),
+    lookbookPages: base.lookbookPages.map((page) => ({
+      ...page,
+      heroImage: replace(page.heroImage),
+    })),
+    projects: base.projects.map((project) => ({
+      ...project,
+      galleryImages: project.galleryImages?.map((image) => replace(image)!),
+      heroImage: replace(project.heroImage),
+    })),
+  };
 }
 
 function deletion(entity: SyncDeletion['entity'], clientId: string, storagePaths: string[] = []): SyncDeletion {
   return { clientId, deletedAt: new Date().toISOString(), entity, storagePaths };
-}
-
-function applyDeletionTombstones(data: StudioData, deletions: SyncDeletion[]): StudioData {
-  const deleted = (entity: SyncDeletion['entity']) =>
-    new Set(deletions.filter((item) => item.entity === entity).map((item) => item.clientId));
-  const imageIds = deleted('project_image');
-  return {
-    ...data,
-    fabrics: data.fabrics.filter((item) => !deleted('fabric').has(item.id)),
-    linkedMaterials: data.linkedMaterials.filter((item) => !deleted('material').has(item.id)),
-    lookbookPages: data.lookbookPages
-      .filter((item) => !deleted('lookbook').has(item.id))
-      .map((page) => page.heroImage && imageIds.has(page.heroImage.id) ? { ...page, heroImage: undefined } : page),
-    notes: data.notes.filter((item) => !deleted('note').has(item.id)),
-    projects: data.projects
-      .filter((item) => !deleted('project').has(item.id))
-      .map((project) => ({
-        ...project,
-        galleryImages: project.galleryImages?.filter((image) => !imageIds.has(image.id)),
-        heroImage: project.heroImage && imageIds.has(project.heroImage.id) ? undefined : project.heroImage,
-      })),
-    tasks: data.tasks.filter((item) => !deleted('task').has(item.id)),
-    yardageEntries: data.yardageEntries.filter((item) => !deleted('yardage').has(item.id)),
-  };
-}
-
-function outboxCount(outbox: StudioSyncOutbox | null) {
-  return outbox ? 1 + outbox.deletions.length : 0;
 }
 
 function errorMessage(error: unknown) {
