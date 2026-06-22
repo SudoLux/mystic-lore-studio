@@ -3,12 +3,14 @@ import type { NavItem, PageId } from '../../types/navigation';
 import { Badge } from '../shared/Badge';
 import { BrandLockup } from './BrandLockup';
 import { LogOut } from 'lucide-react';
+import type { ReactNode } from 'react';
 
 type SidebarProps = {
   activePage: PageId;
   navItems: NavItem[];
   onNavigate: (pageId: PageId) => void;
   onSignOut?: () => void;
+  syncStatus?: ReactNode;
   userEmail?: string;
 };
 
@@ -17,6 +19,7 @@ export function Sidebar({
   navItems,
   onNavigate,
   onSignOut,
+  syncStatus,
   userEmail,
 }: SidebarProps) {
   return (
@@ -68,6 +71,7 @@ export function Sidebar({
       </nav>
 
       <div className="mt-8 rounded-2xl border border-bronze/25 bg-espresso/35 p-4">
+        {syncStatus ? <div className="mb-4">{syncStatus}</div> : null}
         <p className="text-sm font-medium text-stardust">Atelier Foundation</p>
         <p className="mt-2 text-sm leading-6 text-stardust/60">
           Garment, material, and presentation workspaces are staged for the next

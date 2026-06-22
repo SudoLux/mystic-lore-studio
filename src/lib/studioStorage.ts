@@ -20,10 +20,12 @@ import type {
   StudioNote,
   StudioTask,
   TaskStatus,
+  YardageEntry,
 } from '../types/studio';
 
-export const LOCAL_DATA_VERSION = 2;
+export const LOCAL_DATA_VERSION = 3;
 const STORAGE_KEY = 'mystic-lore-studio:data';
+const USER_STORAGE_PREFIX = `${STORAGE_KEY}:user`;
 
 export type AppSettings = {
   backupReminderCadenceDays: number;
@@ -45,6 +47,7 @@ export type StudioData = {
   settings: AppSettings;
   tasks: StudioTask[];
   version: number;
+  yardageEntries: YardageEntry[];
 };
 
 export type ImportPreview = {
@@ -72,6 +75,7 @@ export function createSeedStudioData(): StudioData {
     settings: createDefaultAppSettings(),
     tasks: demoTasks,
     version: LOCAL_DATA_VERSION,
+    yardageEntries: [],
   };
 }
 
@@ -91,53 +95,60 @@ export function hydrateStudioData(data: StudioData): StudioDataView {
   };
 }
 
-export function getStudioData(): StudioData {
+export function getStudioData(userId?: string): StudioData {
   if (!canUseLocalStorage()) {
     return createSeedStudioData();
   }
 
-  const stored = window.localStorage.getItem(STORAGE_KEY);
+  const stored = window.localStorage.getItem(getStorageKey(userId));
+  const legacyStored = userId
+    ? window.localStorage.getItem(STORAGE_KEY)
+    : null;
+  const storedValue = stored ?? legacyStored;
 
-  if (!stored) {
+  if (!storedValue) {
     const seedData = createSeedStudioData();
-    saveStudioData(seedData);
+    saveStudioData(seedData, userId);
     return seedData;
   }
 
   try {
-    const parsed = JSON.parse(stored);
+    const parsed = JSON.parse(storedValue);
 
     if (!isStudioDataLike(parsed)) {
       const seedData = createSeedStudioData();
-      saveStudioData(seedData);
+      saveStudioData(seedData, userId);
       return seedData;
     }
 
     const migratedData = migrateStudioData(parsed);
 
     if (migratedData.version !== parsed.version) {
-      saveStudioData(migratedData);
+      saveStudioData(migratedData, userId);
     }
 
     return migratedData;
   } catch {
     const seedData = createSeedStudioData();
-    saveStudioData(seedData);
+    saveStudioData(seedData, userId);
     return seedData;
   }
 }
 
-export function saveStudioData(data: StudioData) {
+export function saveStudioData(data: StudioData, userId?: string) {
   if (!canUseLocalStorage()) {
     return;
   }
 
-  window.localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+  window.localStorage.setItem(
+    getStorageKey(userId),
+    JSON.stringify(stripEphemeralImageUrls(data)),
+  );
 }
 
-export function resetStudioData() {
+export function resetStudioData(userId?: string) {
   const seedData = createSeedStudioData();
-  saveStudioData(seedData);
+  saveStudioData(seedData, userId);
   return seedData;
 }
 
@@ -481,6 +492,9 @@ function normalizeStudioData(data: StudioData): StudioData {
     ...data,
     settings: normalizeAppSettings(data.settings),
     version: typeof data.version === 'number' ? data.version : LOCAL_DATA_VERSION,
+    yardageEntries: Array.isArray(data.yardageEntries)
+      ? data.yardageEntries
+      : [],
   };
 }
 
@@ -527,6 +541,56 @@ function isStudioDataLike(value: unknown): value is StudioData {
       Array.isArray(value.lookbookPages) &&
       typeof value.version === 'number',
   );
+}
+
+export function getLegacyStudioData() {
+  if (!canUseLocalStorage()) {
+    return null;
+  }
+
+  const stored = window.localStorage.getItem(STORAGE_KEY);
+
+  if (!stored) {
+    return null;
+  }
+
+  try {
+    const parsed = JSON.parse(stored);
+    return isStudioDataLike(parsed) ? migrateStudioData(parsed) : null;
+  } catch {
+    return null;
+  }
+}
+
+function getStorageKey(userId?: string) {
+  return userId ? `${USER_STORAGE_PREFIX}:${userId}` : STORAGE_KEY;
+}
+
+function stripEphemeralImageUrls(data: StudioData): StudioData {
+  const cleanImage = <T extends { remoteUrl?: string; signedUrlExpiresAt?: string }>(
+    image: T | undefined,
+  ) => {
+    if (!image) return image;
+    const { remoteUrl: _remoteUrl, signedUrlExpiresAt: _expiresAt, ...stored } = image;
+    return stored as T;
+  };
+
+  return {
+    ...data,
+    fabrics: data.fabrics.map((fabric) => ({
+      ...fabric,
+      image: cleanImage(fabric.image),
+    })),
+    lookbookPages: data.lookbookPages.map((page) => ({
+      ...page,
+      heroImage: cleanImage(page.heroImage),
+    })),
+    projects: data.projects.map((project) => ({
+      ...project,
+      galleryImages: project.galleryImages?.map((image) => cleanImage(image)!),
+      heroImage: cleanImage(project.heroImage),
+    })),
+  };
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

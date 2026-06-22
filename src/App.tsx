@@ -1,10 +1,12 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { CloudOff } from 'lucide-react';
 import { AppShell } from './components/layout/AppShell';
+import { SyncStatusIndicator } from './components/layout/SyncStatusIndicator';
 import { FabricFormModal } from './components/fabrics/FabricFormModal';
 import { ProjectFormModal } from './components/projects/ProjectFormModal';
 import { GlobalSearch } from './components/layout/GlobalSearch';
 import { Button } from './components/shared/Button';
+import { CloudMigrationModal } from './components/settings/CloudMigrationModal';
 import { navigationItems } from './data/navigation';
 import { useAuth } from './hooks/useAuth';
 import { useStudioData } from './hooks/useStudioData';
@@ -64,7 +66,7 @@ function App() {
   }
 
   return (
-    <StudioDataProvider>
+    <StudioDataProvider userId={session.user.id}>
       <StudioApp />
     </StudioDataProvider>
   );
@@ -72,11 +74,20 @@ function App() {
 
 function StudioApp() {
   const {
+    acceptCloudMigration,
     createFabric,
     createProject,
     data: { fabrics, projects },
     deleteFabric,
     deleteProject,
+    dismissCloudMigration,
+    migrationAvailable,
+    migrationInProgress,
+    pendingCount,
+    rawData,
+    retrySync,
+    syncError,
+    syncStatus,
     updateFabric,
     updateProject,
   } = useStudioData();
@@ -222,6 +233,14 @@ function StudioApp() {
         navItems={navigationItems}
         onNavigate={navigateToPage}
         onSignOut={handleSignOut}
+        syncStatus={
+          <SyncStatusIndicator
+            error={syncError}
+            onRetry={() => void retrySync()}
+            pendingCount={pendingCount}
+            status={syncStatus}
+          />
+        }
         userEmail={user?.email}
       >
         {authActionError ? (
@@ -232,6 +251,14 @@ function StudioApp() {
         {!supabaseConfigStatus.isConfigured ? <SupabaseEnvWarning /> : null}
         {currentPage}
       </AppShell>
+      {migrationAvailable ? (
+        <CloudMigrationModal
+          data={rawData}
+          isMigrating={migrationInProgress}
+          onAccept={() => void acceptCloudMigration()}
+          onDismiss={dismissCloudMigration}
+        />
+      ) : null}
       {projectForm ? (
         <ProjectFormModal
           mode={projectForm.mode}

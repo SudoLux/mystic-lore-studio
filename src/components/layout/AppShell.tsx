@@ -12,6 +12,7 @@ type AppShellProps = {
   navItems: NavItem[];
   onNavigate: (pageId: PageId) => void;
   onSignOut?: () => void;
+  syncStatus?: ReactNode;
   userEmail?: string;
 };
 
@@ -22,6 +23,7 @@ export function AppShell({
   navItems,
   onNavigate,
   onSignOut,
+  syncStatus,
   userEmail,
 }: AppShellProps) {
   return (
@@ -33,6 +35,7 @@ export function AppShell({
             navItems={navItems}
             onNavigate={onNavigate}
             onSignOut={onSignOut}
+            syncStatus={syncStatus}
             userEmail={userEmail}
           />
           <main className="min-w-0 px-4 pb-28 pt-5 sm:px-6 sm:pt-7 lg:px-8 lg:pb-8 xl:px-10">
@@ -54,6 +57,7 @@ export function AppShell({
                     </button>
                   ) : null}
                 </div>
+                {syncStatus ? <div className="mt-3 flex justify-end">{syncStatus}</div> : null}
               </div>
               {globalSearch}
               {children}

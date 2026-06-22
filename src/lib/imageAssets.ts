@@ -26,8 +26,10 @@ export function isUsableImageAsset(
 ): image is LocalImageAsset {
   return Boolean(
     image &&
-      typeof image.dataUrl === 'string' &&
-      image.dataUrl.startsWith('data:image/') &&
+      ((typeof image.dataUrl === 'string' &&
+        image.dataUrl.startsWith('data:image/')) ||
+        (typeof image.remoteUrl === 'string' && image.remoteUrl.startsWith('http')) ||
+        Boolean(image.storagePath)) &&
       typeof image.name === 'string' &&
       image.name.trim(),
   );
