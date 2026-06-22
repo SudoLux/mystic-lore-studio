@@ -3,6 +3,7 @@ import type { LocalImageAsset } from '../types/studio';
 const MAX_SOURCE_SIZE = 6 * 1024 * 1024;
 const MAX_STORED_SIZE = 2 * 1024 * 1024;
 const MAX_IMAGE_EDGE = 1600;
+const PREVIEW_EDGE = 480;
 const JPEG_QUALITY = 0.82;
 
 export type ImageProcessingError = Error;
@@ -30,32 +31,49 @@ export async function createLocalImageAsset(file: File): Promise<LocalImageAsset
   canvas.height = height;
   context.drawImage(image, 0, 0, width, height);
 
-  const mimeType = file.type === 'image/png' ? 'image/png' : 'image/jpeg';
-  let dataUrl = canvas.toDataURL(mimeType, mimeType === 'image/png' ? undefined : JPEG_QUALITY);
+  const mimeType = 'image/webp';
+  let uploadDataUrl = canvas.toDataURL(mimeType, JPEG_QUALITY);
 
-  if (estimateDataUrlBytes(dataUrl) > MAX_STORED_SIZE && mimeType !== 'image/jpeg') {
-    dataUrl = canvas.toDataURL('image/jpeg', JPEG_QUALITY);
+  if (estimateDataUrlBytes(uploadDataUrl) > MAX_STORED_SIZE) {
+    uploadDataUrl = canvas.toDataURL(mimeType, 0.68);
   }
 
-  if (estimateDataUrlBytes(dataUrl) > MAX_STORED_SIZE) {
-    dataUrl = canvas.toDataURL('image/jpeg', 0.68);
-  }
-
-  if (estimateDataUrlBytes(dataUrl) > MAX_STORED_SIZE) {
+  if (estimateDataUrlBytes(uploadDataUrl) > MAX_STORED_SIZE) {
     throw new Error('Image could not be compressed under 2 MB for local storage.');
   }
+
+  const previewScale = Math.min(1, PREVIEW_EDGE / Math.max(width, height));
+  const previewCanvas = document.createElement('canvas');
+  const previewContext = previewCanvas.getContext('2d');
+
+  if (!previewContext) {
+    throw new Error('This browser could not prepare the image preview.');
+  }
+
+  previewCanvas.width = Math.max(1, Math.round(width * previewScale));
+  previewCanvas.height = Math.max(1, Math.round(height * previewScale));
+  previewContext.drawImage(
+    image,
+    0,
+    0,
+    previewCanvas.width,
+    previewCanvas.height,
+  );
+  const dataUrl = previewCanvas.toDataURL(mimeType, 0.62);
 
   return {
     dataUrl,
     height,
     id: `image-${Date.now().toString(36)}`,
-    mimeType: dataUrl.slice(5, dataUrl.indexOf(';')),
+    mimeType,
     name: file.name,
     objectFit: 'cover',
     overlayIntensity: 'auto',
     objectPositionX: 50,
     objectPositionY: 50,
-    size: estimateDataUrlBytes(dataUrl),
+    size: estimateDataUrlBytes(uploadDataUrl),
+    uploadDataUrl,
+    uploadState: 'pending',
     updatedAt: new Date().toISOString(),
     width,
     zoom: 1,

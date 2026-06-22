@@ -1,6 +1,7 @@
 import { useRef, useState, type ChangeEvent } from 'react';
 import {
   AlertTriangle,
+  Cloud,
   Download,
   RefreshCcw,
   ShieldCheck,
@@ -21,8 +22,18 @@ type ImportCandidate = {
 };
 
 export function SettingsPage() {
-  const { exportData, importData, previewImportData, rawData, resetData } =
-    useStudioData();
+  const {
+    exportData,
+    importData,
+    pendingCount,
+    previewImportData,
+    rawData,
+    reopenCloudMigration,
+    resetData,
+    retrySync,
+    syncError,
+    syncStatus,
+  } = useStudioData();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [importCandidate, setImportCandidate] =
@@ -144,6 +155,41 @@ export function SettingsPage() {
           text="Manifest, theme metadata, icon, and app-shell service worker are configured."
         />
       </div>
+
+      <Card className="border-bronze/30 bg-[linear-gradient(135deg,rgba(45,92,107,0.22),rgba(10,10,10,0.58),rgba(61,43,31,0.34))]">
+        <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
+          <div>
+            <Badge variant={syncStatus === 'synced' ? 'teal' : 'ember'}>
+              Cloud Sync
+            </Badge>
+            <h2 className="mt-4 text-xl font-semibold text-stardust">
+              {syncStatus === 'synced'
+                ? 'Studio data is synced.'
+                : syncStatus === 'syncing'
+                  ? 'Studio data is syncing.'
+                  : syncStatus === 'error'
+                    ? 'Cloud sync needs attention.'
+                    : 'This workspace is using local data.'}
+            </h2>
+            <p className="mt-2 text-sm leading-6 text-stardust/62">
+              {syncError ??
+                `${pendingCount} pending cloud operation${pendingCount === 1 ? '' : 's'}. Local storage remains available as an offline cache.`}
+            </p>
+          </div>
+          <div className="flex flex-col gap-3 sm:flex-row">
+            <Button
+              icon={<Cloud aria-hidden="true" size={16} strokeWidth={1.9} />}
+              onClick={() => void retrySync()}
+              variant="secondary"
+            >
+              Retry Sync
+            </Button>
+            <Button onClick={reopenCloudMigration} variant="ghost">
+              Move Local Data to Cloud
+            </Button>
+          </div>
+        </div>
+      </Card>
 
       <Card className="border-bronze/32 bg-[linear-gradient(135deg,rgba(27,58,99,0.22),rgba(10,10,10,0.52),rgba(61,43,31,0.4))]" elevated>
         <div className="grid gap-6 xl:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">

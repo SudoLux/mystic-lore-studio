@@ -149,7 +149,7 @@ export type LookbookFieldItem = {
   value: string;
 };
 export type LocalImageAsset = {
-  dataUrl: string;
+  dataUrl?: string;
   height?: number;
   id: string;
   mimeType: string;
@@ -159,12 +159,18 @@ export type LocalImageAsset = {
   objectPositionX?: number;
   objectPositionY?: number;
   size: number;
+  remoteUrl?: string;
+  signedUrlExpiresAt?: string;
+  storagePath?: string;
+  uploadDataUrl?: string;
+  uploadState?: 'local' | 'pending' | 'uploaded' | 'error';
   updatedAt: string;
   width?: number;
   zoom?: number;
 };
 
 export type LinkedMaterial = {
+  createdAt?: string;
   id: string;
   fabricId?: string;
   materialName: string;
@@ -175,9 +181,11 @@ export type LinkedMaterial = {
   reservedYards: number;
   usedYards: number;
   notes?: string;
+  updatedAt?: string;
 };
 
 export type StudioTask = {
+  createdAt?: string;
   id: string;
   projectId: string;
   title: string;
@@ -189,6 +197,7 @@ export type StudioTask = {
   phase: ProjectPhase;
   dueDate?: string;
   linkedMaterialId?: string;
+  updatedAt?: string;
 };
 
 export type StudioNote = {
@@ -202,6 +211,7 @@ export type StudioNote = {
 };
 
 export type LookbookPage = {
+  createdAt?: string;
   credits?: LookbookFieldItem[];
   designNotes?: string[];
   displaySpecs?: LookbookFieldItem[];
@@ -221,7 +231,21 @@ export type LookbookPage = {
   updatedAt?: string;
 };
 
+export type YardageEntry = {
+  createdAt: string;
+  fabricId: string;
+  id: string;
+  materialId?: string;
+  notes?: string;
+  occurredAt: string;
+  projectId?: string;
+  type: 'Reserved' | 'Used' | 'Released' | 'Adjusted';
+  updatedAt: string;
+  yards: number;
+};
+
 export type Fabric = {
+  createdAt?: string;
   id: string;
   name: string;
   supplier: string;
@@ -262,6 +286,7 @@ export type Fabric = {
 };
 
 export type ApparelProject = {
+  createdAt?: string;
   id: string;
   name: string;
   garmentType: GarmentType;
@@ -284,6 +309,7 @@ export type ApparelProject = {
   tags: string[];
   startDate: string;
   targetDate?: string;
+  updatedAt?: string;
   linkedMaterials: LinkedMaterial[];
   tasks: StudioTask[];
   notes: StudioNote[];
