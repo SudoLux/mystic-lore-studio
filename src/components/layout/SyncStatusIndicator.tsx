@@ -8,19 +8,23 @@ export function SyncStatusIndicator({
   onOpen,
   pendingCount,
   status,
+  warning,
 }: {
   className?: string;
   error?: string | null;
   onOpen: () => void;
   pendingCount: number;
   status: SyncStatus;
+  warning?: string | null;
 }) {
-  const config = {
+  const config = status === 'synced' && warning
+    ? { icon: AlertTriangle, label: 'Synced · Cache', tone: 'text-ember' }
+    : ({
     error: { icon: AlertTriangle, label: 'Sync error', tone: 'text-ember' },
     offline: { icon: CloudOff, label: 'Offline / local only', tone: 'text-stardust/58' },
     synced: { icon: Check, label: 'Synced', tone: 'text-teal' },
     syncing: { icon: RefreshCw, label: 'Syncing', tone: 'text-ember' },
-  }[status];
+  }[status]);
   const Icon = config.icon;
 
   return (
@@ -31,7 +35,7 @@ export function SyncStatusIndicator({
         className,
       )}
       onClick={onOpen}
-      title={error ?? 'Open cloud sync details'}
+      title={error ?? warning ?? 'Open cloud sync details'}
       type="button"
     >
       <Icon

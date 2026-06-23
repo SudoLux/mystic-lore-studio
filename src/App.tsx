@@ -89,6 +89,7 @@ function StudioApp() {
     exportData,
     failedOperationCount,
     lastSyncedAt,
+    localCacheWarning,
     migrationAvailable,
     migrationInProgress,
     pendingCount,
@@ -264,6 +265,7 @@ function StudioApp() {
             onOpen={() => setSyncDetailsOpen(true)}
             pendingCount={pendingCount}
             status={syncStatus}
+            warning={localCacheWarning}
           />
         }
         userEmail={user?.email}
@@ -297,6 +299,7 @@ function StudioApp() {
         failedCount={failedOperationCount}
         isOpen={syncDetailsOpen}
         lastSyncedAt={lastSyncedAt}
+        localCacheWarning={localCacheWarning}
         onCancel={cancelSync}
         onClose={() => setSyncDetailsOpen(false)}
         onExport={exportBackup}

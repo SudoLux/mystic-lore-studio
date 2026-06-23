@@ -1,4 +1,5 @@
 import type { LocalImageAsset } from '../types/studio';
+import { compressImageForApp } from './imageCompression';
 
 const DATABASE_NAME = 'mystic-lore-studio-media';
 const DATABASE_VERSION = 2;
@@ -89,8 +90,89 @@ export async function migrateLegacyImageBlob(image: LocalImageAsset) {
   } satisfies LocalImageAsset;
 }
 
+export async function hydrateImagePreview(image: LocalImageAsset) {
+  let prepared = image;
+
+  if (!prepared.previewBlobKey && prepared.dataUrl?.startsWith('data:image/')) {
+    const previewBlobKey = previewImageBlobKey(prepared.id);
+
+    try {
+      await saveImageBlob(previewBlobKey, await dataUrlToBlob(prepared.dataUrl));
+      prepared = { ...prepared, previewBlobKey };
+    } catch {
+      return prepared;
+    }
+  }
+
+  if (prepared.dataUrl || !prepared.previewBlobKey) {
+    return prepared;
+  }
+
+  try {
+    const preview = await getImageBlob(prepared.previewBlobKey);
+    return preview
+      ? { ...prepared, dataUrl: await blobToDataUrl(preview) }
+      : prepared;
+  } catch {
+    return prepared;
+  }
+}
+
+export async function cacheRemoteImagePreview(image: LocalImageAsset) {
+  const hydrated = await hydrateImagePreview(image);
+
+  if (hydrated.dataUrl || !hydrated.remoteUrl) {
+    return hydrated;
+  }
+
+  try {
+    const response = await fetch(hydrated.remoteUrl);
+    if (!response.ok) return hydrated;
+    const source = await response.blob();
+    const compressed = await compressImageForApp(
+      new File([source], hydrated.name, { type: source.type || hydrated.mimeType }),
+      {
+        dimensionSteps: [480],
+        maxDimension: 480,
+        maxSizeBytes: 512 * 1024,
+        previewDimension: 480,
+      },
+    );
+    const previewBlobKey = previewImageBlobKey(hydrated.id);
+    await saveImageBlob(previewBlobKey, compressed.blob);
+    return {
+      ...hydrated,
+      dataUrl: compressed.previewDataUrl,
+      previewBlobKey,
+    };
+  } catch {
+    return hydrated;
+  }
+}
+
 export function imageBlobKey(imageId: string) {
   return `image:${imageId}`;
+}
+
+export function previewImageBlobKey(imageId: string) {
+  return `preview:${imageId}`;
+}
+
+async function dataUrlToBlob(dataUrl: string) {
+  const response = await fetch(dataUrl);
+  if (!response.ok) throw new Error('Could not prepare the image preview.');
+  return response.blob();
+}
+
+function blobToDataUrl(blob: Blob) {
+  return new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.addEventListener('load', () => resolve(String(reader.result)));
+    reader.addEventListener('error', () =>
+      reject(new Error('Could not load the offline image preview.')),
+    );
+    reader.readAsDataURL(blob);
+  });
 }
 
 function openDatabase() {

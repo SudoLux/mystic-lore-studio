@@ -614,7 +614,6 @@ function fabricImageUpdatePayload(
       ...currentMetadata,
       image: {
         id: image.id,
-        offlinePreviewDataUrl: image.dataUrl,
         overlayIntensity: image.overlayIntensity,
         updatedAt: image.updatedAt,
       },
@@ -657,7 +656,7 @@ function failedResult(
 }
 
 export function mergeByNewest(cloud: StudioData, local: StudioData): StudioData {
-  return {
+  return mergeLocalImageCache({
     ...cloud,
     fabrics: mergeRecords(cloud.fabrics, local.fabrics),
     linkedMaterials: mergeRecords(cloud.linkedMaterials, local.linkedMaterials),
@@ -668,6 +667,49 @@ export function mergeByNewest(cloud: StudioData, local: StudioData): StudioData 
     tasks: mergeRecords(cloud.tasks, local.tasks),
     version: Math.max(cloud.version, local.version),
     yardageEntries: mergeRecords(cloud.yardageEntries, local.yardageEntries),
+  }, local);
+}
+
+function mergeLocalImageCache(data: StudioData, local: StudioData): StudioData {
+  const localImages = new Map<string, LocalImageAsset>();
+  local.projects.forEach((project) => {
+    if (project.heroImage) localImages.set(project.heroImage.id, project.heroImage);
+    project.galleryImages?.forEach((image) => localImages.set(image.id, image));
+  });
+  local.fabrics.forEach((fabric) => {
+    if (fabric.image) localImages.set(fabric.image.id, fabric.image);
+  });
+  local.lookbookPages.forEach((page) => {
+    if (page.heroImage) localImages.set(page.heroImage.id, page.heroImage);
+  });
+
+  const mergeImage = (image: LocalImageAsset | undefined) => {
+    if (!image) return image;
+    const cached = localImages.get(image.id);
+    return cached
+      ? {
+          ...image,
+          dataUrl: image.dataUrl ?? cached.dataUrl,
+          previewBlobKey: image.previewBlobKey ?? cached.previewBlobKey,
+        }
+      : image;
+  };
+
+  return {
+    ...data,
+    fabrics: data.fabrics.map((fabric) => ({
+      ...fabric,
+      image: mergeImage(fabric.image),
+    })),
+    lookbookPages: data.lookbookPages.map((page) => ({
+      ...page,
+      heroImage: mergeImage(page.heroImage),
+    })),
+    projects: data.projects.map((project) => ({
+      ...project,
+      galleryImages: project.galleryImages?.map((image) => mergeImage(image)!),
+      heroImage: mergeImage(project.heroImage),
+    })),
   };
 }
 
@@ -737,7 +779,6 @@ function imagePayload(
     fit: image.objectFit ?? 'cover',
     height: image.height ?? null,
     metadata: {
-      offlinePreviewDataUrl: image.dataUrl,
       overlayIntensity: image.overlayIntensity ?? 'auto',
     },
     mime_type: image.mimeType,
@@ -825,7 +866,6 @@ function fabricPayload(userId: string, fabric: Fabric) {
       image: image
         ? {
             id: image.id,
-            offlinePreviewDataUrl: image.dataUrl,
             overlayIntensity: image.overlayIntensity,
             updatedAt: image.updatedAt,
           }

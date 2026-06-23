@@ -50,6 +50,10 @@ export type StudioData = {
   yardageEntries: YardageEntry[];
 };
 
+export type LocalCacheWriteResult =
+  | { status: 'saved' }
+  | { error: string; status: 'quota-exceeded' | 'unavailable' };
+
 export type ImportPreview = {
   fabrics: number;
   linkedMaterials: number;
@@ -135,15 +139,37 @@ export function getStudioData(userId?: string): StudioData {
   }
 }
 
-export function saveStudioData(data: StudioData, userId?: string) {
+export function saveStudioData(
+  data: StudioData,
+  userId?: string,
+): LocalCacheWriteResult {
   if (!canUseLocalStorage()) {
-    return;
+    return {
+      error: 'Offline cache is unavailable in this browser.',
+      status: 'unavailable',
+    };
   }
 
-  window.localStorage.setItem(
-    getStorageKey(userId),
-    JSON.stringify(stripEphemeralImageUrls(data)),
-  );
+  try {
+    window.localStorage.setItem(
+      getStorageKey(userId),
+      JSON.stringify(stripEphemeralImageUrls(data)),
+    );
+    return { status: 'saved' };
+  } catch (error) {
+    if (isQuotaExceededError(error)) {
+      return {
+        error:
+          'Cloud data is safe, but this device could not update its offline cache because browser storage is full.',
+        status: 'quota-exceeded',
+      };
+    }
+
+    return {
+      error: 'Cloud data is safe, but this device could not update its offline cache.',
+      status: 'unavailable',
+    };
+  }
 }
 
 export function resetStudioData(userId?: string) {
@@ -567,12 +593,32 @@ function getStorageKey(userId?: string) {
 }
 
 function stripEphemeralImageUrls(data: StudioData): StudioData {
-  const cleanImage = <T extends { remoteUrl?: string; signedUrlExpiresAt?: string }>(
+  const cleanImage = <T extends {
+    blobKey?: string;
+    dataUrl?: string;
+    previewBlobKey?: string;
+    remoteUrl?: string;
+    signedUrlExpiresAt?: string;
+    storagePath?: string;
+    uploadDataUrl?: string;
+  }>(
     image: T | undefined,
   ) => {
     if (!image) return image;
-    const { remoteUrl: _remoteUrl, signedUrlExpiresAt: _expiresAt, ...stored } = image;
-    return stored as T;
+    const {
+      dataUrl,
+      remoteUrl: _remoteUrl,
+      signedUrlExpiresAt: _expiresAt,
+      uploadDataUrl,
+      ...stored
+    } = image;
+    return {
+      ...stored,
+      dataUrl:
+        image.previewBlobKey || image.storagePath ? undefined : dataUrl,
+      uploadDataUrl:
+        image.blobKey || image.storagePath ? undefined : uploadDataUrl,
+    } as T;
   };
 
   return {
@@ -591,6 +637,16 @@ function stripEphemeralImageUrls(data: StudioData): StudioData {
       heroImage: cleanImage(project.heroImage),
     })),
   };
+}
+
+function isQuotaExceededError(error: unknown) {
+  return (
+    error instanceof DOMException &&
+    (error.name === 'QuotaExceededError' ||
+      error.name === 'NS_ERROR_DOM_QUOTA_REACHED' ||
+      error.code === 22 ||
+      error.code === 1014)
+  );
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
