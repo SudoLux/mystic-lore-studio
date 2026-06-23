@@ -1,12 +1,13 @@
 import {
   createSeedStudioData,
-  getLegacyStudioData,
   type StoredProject,
   type StudioData,
 } from './studioStorage';
 import {
+  cacheRemoteImagePreview,
   deleteDurableSyncState,
   getDurableSyncState,
+  hydrateImagePreview,
   migrateLegacyImageBlob,
   saveDurableSyncState,
 } from './imageBlobStore';
@@ -320,28 +321,37 @@ export async function migrateQueuedImagePayloads(userId: string) {
   return queue;
 }
 
-export async function migrateStudioImagePayloads(data: StudioData) {
-  const migrate = (image: LocalImageAsset | undefined) =>
-    image ? migrateLegacyImageBlob(image) : Promise.resolve(undefined);
+export async function migrateStudioImagePayloads(
+  data: StudioData,
+  cacheRemotePreviews = false,
+) {
+  const migrate = async (image: LocalImageAsset) => {
+    const migrated = await migrateLegacyImageBlob(image);
+    return cacheRemotePreviews
+      ? cacheRemoteImagePreview(migrated)
+      : hydrateImagePreview(migrated);
+  };
+  const migrateOptional = (image: LocalImageAsset | undefined) =>
+    image ? migrate(image) : Promise.resolve(undefined);
   const projects = await Promise.all(
     data.projects.map(async (project) => ({
       ...project,
       galleryImages: await Promise.all(
-        (project.galleryImages ?? []).map((image) => migrateLegacyImageBlob(image)),
+        (project.galleryImages ?? []).map(migrate),
       ),
-      heroImage: await migrate(project.heroImage),
+      heroImage: await migrateOptional(project.heroImage),
     })),
   );
   const fabrics = await Promise.all(
     data.fabrics.map(async (fabric) => ({
       ...fabric,
-      image: await migrate(fabric.image),
+      image: await migrateOptional(fabric.image),
     })),
   );
   const lookbookPages = await Promise.all(
     data.lookbookPages.map(async (page) => ({
       ...page,
-      heroImage: await migrate(page.heroImage),
+      heroImage: await migrateOptional(page.heroImage),
     })),
   );
 
@@ -358,33 +368,50 @@ export function setMigrationDecision(
   userId: string,
   decision: MigrationDecision,
 ) {
-  window.localStorage.setItem(migrationKey(userId), decision);
+  try {
+    window.localStorage.setItem(migrationKey(userId), decision);
+  } catch {
+    // Cloud data determines migration eligibility when localStorage is full.
+  }
 }
 
-export function preserveLegacyBackup(userId: string) {
-  const key = backupKey(userId);
+export async function preserveLegacyBackup(userId: string) {
+  const legacyKey = 'mystic-lore-studio:data';
+  const serializedData = window.localStorage.getItem(legacyKey);
 
-  if (window.localStorage.getItem(key)) {
-    return;
+  if (!serializedData) return false;
+
+  const key = backupKey(userId);
+  const durableKey = `${key}:indexeddb`;
+  const existing = await getDurableSyncState<string>(durableKey).catch(
+    () => undefined,
+  );
+
+  if (existing !== serializedData) {
+    await saveDurableSyncState(durableKey, serializedData);
   }
 
-  const legacy = getLegacyStudioData();
+  const verified = await getDurableSyncState<string>(durableKey);
+  if (verified !== serializedData) {
+    throw new Error('The legacy device backup could not be verified.');
+  }
 
-  if (!legacy) return;
+  window.localStorage.removeItem(legacyKey);
 
   try {
     window.localStorage.setItem(
       key,
       JSON.stringify({
         preservedAt: new Date().toISOString(),
-        sourceKey: 'mystic-lore-studio:data',
-        version: legacy.version,
+        sourceKey: legacyKey,
+        storage: 'indexeddb',
       }),
     );
   } catch {
-    // The original legacy key remains untouched even when localStorage has no
-    // room for an additional marker.
+    // The verified IndexedDB backup remains authoritative without the marker.
   }
+
+  return true;
 }
 
 export function isUntouchedSeedData(data: StudioData) {
@@ -426,8 +453,28 @@ function changedImages(current: StudioData, next: StudioData) {
   return imageOperations(next).filter((operation) => {
     const previous = currentByKey.get(operation.key);
     return !previous ||
-      stableStringify(previous.payload) !== stableStringify(operation.payload);
+      stableStringify(imageSyncPayload(previous.payload)) !==
+        stableStringify(imageSyncPayload(operation.payload));
   });
+}
+
+function imageSyncPayload(payload: unknown) {
+  return JSON.parse(
+    JSON.stringify(payload, (key, value) =>
+      [
+        'blobKey',
+        'dataUrl',
+        'previewBlobKey',
+        'remoteUrl',
+        'signedUrlExpiresAt',
+        'uploadDataUrl',
+        'uploadError',
+        'uploadState',
+      ].includes(key)
+        ? undefined
+        : value,
+    ),
+  );
 }
 
 function imageOperations(data: StudioData) {

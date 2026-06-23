@@ -27,6 +27,7 @@ export function SyncDetailsPanel({
   failedCount,
   isOpen,
   lastSyncedAt,
+  localCacheWarning,
   onCancel,
   onClose,
   onExport,
@@ -40,6 +41,7 @@ export function SyncDetailsPanel({
   failedCount: number;
   isOpen: boolean;
   lastSyncedAt: string | null;
+  localCacheWarning: string | null;
   onCancel: () => void;
   onClose: () => void;
   onExport: () => void;
@@ -97,6 +99,17 @@ export function SyncDetailsPanel({
               />
               <p className="text-sm leading-6 text-stardust/82">{error}</p>
             </div>
+          </div>
+        ) : null}
+
+        {localCacheWarning ? (
+          <div className="mt-5 rounded-2xl border border-bronze/38 bg-bronze/10 p-4">
+            <p className="text-xs font-medium uppercase tracking-[0.12em] text-ember">
+              Offline cache
+            </p>
+            <p className="mt-2 text-sm leading-6 text-stardust/76">
+              {localCacheWarning}
+            </p>
           </div>
         ) : null}
 

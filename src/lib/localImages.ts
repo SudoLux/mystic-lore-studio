@@ -1,6 +1,10 @@
 import type { LocalImageAsset } from '../types/studio';
 import { compressImageForApp } from './imageCompression';
-import { imageBlobKey, saveImageBlob } from './imageBlobStore';
+import {
+  imageBlobKey,
+  previewImageBlobKey,
+  saveImageBlob,
+} from './imageBlobStore';
 
 export type ImageProcessingError = Error;
 
@@ -8,12 +12,24 @@ export async function createLocalImageAsset(file: File): Promise<LocalImageAsset
   const compressed = await compressImageForApp(file);
   const id = `image-${crypto.randomUUID()}`;
   const blobKey = imageBlobKey(id);
+  const previewBlobKey = previewImageBlobKey(id);
   let uploadDataUrl: string | undefined;
+  let storedPreviewBlobKey: string | undefined;
 
   try {
     await saveImageBlob(blobKey, compressed.blob);
   } catch {
     uploadDataUrl = await readBlobAsDataUrl(compressed.blob);
+  }
+
+  try {
+    await saveImageBlob(
+      previewBlobKey,
+      await dataUrlToBlob(compressed.previewDataUrl),
+    );
+    storedPreviewBlobKey = previewBlobKey;
+  } catch {
+    // The in-memory preview remains available when IndexedDB is unavailable.
   }
 
   return {
@@ -27,6 +43,7 @@ export async function createLocalImageAsset(file: File): Promise<LocalImageAsset
     overlayIntensity: 'auto',
     objectPositionX: 50,
     objectPositionY: 50,
+    previewBlobKey: storedPreviewBlobKey,
     size: compressed.sizeBytes,
     uploadDataUrl,
     uploadState: 'queued',
@@ -34,6 +51,12 @@ export async function createLocalImageAsset(file: File): Promise<LocalImageAsset
     width: compressed.width,
     zoom: 1,
   };
+}
+
+async function dataUrlToBlob(dataUrl: string) {
+  const response = await fetch(dataUrl);
+  if (!response.ok) throw new Error('Could not prepare this image preview.');
+  return response.blob();
 }
 
 function readBlobAsDataUrl(blob: Blob) {

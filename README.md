@@ -40,9 +40,9 @@ npm run build
 ## Supabase Configuration
 
 Mystic Lore Studio currently keeps local browser persistence active. Supabase is
-the primary data source for authenticated users. A user-scoped localStorage
-cache plus an IndexedDB mutation queue and image-blob store keep the app usable
-when Supabase is temporarily unavailable.
+the primary data source for authenticated users. A compact, user-scoped
+localStorage cache plus an IndexedDB mutation queue, image-preview store, and
+upload-blob store keep the app usable when Supabase is temporarily unavailable.
 
 Required Vite environment variables:
 
@@ -116,7 +116,8 @@ user-created or edited data exists, the app offers a one-time migration that:
 - upserts projects and related records using stable `client_id` values;
 - converts legacy Base64 project, lookbook, and fabric images to WebP;
 - uploads media to the private Storage bucket;
-- preserves the legacy localStorage dataset as a recovery backup;
+- verifies and moves the legacy localStorage dataset into IndexedDB as a
+  recovery backup before removing the oversized localStorage copy;
 - records migration completion without deleting local data.
 
 Before migration or synchronization starts, the app verifies authentication,
@@ -124,11 +125,14 @@ all required tables, Row Level Security access, and the private Storage bucket.
 Missing schema, missing bucket, permission, authentication, timeout, and
 network failures produce distinct recovery messages.
 
-All edits remain optimistic: React state and the user-scoped localStorage cache
-update immediately. IndexedDB stores optimized upload blobs and a durable,
-versioned queue of record-level upsert/delete operations. Repeated edits to the
-same record are coalesced, parent records are sent before their dependents,
-database writes use batches of 50, and no more than two images upload at once.
+All edits remain optimistic: React state and the compact user-scoped
+localStorage cache update immediately. Base64 image payloads, signed URLs, and
+offline previews are excluded from that cache when an IndexedDB or cloud
+reference exists. IndexedDB stores small offline previews, optimized upload
+blobs, the verified legacy recovery backup, and a durable, versioned queue of
+record-level upsert/delete operations. Repeated edits to the same record are
+coalesced, parent records are sent before their dependents, database writes use
+batches of 50, and no more than two images upload at once.
 Database requests time out after 15 seconds and image requests after 45 seconds;
 only network failures retry with 1, 2, and 4 second backoff. Explicit delete
 tombstones remain queued until confirmed by the cloud.
@@ -137,8 +141,10 @@ Migration runs in the background after confirmation and reports validation,
 record preparation, record saving, image upload, and verification phases. A
 migration is complete only after its queue drains and a verification fetch
 succeeds. The app retries on browser focus, network reconnect, or the manual
-Retry Sync action. Conflicts are resolved using the newest `updated_at` value,
-and local data and backups are never removed automatically.
+Retry Sync action. Conflicts are resolved using the newest `updated_at` value.
+The legacy localStorage copy is removed only after its IndexedDB recovery backup
+has been read back and verified byte-for-byte. A local cache quota warning does
+not turn a successful cloud sync into a cloud sync error.
 
 ## MVP Status
 

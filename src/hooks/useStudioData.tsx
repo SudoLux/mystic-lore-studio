@@ -46,6 +46,7 @@ import {
   markCloudMigrationComplete,
   mergeByNewest,
 } from '../lib/supabaseStudio';
+import { deleteImageBlob } from '../lib/imageBlobStore';
 import {
   buildDataSyncOperations,
   buildMigrationOperations,
@@ -103,6 +104,7 @@ type StudioDataContextValue = {
   failedOperationCount: number;
   importData: (serializedData: string) => void;
   lastSyncedAt: string | null;
+  localCacheWarning: string | null;
   migrationAvailable: boolean;
   migrationInProgress: boolean;
   pendingCount: number;
@@ -153,6 +155,7 @@ export function StudioDataProvider({
   });
   const [syncStatus, setSyncStatus] = useState<SyncStatus>('syncing');
   const [lastSyncedAt, setLastSyncedAt] = useState<string | null>(null);
+  const [localCacheWarning, setLocalCacheWarning] = useState<string | null>(null);
   const cloudReadyRef = useRef(false);
   const readinessConfirmedRef = useRef(false);
   const migrationInProgressRef = useRef(false);
@@ -166,7 +169,10 @@ export function StudioDataProvider({
   const saveLocalData = useCallback(
     (nextData: StudioData) => {
       rawDataRef.current = nextData;
-      saveStudioData(nextData, userId);
+      const cacheResult = saveStudioData(nextData, userId);
+      setLocalCacheWarning(
+        cacheResult.status === 'saved' ? null : cacheResult.error,
+      );
       setRawData(nextData);
     },
     [userId],
@@ -178,6 +184,33 @@ export function StudioDataProvider({
     setFailedOperationCount(failedSyncOperationCount(queue));
     return queue;
   }, [userId]);
+
+  const preserveLegacyCache = useCallback(async () => {
+    try {
+      await preserveLegacyBackup(userId);
+    } catch {
+      setLocalCacheWarning(
+        'Cloud data is safe, but this device could not move its legacy offline backup into IndexedDB.',
+      );
+    }
+  }, [userId]);
+
+  const cacheRemotePreviews = useCallback(
+    (data: StudioData) => {
+      void migrateStudioImagePayloads(data, true)
+        .then((cached) => {
+          saveLocalData(
+            mergeMigratedImagePayloads(rawDataRef.current, cached),
+          );
+        })
+        .catch(() => {
+          setLocalCacheWarning(
+            'Cloud data is synced, but some images could not be prepared for offline viewing.',
+          );
+        });
+    },
+    [saveLocalData],
+  );
 
   const applyImageState = useCallback(
     (
@@ -405,13 +438,14 @@ export function StudioDataProvider({
       }
 
       if (cloud.hasCloudData) {
-        preserveLegacyBackup(userId);
+        await preserveLegacyCache();
         const merged = mergeByNewest(cloud.data, rawDataRef.current);
-        const resolved = {
+        const resolved = await migrateStudioImagePayloads({
           ...merged,
           settings: rawDataRef.current.settings,
-        };
+        });
         saveLocalData(resolved);
+        cacheRemotePreviews(resolved);
         setMigrationDecision(userId, 'completed');
 
         const localNewerOperations = buildDataSyncOperations(
@@ -435,7 +469,7 @@ export function StudioDataProvider({
       setSyncStatus(navigator.onLine ? 'error' : 'offline');
       setSyncPhase('idle');
     }
-  }, [flushQueue, saveLocalData, userId]);
+  }, [cacheRemotePreviews, flushQueue, preserveLegacyCache, saveLocalData, userId]);
 
   useEffect(() => {
     let active = true;
@@ -445,6 +479,10 @@ export function StudioDataProvider({
         if (!active) return;
         setPendingCount(syncQueueCount(queue));
         setFailedOperationCount(failedSyncOperationCount(queue));
+        return preserveLegacyCache();
+      })
+      .then(() => {
+        if (!active) return;
         return migrateStudioImagePayloads(rawDataRef.current);
       })
       .then((migrated) => {
@@ -470,7 +508,7 @@ export function StudioDataProvider({
       window.removeEventListener('focus', refresh);
       window.removeEventListener('online', refresh);
     };
-  }, [flushQueue, refreshCloud, saveLocalData, userId]);
+  }, [flushQueue, preserveLegacyCache, refreshCloud, saveLocalData, userId]);
 
   const commitData = useCallback(
     (nextData: StudioData, deletions: SyncDeletion[] = []) => {
@@ -487,6 +525,7 @@ export function StudioDataProvider({
         allDeletions,
       );
       saveLocalData(withYardage);
+      void cleanupRemovedImageBlobs(current, withYardage);
 
       if (
         operations.length > 0 &&
@@ -541,7 +580,7 @@ export function StudioDataProvider({
       readinessConfirmedRef.current = true;
       cloudReadyRef.current = true;
       setSyncPhase('preparing');
-      preserveLegacyBackup(userId);
+      await preserveLegacyCache();
       const migrated = await migrateStudioImagePayloads(rawDataRef.current);
       const migrationData = mergeMigratedImagePayloads(
         rawDataRef.current,
@@ -564,7 +603,7 @@ export function StudioDataProvider({
       migrationInProgressRef.current = false;
       readinessConfirmedRef.current = false;
     }
-  }, [flushQueue, saveLocalData, userId]);
+  }, [flushQueue, preserveLegacyCache, saveLocalData, userId]);
 
   const dismissCloudMigration = useCallback(() => {
     setMigrationDecision(userId, 'dismissed');
@@ -659,6 +698,7 @@ export function StudioDataProvider({
     failedOperationCount,
     importData,
     lastSyncedAt,
+    localCacheWarning,
     migrationAvailable,
     migrationInProgress,
     pendingCount,
@@ -680,7 +720,7 @@ export function StudioDataProvider({
     updateProjectPhase,
     updateTask,
     updateTaskStatus,
-  }), [acceptCloudMigration, cancelSync, createFabric, createLinkedMaterial, createNote, createProject, createTask, deleteFabric, deleteLinkedMaterial, deleteNote, deleteProject, deleteTask, dismissCloudMigration, exportData, failedOperationCount, importData, lastSyncedAt, migrationAvailable, migrationInProgress, pendingCount, previewImportData, rawData, reopenCloudMigration, resetData, retrySync, saveData, saveLookbookPage, syncError, syncPhase, syncProgress, syncStatus, updateFabric, updateLinkedMaterial, updateNote, updateProject, updateProjectPhase, updateTask, updateTaskStatus]);
+  }), [acceptCloudMigration, cancelSync, createFabric, createLinkedMaterial, createNote, createProject, createTask, deleteFabric, deleteLinkedMaterial, deleteNote, deleteProject, deleteTask, dismissCloudMigration, exportData, failedOperationCount, importData, lastSyncedAt, localCacheWarning, migrationAvailable, migrationInProgress, pendingCount, previewImportData, rawData, reopenCloudMigration, resetData, retrySync, saveData, saveLookbookPage, syncError, syncPhase, syncProgress, syncStatus, updateFabric, updateLinkedMaterial, updateNote, updateProject, updateProjectPhase, updateTask, updateTaskStatus]);
 
   return <StudioDataContext.Provider value={value}>{children}</StudioDataContext.Provider>;
 }
@@ -790,6 +830,39 @@ function imageMap(data: StudioData) {
     if (page.heroImage) images.set(page.heroImage.id, page.heroImage);
   });
   return images;
+}
+
+function allLocalImageMap(data: StudioData) {
+  const images = imageMap(data);
+  data.fabrics.forEach((fabric) => {
+    if (fabric.image) images.set(fabric.image.id, fabric.image);
+  });
+  return images;
+}
+
+async function cleanupRemovedImageBlobs(current: StudioData, next: StudioData) {
+  const currentImages = allLocalImageMap(current);
+  const nextImages = allLocalImageMap(next);
+  const obsoleteKeys = new Set<string>();
+
+  currentImages.forEach((image, id) => {
+    const replacement = nextImages.get(id);
+    if (image.blobKey && image.blobKey !== replacement?.blobKey) {
+      obsoleteKeys.add(image.blobKey);
+    }
+    if (
+      image.previewBlobKey &&
+      image.previewBlobKey !== replacement?.previewBlobKey
+    ) {
+      obsoleteKeys.add(image.previewBlobKey);
+    }
+  });
+
+  await Promise.all(
+    [...obsoleteKeys].map((key) =>
+      deleteImageBlob(key).catch(() => undefined),
+    ),
+  );
 }
 
 function replaceImage(

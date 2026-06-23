@@ -159,6 +159,7 @@ export type LocalImageAsset = {
   overlayIntensity?: 'auto' | 'light' | 'strong';
   objectPositionX?: number;
   objectPositionY?: number;
+  previewBlobKey?: string;
   size: number;
   remoteUrl?: string;
   signedUrlExpiresAt?: string;
