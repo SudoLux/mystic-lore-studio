@@ -10,6 +10,9 @@ import {
 import { Badge } from '../../components/shared/Badge';
 import { Button } from '../../components/shared/Button';
 import { Card } from '../../components/shared/Card';
+import { FilterSheet } from '../../components/shared/FilterSheet';
+import { MobileCardRow } from '../../components/shared/MobileCardRow';
+import { MobilePageHeader } from '../../components/shared/MobilePageHeader';
 import { PageHeader } from '../../components/shared/PageHeader';
 import { ImageReadabilityOverlay } from '../../components/shared/ImageReadabilityOverlay';
 import { StoredImage } from '../../components/shared/StoredImage';
@@ -58,6 +61,7 @@ export function ProjectsPage({ onNewProject, onOpenProject }: ProjectsPageProps)
   const [phase, setPhase] = useState<ProjectPhase | FilterValue>(allValue);
   const [priority, setPriority] = useState<TaskPriority | FilterValue>(allValue);
   const [viewMode, setViewMode] = useState<ViewMode>('gallery');
+  const [filtersOpen, setFiltersOpen] = useState(false);
 
   const filteredProjects = useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase();
@@ -86,9 +90,38 @@ export function ProjectsPage({ onNewProject, onOpenProject }: ProjectsPageProps)
     () => new Map(fabrics.map((fabric) => [fabric.id, fabric])),
     [fabrics],
   );
+  const activeFilterCount = [
+    garmentType,
+    status,
+    phase,
+    priority,
+  ].filter((value) => value !== allValue).length;
+  const resetFilters = () => {
+    setQuery('');
+    setGarmentType(allValue);
+    setStatus(allValue);
+    setPhase(allValue);
+    setPriority(allValue);
+  };
 
   return (
     <section className="space-y-5">
+      <MobilePageHeader
+        action={
+          <Button
+            icon={<FolderPlus aria-hidden="true" size={15} strokeWidth={1.9} />}
+            onClick={onNewProject}
+            size="sm"
+            variant="primary"
+          >
+            New
+          </Button>
+        }
+        badge="Projects"
+        kicker={`${filteredProjects.length} of ${projects.length} garments`}
+        title="Garment Library"
+      />
+
       <PageHeader
         badge="Project Library"
         description="Browse garment dossiers, filter the collection pipeline, and open a project detail route for focused review."
@@ -107,7 +140,7 @@ export function ProjectsPage({ onNewProject, onOpenProject }: ProjectsPageProps)
         </div>
       </PageHeader>
 
-      <Card className="border-bronze/30 bg-[linear-gradient(135deg,rgba(27,58,99,0.22),rgba(10,10,10,0.48),rgba(61,43,31,0.36))]">
+      <Card className="border-bronze/30 bg-[linear-gradient(135deg,rgba(27,58,99,0.22),rgba(10,10,10,0.48),rgba(61,43,31,0.36))] p-3 sm:p-5">
         <div className="grid gap-3 lg:grid-cols-[1.2fr_repeat(4,minmax(0,0.75fr))]">
           <label className="relative block">
             <span className="sr-only">Search projects</span>
@@ -126,6 +159,7 @@ export function ProjectsPage({ onNewProject, onOpenProject }: ProjectsPageProps)
             />
           </label>
 
+          <div className="hidden sm:contents">
           <FilterSelect
             label="Garment type"
             onChange={(value) => setGarmentType(value as GarmentType | FilterValue)}
@@ -150,6 +184,19 @@ export function ProjectsPage({ onNewProject, onOpenProject }: ProjectsPageProps)
             options={priorities}
             value={priority}
           />
+          </div>
+        </div>
+        <div className="mt-3 flex items-center gap-2 sm:hidden">
+          <Button
+            className="flex-1"
+            icon={<SlidersHorizontal aria-hidden="true" size={15} strokeWidth={1.9} />}
+            onClick={() => setFiltersOpen(true)}
+            size="sm"
+            variant="secondary"
+          >
+            Filters {activeFilterCount ? `(${activeFilterCount})` : ''}
+          </Button>
+          <ViewModeToggle viewMode={viewMode} onChange={setViewMode} />
         </div>
         <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-bronze/20 pt-4">
           <div className="flex items-center gap-2 text-sm text-stardust/62">
@@ -159,13 +206,7 @@ export function ProjectsPage({ onNewProject, onOpenProject }: ProjectsPageProps)
             </span>
           </div>
           <Button
-            onClick={() => {
-              setQuery('');
-              setGarmentType(allValue);
-              setStatus(allValue);
-              setPhase(allValue);
-              setPriority(allValue);
-            }}
+            onClick={resetFilters}
             size="sm"
             variant="ghost"
           >
@@ -174,12 +215,94 @@ export function ProjectsPage({ onNewProject, onOpenProject }: ProjectsPageProps)
         </div>
       </Card>
 
+      <FilterSheet
+        activeCount={activeFilterCount}
+        isOpen={filtersOpen}
+        onApply={() => setFiltersOpen(false)}
+        onClear={resetFilters}
+        onClose={() => setFiltersOpen(false)}
+        title="Refine projects"
+      >
+        <FilterSelect
+          label="Garment type"
+          onChange={(value) => setGarmentType(value as GarmentType | FilterValue)}
+          options={garmentTypes}
+          value={garmentType}
+        />
+        <FilterSelect
+          label="Status"
+          onChange={(value) => setStatus(value as ProjectStatus | FilterValue)}
+          options={projectStatuses}
+          value={status}
+        />
+        <FilterSelect
+          label="Phase"
+          onChange={(value) => setPhase(value as ProjectPhase | FilterValue)}
+          options={projectPhases}
+          value={phase}
+        />
+        <FilterSelect
+          label="Priority"
+          onChange={(value) => setPriority(value as TaskPriority | FilterValue)}
+          options={priorities}
+          value={priority}
+        />
+      </FilterSheet>
+
       {filteredProjects.length > 0 ? (
+        <>
+        <div className="grid gap-3 sm:hidden">
+          {filteredProjects.map((project) => {
+            const heroImage = getProjectHeroImage(project);
+
+            return (
+              <MobileCardRow
+                badge={
+                  <>
+                    <Badge variant={project.status === 'Blocked' ? 'ember' : 'teal'}>
+                      {project.status}
+                    </Badge>
+                    <Badge variant="bronze">{project.phase}</Badge>
+                  </>
+                }
+                image={
+                  <>
+                    {heroImage ? (
+                      <StoredImage
+                        asset={heroImage}
+                        className="absolute inset-0 h-full w-full object-cover"
+                      />
+                    ) : null}
+                    <ImageReadabilityOverlay asset={heroImage} variant="card" />
+                  </>
+                }
+                key={project.id}
+                meta={`${project.garmentType} / ${project.collection}`}
+                onClick={() => onOpenProject(project.id)}
+                signal={
+                  <div>
+                    <div className="mb-1 flex items-center justify-between text-[0.68rem]">
+                      <span className="text-stardust/48">Progress</span>
+                      <span className="text-ember">{project.progress}%</span>
+                    </div>
+                    <div className="studio-progress-track">
+                      <div
+                        className="studio-progress-fill"
+                        style={{ width: `${project.progress}%` }}
+                      />
+                    </div>
+                  </div>
+                }
+                title={project.name}
+              />
+            );
+          })}
+        </div>
         <div
           className={cn(
             viewMode === 'gallery'
-              ? 'grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3'
-              : 'space-y-3',
+              ? 'hidden grid-cols-1 gap-4 sm:grid md:grid-cols-2 xl:grid-cols-3'
+              : 'hidden space-y-3 sm:block',
           )}
         >
           {filteredProjects.map((project, index) =>
@@ -202,6 +325,7 @@ export function ProjectsPage({ onNewProject, onOpenProject }: ProjectsPageProps)
             ),
           )}
         </div>
+        </>
       ) : (
         <Card className="border-ember/30 text-center">
           <p className="text-lg font-semibold text-stardust">No projects found</p>

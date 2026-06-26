@@ -20,6 +20,8 @@ import {
 } from 'lucide-react';
 import { Badge } from '../../components/shared/Badge';
 import { Card } from '../../components/shared/Card';
+import { MobilePageHeader } from '../../components/shared/MobilePageHeader';
+import { MobileSummaryStrip } from '../../components/shared/MobileSummaryStrip';
 import { PageHeader } from '../../components/shared/PageHeader';
 import { ImageReadabilityOverlay } from '../../components/shared/ImageReadabilityOverlay';
 import { StoredImage } from '../../components/shared/StoredImage';
@@ -35,6 +37,7 @@ export function KanbanPage() {
   } = useStudioData();
   const [activeProjectId, setActiveProjectId] = useState<string | null>(null);
   const [lastMove, setLastMove] = useState<string | null>(null);
+  const [mobilePhase, setMobilePhase] = useState<ProjectPhase>('Concept');
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: { distance: 2 },
@@ -96,13 +99,39 @@ export function KanbanPage() {
 
   return (
     <section className="space-y-5">
+      <MobilePageHeader
+        badge="Flow"
+        kicker={`${projects.length} projects across ${projectPhases.length} phases`}
+        title="Workflow"
+      />
+
       <PageHeader
         badge="Global Kanban"
         description="Move garments through the Mystic Lore workflow, from early concept work to lookbook readiness."
         title="Project Workflow"
       />
 
-      <div className="grid gap-4 md:grid-cols-3">
+      <MobileSummaryStrip
+        items={[
+          {
+            icon: <Shirt aria-hidden="true" size={15} strokeWidth={1.9} />,
+            label: 'Projects',
+            value: projects.length.toString(),
+          },
+          {
+            icon: <Layers3 aria-hidden="true" size={15} strokeWidth={1.9} />,
+            label: 'Active',
+            value: activeCount.toString(),
+          },
+          {
+            icon: <ArrowRight aria-hidden="true" size={15} strokeWidth={1.9} />,
+            label: 'Production',
+            value: productionCount.toString(),
+          },
+        ]}
+      />
+
+      <div className="hidden gap-4 sm:grid md:grid-cols-3">
         <KanbanStat
           icon={<Shirt aria-hidden="true" size={18} strokeWidth={1.9} />}
           label="Projects"
@@ -120,7 +149,7 @@ export function KanbanPage() {
         />
       </div>
 
-      <Card className="border-bronze/30 bg-[linear-gradient(135deg,rgba(27,58,99,0.2),rgba(10,10,10,0.48),rgba(61,43,31,0.34))]">
+      <Card className="hidden border-bronze/30 bg-[linear-gradient(135deg,rgba(27,58,99,0.2),rgba(10,10,10,0.48),rgba(61,43,31,0.34))] sm:block">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
           <div>
             <Badge variant="teal">Drag Board</Badge>
@@ -137,6 +166,55 @@ export function KanbanPage() {
         </div>
       </Card>
 
+      <Card className="p-3 sm:hidden">
+        <div className="studio-scrollbar -mx-3 flex gap-2 overflow-x-auto px-3 pb-2">
+          {projectPhases.map((phase) => {
+            const count = projectsByPhase.find((item) => item.phase === phase)?.projects.length ?? 0;
+            const isActive = mobilePhase === phase;
+
+            return (
+              <button
+                className={cn(
+                  'shrink-0 rounded-full border px-3 py-2 text-xs font-medium transition',
+                  isActive
+                    ? 'border-ember/60 bg-ember/16 text-stardust'
+                    : 'border-bronze/22 bg-midnight/34 text-stardust/54',
+                )}
+                key={phase}
+                onClick={() => setMobilePhase(phase)}
+                type="button"
+              >
+                {phase} · {count}
+              </button>
+            );
+          })}
+        </div>
+        <div className="mt-3 grid gap-3">
+          {(projectsByPhase.find((item) => item.phase === mobilePhase)?.projects ?? [])
+            .map((project) => (
+              <MobileKanbanProjectCard
+                key={project.id}
+                onMove={(nextPhase) => {
+                  updateProjectPhase(project.id, nextPhase);
+                  setLastMove(`${project.name} moved to ${nextPhase}.`);
+                }}
+                project={project}
+              />
+            ))}
+          {(projectsByPhase.find((item) => item.phase === mobilePhase)?.projects.length ?? 0) === 0 ? (
+            <div className="rounded-2xl border border-dashed border-bronze/28 bg-midnight/30 p-5 text-center text-sm text-stardust/54">
+              No projects in {mobilePhase}. Use another lane or move a garment here.
+            </div>
+          ) : null}
+        </div>
+        {lastMove ? (
+          <p className="mt-3 rounded-2xl border border-ember/30 bg-ember/10 p-3 text-sm text-stardust/72">
+            {lastMove}
+          </p>
+        ) : null}
+      </Card>
+
+      <div className="hidden sm:block">
       <DndContext
         sensors={sensors}
         onDragCancel={handleDragCancel}
@@ -154,7 +232,70 @@ export function KanbanPage() {
           {activeProject ? <KanbanProjectDragPreview project={activeProject} /> : null}
         </DragOverlay>
       </DndContext>
+      </div>
     </section>
+  );
+}
+
+function MobileKanbanProjectCard({
+  onMove,
+  project,
+}: {
+  onMove: (phase: ProjectPhase) => void;
+  project: ApparelProject;
+}) {
+  const heroImage = getProjectHeroImage(project);
+
+  return (
+    <article className="overflow-hidden rounded-2xl border border-bronze/24 bg-[linear-gradient(145deg,rgba(237,227,207,0.06),rgba(10,10,10,0.24))]">
+      <div className="relative h-24 overflow-hidden border-b border-bronze/18 bg-[linear-gradient(135deg,rgba(27,58,99,0.7),rgba(10,10,10,0.78),rgba(61,43,31,0.72))]">
+        {heroImage ? (
+          <StoredImage
+            asset={heroImage}
+            className="absolute inset-0 h-full w-full object-cover"
+          />
+        ) : null}
+        <ImageReadabilityOverlay asset={heroImage} variant="card" />
+        <div className="relative z-10 flex h-full items-end p-3 [text-shadow:0_2px_14px_rgba(0,0,0,0.9)]">
+          <div>
+            <Badge variant={project.status === 'Blocked' ? 'ember' : 'teal'}>
+              {project.status}
+            </Badge>
+            <h3 className="mt-2 line-clamp-1 text-lg font-semibold text-stardust">
+              {project.name}
+            </h3>
+          </div>
+        </div>
+      </div>
+      <div className="p-3">
+        <div className="mb-3 flex items-center justify-between text-xs">
+          <span className="text-stardust/52">{project.garmentType}</span>
+          <span className="text-ember">{project.progress}%</span>
+        </div>
+        <div className="studio-progress-track">
+          <div
+            className="studio-progress-fill"
+            style={{ width: `${project.progress}%` }}
+          />
+        </div>
+        <label className="mt-3 block">
+          <span className="mb-2 block text-[0.65rem] font-medium uppercase tracking-[0.14em] text-stardust/42">
+            Move to
+          </span>
+          <select
+            className="h-11 w-full rounded-xl border border-bronze/28 bg-midnight/48 px-3 text-sm text-stardust outline-none"
+            onChange={(event) => onMove(event.target.value as ProjectPhase)}
+            value={project.phase}
+          >
+            {projectPhases.map((phase) => (
+              <option key={phase} value={phase}>
+                {phase}
+              </option>
+            ))}
+          </select>
+        </label>
+      </div>
+    </article>
   );
 }
 

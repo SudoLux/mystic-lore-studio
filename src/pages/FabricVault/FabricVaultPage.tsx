@@ -20,8 +20,12 @@ import {
 import { Badge } from '../../components/shared/Badge';
 import { Button } from '../../components/shared/Button';
 import { Card } from '../../components/shared/Card';
+import { FilterSheet } from '../../components/shared/FilterSheet';
 import { ImageSlot } from '../../components/shared/ImageSlot';
 import { ImageReadabilityOverlay } from '../../components/shared/ImageReadabilityOverlay';
+import { MobileCardRow } from '../../components/shared/MobileCardRow';
+import { MobilePageHeader } from '../../components/shared/MobilePageHeader';
+import { MobileSummaryStrip } from '../../components/shared/MobileSummaryStrip';
 import { PageHeader } from '../../components/shared/PageHeader';
 import { StoredImage } from '../../components/shared/StoredImage';
 import { useStudioData } from '../../hooks/useStudioData';
@@ -76,6 +80,7 @@ export function FabricVaultPage({
   const [weightFilter, setWeightFilter] = useState(allValue);
   const [drapeFilter, setDrapeFilter] = useState(allValue);
   const [sortMode, setSortMode] = useState<FabricSort>('Recently updated');
+  const [filtersOpen, setFiltersOpen] = useState(false);
 
   const selectedFabric = fabricId
     ? fabrics.find((fabric) => fabric.id === fabricId)
@@ -182,9 +187,43 @@ export function FabricVaultPage({
     rarityFilter !== allValue ||
     weightFilter !== allValue ||
     drapeFilter !== allValue;
+  const activeFilterCount = [
+    typeFilter,
+    colorFilter,
+    archiveFilter,
+    rarityFilter,
+    weightFilter,
+    drapeFilter,
+  ].filter((value) => value !== allValue).length;
+  const resetFilters = () => {
+    setSearch('');
+    setTypeFilter(allValue);
+    setColorFilter(allValue);
+    setArchiveFilter(allValue);
+    setRarityFilter(allValue);
+    setWeightFilter(allValue);
+    setDrapeFilter(allValue);
+    setSortMode('Recently updated');
+  };
 
   return (
     <section className="space-y-5">
+      <MobilePageHeader
+        action={
+          <Button
+            icon={<PackagePlus aria-hidden="true" size={15} strokeWidth={1.9} />}
+            onClick={onNewFabric}
+            size="sm"
+            variant="primary"
+          >
+            Add
+          </Button>
+        }
+        badge="Fabric"
+        kicker={`${visibleFabrics.length} of ${fabrics.length} materials`}
+        title="Fabric Vault"
+      />
+
       <PageHeader
         badge="Fabric Vault"
         description="Search the material archive by fabric story, inventory signal, mood, and garment use."
@@ -200,7 +239,27 @@ export function FabricVaultPage({
         </Button>
       </PageHeader>
 
-      <div className="grid gap-4 md:grid-cols-3">
+      <MobileSummaryStrip
+        items={[
+          {
+            icon: <Archive aria-hidden="true" size={15} strokeWidth={1.9} />,
+            label: 'Records',
+            value: fabrics.length.toString(),
+          },
+          {
+            icon: <Ruler aria-hidden="true" size={15} strokeWidth={1.9} />,
+            label: 'Yardage',
+            value: `${formatNumber(totalRemaining)} yd`,
+          },
+          {
+            icon: <AlertTriangle aria-hidden="true" size={15} strokeWidth={1.9} />,
+            label: 'Low',
+            value: lowYardageCount.toString(),
+          },
+        ]}
+      />
+
+      <div className="hidden gap-4 sm:grid md:grid-cols-3">
         <VaultMetric
           icon={<Archive aria-hidden="true" size={18} strokeWidth={1.9} />}
           label="Fabric Records"
@@ -234,7 +293,7 @@ export function FabricVaultPage({
             />
           </label>
 
-          <div>
+          <div className="hidden sm:block">
             <div className="mb-2 flex items-center gap-2 text-xs font-medium uppercase tracking-[0.14em] text-stardust/42">
               <SlidersHorizontal aria-hidden="true" size={14} strokeWidth={1.9} />
               Filters
@@ -291,7 +350,79 @@ export function FabricVaultPage({
             </div>
           </div>
         </div>
+        <div className="mt-3 flex gap-2 sm:hidden">
+          <Button
+            className="flex-1"
+            icon={<SlidersHorizontal aria-hidden="true" size={15} strokeWidth={1.9} />}
+            onClick={() => setFiltersOpen(true)}
+            size="sm"
+            variant="secondary"
+          >
+            Filters {activeFilterCount ? `(${activeFilterCount})` : ''}
+          </Button>
+          <Button className="flex-1" onClick={resetFilters} size="sm" variant="ghost">
+            Reset
+          </Button>
+        </div>
       </Card>
+
+      <FilterSheet
+        activeCount={activeFilterCount}
+        isOpen={filtersOpen}
+        onApply={() => setFiltersOpen(false)}
+        onClear={resetFilters}
+        onClose={() => setFiltersOpen(false)}
+        title="Refine fabrics"
+      >
+        <VaultSelect
+          label="Type"
+          onChange={setTypeFilter}
+          options={filterOptions.types}
+          value={typeFilter}
+        />
+        <VaultSelect
+          label="Color"
+          onChange={setColorFilter}
+          options={filterOptions.colors}
+          value={colorFilter}
+        />
+        <VaultSelect
+          label="Archive"
+          onChange={setArchiveFilter}
+          options={filterOptions.archiveStatuses}
+          value={archiveFilter}
+        />
+        <VaultSelect
+          label="Rarity"
+          onChange={setRarityFilter}
+          options={filterOptions.rarities}
+          value={rarityFilter}
+        />
+        <VaultSelect
+          label="Weight"
+          onChange={setWeightFilter}
+          options={filterOptions.weights}
+          value={weightFilter}
+        />
+        <VaultSelect
+          label="Drape"
+          onChange={setDrapeFilter}
+          options={filterOptions.drapes}
+          value={drapeFilter}
+        />
+        <VaultSelect
+          includeAll={false}
+          label="Sort"
+          onChange={(value) => setSortMode(value as FabricSort)}
+          options={[
+            'Recently updated',
+            'Name A-Z',
+            'Yardage high to low',
+            'Yardage low to high',
+          ]}
+          value={sortMode}
+        />
+      </FilterSheet>
 
       {fabrics.length === 0 ? (
         <FabricEmptyState
@@ -312,7 +443,56 @@ export function FabricVaultPage({
       ) : null}
 
       {visibleFabrics.length > 0 ? (
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+        <>
+        <div className="grid gap-3 sm:hidden">
+          {visibleFabrics.map((fabric) => {
+            const fabricImage = getFabricImage(fabric);
+            const yardage = calculateFabricYardage(
+              fabric,
+              allLinkedMaterials,
+              projects,
+            );
+            const lowYardage = isLowYardage(
+              fabric,
+              allLinkedMaterials,
+              projects,
+            );
+
+            return (
+              <MobileCardRow
+                badge={
+                  <>
+                    <Badge variant={lowYardage ? 'ember' : 'teal'}>
+                      {lowYardage ? 'Low' : fabric.archiveStatus}
+                    </Badge>
+                    <Badge variant="bronze">{fabric.category}</Badge>
+                  </>
+                }
+                image={
+                  <>
+                    {fabricImage ? (
+                      <StoredImage
+                        asset={fabricImage}
+                        className="absolute inset-0 h-full w-full object-cover"
+                      />
+                    ) : null}
+                    <ImageReadabilityOverlay asset={fabricImage} variant="card" />
+                  </>
+                }
+                key={fabric.id}
+                meta={`${fabric.colorFamily} / ${fabric.composition}`}
+                onClick={() => onOpenFabric(fabric.id)}
+                signal={
+                  <p className={cn('text-xs font-medium', lowYardage ? 'text-ember' : 'text-stardust/62')}>
+                    {formatNumber(yardage.availableYards)} yd available
+                  </p>
+                }
+                title={fabric.name}
+              />
+            );
+          })}
+        </div>
+        <div className="hidden gap-4 sm:grid md:grid-cols-2 xl:grid-cols-3">
           {visibleFabrics.map((fabric, index) => (
             <FabricCard
               fabric={fabric}
@@ -324,6 +504,7 @@ export function FabricVaultPage({
             />
           ))}
         </div>
+        </>
       ) : null}
     </section>
   );
@@ -493,6 +674,19 @@ function FabricDetailPage({
   if (!fabric) {
     return (
       <section>
+        <MobilePageHeader
+          action={
+            <Button
+              icon={<ArrowLeft aria-hidden="true" size={16} strokeWidth={1.9} />}
+              onClick={onBack}
+              size="sm"
+            >
+              Back
+            </Button>
+          }
+          badge="Fabric"
+          title="Fabric Not Found"
+        />
         <PageHeader
           badge="Fabric Detail"
           description="The requested fabric route could not be matched to demo data."
@@ -533,6 +727,21 @@ function FabricDetailPage({
 
   return (
     <section className="space-y-5">
+      <MobilePageHeader
+        action={
+          <Button
+            icon={<ArrowLeft aria-hidden="true" size={15} strokeWidth={1.9} />}
+            onClick={onBack}
+            size="sm"
+            variant="secondary"
+          >
+            Vault
+          </Button>
+        }
+        badge="Fabric"
+        kicker={`${formatNumber(yardage.availableYards)} yd available`}
+        title={fabric.name}
+      />
       <Card className="overflow-hidden p-0" elevated>
         <div className="grid min-h-[34rem] lg:grid-cols-[0.92fr_1.08fr]">
           <ImageSlot

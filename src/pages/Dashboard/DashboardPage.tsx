@@ -19,6 +19,8 @@ import { Badge } from '../../components/shared/Badge';
 import { Button } from '../../components/shared/Button';
 import { Card } from '../../components/shared/Card';
 import { PageHeader } from '../../components/shared/PageHeader';
+import { MobilePageHeader } from '../../components/shared/MobilePageHeader';
+import { MobileSummaryStrip } from '../../components/shared/MobileSummaryStrip';
 import { ImageReadabilityOverlay } from '../../components/shared/ImageReadabilityOverlay';
 import { StoredImage } from '../../components/shared/StoredImage';
 import { useStudioData } from '../../hooks/useStudioData';
@@ -174,6 +176,62 @@ export function DashboardPage({
 
   return (
     <section className="space-y-5">
+      <MobilePageHeader
+        action={
+          <Button
+            icon={<FolderPlus aria-hidden="true" size={15} strokeWidth={1.9} />}
+            onClick={onNewProject}
+            size="sm"
+            variant="primary"
+          >
+            New
+          </Button>
+        }
+        badge="Dashboard"
+        kicker={`${activeProjects.length} active / ${nextTasks.length} next moves`}
+        title="Today in Studio"
+      />
+
+      <MobileSummaryStrip
+        items={statCards.map((stat) => {
+          const Icon = stat.icon;
+
+          return {
+            icon: <Icon aria-hidden="true" size={15} strokeWidth={1.9} />,
+            label: stat.label,
+            value: stat.value,
+          };
+        })}
+      />
+
+      <Card className="border-ember/28 bg-[linear-gradient(145deg,rgba(27,58,99,0.22),rgba(10,10,10,0.58),rgba(61,43,31,0.34))] sm:hidden">
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <Badge variant="ember">Daily Cockpit</Badge>
+            <h2 className="mt-3 text-xl font-semibold text-stardust">
+              Studio pulse
+            </h2>
+          </div>
+          <Button onClick={() => onNavigate('kanban')} size="sm" variant="secondary">
+            Flow
+          </Button>
+        </div>
+        <div className="mt-4 grid gap-3">
+          <MobilePulseItem
+            label="Next task"
+            value={nextTasks[0]?.title ?? 'No open tasks'}
+          />
+          <MobilePulseItem
+            label="Featured"
+            value={heroProject?.name ?? 'No project yet'}
+          />
+          <MobilePulseItem
+            label="Fabric watch"
+            value={`${lowYardageFabrics.length} low-yardage ${lowYardageFabrics.length === 1 ? 'fabric' : 'fabrics'}`}
+          />
+        </div>
+      </Card>
+
       <PageHeader
         badge="Dashboard"
         description="A live control center for garment momentum, fabric allocation, phase balance, and next studio moves."
@@ -198,7 +256,7 @@ export function DashboardPage({
         </div>
       </PageHeader>
 
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-6">
+      <div className="hidden gap-4 sm:grid md:grid-cols-2 xl:grid-cols-6">
         {statCards.map((stat, index) => {
           const Icon = stat.icon;
 
@@ -238,7 +296,7 @@ export function DashboardPage({
           supportingProjects={supportingFeaturedProjects}
         />
 
-        <Card>
+        <Card className="hidden sm:block">
           <div className="flex h-full flex-col justify-between">
             <div>
               <Badge variant="teal">Next Actions</Badge>
@@ -438,7 +496,7 @@ function FeaturedGarmentsSection({
   return (
     <Card className="overflow-hidden p-0" elevated>
       <div className="bg-[radial-gradient(circle_at_18%_12%,rgba(200,155,60,0.18),transparent_30%),linear-gradient(145deg,rgba(27,58,99,0.28),rgba(10,10,10,0.58),rgba(61,43,31,0.44))] p-4 sm:p-5 lg:p-6">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+        <div className="hidden flex-col gap-3 sm:flex sm:flex-row sm:items-end sm:justify-between">
           <div>
             <Badge variant="ember">Featured Garments</Badge>
             <h2 className="mt-4 max-w-2xl text-2xl font-semibold leading-tight text-stardust sm:text-3xl">
@@ -476,9 +534,9 @@ function FeaturedGarmentHero({
   const materialCount = project.linkedMaterials.length;
 
   return (
-    <article className="group mt-5 overflow-hidden rounded-[1.65rem] border border-ember/36 bg-[linear-gradient(145deg,rgba(10,10,10,0.62),rgba(61,43,31,0.22))] shadow-[0_22px_70px_rgba(0,0,0,0.3),inset_0_1px_0_rgba(237,227,207,0.055)] transition duration-300 hover:border-ember/56 hover:shadow-[0_28px_86px_rgba(200,155,60,0.11),0_20px_70px_rgba(0,0,0,0.34)]">
+    <article className="group mt-0 overflow-hidden rounded-[1.35rem] border border-ember/36 bg-[linear-gradient(145deg,rgba(10,10,10,0.62),rgba(61,43,31,0.22))] shadow-[0_22px_70px_rgba(0,0,0,0.3),inset_0_1px_0_rgba(237,227,207,0.055)] transition duration-300 hover:border-ember/56 hover:shadow-[0_28px_86px_rgba(200,155,60,0.11),0_20px_70px_rgba(0,0,0,0.34)] sm:mt-5 sm:rounded-[1.65rem]">
       <div className="grid xl:grid-cols-[minmax(0,1.08fr)_minmax(20rem,0.92fr)]">
-        <div className="flex flex-col justify-between gap-5 p-5 sm:p-6 xl:p-7">
+        <div className="flex flex-col justify-between gap-4 p-4 sm:gap-5 sm:p-6 xl:p-7">
           <div>
             <div className="flex flex-wrap gap-2">
               <Badge variant={project.status === 'Blocked' ? 'ember' : 'teal'}>
@@ -488,13 +546,13 @@ function FeaturedGarmentHero({
               <Badge variant="blue">{project.garmentType}</Badge>
             </div>
 
-            <h3 className="mt-5 text-3xl font-semibold leading-[1.08] text-stardust sm:text-4xl xl:text-[2.8rem]">
+            <h3 className="mt-4 text-2xl font-semibold leading-[1.08] text-stardust sm:mt-5 sm:text-4xl xl:text-[2.8rem]">
               {project.name}
             </h3>
             <p className="mt-3 text-xs font-medium uppercase tracking-[0.16em] text-ember/82">
               {project.collection || project.season}
             </p>
-            <p className="mt-4 line-clamp-3 max-w-3xl text-sm leading-6 text-stardust/70 sm:text-base xl:max-w-2xl">
+            <p className="mt-3 line-clamp-2 max-w-3xl text-sm leading-6 text-stardust/70 sm:mt-4 sm:line-clamp-3 sm:text-base xl:max-w-2xl">
               {project.designIntent || project.summary}
             </p>
 
@@ -513,7 +571,7 @@ function FeaturedGarmentHero({
           </div>
 
           <div>
-            <div className="grid grid-cols-3 gap-2">
+            <div className="grid grid-cols-3 gap-2 max-[380px]:grid-cols-1">
               <HeroMeta label="Progress" value={`${project.progress}%`} />
               <HeroMeta
                 label="Materials"
@@ -547,7 +605,7 @@ function FeaturedGarmentHero({
           </div>
         </div>
 
-        <div className="relative h-44 overflow-hidden border-t border-bronze/20 bg-[radial-gradient(circle_at_20%_10%,rgba(200,155,60,0.32),transparent_30%),radial-gradient(circle_at_84%_18%,rgba(45,92,107,0.4),transparent_34%),linear-gradient(135deg,rgba(27,58,99,0.76),rgba(10,10,10,0.72),rgba(61,43,31,0.78))] sm:h-[14.5rem] md:h-[16rem] xl:h-full xl:min-h-[22rem] xl:border-l xl:border-t-0">
+        <div className="relative h-40 overflow-hidden border-t border-bronze/20 bg-[radial-gradient(circle_at_20%_10%,rgba(200,155,60,0.32),transparent_30%),radial-gradient(circle_at_84%_18%,rgba(45,92,107,0.4),transparent_34%),linear-gradient(135deg,rgba(27,58,99,0.76),rgba(10,10,10,0.72),rgba(61,43,31,0.78))] sm:h-[14.5rem] md:h-[16rem] xl:h-full xl:min-h-[22rem] xl:border-l xl:border-t-0">
           {heroImage ? (
             <StoredImage
               asset={heroImage}
@@ -617,7 +675,7 @@ function FeaturedProjectCarousel({
           className="pointer-events-none absolute inset-y-0 right-0 z-10 w-8 bg-gradient-to-l from-midnight/90 to-transparent"
         />
         <div
-          className="studio-scrollbar flex snap-x gap-3 overflow-x-auto scroll-smooth pb-2"
+          className="studio-scrollbar -mx-4 flex snap-x gap-3 overflow-x-auto scroll-smooth px-4 pb-2 sm:mx-0 sm:px-0"
           ref={scrollerRef}
         >
           {projects.map((project) => (
@@ -662,7 +720,7 @@ function FeaturedProjectMiniCard({
   project: ApparelProject;
 }) {
   return (
-    <article className="group flex min-h-[18.5rem] w-[17.5rem] shrink-0 snap-start flex-col overflow-hidden rounded-2xl border border-bronze/28 bg-[linear-gradient(145deg,rgba(10,10,10,0.44),rgba(61,43,31,0.2))] shadow-[inset_0_1px_0_rgba(237,227,207,0.035)] transition duration-300 hover:-translate-y-1 hover:border-ember/48 hover:bg-midnight/50 sm:w-[20rem] xl:w-[22rem]">
+    <article className="group flex min-h-[16rem] w-[15.75rem] shrink-0 snap-start flex-col overflow-hidden rounded-2xl border border-bronze/28 bg-[linear-gradient(145deg,rgba(10,10,10,0.44),rgba(61,43,31,0.2))] shadow-[inset_0_1px_0_rgba(237,227,207,0.035)] transition duration-300 hover:-translate-y-1 hover:border-ember/48 hover:bg-midnight/50 sm:min-h-[18.5rem] sm:w-[20rem] xl:w-[22rem]">
       <ProjectImageBand project={project} className="h-20" />
       <div className="flex flex-1 flex-col p-3.5">
         <div className="flex items-start justify-between gap-3">
@@ -681,7 +739,7 @@ function FeaturedProjectMiniCard({
             strokeWidth={1.9}
           />
         </div>
-        <p className="mt-4 line-clamp-3 min-h-16 text-sm leading-6 text-stardust/62">
+        <p className="mt-3 line-clamp-2 text-sm leading-6 text-stardust/62 sm:mt-4 sm:line-clamp-3 sm:min-h-16">
           {project.summary}
         </p>
         <div className="mt-auto pt-4">
@@ -711,6 +769,19 @@ function FeaturedProjectMiniCard({
         </button>
       </div>
     </article>
+  );
+}
+
+function MobilePulseItem({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-2xl border border-bronze/20 bg-midnight/36 p-3">
+      <p className="text-[0.64rem] font-medium uppercase tracking-[0.14em] text-stardust/40">
+        {label}
+      </p>
+      <p className="mt-1 line-clamp-2 text-sm font-semibold text-stardust">
+        {value}
+      </p>
+    </div>
   );
 }
 

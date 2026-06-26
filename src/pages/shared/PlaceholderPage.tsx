@@ -1,5 +1,6 @@
 import { Badge } from '../../components/shared/Badge';
 import { Card } from '../../components/shared/Card';
+import { MobilePageHeader } from '../../components/shared/MobilePageHeader';
 import { PageHeader } from '../../components/shared/PageHeader';
 
 type Metric = {
@@ -22,6 +23,7 @@ export function PlaceholderPage({
 }: PlaceholderPageProps) {
   return (
     <section>
+      <MobilePageHeader badge={badge} kicker={description} title={title} />
       <PageHeader badge={badge} description={description} title={title} />
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
         {metrics.map((metric) => (

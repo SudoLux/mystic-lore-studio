@@ -41,9 +41,11 @@ import { TaskFormModal } from '../../components/projects/TaskFormModal';
 import { Badge } from '../../components/shared/Badge';
 import { Button } from '../../components/shared/Button';
 import { Card } from '../../components/shared/Card';
+import { ExpandableInfoSection } from '../../components/shared/ExpandableInfoSection';
 import { ImageSlot } from '../../components/shared/ImageSlot';
 import { ImageReadabilityOverlay } from '../../components/shared/ImageReadabilityOverlay';
 import { LocalImageUploader } from '../../components/shared/LocalImageUploader';
+import { MobilePageHeader } from '../../components/shared/MobilePageHeader';
 import { PageHeader } from '../../components/shared/PageHeader';
 import { StoredImage } from '../../components/shared/StoredImage';
 import { useStudioData } from '../../hooks/useStudioData';
@@ -153,6 +155,11 @@ export function ProjectDetailPage({
   if (!project) {
     return (
       <section>
+        <MobilePageHeader
+          action={<BackButton onBack={onBack} />}
+          badge="Project"
+          title="Project Not Found"
+        />
         <PageHeader
           badge="Project Detail"
           description="The requested project route could not be matched to demo data."
@@ -268,7 +275,114 @@ function ProjectHero({
   const galleryImages = getProjectGalleryImages(project);
 
   return (
-    <Card className="overflow-hidden p-0" elevated>
+    <>
+    <Card className="overflow-hidden p-0 sm:hidden" elevated>
+      <ImageSlot
+        actionClassName="right-3 top-3 bottom-auto"
+        aspectClassName=""
+        className="h-64 rounded-none border-0 border-b border-bronze/20 bg-midnight/40"
+        compact
+        label="Hero"
+        onRemove={() => onUpdateProject({ ...project, heroImage: undefined })}
+        onSave={(image) => onUpdateProject({ ...project, heroImage: image })}
+        placeholderClassName="bg-[radial-gradient(circle_at_22%_18%,rgba(200,155,60,0.38),transparent_28%),radial-gradient(circle_at_82%_12%,rgba(45,92,107,0.42),transparent_32%),linear-gradient(145deg,rgba(27,58,99,0.84),rgba(10,10,10,0.76),rgba(61,43,31,0.86))]"
+        placeholderText="Add project hero."
+        readabilityVariant="hero"
+        value={project.heroImage}
+      >
+        <div className="relative flex h-full flex-col justify-end p-4 [text-shadow:0_2px_16px_rgba(0,0,0,0.95)]">
+          <div className="mb-3 flex flex-wrap gap-2">
+            <Badge variant="teal">{project.status}</Badge>
+            <Badge variant="bronze">{project.phase}</Badge>
+          </div>
+          <h1 className="text-3xl font-semibold leading-tight text-stardust">
+            {project.name}
+          </h1>
+          <div className="mt-4">
+            <div className="mb-2 flex items-center justify-between text-xs">
+              <span className="text-stardust/70">Progress</span>
+              <span className="font-medium text-ember">{project.progress}%</span>
+            </div>
+            <div className="studio-progress-track">
+              <div
+                className="studio-progress-fill"
+                style={{ width: `${project.progress}%` }}
+              />
+            </div>
+          </div>
+        </div>
+      </ImageSlot>
+      <div className="p-4">
+        <p className="line-clamp-3 text-sm leading-6 text-stardust/68">
+          {project.summary}
+        </p>
+        <div className="mt-4 flex gap-2">
+          <Button className="flex-1" onClick={onEditProject} size="sm" variant="primary">
+            Edit
+          </Button>
+          <Button className="flex-1" onClick={onBack} size="sm" variant="secondary">
+            Library
+          </Button>
+        </div>
+        <div className="mt-4 grid gap-3">
+          <ExpandableInfoSection
+            summary={`${project.garmentType} / ${project.collection}`}
+            title="Project details"
+          >
+            <div className="grid gap-3">
+              <HeroMetric
+                icon={<Shirt aria-hidden="true" size={18} strokeWidth={1.9} />}
+                label="Garment"
+                value={project.garmentType}
+              />
+              <HeroMetric
+                icon={<Layers3 aria-hidden="true" size={18} strokeWidth={1.9} />}
+                label="Collection"
+                value={project.collection}
+              />
+              <HeroMetric
+                icon={<Sparkles aria-hidden="true" size={18} strokeWidth={1.9} />}
+                label="Difficulty"
+                value={difficulty}
+              />
+            </div>
+          </ExpandableInfoSection>
+          <ExpandableInfoSection
+            summary={`${galleryImages.length} of 3 supporting images`}
+            title="Project media"
+          >
+            <div className="grid gap-3">
+              {[0, 1, 2].map((index) => (
+                <LocalImageUploader
+                  compact
+                  key={index}
+                  label={`Gallery ${index + 1}`}
+                  onRemove={() =>
+                    onUpdateProject({
+                      ...project,
+                      galleryImages: galleryImages.filter(
+                        (_image, imageIndex) => imageIndex !== index,
+                      ),
+                    })
+                  }
+                  onSave={(image) => {
+                    const nextImages = [...galleryImages];
+                    nextImages[index] = image;
+                    onUpdateProject({
+                      ...project,
+                      galleryImages: nextImages.filter(Boolean),
+                    });
+                  }}
+                  value={galleryImages[index]}
+                />
+              ))}
+            </div>
+          </ExpandableInfoSection>
+        </div>
+      </div>
+    </Card>
+
+    <Card className="hidden overflow-hidden p-0 sm:block" elevated>
       <div className="grid min-h-[26rem] lg:grid-cols-[1.08fr_0.92fr]">
         <div className="flex flex-col justify-between gap-10 p-5 sm:p-7 lg:p-8">
           <div>
@@ -408,6 +522,7 @@ function ProjectHero({
         </section>
       </div>
     </Card>
+    </>
   );
 }
 
