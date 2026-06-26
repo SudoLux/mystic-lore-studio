@@ -12,7 +12,7 @@ type MobileSummaryStripProps = {
 
 export function MobileSummaryStrip({ items }: MobileSummaryStripProps) {
   return (
-    <div className="studio-scrollbar -mx-4 flex gap-3 overflow-x-auto px-4 pb-1 sm:hidden">
+    <div className="studio-scrollbar flex gap-3 overflow-x-auto pb-1 sm:hidden">
       {items.map((item) => (
         <div
           className="min-w-[8.75rem] rounded-2xl border border-bronze/24 bg-midnight/42 p-3 shadow-[inset_0_1px_0_rgba(237,227,207,0.04)]"
