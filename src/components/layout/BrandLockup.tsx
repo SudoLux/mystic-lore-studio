@@ -49,7 +49,7 @@ export function BrandLockup({
         />
       </span>
       {showText ? (
-        <span className="min-w-0">
+        <span className="min-w-0" data-brand-text>
           <span
             className={cn(
               'block truncate font-semibold leading-tight text-stardust',

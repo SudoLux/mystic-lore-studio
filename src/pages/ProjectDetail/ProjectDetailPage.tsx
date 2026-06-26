@@ -189,7 +189,7 @@ export function ProjectDetailPage({
 
       <PhasePath currentPhase={project.phase} />
 
-      <Card className="p-2 sm:p-3">
+      <Card className="p-2 sm:p-3 md:max-lg:sticky md:max-lg:top-3 md:max-lg:z-20 md:max-lg:backdrop-blur-2xl">
         <div className="studio-scrollbar -mx-1 flex gap-2 overflow-x-auto px-1 pb-1 sm:mx-0 sm:grid sm:grid-cols-5 sm:overflow-visible sm:px-0 sm:pb-0">
           {detailTabs.map((tab) => {
             const Icon = tab.icon;
@@ -276,11 +276,11 @@ function ProjectHero({
 
   return (
     <>
-    <Card className="overflow-hidden p-0 sm:hidden" elevated>
+    <Card className="overflow-hidden p-0 lg:hidden" elevated>
       <ImageSlot
         actionClassName="right-3 top-3 bottom-auto"
         aspectClassName=""
-        className="h-64 rounded-none border-0 border-b border-bronze/20 bg-midnight/40"
+        className="h-64 rounded-none border-0 border-b border-bronze/20 bg-midnight/40 md:max-lg:h-[24rem]"
         compact
         label="Hero"
         onRemove={() => onUpdateProject({ ...project, heroImage: undefined })}
@@ -382,7 +382,7 @@ function ProjectHero({
       </div>
     </Card>
 
-    <Card className="hidden overflow-hidden p-0 sm:block" elevated>
+    <Card className="hidden overflow-hidden p-0 lg:block" elevated>
       <div className="grid min-h-[26rem] lg:grid-cols-[1.08fr_0.92fr]">
         <div className="flex flex-col justify-between gap-10 p-5 sm:p-7 lg:p-8">
           <div>

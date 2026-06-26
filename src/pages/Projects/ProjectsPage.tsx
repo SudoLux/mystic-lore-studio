@@ -136,7 +136,9 @@ export function ProjectsPage({ onNewProject, onOpenProject }: ProjectsPageProps)
           >
             New Project
           </Button>
-          <ViewModeToggle viewMode={viewMode} onChange={setViewMode} />
+          <div className="hidden lg:block">
+            <ViewModeToggle viewMode={viewMode} onChange={setViewMode} />
+          </div>
         </div>
       </PageHeader>
 
@@ -159,7 +161,7 @@ export function ProjectsPage({ onNewProject, onOpenProject }: ProjectsPageProps)
             />
           </label>
 
-          <div className="hidden sm:contents">
+          <div className="hidden lg:contents">
           <FilterSelect
             label="Garment type"
             onChange={(value) => setGarmentType(value as GarmentType | FilterValue)}
@@ -186,7 +188,7 @@ export function ProjectsPage({ onNewProject, onOpenProject }: ProjectsPageProps)
           />
           </div>
         </div>
-        <div className="mt-3 flex items-center gap-2 sm:hidden">
+        <div className="mt-3 flex items-center gap-2 lg:hidden">
           <Button
             className="flex-1"
             icon={<SlidersHorizontal aria-hidden="true" size={15} strokeWidth={1.9} />}
@@ -301,7 +303,7 @@ export function ProjectsPage({ onNewProject, onOpenProject }: ProjectsPageProps)
         <div
           className={cn(
             viewMode === 'gallery'
-              ? 'hidden grid-cols-1 gap-4 sm:grid md:grid-cols-2 xl:grid-cols-3'
+              ? 'hidden grid-cols-1 gap-4 sm:grid md:grid-cols-2 lg:max-xl:grid-cols-3 xl:grid-cols-3'
               : 'hidden space-y-3 sm:block',
           )}
         >
@@ -428,7 +430,7 @@ function ProjectGalleryCard({
 
   return (
     <button
-      className="studio-project-card group min-h-[31rem] overflow-hidden rounded-3xl border border-bronze/28 bg-[linear-gradient(145deg,rgba(237,227,207,0.068),rgba(10,10,10,0.24))] text-left text-stardust shadow-[0_26px_80px_rgba(0,0,0,0.28),inset_0_1px_0_rgba(237,227,207,0.045)] backdrop-blur-xl transition duration-300 hover:-translate-y-1.5 hover:border-ember/60 hover:bg-stardust/[0.08] hover:shadow-[0_30px_96px_rgba(200,155,60,0.14),0_18px_70px_rgba(0,0,0,0.34)]"
+      className="studio-project-card group min-h-[29rem] overflow-hidden rounded-3xl border border-bronze/28 bg-[linear-gradient(145deg,rgba(237,227,207,0.068),rgba(10,10,10,0.24))] text-left text-stardust shadow-[0_26px_80px_rgba(0,0,0,0.28),inset_0_1px_0_rgba(237,227,207,0.045)] backdrop-blur-xl transition duration-300 hover:-translate-y-1.5 hover:border-ember/60 hover:bg-stardust/[0.08] hover:shadow-[0_30px_96px_rgba(200,155,60,0.14),0_18px_70px_rgba(0,0,0,0.34)] xl:min-h-[31rem]"
       onClick={() => onOpenProject(project.id)}
       style={style}
       type="button"
@@ -456,7 +458,7 @@ function ProjectGalleryCard({
       <div className="p-5">
         <div className="flex items-start justify-between gap-4">
           <div className="min-w-0">
-            <p className="truncate text-xl font-semibold text-stardust">
+            <p className="line-clamp-2 text-xl font-semibold leading-tight text-stardust">
               {project.name}
             </p>
             <p className="mt-1 text-sm text-stardust/52">
@@ -471,11 +473,11 @@ function ProjectGalleryCard({
           />
         </div>
 
-        <p className="mt-4 line-clamp-3 min-h-16 text-sm leading-6 text-stardust/64">
+        <p className="mt-4 line-clamp-2 min-h-12 text-sm leading-6 text-stardust/64 xl:line-clamp-3 xl:min-h-16">
           {project.summary}
         </p>
 
-        <div className="mt-5 grid grid-cols-2 gap-2">
+        <div className="mt-5 grid grid-cols-2 gap-2 md:max-xl:hidden">
           <ProjectDatum label="Phase" value={project.phase} />
           <ProjectDatum label="Priority" value={project.priority} />
           <ProjectDatum label="Difficulty" value={difficulty} />

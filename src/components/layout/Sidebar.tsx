@@ -23,10 +23,13 @@ export function Sidebar({
   userEmail,
 }: SidebarProps) {
   return (
-    <aside className="hidden min-h-screen border-r border-bronze/30 bg-midnight/80 px-5 py-6 backdrop-blur-xl lg:flex lg:flex-col">
-      <div className="mb-8">
-        <BrandLockup className="mb-5" size="sidebar" />
-        <Badge variant="ember">Studio</Badge>
+    <aside className="hidden min-h-screen border-r border-bronze/30 bg-midnight/80 px-5 py-6 backdrop-blur-xl lg:flex lg:flex-col lg:max-xl:items-center lg:max-xl:px-3 xl:items-stretch">
+      <div className="mb-8 lg:max-xl:flex lg:max-xl:flex-col lg:max-xl:items-center">
+        <BrandLockup
+          className="mb-5 lg:max-xl:[&_[data-brand-text]]:hidden"
+          size="sidebar"
+        />
+        <Badge className="lg:max-xl:hidden" variant="ember">Studio</Badge>
       </div>
 
       <nav aria-label="Primary navigation" className="flex flex-1 flex-col gap-2">
@@ -37,8 +40,9 @@ export function Sidebar({
           return (
             <button
               aria-current={isActive ? 'page' : undefined}
+              aria-label={item.label}
               className={cn(
-                'group flex w-full items-center gap-3 rounded-2xl border px-3.5 py-3 text-left transition duration-200',
+                'group flex w-full items-center gap-3 rounded-2xl border px-3.5 py-3 text-left transition duration-200 lg:max-xl:justify-center lg:max-xl:px-2.5',
                 isActive
                   ? 'border-ember/55 bg-ember/12 text-stardust shadow-[0_16px_40px_rgba(0,0,0,0.24)]'
                   : 'border-transparent text-stardust/68 hover:border-bronze/40 hover:bg-stardust/6 hover:text-stardust',
@@ -57,7 +61,7 @@ export function Sidebar({
               >
                 <Icon aria-hidden="true" size={18} strokeWidth={1.8} />
               </span>
-              <span className="min-w-0">
+              <span className="min-w-0 lg:max-xl:hidden">
                 <span className="block truncate text-sm font-medium">
                   {item.label}
                 </span>
@@ -70,8 +74,9 @@ export function Sidebar({
         })}
       </nav>
 
-      <div className="mt-8 rounded-2xl border border-bronze/25 bg-espresso/35 p-4">
-        {syncStatus ? <div className="mb-4">{syncStatus}</div> : null}
+      <div className="mt-8 rounded-2xl border border-bronze/25 bg-espresso/35 p-4 lg:max-xl:w-full lg:max-xl:p-2">
+        {syncStatus ? <div className="mb-4 lg:max-xl:mb-2">{syncStatus}</div> : null}
+        <div className="lg:max-xl:hidden">
         <p className="text-sm font-medium text-stardust">Atelier Foundation</p>
         <p className="mt-2 text-sm leading-6 text-stardust/60">
           Garment, material, and presentation workspaces are staged for the next
@@ -88,6 +93,17 @@ export function Sidebar({
           >
             <LogOut aria-hidden="true" size={16} strokeWidth={1.9} />
             Sign Out
+          </button>
+        ) : null}
+        </div>
+        {onSignOut ? (
+          <button
+            aria-label="Sign Out"
+            className="hidden h-11 w-full items-center justify-center rounded-xl border border-bronze/30 bg-midnight/42 text-stardust/68 transition hover:border-ember/42 hover:bg-stardust/[0.07] hover:text-stardust lg:max-xl:flex"
+            onClick={onSignOut}
+            type="button"
+          >
+            <LogOut aria-hidden="true" size={17} strokeWidth={1.9} />
           </button>
         ) : null}
       </div>

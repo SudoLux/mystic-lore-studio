@@ -256,13 +256,13 @@ export function DashboardPage({
         </div>
       </PageHeader>
 
-      <div className="hidden gap-4 sm:grid md:grid-cols-2 xl:grid-cols-6">
+      <div className="hidden gap-3 sm:grid md:grid-cols-2 xl:grid-cols-6 xl:gap-4">
         {statCards.map((stat, index) => {
           const Icon = stat.icon;
 
           return (
             <Card
-              className="group min-h-44 transition duration-300 hover:-translate-y-1 hover:border-ember/48 hover:bg-stardust/[0.08] hover:shadow-[0_28px_90px_rgba(200,155,60,0.09)] xl:col-span-2"
+              className="group min-h-36 transition duration-300 hover:-translate-y-1 hover:border-ember/48 hover:bg-stardust/[0.08] hover:shadow-[0_28px_90px_rgba(200,155,60,0.09)] xl:col-span-2 xl:min-h-44"
               key={stat.label}
             >
               <div className="flex h-full flex-col justify-between gap-5">
@@ -278,7 +278,7 @@ export function DashboardPage({
                   <p className="text-4xl font-semibold leading-none text-stardust">
                     {stat.value}
                   </p>
-                  <p className="mt-3 text-sm leading-6 text-stardust/60">
+                  <p className="mt-3 line-clamp-1 text-sm leading-6 text-stardust/60 xl:line-clamp-none">
                     {stat.detail}
                   </p>
                 </div>
@@ -296,7 +296,7 @@ export function DashboardPage({
           supportingProjects={supportingFeaturedProjects}
         />
 
-        <Card className="hidden sm:block">
+        <Card className="hidden lg:block">
           <div className="flex h-full flex-col justify-between">
             <div>
               <Badge variant="teal">Next Actions</Badge>
@@ -387,7 +387,7 @@ export function DashboardPage({
             title="Recently updated projects"
             subtitle="Derived from the latest project note activity in the demo data."
           />
-          <div className="mt-6 grid gap-3 sm:grid-cols-2">
+          <div className="mt-6 grid gap-3 md:grid-cols-2">
             {recentlyUpdatedProjects.map((project) => (
               <div
                 className="overflow-hidden rounded-2xl border border-bronze/20 bg-midnight/32 transition duration-300 hover:border-ember/35 hover:bg-midnight/45"

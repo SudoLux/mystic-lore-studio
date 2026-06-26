@@ -259,7 +259,7 @@ export function FabricVaultPage({
         ]}
       />
 
-      <div className="hidden gap-4 sm:grid md:grid-cols-3">
+      <div className="hidden gap-4 lg:grid lg:grid-cols-3">
         <VaultMetric
           icon={<Archive aria-hidden="true" size={18} strokeWidth={1.9} />}
           label="Fabric Records"
@@ -293,7 +293,7 @@ export function FabricVaultPage({
             />
           </label>
 
-          <div className="hidden sm:block">
+          <div className="hidden lg:block">
             <div className="mb-2 flex items-center gap-2 text-xs font-medium uppercase tracking-[0.14em] text-stardust/42">
               <SlidersHorizontal aria-hidden="true" size={14} strokeWidth={1.9} />
               Filters
@@ -350,7 +350,7 @@ export function FabricVaultPage({
             </div>
           </div>
         </div>
-        <div className="mt-3 flex gap-2 sm:hidden">
+        <div className="mt-3 flex gap-2 lg:hidden">
           <Button
             className="flex-1"
             icon={<SlidersHorizontal aria-hidden="true" size={15} strokeWidth={1.9} />}
@@ -492,7 +492,7 @@ export function FabricVaultPage({
             );
           })}
         </div>
-        <div className="hidden gap-4 sm:grid md:grid-cols-2 xl:grid-cols-3">
+        <div className="hidden gap-4 sm:grid md:grid-cols-2 lg:max-xl:grid-cols-3 xl:grid-cols-3">
           {visibleFabrics.map((fabric, index) => (
             <FabricCard
               fabric={fabric}
