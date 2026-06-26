@@ -15,7 +15,7 @@ export function MobilePageHeader({
   title,
 }: MobilePageHeaderProps) {
   return (
-    <header className="mb-4 flex items-start justify-between gap-3 sm:hidden">
+    <header className="mb-4 flex items-start justify-between gap-3 sm:hidden md:max-lg:mb-5">
       <div className="min-w-0">
         {badge ? <Badge variant="teal">{badge}</Badge> : null}
         <h1 className="mt-3 text-2xl font-semibold leading-tight text-stardust">

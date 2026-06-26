@@ -85,7 +85,7 @@ export function GlobalSearch({
   return (
     <section className="relative z-30 mb-4 sm:mb-5">
       <button
-        className="mb-1 flex min-h-11 w-full items-center gap-3 rounded-2xl border border-bronze/24 bg-midnight/42 px-4 text-left text-sm text-stardust/50 shadow-[0_12px_34px_rgba(0,0,0,0.18)] backdrop-blur-xl sm:hidden"
+        className="mb-1 flex min-h-11 w-full items-center gap-3 rounded-2xl border border-bronze/24 bg-midnight/42 px-4 text-left text-sm text-stardust/50 shadow-[0_12px_34px_rgba(0,0,0,0.18)] backdrop-blur-xl lg:hidden"
         onClick={() => setMobileOpen(true)}
         type="button"
       >
@@ -98,7 +98,7 @@ export function GlobalSearch({
         <span className="min-w-0 flex-1 truncate">Search studio records</span>
       </button>
 
-      <div className="hidden rounded-3xl border border-bronze/28 bg-[linear-gradient(145deg,rgba(10,10,10,0.58),rgba(61,43,31,0.16))] p-3 shadow-[0_20px_70px_rgba(0,0,0,0.24),inset_0_1px_0_rgba(237,227,207,0.035)] backdrop-blur-xl sm:block">
+      <div className="hidden rounded-3xl border border-bronze/28 bg-[linear-gradient(145deg,rgba(10,10,10,0.58),rgba(61,43,31,0.16))] p-3 shadow-[0_20px_70px_rgba(0,0,0,0.24),inset_0_1px_0_rgba(237,227,207,0.035)] backdrop-blur-xl lg:block">
         <label className="flex min-h-12 items-center gap-3 rounded-2xl border border-bronze/28 bg-stardust/[0.06] px-4 transition focus-within:border-ember/60 focus-within:bg-stardust/[0.08]">
           <Search
             aria-hidden="true"
@@ -127,7 +127,7 @@ export function GlobalSearch({
       </div>
 
       {hasQuery || mobileOpen ? (
-        <div className="studio-scrollbar fixed inset-0 z-50 max-h-dvh overflow-y-auto bg-[linear-gradient(135deg,rgba(27,58,99,0.28),rgba(10,10,10,0.99),rgba(61,43,31,0.62))] p-4 shadow-[0_30px_100px_rgba(0,0,0,0.5),inset_0_1px_0_rgba(237,227,207,0.05)] backdrop-blur-2xl sm:absolute sm:inset-auto sm:left-0 sm:right-0 sm:top-[calc(100%+0.5rem)] sm:max-h-[70vh] sm:rounded-3xl sm:border sm:border-bronze/32">
+        <div className="studio-scrollbar fixed inset-0 z-50 max-h-dvh overflow-y-auto bg-[linear-gradient(135deg,rgba(27,58,99,0.28),rgba(10,10,10,0.99),rgba(61,43,31,0.62))] p-4 shadow-[0_30px_100px_rgba(0,0,0,0.5),inset_0_1px_0_rgba(237,227,207,0.05)] backdrop-blur-2xl lg:absolute lg:inset-auto lg:left-0 lg:right-0 lg:top-[calc(100%+0.5rem)] lg:max-h-[70vh] lg:rounded-3xl lg:border lg:border-bronze/32">
           <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
             <div>
               <Badge variant="teal">Global Search</Badge>
@@ -149,7 +149,7 @@ export function GlobalSearch({
             </Button>
           </div>
 
-          <label className="mb-4 flex min-h-12 items-center gap-3 rounded-2xl border border-bronze/28 bg-stardust/[0.06] px-4 transition focus-within:border-ember/60 focus-within:bg-stardust/[0.08] sm:hidden">
+          <label className="mb-4 flex min-h-12 items-center gap-3 rounded-2xl border border-bronze/28 bg-stardust/[0.06] px-4 transition focus-within:border-ember/60 focus-within:bg-stardust/[0.08] lg:hidden">
             <Search
               aria-hidden="true"
               className="shrink-0 text-ember"

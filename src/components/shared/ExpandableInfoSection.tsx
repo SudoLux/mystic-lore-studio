@@ -19,7 +19,7 @@ export function ExpandableInfoSection({
   const [isOpen, setIsOpen] = useState(defaultOpen);
 
   return (
-    <section className="rounded-2xl border border-bronze/24 bg-midnight/34 sm:hidden">
+    <section className="rounded-2xl border border-bronze/24 bg-midnight/34 lg:hidden">
       <button
         aria-expanded={isOpen}
         className="flex w-full items-center justify-between gap-3 p-4 text-left"

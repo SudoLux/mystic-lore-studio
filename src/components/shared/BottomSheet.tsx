@@ -20,12 +20,12 @@ export function BottomSheet({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-[120] flex items-end bg-midnight/76 px-3 pt-10 backdrop-blur-xl sm:hidden">
+    <div className="fixed inset-0 z-[120] flex items-end bg-midnight/76 px-3 pt-10 backdrop-blur-xl sm:items-center sm:justify-center lg:hidden">
       <section
         aria-labelledby="bottom-sheet-title"
         aria-modal="true"
         className={cn(
-          'studio-scrollbar max-h-[86dvh] w-full overflow-y-auto rounded-t-[1.65rem] border border-bronze/34 bg-[linear-gradient(145deg,rgba(27,58,99,0.34),rgba(10,10,10,0.99),rgba(61,43,31,0.68))] p-4 text-stardust shadow-[0_-28px_90px_rgba(0,0,0,0.62)]',
+          'studio-scrollbar max-h-[86dvh] w-full overflow-y-auto rounded-t-[1.65rem] border border-bronze/34 bg-[linear-gradient(145deg,rgba(27,58,99,0.34),rgba(10,10,10,0.99),rgba(61,43,31,0.68))] p-4 text-stardust shadow-[0_-28px_90px_rgba(0,0,0,0.62)] sm:max-w-xl sm:rounded-[1.65rem] sm:shadow-[0_30px_100px_rgba(0,0,0,0.62)]',
           className,
         )}
         role="dialog"

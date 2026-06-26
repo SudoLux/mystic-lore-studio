@@ -43,7 +43,9 @@ type FabricFormState =
   | { fabric: Fabric; mode: 'edit' };
 
 function getInitialRoute(): AppRoute {
-  const [, section, recordId] = window.location.hash.split('/');
+  const [section = 'dashboard', recordId] = window.location.hash
+    .replace(/^#\/?/, '')
+    .split('/');
 
   if (section === 'projects' && recordId) {
     return { page: 'projects', projectId: recordId };
@@ -57,6 +59,16 @@ function getInitialRoute(): AppRoute {
     return recordId
       ? { page: 'fabrics', fabricId: recordId }
       : { page: 'fabrics' };
+  }
+
+  if (
+    section === 'dashboard' ||
+    section === 'kanban' ||
+    section === 'lookbooks' ||
+    section === 'stats' ||
+    section === 'settings'
+  ) {
+    return { page: section };
   }
 
   return { page: 'dashboard' };
@@ -126,7 +138,7 @@ function StudioApp() {
   }, [route.fabricId, route.page, route.projectId]);
 
   const navigateToPage = (page: PageId) => {
-    window.history.pushState(null, '', '#');
+    window.history.pushState(null, '', page === 'dashboard' ? '#' : `#/${page}`);
     setRoute({ page });
   };
 

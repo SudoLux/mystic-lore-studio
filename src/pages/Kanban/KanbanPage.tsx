@@ -131,7 +131,7 @@ export function KanbanPage() {
         ]}
       />
 
-      <div className="hidden gap-4 sm:grid md:grid-cols-3">
+      <div className="hidden gap-4 lg:grid lg:grid-cols-3">
         <KanbanStat
           icon={<Shirt aria-hidden="true" size={18} strokeWidth={1.9} />}
           label="Projects"
@@ -149,7 +149,7 @@ export function KanbanPage() {
         />
       </div>
 
-      <Card className="hidden border-bronze/30 bg-[linear-gradient(135deg,rgba(27,58,99,0.2),rgba(10,10,10,0.48),rgba(61,43,31,0.34))] sm:block">
+      <Card className="hidden border-bronze/30 bg-[linear-gradient(135deg,rgba(27,58,99,0.2),rgba(10,10,10,0.48),rgba(61,43,31,0.34))] lg:block">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
           <div>
             <Badge variant="teal">Drag Board</Badge>
@@ -166,7 +166,7 @@ export function KanbanPage() {
         </div>
       </Card>
 
-      <Card className="p-3 sm:hidden">
+      <Card className="p-3 lg:hidden">
         <div className="studio-scrollbar -mx-3 flex gap-2 overflow-x-auto px-3 pb-2">
           {projectPhases.map((phase) => {
             const count = projectsByPhase.find((item) => item.phase === phase)?.projects.length ?? 0;
@@ -214,7 +214,7 @@ export function KanbanPage() {
         ) : null}
       </Card>
 
-      <div className="hidden sm:block">
+      <div className="hidden lg:block">
       <DndContext
         sensors={sensors}
         onDragCancel={handleDragCancel}
@@ -337,7 +337,7 @@ function KanbanColumn({
   return (
     <section
       className={cn(
-        'relative flex w-[17.25rem] shrink-0 flex-col rounded-3xl border bg-[linear-gradient(145deg,rgba(237,227,207,0.055),rgba(10,10,10,0.2))] p-3 shadow-[0_20px_70px_rgba(0,0,0,0.24),inset_0_1px_0_rgba(237,227,207,0.035)] backdrop-blur-xl transition duration-200 sm:w-[20rem]',
+        'relative flex w-[17.25rem] shrink-0 flex-col rounded-3xl border bg-[linear-gradient(145deg,rgba(237,227,207,0.055),rgba(10,10,10,0.2))] p-3 shadow-[0_20px_70px_rgba(0,0,0,0.24),inset_0_1px_0_rgba(237,227,207,0.035)] backdrop-blur-xl transition duration-200 xl:w-[20rem]',
         isOver
           ? 'z-20 border-ember/70 bg-ember/12 shadow-[0_22px_80px_rgba(200,155,60,0.18),0_0_0_1px_rgba(45,92,107,0.22)]'
           : 'border-bronze/24',
@@ -401,7 +401,7 @@ function KanbanProjectCard({ project }: { project: ApparelProject }) {
 
 function KanbanProjectDragPreview({ project }: { project: ApparelProject }) {
   return (
-    <article className="pointer-events-none w-[17.25rem] rotate-[0.35deg] scale-[1.035] overflow-hidden rounded-2xl border border-ember/75 bg-[linear-gradient(145deg,rgba(10,10,10,0.94),rgba(45,92,107,0.24),rgba(61,43,31,0.54))] text-stardust shadow-[0_34px_110px_rgba(0,0,0,0.52),0_0_44px_rgba(200,155,60,0.22),0_0_34px_rgba(45,92,107,0.18),inset_0_1px_0_rgba(237,227,207,0.08)] backdrop-blur-xl sm:w-[20rem]">
+    <article className="pointer-events-none w-[17.25rem] rotate-[0.35deg] scale-[1.035] overflow-hidden rounded-2xl border border-ember/75 bg-[linear-gradient(145deg,rgba(10,10,10,0.94),rgba(45,92,107,0.24),rgba(61,43,31,0.54))] text-stardust shadow-[0_34px_110px_rgba(0,0,0,0.52),0_0_44px_rgba(200,155,60,0.22),0_0_34px_rgba(45,92,107,0.18),inset_0_1px_0_rgba(237,227,207,0.08)] backdrop-blur-xl xl:w-[20rem]">
       <KanbanProjectCardContent project={project} isPreview />
     </article>
   );
