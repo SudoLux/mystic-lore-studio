@@ -1,4 +1,4 @@
-import { AlertTriangle, Check, CloudOff, RefreshCw } from 'lucide-react';
+import { AlertTriangle, Check, CloudOff, RefreshCw, XCircle } from 'lucide-react';
 import { cn } from '../../lib/classes';
 import type { SyncStatus } from '../../lib/studioSyncStorage';
 
@@ -20,7 +20,7 @@ export function SyncStatusIndicator({
   const config = status === 'synced' && warning
     ? { icon: AlertTriangle, label: 'Synced · Cache', tone: 'text-ember' }
     : ({
-    error: { icon: AlertTriangle, label: 'Sync error', tone: 'text-ember' },
+    error: { icon: XCircle, label: 'Sync error', tone: 'text-ember' },
     offline: { icon: CloudOff, label: 'Offline / local only', tone: 'text-stardust/58' },
     synced: { icon: Check, label: 'Synced', tone: 'text-teal' },
     syncing: { icon: RefreshCw, label: 'Syncing', tone: 'text-ember' },
@@ -34,6 +34,11 @@ export function SyncStatusIndicator({
         config.tone,
         className,
       )}
+      aria-label={
+        pendingCount > 0
+          ? `${config.label}, ${pendingCount} pending`
+          : config.label
+      }
       onClick={onOpen}
       title={error ?? warning ?? 'Open cloud sync details'}
       type="button"
@@ -44,9 +49,14 @@ export function SyncStatusIndicator({
         size={14}
         strokeWidth={1.9}
       />
-      <span className="hidden sm:inline">{config.label}</span>
+      <span className="hidden sm:inline" data-sync-label>
+        {config.label}
+      </span>
       {pendingCount > 0 ? (
-        <span className="rounded-full border border-bronze/25 bg-ember/12 px-1.5 py-0.5 text-[0.65rem] text-ember">
+        <span
+          className="rounded-full border border-bronze/25 bg-ember/12 px-1.5 py-0.5 text-[0.65rem] text-ember"
+          data-sync-pending
+        >
           {pendingCount}
         </span>
       ) : null}
