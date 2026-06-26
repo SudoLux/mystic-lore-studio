@@ -665,17 +665,17 @@ function FeaturedProjectCarousel({
           </CarouselButton>
         </div>
       </div>
-      <div className="relative">
+      <div className="relative overflow-hidden rounded-2xl">
         <div
           aria-hidden="true"
-          className="pointer-events-none absolute inset-y-0 left-0 z-10 w-8 bg-gradient-to-r from-midnight/90 to-transparent"
+          className="pointer-events-none absolute inset-y-0 left-0 z-10 hidden w-8 bg-gradient-to-r from-midnight/90 to-transparent sm:block"
         />
         <div
           aria-hidden="true"
-          className="pointer-events-none absolute inset-y-0 right-0 z-10 w-8 bg-gradient-to-l from-midnight/90 to-transparent"
+          className="pointer-events-none absolute inset-y-0 right-0 z-10 hidden w-8 bg-gradient-to-l from-midnight/90 to-transparent sm:block"
         />
         <div
-          className="studio-scrollbar -mx-4 flex snap-x gap-3 overflow-x-auto scroll-smooth px-4 pb-2 sm:mx-0 sm:px-0"
+          className="studio-scrollbar flex snap-x gap-3 overflow-x-auto scroll-smooth pb-2 sm:px-0"
           ref={scrollerRef}
         >
           {projects.map((project) => (
