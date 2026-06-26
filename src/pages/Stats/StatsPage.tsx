@@ -10,6 +10,8 @@ import {
 } from 'lucide-react';
 import { Badge } from '../../components/shared/Badge';
 import { Card } from '../../components/shared/Card';
+import { MobilePageHeader } from '../../components/shared/MobilePageHeader';
+import { MobileSummaryStrip } from '../../components/shared/MobileSummaryStrip';
 import { PageHeader } from '../../components/shared/PageHeader';
 import { useStudioData } from '../../hooks/useStudioData';
 import { cn } from '../../lib/classes';
@@ -47,13 +49,39 @@ export function StatsPage() {
 
   return (
     <section className="space-y-5">
+      <MobilePageHeader
+        badge="Stats"
+        kicker={`${projectStats.activeProjects} active / ${taskStats.openTasks} open tasks`}
+        title="Studio Signals"
+      />
+
       <PageHeader
         badge="Stats"
         description="Studio analytics for garment flow, task load, fabric inventory, and lookbook readiness."
         title="Studio Stats"
       />
 
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
+      <MobileSummaryStrip
+        items={[
+          {
+            icon: <Shirt aria-hidden="true" size={15} strokeWidth={1.9} />,
+            label: 'Projects',
+            value: projectStats.totalProjects.toString(),
+          },
+          {
+            icon: <Clock3 aria-hidden="true" size={15} strokeWidth={1.9} />,
+            label: 'Open tasks',
+            value: taskStats.openTasks.toString(),
+          },
+          {
+            icon: <Package aria-hidden="true" size={15} strokeWidth={1.9} />,
+            label: 'Available',
+            value: `${formatNumber(fabricStats.availableYardage)} yd`,
+          },
+        ]}
+      />
+
+      <div className="hidden gap-4 sm:grid md:grid-cols-2 xl:grid-cols-5">
         <StatCard
           detail="Every garment record in the studio library."
           icon={<Shirt aria-hidden="true" size={18} strokeWidth={1.9} />}

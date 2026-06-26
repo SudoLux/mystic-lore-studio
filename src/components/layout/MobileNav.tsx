@@ -11,7 +11,7 @@ export function MobileNav({ activePage, navItems, onNavigate }: MobileNavProps) 
   return (
     <nav
       aria-label="Mobile navigation"
-      className="fixed inset-x-0 bottom-0 z-40 border-t border-bronze/30 bg-midnight/92 px-2 pb-[calc(env(safe-area-inset-bottom)+0.5rem)] pt-2 shadow-[0_-20px_45px_rgba(0,0,0,0.35)] backdrop-blur-xl lg:hidden"
+      className="fixed inset-x-0 bottom-0 z-40 border-t border-bronze/26 bg-midnight/92 px-2 pb-[calc(env(safe-area-inset-bottom)+0.42rem)] pt-1.5 shadow-[0_-20px_45px_rgba(0,0,0,0.35)] backdrop-blur-xl lg:hidden"
     >
       <div className="studio-scrollbar flex gap-1 overflow-x-auto pb-1">
         {navItems.map((item) => {
@@ -22,7 +22,7 @@ export function MobileNav({ activePage, navItems, onNavigate }: MobileNavProps) 
             <button
               aria-current={isActive ? 'page' : undefined}
               className={cn(
-                'flex min-h-14 min-w-[4.35rem] flex-1 flex-col items-center justify-center gap-1 rounded-2xl border px-1 py-2 text-[0.68rem] font-medium leading-none transition duration-200',
+                'flex min-h-12 min-w-[3.72rem] flex-1 flex-col items-center justify-center gap-1 rounded-xl border px-1 py-1.5 text-[0.62rem] font-medium leading-none transition duration-200',
                 isActive
                   ? 'border-ember/55 bg-ember/14 text-stardust'
                   : 'border-transparent text-stardust/58 hover:border-bronze/35 hover:bg-stardust/6 hover:text-stardust',
@@ -31,7 +31,7 @@ export function MobileNav({ activePage, navItems, onNavigate }: MobileNavProps) 
               onClick={() => onNavigate(item.id)}
               type="button"
             >
-              <Icon aria-hidden="true" size={18} strokeWidth={1.8} />
+              <Icon aria-hidden="true" size={17} strokeWidth={1.8} />
               <span className="w-full truncate text-center">{item.shortLabel}</span>
             </button>
           );

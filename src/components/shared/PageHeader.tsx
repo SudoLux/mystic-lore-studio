@@ -15,7 +15,7 @@ export function PageHeader({
   title,
 }: PageHeaderProps) {
   return (
-    <header className="mb-7 flex flex-col gap-5 border-b border-bronze/24 pb-7 md:flex-row md:items-end md:justify-between">
+    <header className="mb-7 hidden flex-col gap-5 border-b border-bronze/24 pb-7 sm:flex md:flex-row md:items-end md:justify-between">
       <div className="min-w-0">
         {badge ? (
           <div className="mb-3">
