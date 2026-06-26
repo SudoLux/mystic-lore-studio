@@ -11,6 +11,7 @@ import {
   PackagePlus,
   Pencil,
   Ruler,
+  Scale,
   Search,
   Shirt,
   SlidersHorizontal,
@@ -20,6 +21,7 @@ import {
 import { Badge } from '../../components/shared/Badge';
 import { Button } from '../../components/shared/Button';
 import { Card } from '../../components/shared/Card';
+import { FabricWeightGuideModal } from '../../components/fabrics/FabricWeightGuideModal';
 import { FilterSheet } from '../../components/shared/FilterSheet';
 import { ImageSlot } from '../../components/shared/ImageSlot';
 import { ImageReadabilityOverlay } from '../../components/shared/ImageReadabilityOverlay';
@@ -81,6 +83,7 @@ export function FabricVaultPage({
   const [drapeFilter, setDrapeFilter] = useState(allValue);
   const [sortMode, setSortMode] = useState<FabricSort>('Recently updated');
   const [filtersOpen, setFiltersOpen] = useState(false);
+  const [weightGuideOpen, setWeightGuideOpen] = useState(false);
 
   const selectedFabric = fabricId
     ? fabrics.find((fabric) => fabric.id === fabricId)
@@ -210,14 +213,24 @@ export function FabricVaultPage({
     <section className="space-y-5">
       <MobilePageHeader
         action={
-          <Button
-            icon={<PackagePlus aria-hidden="true" size={15} strokeWidth={1.9} />}
-            onClick={onNewFabric}
-            size="sm"
-            variant="primary"
-          >
-            Add
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              icon={<Scale aria-hidden="true" size={15} strokeWidth={1.9} />}
+              onClick={() => setWeightGuideOpen(true)}
+              size="sm"
+              variant="secondary"
+            >
+              Guide
+            </Button>
+            <Button
+              icon={<PackagePlus aria-hidden="true" size={15} strokeWidth={1.9} />}
+              onClick={onNewFabric}
+              size="sm"
+              variant="primary"
+            >
+              Add
+            </Button>
+          </div>
         }
         badge="Fabric"
         kicker={`${visibleFabrics.length} of ${fabrics.length} materials`}
@@ -229,15 +242,29 @@ export function FabricVaultPage({
         description="Search the material archive by fabric story, inventory signal, mood, and garment use."
         title="Fabric Vault"
       >
-        <Button
-          icon={<PackagePlus aria-hidden="true" size={16} strokeWidth={1.9} />}
-          onClick={onNewFabric}
-          size="sm"
-          variant="primary"
-        >
-          Add Fabric
-        </Button>
+        <div className="flex flex-col gap-2 sm:flex-row xl:justify-end">
+          <Button
+            icon={<Scale aria-hidden="true" size={16} strokeWidth={1.9} />}
+            onClick={() => setWeightGuideOpen(true)}
+            size="sm"
+            variant="secondary"
+          >
+            Weight Guide
+          </Button>
+          <Button
+            icon={<PackagePlus aria-hidden="true" size={16} strokeWidth={1.9} />}
+            onClick={onNewFabric}
+            size="sm"
+            variant="primary"
+          >
+            Add Fabric
+          </Button>
+        </div>
       </PageHeader>
+
+      {weightGuideOpen ? (
+        <FabricWeightGuideModal onClose={() => setWeightGuideOpen(false)} />
+      ) : null}
 
       <MobileSummaryStrip
         items={[
