@@ -211,7 +211,52 @@ textarea:focus-visible {
 }
 
 @media (max-width: 639px) {
+  .auth-firefly-field {
+    opacity: 0.58;
+  }
+
   .auth-firefly:nth-child(n + 9) {
+    display: none;
+  }
+
+  .auth-firefly:nth-child(1) {
+    --auth-firefly-top: 10%;
+    --auth-firefly-left: 14%;
+    --auth-firefly-size: 2px;
+  }
+
+  .auth-firefly:nth-child(2) {
+    --auth-firefly-top: 17%;
+    --auth-firefly-left: 84%;
+    --auth-firefly-size: 3px;
+  }
+
+  .auth-firefly:nth-child(3) {
+    --auth-firefly-top: 32%;
+    --auth-firefly-left: 9%;
+    --auth-firefly-size: 2px;
+  }
+
+  .auth-firefly:nth-child(4) {
+    --auth-firefly-top: 42%;
+    --auth-firefly-left: 91%;
+    --auth-firefly-size: 2px;
+  }
+
+  .auth-firefly:nth-child(5) {
+    --auth-firefly-top: 78%;
+    --auth-firefly-left: 18%;
+    --auth-firefly-size: 3px;
+  }
+
+  .auth-firefly:nth-child(6) {
+    --auth-firefly-top: 86%;
+    --auth-firefly-left: 74%;
+    --auth-firefly-size: 2px;
+  }
+
+  .auth-firefly:nth-child(7),
+  .auth-firefly:nth-child(8) {
     display: none;
   }
 }

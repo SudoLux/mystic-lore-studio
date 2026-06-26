@@ -74,27 +74,40 @@ export function AuthScreen() {
       <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(90deg,rgba(10,10,10,0.62),transparent_35%,rgba(10,10,10,0.46)),radial-gradient(circle_at_50%_50%,transparent_0%,rgba(10,10,10,0.34)_72%)]" />
       <FireflyField />
 
-      <div className="relative z-10 mx-auto flex min-h-dvh w-full max-w-6xl flex-col justify-center gap-4 px-4 pb-[calc(env(safe-area-inset-bottom)+0.9rem)] pt-[calc(env(safe-area-inset-top)+0.9rem)] sm:gap-6 sm:px-6 sm:py-8 lg:grid lg:grid-cols-[0.88fr_1fr] lg:items-center lg:gap-12 xl:gap-16">
+      <div className="relative z-10 mx-auto flex min-h-dvh w-full max-w-6xl flex-col justify-between gap-7 px-5 pb-[calc(env(safe-area-inset-bottom)+2rem)] pt-[calc(env(safe-area-inset-top)+3rem)] sm:justify-center sm:gap-6 sm:px-6 sm:py-8 lg:grid lg:grid-cols-[0.88fr_1fr] lg:items-center lg:gap-12 xl:gap-16">
         <section className="auth-panel-rise text-center lg:text-left">
-          <BrandLockup
-            className="mx-auto justify-center lg:mx-0 lg:justify-start"
-            size="sidebar"
-            subtitle="Private garment workspace"
-          />
-          <div className="mt-4 sm:mt-8">
+          <div className="mx-auto max-w-sm sm:hidden">
+            <BrandLockup
+              className="justify-center"
+              showText={false}
+              size="settings"
+            />
+            <h1 className="mt-5 text-[2.45rem] font-semibold leading-[0.98] text-stardust">
+              Mystic Lore Studio
+            </h1>
+            <p className="mx-auto mt-3 max-w-[16rem] text-base leading-6 text-stardust/62">
+              Private garment workspace
+            </p>
+          </div>
+
+          <div className="hidden sm:block">
+            <BrandLockup
+              className="mx-auto justify-center lg:mx-0 lg:justify-start"
+              size="sidebar"
+              subtitle="Private garment workspace"
+            />
+          </div>
+
+          <div className="hidden sm:mt-8 sm:block">
             <p className="hidden text-xs font-medium uppercase tracking-[0.18em] text-ember sm:block">
               Secure atelier access
             </p>
             <h1 className="mt-3 text-3xl font-semibold leading-[1.02] text-stardust sm:mt-4 sm:max-w-xl sm:text-5xl lg:text-6xl">
-              <span className="sm:hidden">Mystic Lore Studio</span>
-              <span className="hidden sm:inline">Enter the Studio.</span>
+              Enter the Studio.
             </h1>
             <p className="mx-auto mt-2 max-w-sm text-sm leading-6 text-stardust/62 sm:mt-5 sm:max-w-xl sm:text-base sm:leading-8 lg:mx-0">
-              <span className="sm:hidden">Private garment workspace</span>
-              <span className="hidden sm:inline">
-                Manage garments, materials, and lookbook stories from one private
-                Mystic Lore workspace.
-              </span>
+              Manage garments, materials, and lookbook stories from one private
+              Mystic Lore workspace.
             </p>
           </div>
           <p className="mx-auto mt-4 hidden max-w-md rounded-full border border-bronze/24 bg-midnight/34 px-4 py-2 text-sm text-stardust/60 shadow-[inset_0_1px_0_rgba(237,227,207,0.04)] backdrop-blur-xl sm:inline-flex lg:mx-0">
@@ -102,9 +115,9 @@ export function AuthScreen() {
           </p>
         </section>
 
-        <section className="auth-panel-rise rounded-[1.35rem] border border-ember/34 bg-[linear-gradient(145deg,rgba(237,227,207,0.08),rgba(27,58,99,0.14),rgba(61,43,31,0.24))] p-2 shadow-[0_30px_100px_rgba(0,0,0,0.34),inset_0_1px_0_rgba(237,227,207,0.06)] backdrop-blur-xl sm:rounded-[1.75rem] sm:p-5 lg:p-6">
-          <div className="rounded-[1.1rem] border border-bronze/22 bg-midnight/62 p-3 shadow-[inset_0_1px_0_rgba(237,227,207,0.04)] sm:rounded-[1.35rem] sm:p-5">
-            <div className="flex rounded-2xl border border-bronze/24 bg-midnight/48 p-1">
+        <section className="auth-panel-rise mx-auto w-full max-w-[23rem] rounded-[2rem] border border-ember/28 bg-[linear-gradient(145deg,rgba(237,227,207,0.07),rgba(27,58,99,0.12),rgba(61,43,31,0.22))] p-[1px] shadow-[0_28px_90px_rgba(0,0,0,0.36),inset_0_1px_0_rgba(237,227,207,0.06)] backdrop-blur-xl sm:max-w-none sm:rounded-[1.75rem] sm:border-ember/34 sm:p-5 lg:p-6">
+          <div className="rounded-[1.85rem] border border-bronze/14 bg-midnight/66 p-4 shadow-[inset_0_1px_0_rgba(237,227,207,0.04)] sm:rounded-[1.35rem] sm:border-bronze/22 sm:bg-midnight/62 sm:p-5">
+            <div className="flex rounded-[1.35rem] border border-bronze/22 bg-midnight/42 p-1 sm:rounded-2xl sm:border-bronze/24 sm:bg-midnight/48">
                 <ModeButton
                   active={mode === 'signin'}
                   onClick={() => handleModeChange('signin')}
@@ -293,7 +306,7 @@ function ModeButton({
   return (
     <button
       className={cn(
-        'min-h-10 flex-1 rounded-xl px-4 text-sm font-medium transition duration-300 sm:min-h-11',
+        'min-h-10 flex-1 rounded-[1.05rem] px-3 text-sm font-medium transition duration-300 sm:min-h-11 sm:rounded-xl sm:px-4',
         active
           ? 'bg-ember text-midnight shadow-[0_12px_30px_rgba(200,155,60,0.18)]'
           : 'text-stardust/58 hover:bg-stardust/[0.07] hover:text-stardust',
