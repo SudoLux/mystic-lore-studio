@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react';
+import { useState, type CSSProperties, type FormEvent } from 'react';
 import { ArrowRight, CloudOff, Loader2, LockKeyhole, Mail } from 'lucide-react';
 import { BrandLockup } from '../../components/layout/BrandLockup';
 import { Button } from '../../components/shared/Button';
@@ -69,44 +69,42 @@ export function AuthScreen() {
   }
 
   return (
-    <main className="min-h-screen bg-midnight text-stardust">
-      <div className="min-h-screen bg-[radial-gradient(circle_at_16%_12%,rgba(200,155,60,0.14),transparent_24rem),radial-gradient(circle_at_85%_18%,rgba(45,92,107,0.18),transparent_24rem),linear-gradient(135deg,rgba(10,10,10,0.96),rgba(61,43,31,0.36),rgba(10,10,10,0.98))] px-4 py-6 sm:px-6 lg:px-8">
-        <div className="mx-auto flex min-h-[calc(100vh-3rem)] w-full max-w-6xl flex-col justify-center gap-6 lg:grid lg:grid-cols-[0.95fr_1.05fr] lg:items-center">
-          <section className="space-y-7">
-            <BrandLockup
-              className="max-w-sm"
-              size="sidebar"
-              subtitle="Cloud-ready apparel project studio"
-            />
-            <div>
-              <p className="text-xs font-medium uppercase tracking-[0.18em] text-ember">
-                Secure atelier access
-              </p>
-              <h1 className="mt-4 max-w-2xl text-4xl font-semibold leading-[1.04] text-stardust sm:text-5xl lg:text-6xl">
-                Sign in to Mystic Lore Studio.
-              </h1>
-              <p className="mt-5 max-w-xl text-base leading-8 text-stardust/62">
-                Keep the local studio workflow intact while preparing projects,
-                fabrics, notes, and lookbooks for Supabase cloud sync.
-              </p>
-            </div>
-            <div className="grid gap-3 sm:grid-cols-3">
-              {['Local data stays active', 'Private by default', 'Cloud sync foundation'].map(
-                (item) => (
-                  <div
-                    className="rounded-2xl border border-bronze/24 bg-midnight/36 p-4 text-sm font-medium text-stardust/74 shadow-[inset_0_1px_0_rgba(237,227,207,0.04)]"
-                    key={item}
-                  >
-                    {item}
-                  </div>
-                ),
-              )}
-            </div>
-          </section>
+    <main className="relative min-h-dvh overflow-x-hidden bg-midnight text-stardust">
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_14%_12%,rgba(200,155,60,0.2),transparent_22rem),radial-gradient(circle_at_82%_18%,rgba(45,92,107,0.22),transparent_24rem),radial-gradient(circle_at_50%_96%,rgba(154,108,60,0.16),transparent_20rem),linear-gradient(145deg,rgba(10,10,10,0.98),rgba(61,43,31,0.34),rgba(10,10,10,0.96))]" />
+      <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(90deg,rgba(10,10,10,0.62),transparent_35%,rgba(10,10,10,0.46)),radial-gradient(circle_at_50%_50%,transparent_0%,rgba(10,10,10,0.34)_72%)]" />
+      <FireflyField />
 
-          <section className="rounded-[1.75rem] border border-ember/34 bg-[linear-gradient(145deg,rgba(237,227,207,0.08),rgba(27,58,99,0.14),rgba(61,43,31,0.24))] p-4 shadow-[0_30px_100px_rgba(0,0,0,0.34),inset_0_1px_0_rgba(237,227,207,0.06)] backdrop-blur-xl sm:p-6">
-            <div className="rounded-[1.35rem] border border-bronze/22 bg-midnight/58 p-4 sm:p-5">
-              <div className="flex rounded-2xl border border-bronze/24 bg-midnight/48 p-1">
+      <div className="relative z-10 mx-auto flex min-h-dvh w-full max-w-6xl flex-col justify-center gap-4 px-4 pb-[calc(env(safe-area-inset-bottom)+0.9rem)] pt-[calc(env(safe-area-inset-top)+0.9rem)] sm:gap-6 sm:px-6 sm:py-8 lg:grid lg:grid-cols-[0.88fr_1fr] lg:items-center lg:gap-12 xl:gap-16">
+        <section className="auth-panel-rise text-center lg:text-left">
+          <BrandLockup
+            className="mx-auto justify-center lg:mx-0 lg:justify-start"
+            size="sidebar"
+            subtitle="Private garment workspace"
+          />
+          <div className="mt-4 sm:mt-8">
+            <p className="hidden text-xs font-medium uppercase tracking-[0.18em] text-ember sm:block">
+              Secure atelier access
+            </p>
+            <h1 className="mt-3 text-3xl font-semibold leading-[1.02] text-stardust sm:mt-4 sm:max-w-xl sm:text-5xl lg:text-6xl">
+              <span className="sm:hidden">Mystic Lore Studio</span>
+              <span className="hidden sm:inline">Enter the Studio.</span>
+            </h1>
+            <p className="mx-auto mt-2 max-w-sm text-sm leading-6 text-stardust/62 sm:mt-5 sm:max-w-xl sm:text-base sm:leading-8 lg:mx-0">
+              <span className="sm:hidden">Private garment workspace</span>
+              <span className="hidden sm:inline">
+                Manage garments, materials, and lookbook stories from one private
+                Mystic Lore workspace.
+              </span>
+            </p>
+          </div>
+          <p className="mx-auto mt-4 hidden max-w-md rounded-full border border-bronze/24 bg-midnight/34 px-4 py-2 text-sm text-stardust/60 shadow-[inset_0_1px_0_rgba(237,227,207,0.04)] backdrop-blur-xl sm:inline-flex lg:mx-0">
+            Private studio access for projects, fabrics, notes, and lookbooks.
+          </p>
+        </section>
+
+        <section className="auth-panel-rise rounded-[1.35rem] border border-ember/34 bg-[linear-gradient(145deg,rgba(237,227,207,0.08),rgba(27,58,99,0.14),rgba(61,43,31,0.24))] p-2 shadow-[0_30px_100px_rgba(0,0,0,0.34),inset_0_1px_0_rgba(237,227,207,0.06)] backdrop-blur-xl sm:rounded-[1.75rem] sm:p-5 lg:p-6">
+          <div className="rounded-[1.1rem] border border-bronze/22 bg-midnight/62 p-3 shadow-[inset_0_1px_0_rgba(237,227,207,0.04)] sm:rounded-[1.35rem] sm:p-5">
+            <div className="flex rounded-2xl border border-bronze/24 bg-midnight/48 p-1">
                 <ModeButton
                   active={mode === 'signin'}
                   onClick={() => handleModeChange('signin')}
@@ -121,40 +119,39 @@ export function AuthScreen() {
                 </ModeButton>
               </div>
 
-              {!isConfigured ? (
-                <div className="mt-5 rounded-2xl border border-ember/32 bg-ember/10 p-4">
-                  <div className="flex gap-3">
-                    <CloudOff
-                      aria-hidden="true"
-                      className="mt-0.5 shrink-0 text-ember"
-                      size={18}
-                      strokeWidth={1.9}
-                    />
-                    <div>
-                      <p className="text-sm font-semibold text-stardust">
-                        Supabase auth is not configured yet.
-                      </p>
-                      <p className="mt-1 text-sm leading-6 text-stardust/62">
-                        Add the Vite Supabase environment variables before
-                        signing in. The existing localStorage data layer has
-                        not been removed.
-                      </p>
-                      <ul className="mt-2 list-inside list-disc text-xs leading-5 text-stardust/52">
-                        {configIssues.map((issue) => (
-                          <li key={issue}>{issue}</li>
-                        ))}
-                      </ul>
-                    </div>
+            {!isConfigured ? (
+              <div className="mt-4 rounded-2xl border border-ember/32 bg-ember/10 p-3 sm:mt-5 sm:p-4">
+                <div className="flex gap-3">
+                  <CloudOff
+                    aria-hidden="true"
+                    className="mt-0.5 shrink-0 text-ember"
+                    size={18}
+                    strokeWidth={1.9}
+                  />
+                  <div>
+                    <p className="text-sm font-semibold text-stardust">
+                      Supabase auth is not configured yet.
+                    </p>
+                    <p className="mt-1 text-sm leading-6 text-stardust/62">
+                      Add the Vite Supabase environment variables before
+                      signing in.
+                    </p>
+                    <ul className="mt-2 list-inside list-disc text-xs leading-5 text-stardust/52">
+                      {configIssues.map((issue) => (
+                        <li key={issue}>{issue}</li>
+                      ))}
+                    </ul>
                   </div>
                 </div>
-              ) : null}
+              </div>
+            ) : null}
 
-              <form className="mt-5 space-y-4" onSubmit={handleSubmit}>
-                <label className="block">
-                  <span className="text-xs font-medium uppercase tracking-[0.14em] text-stardust/48">
-                    Email
-                  </span>
-                  <span className="mt-2 flex min-h-12 items-center gap-3 rounded-2xl border border-bronze/24 bg-midnight/44 px-3 transition focus-within:border-ember/48">
+            <form className="mt-4 space-y-3 sm:mt-5 sm:space-y-4" onSubmit={handleSubmit}>
+              <label className="block">
+                <span className="text-[0.68rem] font-medium uppercase tracking-[0.14em] text-stardust/48 sm:text-xs">
+                  Email
+                </span>
+                <span className="mt-1.5 flex min-h-11 items-center gap-3 rounded-2xl border border-bronze/24 bg-midnight/44 px-3 transition duration-200 focus-within:border-ember/60 focus-within:bg-stardust/[0.045] focus-within:shadow-[0_0_28px_rgba(200,155,60,0.08)] sm:mt-2 sm:min-h-12">
                     <Mail
                       aria-hidden="true"
                       className="shrink-0 text-ember/78"
@@ -163,21 +160,21 @@ export function AuthScreen() {
                     />
                     <input
                       autoComplete="email"
-                      className="min-h-12 w-full bg-transparent text-base text-stardust outline-none placeholder:text-stardust/32"
+                      className="min-h-11 w-full bg-transparent text-sm text-stardust outline-none placeholder:text-stardust/32 sm:min-h-12 sm:text-base"
                       disabled={!isConfigured || isSubmitting}
                       onChange={(event) => setEmail(event.target.value)}
                       placeholder="atelier@example.com"
                       type="email"
                       value={email}
                     />
-                  </span>
-                </label>
+                </span>
+              </label>
 
-                <label className="block">
-                  <span className="text-xs font-medium uppercase tracking-[0.14em] text-stardust/48">
-                    Password
-                  </span>
-                  <span className="mt-2 flex min-h-12 items-center gap-3 rounded-2xl border border-bronze/24 bg-midnight/44 px-3 transition focus-within:border-ember/48">
+              <label className="block">
+                <span className="text-[0.68rem] font-medium uppercase tracking-[0.14em] text-stardust/48 sm:text-xs">
+                  Password
+                </span>
+                <span className="mt-1.5 flex min-h-11 items-center gap-3 rounded-2xl border border-bronze/24 bg-midnight/44 px-3 transition duration-200 focus-within:border-ember/60 focus-within:bg-stardust/[0.045] focus-within:shadow-[0_0_28px_rgba(200,155,60,0.08)] sm:mt-2 sm:min-h-12">
                     <LockKeyhole
                       aria-hidden="true"
                       className="shrink-0 text-ember/78"
@@ -188,58 +185,81 @@ export function AuthScreen() {
                       autoComplete={
                         mode === 'signin' ? 'current-password' : 'new-password'
                       }
-                      className="min-h-12 w-full bg-transparent text-base text-stardust outline-none placeholder:text-stardust/32"
+                      className="min-h-11 w-full bg-transparent text-sm text-stardust outline-none placeholder:text-stardust/32 sm:min-h-12 sm:text-base"
                       disabled={!isConfigured || isSubmitting}
                       onChange={(event) => setPassword(event.target.value)}
                       placeholder="Minimum 6 characters"
                       type="password"
                       value={password}
                     />
-                  </span>
-                </label>
+                </span>
+              </label>
 
-                {submitError || lastError ? (
-                  <p className="rounded-2xl border border-ember/34 bg-ember/10 px-4 py-3 text-sm leading-6 text-stardust/76">
-                    {submitError ?? lastError}
-                  </p>
-                ) : null}
+              {submitError || lastError ? (
+                <p className="rounded-2xl border border-ember/34 bg-ember/10 px-4 py-3 text-sm leading-6 text-stardust/76">
+                  {submitError ?? lastError}
+                </p>
+              ) : null}
 
-                {successMessage ? (
-                  <p className="rounded-2xl border border-teal/34 bg-teal/12 px-4 py-3 text-sm leading-6 text-stardust/76">
-                    {successMessage}
-                  </p>
-                ) : null}
+              {successMessage ? (
+                <p className="rounded-2xl border border-teal/34 bg-teal/12 px-4 py-3 text-sm leading-6 text-stardust/76">
+                  {successMessage}
+                </p>
+              ) : null}
 
-                <Button
-                  className="w-full"
-                  disabled={!canSubmit || isSubmitting}
-                  icon={
-                    isSubmitting ? (
-                      <Loader2
-                        aria-hidden="true"
-                        className="animate-spin"
-                        size={17}
-                        strokeWidth={1.9}
-                      />
-                    ) : (
-                      <ArrowRight aria-hidden="true" size={17} strokeWidth={1.9} />
-                    )
-                  }
-                  type="submit"
-                  variant="primary"
-                >
-                  {isSubmitting
-                    ? 'Checking access...'
-                    : mode === 'signin'
-                      ? 'Sign In'
-                      : 'Create Account'}
-                </Button>
-              </form>
-            </div>
-          </section>
-        </div>
+              <Button
+                className="min-h-11 w-full shadow-[0_18px_44px_rgba(200,155,60,0.18)] sm:min-h-12"
+                disabled={!canSubmit || isSubmitting}
+                icon={
+                  isSubmitting ? (
+                    <Loader2
+                      aria-hidden="true"
+                      className="animate-spin"
+                      size={17}
+                      strokeWidth={1.9}
+                    />
+                  ) : (
+                    <ArrowRight aria-hidden="true" size={17} strokeWidth={1.9} />
+                  )
+                }
+                type="submit"
+                variant="primary"
+              >
+                {isSubmitting
+                  ? 'Checking access...'
+                  : mode === 'signin'
+                    ? 'Sign In'
+                    : 'Create Account'}
+              </Button>
+            </form>
+          </div>
+        </section>
       </div>
     </main>
+  );
+}
+
+function FireflyField() {
+  const fireflies = Array.from({ length: 16 }, (_, index) => index);
+
+  return (
+    <div aria-hidden="true" className="auth-firefly-field pointer-events-none absolute inset-0 overflow-hidden">
+      {fireflies.map((index) => (
+        <span
+          className="auth-firefly"
+          key={index}
+          style={{
+            '--auth-firefly-delay': `${(index % 8) * -1.7}s`,
+            '--auth-firefly-duration': `${14 + (index % 6) * 2.4}s`,
+            '--auth-firefly-left': `${8 + ((index * 19) % 86)}%`,
+            '--auth-firefly-size': `${2 + (index % 4)}px`,
+            '--auth-firefly-top': `${12 + ((index * 23) % 76)}%`,
+            '--auth-firefly-x': `${index % 2 === 0 ? 24 : -28}px`,
+            '--auth-firefly-y': `${index % 3 === 0 ? -42 : 36}px`,
+          } as CSSProperties}
+        />
+      ))}
+    </div>
   );
 }
 
@@ -273,7 +293,7 @@ function ModeButton({
   return (
     <button
       className={cn(
-        'min-h-11 flex-1 rounded-xl px-4 text-sm font-medium transition',
+        'min-h-10 flex-1 rounded-xl px-4 text-sm font-medium transition duration-300 sm:min-h-11',
         active
           ? 'bg-ember text-midnight shadow-[0_12px_30px_rgba(200,155,60,0.18)]'
           : 'text-stardust/58 hover:bg-stardust/[0.07] hover:text-stardust',

@@ -117,6 +117,43 @@ textarea:focus-visible {
   animation: studio-card-rise 420ms ease both;
 }
 
+.auth-panel-rise {
+  animation: auth-panel-rise 620ms cubic-bezier(0.2, 0.78, 0.2, 1) both;
+}
+
+.auth-firefly-field {
+  opacity: 0.82;
+}
+
+.auth-firefly {
+  position: absolute;
+  top: var(--auth-firefly-top);
+  left: var(--auth-firefly-left);
+  width: var(--auth-firefly-size);
+  height: var(--auth-firefly-size);
+  border-radius: 999px;
+  background: rgba(237, 227, 207, 0.88);
+  box-shadow:
+    0 0 10px rgba(237, 227, 207, 0.58),
+    0 0 18px rgba(200, 155, 60, 0.38);
+  filter: blur(0.2px);
+  opacity: 0.45;
+  transform: translate3d(0, 0, 0);
+  animation: auth-firefly-float var(--auth-firefly-duration) ease-in-out infinite;
+  animation-delay: var(--auth-firefly-delay);
+}
+
+.auth-firefly:nth-child(3n) {
+  background: rgba(200, 155, 60, 0.86);
+}
+
+.auth-firefly:nth-child(4n) {
+  background: rgba(45, 92, 107, 0.72);
+  box-shadow:
+    0 0 10px rgba(45, 92, 107, 0.48),
+    0 0 18px rgba(200, 155, 60, 0.2);
+}
+
 .task-chip {
   @apply inline-flex items-center rounded-full border px-2.5 py-1 text-[0.68rem] font-medium uppercase tracking-[0.08em];
 }
@@ -138,5 +175,54 @@ textarea:focus-visible {
   to {
     opacity: 1;
     transform: translateY(0);
+  }
+}
+
+@keyframes auth-panel-rise {
+  from {
+    opacity: 0;
+    transform: translateY(14px) scale(0.985);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes auth-firefly-float {
+  0%,
+  100% {
+    opacity: 0.2;
+    transform: translate3d(0, 0, 0) scale(0.9);
+  }
+
+  35% {
+    opacity: 0.72;
+    transform: translate3d(var(--auth-firefly-x), var(--auth-firefly-y), 0)
+      scale(1.18);
+  }
+
+  68% {
+    opacity: 0.38;
+    transform: translate3d(calc(var(--auth-firefly-x) * -0.55), 18px, 0)
+      scale(0.96);
+  }
+}
+
+@media (max-width: 639px) {
+  .auth-firefly:nth-child(n + 9) {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .auth-panel-rise,
+  .auth-firefly {
+    animation: none;
+  }
+
+  .auth-firefly {
+    opacity: 0.24;
   }
 }
