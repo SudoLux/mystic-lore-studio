@@ -74,7 +74,7 @@ export function AuthScreen() {
       <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(90deg,rgba(10,10,10,0.62),transparent_35%,rgba(10,10,10,0.46)),radial-gradient(circle_at_50%_50%,transparent_0%,rgba(10,10,10,0.34)_72%)]" />
       <FireflyField />
 
-      <div className="relative z-10 mx-auto flex min-h-dvh w-full max-w-6xl flex-col justify-between gap-7 px-5 pb-[calc(env(safe-area-inset-bottom)+2rem)] pt-[calc(env(safe-area-inset-top)+3rem)] sm:justify-center sm:gap-6 sm:px-6 sm:py-8 lg:grid lg:grid-cols-[0.88fr_1fr] lg:items-center lg:gap-12 xl:gap-16">
+      <div className="relative z-10 mx-auto flex min-h-dvh w-full max-w-6xl flex-col justify-center gap-6 px-5 pb-[calc(env(safe-area-inset-bottom)+1.7rem)] pt-[calc(env(safe-area-inset-top)+2rem)] sm:gap-6 sm:px-6 sm:py-8 lg:grid lg:grid-cols-[0.88fr_1fr] lg:items-center lg:gap-12 xl:gap-16">
         <section className="auth-panel-rise text-center lg:text-left">
           <div className="mx-auto max-w-sm sm:hidden">
             <BrandLockup
@@ -82,12 +82,20 @@ export function AuthScreen() {
               showText={false}
               size="settings"
             />
-            <h1 className="mt-5 text-[2.45rem] font-semibold leading-[0.98] text-stardust">
+            <h1 className="mt-4 text-[2.25rem] font-semibold leading-[0.98] text-stardust">
               Mystic Lore Studio
             </h1>
             <p className="mx-auto mt-3 max-w-[16rem] text-base leading-6 text-stardust/62">
               Private garment workspace
             </p>
+            <div className="auth-mobile-promise mx-auto mt-7 max-w-[18.5rem] rounded-full border border-bronze/18 bg-midnight/24 px-4 py-3 shadow-[inset_0_1px_0_rgba(237,227,207,0.04)] backdrop-blur-md">
+              <p className="text-[0.64rem] font-medium uppercase tracking-[0.24em] text-ember/78">
+                Studio ritual
+              </p>
+              <p className="mt-1 text-sm leading-5 text-stardust/68">
+                Plan the garment. Track the cloth. Shape the story.
+              </p>
+            </div>
           </div>
 
           <div className="hidden sm:block">
@@ -117,6 +125,9 @@ export function AuthScreen() {
 
         <section className="auth-panel-rise mx-auto w-full max-w-[23rem] rounded-[2rem] border border-ember/28 bg-[linear-gradient(145deg,rgba(237,227,207,0.07),rgba(27,58,99,0.12),rgba(61,43,31,0.22))] p-[1px] shadow-[0_28px_90px_rgba(0,0,0,0.36),inset_0_1px_0_rgba(237,227,207,0.06)] backdrop-blur-xl sm:max-w-none sm:rounded-[1.75rem] sm:border-ember/34 sm:p-5 lg:p-6">
           <div className="rounded-[1.85rem] border border-bronze/14 bg-midnight/66 p-4 shadow-[inset_0_1px_0_rgba(237,227,207,0.04)] sm:rounded-[1.35rem] sm:border-bronze/22 sm:bg-midnight/62 sm:p-5">
+            <p className="mb-3 text-center text-[0.64rem] font-medium uppercase tracking-[0.22em] text-stardust/42 sm:hidden">
+              Atelier access
+            </p>
             <div className="flex rounded-[1.35rem] border border-bronze/22 bg-midnight/42 p-1 sm:rounded-2xl sm:border-bronze/24 sm:bg-midnight/48">
                 <ModeButton
                   active={mode === 'signin'}

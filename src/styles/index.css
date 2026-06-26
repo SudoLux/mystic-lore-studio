@@ -154,6 +154,33 @@ textarea:focus-visible {
     0 0 18px rgba(200, 155, 60, 0.2);
 }
 
+.auth-mobile-promise {
+  position: relative;
+}
+
+.auth-mobile-promise::before,
+.auth-mobile-promise::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  width: 0.28rem;
+  height: 0.28rem;
+  border-radius: 999px;
+  background: rgba(200, 155, 60, 0.76);
+  box-shadow:
+    0 0 14px rgba(200, 155, 60, 0.36),
+    0 0 22px rgba(45, 92, 107, 0.2);
+  transform: translateY(-50%);
+}
+
+.auth-mobile-promise::before {
+  left: -0.65rem;
+}
+
+.auth-mobile-promise::after {
+  right: -0.65rem;
+}
+
 .task-chip {
   @apply inline-flex items-center rounded-full border px-2.5 py-1 text-[0.68rem] font-medium uppercase tracking-[0.08em];
 }
