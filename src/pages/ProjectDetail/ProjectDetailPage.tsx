@@ -295,7 +295,7 @@ function ProjectHero({
             <Badge variant="teal">{project.status}</Badge>
             <Badge variant="bronze">{project.phase}</Badge>
           </div>
-          <h1 className="text-3xl font-semibold leading-tight text-stardust">
+          <h1 className="font-display text-[1.75rem] leading-[1.15] text-stardust sm:text-3xl">
             {project.name}
           </h1>
           <div className="mt-4">
@@ -402,7 +402,7 @@ function ProjectHero({
               <Badge variant="bronze">{project.phase}</Badge>
               <Badge variant="ember">{project.priority} Priority</Badge>
             </div>
-            <h1 className="mt-5 max-w-3xl text-4xl font-semibold leading-tight text-stardust sm:text-5xl">
+            <h1 className="font-display mt-5 max-w-3xl text-4xl leading-[1.12] text-stardust sm:text-5xl">
               {project.name}
             </h1>
             <p className="mt-4 max-w-2xl text-base leading-7 text-stardust/68">
@@ -1904,7 +1904,7 @@ function LookbookTab({
               <p className="mt-8 text-xs font-medium uppercase tracking-[0.16em] text-ember">
                 Mystic Lore Studio / {project.garmentType}
               </p>
-              <h2 className="mt-4 max-w-3xl text-4xl font-semibold leading-tight text-stardust sm:text-5xl">
+              <h2 className="font-display mt-4 max-w-3xl text-4xl leading-[1.12] text-stardust sm:text-5xl">
                 {preview.headline}
               </h2>
               <p className="mt-5 max-w-2xl text-base leading-7 text-stardust/70">

@@ -806,7 +806,7 @@ function FabricDetailPage({
                 <p className="mt-8 text-xs font-medium uppercase tracking-[0.16em] text-stardust/58">
                   {fabric.category} / {fabric.weaveOrKnit}
                 </p>
-                <h1 className="mt-3 max-w-xl text-4xl font-semibold leading-tight text-stardust sm:text-5xl">
+                <h1 className="font-display mt-3 max-w-xl text-4xl leading-[1.12] text-stardust sm:text-5xl">
                   {fabric.name}
                 </h1>
                 <p className="mt-5 max-w-lg text-sm leading-6 text-stardust/68">

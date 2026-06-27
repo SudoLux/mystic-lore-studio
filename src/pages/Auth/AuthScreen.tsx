@@ -82,7 +82,7 @@ export function AuthScreen() {
               showText={false}
               size="settings"
             />
-            <h1 className="mt-4 text-[2.25rem] font-semibold leading-[0.98] text-stardust">
+            <h1 className="font-display mt-4 text-[2.05rem] leading-[1.08] text-stardust sm:text-[2.25rem]">
               Mystic Lore Studio
             </h1>
             <p className="mx-auto mt-3 max-w-[16rem] text-base leading-6 text-stardust/62">
@@ -110,7 +110,7 @@ export function AuthScreen() {
             <p className="hidden text-xs font-medium uppercase tracking-[0.18em] text-ember sm:block">
               Secure atelier access
             </p>
-            <h1 className="mt-3 text-3xl font-semibold leading-[1.02] text-stardust sm:mt-4 sm:max-w-xl sm:text-5xl lg:text-6xl">
+            <h1 className="auth-title-invitation font-display mt-3 text-3xl leading-[1.08] text-stardust sm:mt-4 sm:max-w-xl sm:text-5xl lg:text-6xl">
               Enter the Studio.
             </h1>
             <p className="mx-auto mt-2 max-w-sm text-sm leading-6 text-stardust/62 sm:mt-5 sm:max-w-xl sm:text-base sm:leading-8 lg:mx-0">
@@ -264,7 +264,7 @@ export function AuthScreen() {
 }
 
 function FireflyField() {
-  const fireflies = Array.from({ length: 16 }, (_, index) => index);
+  const fireflies = Array.from({ length: 20 }, (_, index) => index);
 
   return (
     <div aria-hidden="true" className="auth-firefly-field pointer-events-none absolute inset-0 overflow-hidden">
@@ -276,12 +276,16 @@ function FireflyField() {
             '--auth-firefly-delay': `${(index % 8) * -1.7}s`,
             '--auth-firefly-duration': `${14 + (index % 6) * 2.4}s`,
             '--auth-firefly-left': `${8 + ((index * 19) % 86)}%`,
+            '--auth-firefly-pulse-delay': `${((index * 2.3) % 11) * -1}s`,
+            '--auth-firefly-pulse-duration': `${4.6 + (index % 7) * 0.72}s`,
             '--auth-firefly-size': `${2 + (index % 4)}px`,
             '--auth-firefly-top': `${12 + ((index * 23) % 76)}%`,
             '--auth-firefly-x': `${index % 2 === 0 ? 24 : -28}px`,
             '--auth-firefly-y': `${index % 3 === 0 ? -42 : 36}px`,
           } as CSSProperties}
-        />
+        >
+          <span className="auth-firefly-glow" />
+        </span>
       ))}
     </div>
   );

@@ -22,6 +22,12 @@
   -moz-osx-font-smoothing: grayscale;
 }
 
+.font-display {
+  font-family: "Cinzel Decorative", Georgia, serif;
+  font-weight: 700;
+  font-synthesis: none;
+}
+
 * {
   box-sizing: border-box;
 }
@@ -121,6 +127,13 @@ textarea:focus-visible {
   animation: auth-panel-rise 620ms cubic-bezier(0.2, 0.78, 0.2, 1) both;
 }
 
+.auth-title-invitation {
+  animation: auth-title-invitation 4.8s ease-in-out infinite;
+  text-shadow:
+    0 0 16px rgba(237, 227, 207, 0.08),
+    0 0 30px rgba(200, 155, 60, 0.1);
+}
+
 .auth-firefly-field {
   opacity: 0.82;
 }
@@ -131,23 +144,33 @@ textarea:focus-visible {
   left: var(--auth-firefly-left);
   width: var(--auth-firefly-size);
   height: var(--auth-firefly-size);
-  border-radius: 999px;
-  background: rgba(237, 227, 207, 0.88);
-  box-shadow:
-    0 0 10px rgba(237, 227, 207, 0.58),
-    0 0 18px rgba(200, 155, 60, 0.38);
-  filter: blur(0.2px);
-  opacity: 0.45;
   transform: translate3d(0, 0, 0);
   animation: auth-firefly-float var(--auth-firefly-duration) ease-in-out infinite;
   animation-delay: var(--auth-firefly-delay);
+  will-change: transform;
 }
 
-.auth-firefly:nth-child(3n) {
+.auth-firefly-glow {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border-radius: 999px;
+  background: rgba(237, 227, 207, 0.92);
+  box-shadow:
+    0 0 8px rgba(237, 227, 207, 0.72),
+    0 0 18px rgba(200, 155, 60, 0.46),
+    0 0 28px rgba(200, 155, 60, 0.18);
+  filter: blur(0.15px);
+  animation: auth-firefly-pulse var(--auth-firefly-pulse-duration) ease-in-out infinite;
+  animation-delay: var(--auth-firefly-pulse-delay);
+  will-change: opacity, filter;
+}
+
+.auth-firefly:nth-child(3n) .auth-firefly-glow {
   background: rgba(200, 155, 60, 0.86);
 }
 
-.auth-firefly:nth-child(4n) {
+.auth-firefly:nth-child(4n) .auth-firefly-glow {
   background: rgba(45, 92, 107, 0.72);
   box-shadow:
     0 0 10px rgba(45, 92, 107, 0.48),
@@ -217,32 +240,70 @@ textarea:focus-visible {
   }
 }
 
+@keyframes auth-title-invitation {
+  0%,
+  100% {
+    color: rgba(237, 227, 207, 0.92);
+    text-shadow:
+      0 0 14px rgba(237, 227, 207, 0.06),
+      0 0 28px rgba(200, 155, 60, 0.08);
+  }
+
+  50% {
+    color: #f6ecd8;
+    text-shadow:
+      0 0 18px rgba(237, 227, 207, 0.22),
+      0 0 38px rgba(200, 155, 60, 0.28),
+      0 0 64px rgba(200, 155, 60, 0.12);
+  }
+}
+
 @keyframes auth-firefly-float {
   0%,
   100% {
-    opacity: 0.2;
     transform: translate3d(0, 0, 0) scale(0.9);
   }
 
   35% {
-    opacity: 0.72;
     transform: translate3d(var(--auth-firefly-x), var(--auth-firefly-y), 0)
       scale(1.18);
   }
 
   68% {
-    opacity: 0.38;
     transform: translate3d(calc(var(--auth-firefly-x) * -0.55), 18px, 0)
       scale(0.96);
   }
 }
 
-@media (max-width: 639px) {
-  .auth-firefly-field {
-    opacity: 0.58;
+@keyframes auth-firefly-pulse {
+  0%,
+  18%,
+  100% {
+    opacity: 0.03;
+    filter: blur(0.8px) brightness(0.72);
   }
 
-  .auth-firefly:nth-child(n + 9) {
+  42% {
+    opacity: 0.28;
+  }
+
+  58% {
+    opacity: 0.94;
+    filter: blur(0.1px) brightness(1.22);
+  }
+
+  76% {
+    opacity: 0.14;
+    filter: blur(0.5px) brightness(0.9);
+  }
+}
+
+@media (max-width: 639px) {
+  .auth-firefly-field {
+    opacity: 0.68;
+  }
+
+  .auth-firefly:nth-child(n + 11) {
     display: none;
   }
 
@@ -283,18 +344,47 @@ textarea:focus-visible {
   }
 
   .auth-firefly:nth-child(7),
+  .auth-firefly:nth-child(8),
+  .auth-firefly:nth-child(9),
+  .auth-firefly:nth-child(10) {
+    --auth-firefly-size: 2px;
+  }
+
+  .auth-firefly:nth-child(7) {
+    --auth-firefly-top: 25%;
+    --auth-firefly-left: 4%;
+  }
+
   .auth-firefly:nth-child(8) {
-    display: none;
+    --auth-firefly-top: 58%;
+    --auth-firefly-left: 96%;
+  }
+
+  .auth-firefly:nth-child(9) {
+    --auth-firefly-top: 69%;
+    --auth-firefly-left: 7%;
+  }
+
+  .auth-firefly:nth-child(10) {
+    --auth-firefly-top: 92%;
+    --auth-firefly-left: 89%;
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
   .auth-panel-rise,
-  .auth-firefly {
+  .auth-firefly,
+  .auth-firefly-glow,
+  .auth-title-invitation {
     animation: none;
   }
 
-  .auth-firefly {
-    opacity: 0.24;
+  .auth-firefly-glow {
+    opacity: 0.22;
+  }
+
+  .auth-title-invitation {
+    color: #ede3cf;
+    text-shadow: 0 0 24px rgba(200, 155, 60, 0.14);
   }
 }
