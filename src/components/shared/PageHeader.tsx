@@ -22,7 +22,7 @@ export function PageHeader({
             <Badge variant="teal">{badge}</Badge>
           </div>
         ) : null}
-        <h1 className="break-words text-[2rem] font-semibold leading-tight text-stardust sm:text-[2.35rem] xl:text-[2.55rem]">
+        <h1 className="font-display break-words text-[1.9rem] leading-[1.15] text-stardust sm:text-[2.2rem] xl:text-[2.4rem]">
           {title}
         </h1>
         <p className="mt-3 max-w-3xl break-words text-sm leading-7 text-stardust/64 sm:text-base">

@@ -478,7 +478,7 @@ function FeaturedGarmentsSection({
       >
         <div className="max-w-lg">
           <Badge variant="ember">Featured Garments</Badge>
-          <h2 className="mt-5 text-3xl font-semibold leading-tight text-stardust">
+          <h2 className="font-display mt-5 text-[1.75rem] leading-[1.18] text-stardust sm:text-3xl">
             Your featured garment will appear here once a project is added.
           </h2>
           <p className="mt-4 text-sm leading-7 text-stardust/62">
@@ -499,7 +499,7 @@ function FeaturedGarmentsSection({
         <div className="hidden flex-col gap-3 sm:flex sm:flex-row sm:items-end sm:justify-between">
           <div>
             <Badge variant="ember">Featured Garments</Badge>
-            <h2 className="mt-4 max-w-2xl text-2xl font-semibold leading-tight text-stardust sm:text-3xl">
+            <h2 className="font-display mt-4 max-w-2xl text-[1.65rem] leading-[1.18] text-stardust sm:text-3xl">
               The collection signal, staged like an editorial lead.
             </h2>
           </div>
@@ -546,7 +546,7 @@ function FeaturedGarmentHero({
               <Badge variant="blue">{project.garmentType}</Badge>
             </div>
 
-            <h3 className="mt-4 text-2xl font-semibold leading-[1.08] text-stardust sm:mt-5 sm:text-4xl xl:text-[2.8rem]">
+            <h3 className="font-display mt-4 text-[1.7rem] leading-[1.12] text-stardust sm:mt-5 sm:text-4xl xl:text-[2.65rem]">
               {project.name}
             </h3>
             <p className="mt-3 text-xs font-medium uppercase tracking-[0.16em] text-ember/82">
