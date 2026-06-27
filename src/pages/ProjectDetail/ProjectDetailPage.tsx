@@ -1,6 +1,7 @@
 import {
   useEffect,
   useMemo,
+  useRef,
   useState,
   type FormEvent,
   type ReactNode,
@@ -23,6 +24,7 @@ import {
   CheckCircle2,
   ClipboardList,
   GripVertical,
+  ImagePlus,
   Layers3,
   NotebookTabs,
   Package,
@@ -37,6 +39,10 @@ import {
 } from 'lucide-react';
 import { LinkedMaterialFormModal } from '../../components/projects/LinkedMaterialFormModal';
 import { NoteFormModal } from '../../components/projects/NoteFormModal';
+import {
+  ProjectGalleryCarousel,
+  type ProjectGalleryCarouselHandle,
+} from '../../components/projects/ProjectGalleryCarousel';
 import { TaskFormModal } from '../../components/projects/TaskFormModal';
 import { Badge } from '../../components/shared/Badge';
 import { Button } from '../../components/shared/Button';
@@ -44,7 +50,6 @@ import { Card } from '../../components/shared/Card';
 import { ExpandableInfoSection } from '../../components/shared/ExpandableInfoSection';
 import { ImageSlot } from '../../components/shared/ImageSlot';
 import { ImageReadabilityOverlay } from '../../components/shared/ImageReadabilityOverlay';
-import { LocalImageUploader } from '../../components/shared/LocalImageUploader';
 import { MobilePageHeader } from '../../components/shared/MobilePageHeader';
 import { PageHeader } from '../../components/shared/PageHeader';
 import { StoredImage } from '../../components/shared/StoredImage';
@@ -128,6 +133,7 @@ export function ProjectDetailPage({
     saveLookbookPage,
   } = useStudioData();
   const [activeTab, setActiveTab] = useState<DetailTab>('overview');
+  const galleryCarouselRef = useRef<ProjectGalleryCarouselHandle>(null);
   const project = projects.find((item) => item.id === projectId);
   const fabricById = useMemo(
     () => new Map(fabrics.map((fabric) => [fabric.id, fabric])),
@@ -177,14 +183,24 @@ export function ProjectDetailPage({
     <section className="space-y-5">
       <ProjectHero
         difficulty={difficulty}
+        galleryImageCount={getProjectGalleryImages(project).length}
         linkedFabrics={linkedMaterials
           .map((item) => item.fabric)
           .filter((fabric): fabric is Fabric => Boolean(fabric))}
         onBack={onBack}
         onDeleteProject={() => onDeleteProject(project)}
         onEditProject={() => onEditProject(project)}
+        onOpenGalleryPicker={() => galleryCarouselRef.current?.openFilePicker()}
         onUpdateProject={updateProject}
         project={project}
+      />
+
+      <ProjectGalleryCarousel
+        images={project.galleryImages}
+        onChange={(galleryImages) =>
+          updateProject({ ...project, galleryImages })
+        }
+        ref={galleryCarouselRef}
       />
 
       <PhasePath currentPhase={project.phase} />
@@ -257,23 +273,25 @@ export function ProjectDetailPage({
 
 function ProjectHero({
   difficulty,
+  galleryImageCount,
   linkedFabrics,
   onBack,
   onDeleteProject,
   onEditProject,
+  onOpenGalleryPicker,
   onUpdateProject,
   project,
 }: {
   difficulty: string;
+  galleryImageCount: number;
   linkedFabrics: Fabric[];
   onBack: () => void;
   onDeleteProject: () => void;
   onEditProject: () => void;
+  onOpenGalleryPicker: () => void;
   onUpdateProject: (project: ApparelProject) => void;
   project: ApparelProject;
 }) {
-  const galleryImages = getProjectGalleryImages(project);
-
   return (
     <>
     <Card className="overflow-hidden p-0 lg:hidden" elevated>
@@ -316,9 +334,18 @@ function ProjectHero({
         <p className="line-clamp-3 text-sm leading-6 text-stardust/68">
           {project.summary}
         </p>
-        <div className="mt-4 flex gap-2">
+        <div className="mt-4 grid grid-cols-3 gap-2">
           <Button className="flex-1" onClick={onEditProject} size="sm" variant="primary">
             Edit
+          </Button>
+          <Button
+            className="flex-1"
+            icon={<ImagePlus aria-hidden="true" size={15} strokeWidth={1.9} />}
+            onClick={onOpenGalleryPicker}
+            size="sm"
+            variant="secondary"
+          >
+            Photos
           </Button>
           <Button className="flex-1" onClick={onBack} size="sm" variant="secondary">
             Library
@@ -347,37 +374,6 @@ function ProjectHero({
               />
             </div>
           </ExpandableInfoSection>
-          <ExpandableInfoSection
-            summary={`${galleryImages.length} of 3 supporting images`}
-            title="Project media"
-          >
-            <div className="grid gap-3">
-              {[0, 1, 2].map((index) => (
-                <LocalImageUploader
-                  compact
-                  key={index}
-                  label={`Gallery ${index + 1}`}
-                  onRemove={() =>
-                    onUpdateProject({
-                      ...project,
-                      galleryImages: galleryImages.filter(
-                        (_image, imageIndex) => imageIndex !== index,
-                      ),
-                    })
-                  }
-                  onSave={(image) => {
-                    const nextImages = [...galleryImages];
-                    nextImages[index] = image;
-                    onUpdateProject({
-                      ...project,
-                      galleryImages: nextImages.filter(Boolean),
-                    });
-                  }}
-                  value={galleryImages[index]}
-                />
-              ))}
-            </div>
-          </ExpandableInfoSection>
         </div>
       </div>
     </Card>
@@ -389,6 +385,16 @@ function ProjectHero({
             <div className="flex flex-wrap items-center justify-between gap-3">
               <BackButton onBack={onBack} />
               <div className="flex flex-wrap gap-2">
+                <Button
+                  icon={<ImagePlus aria-hidden="true" size={15} strokeWidth={1.9} />}
+                  onClick={onOpenGalleryPicker}
+                  size="sm"
+                  variant="secondary"
+                >
+                  {galleryImageCount > 0
+                    ? `Photos ${galleryImageCount}/5`
+                    : 'Add Photos'}
+                </Button>
                 <Button onClick={onEditProject} size="sm" variant="secondary">
                   Edit Project
                 </Button>
@@ -483,43 +489,6 @@ function ProjectHero({
             </div>
           </div>
         </ImageSlot>
-      </div>
-      <div className="border-t border-bronze/20 p-5 sm:p-7 lg:p-8">
-        <section className="rounded-3xl border border-bronze/28 bg-[linear-gradient(145deg,rgba(10,10,10,0.42),rgba(61,43,31,0.18))] p-4 shadow-[inset_0_1px_0_rgba(237,227,207,0.035)]">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-            <div>
-              <Badge variant="bronze">Project Gallery</Badge>
-              <p className="mt-2 text-sm leading-6 text-stardust/58">
-                Add up to three supporting images for construction, fit, or detail
-                reference.
-              </p>
-            </div>
-          </div>
-          <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-            {[0, 1, 2].map((index) => (
-              <LocalImageUploader
-                compact
-                key={index}
-                label={`Gallery ${index + 1}`}
-                onRemove={() =>
-                  onUpdateProject({
-                    ...project,
-                    galleryImages: galleryImages.filter((_, itemIndex) => itemIndex !== index),
-                  })
-                }
-                onSave={(image) => {
-                  const nextImages = [...galleryImages];
-                  nextImages[index] = image;
-                  onUpdateProject({
-                    ...project,
-                    galleryImages: nextImages.filter(Boolean),
-                  });
-                }}
-                value={galleryImages[index]}
-              />
-            ))}
-          </div>
-        </section>
       </div>
     </Card>
     </>
