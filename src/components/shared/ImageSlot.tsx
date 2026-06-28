@@ -1,8 +1,13 @@
 import { useRef, useState, type MouseEvent, type ReactNode } from 'react';
 import { cn } from '../../lib/classes';
-import { isUsableImageAsset } from '../../lib/imageAssets';
+import {
+  applyRecommendedProjectImageDisplay,
+  getRecommendedProjectImageDisplay,
+  isUsableImageAsset,
+} from '../../lib/imageAssets';
 import { createLocalImageAsset, type ImageProcessingError } from '../../lib/localImages';
 import type { LocalImageAsset } from '../../types/studio';
+import { AdaptiveProjectImage } from '../projects/AdaptiveProjectImage';
 import { ImageAdjustModal } from './ImageAdjustModal';
 import { ImageReadabilityOverlay } from './ImageReadabilityOverlay';
 import { ImageUploadOverlay } from './ImageUploadOverlay';
@@ -14,6 +19,7 @@ type ImageSlotProps = {
   children?: ReactNode;
   className?: string;
   compact?: boolean;
+  controlsMode?: 'expanded' | 'menu';
   fallbackValue?: LocalImageAsset;
   imageClassName?: string;
   label: string;
@@ -22,7 +28,9 @@ type ImageSlotProps = {
   onSave: (image: LocalImageAsset) => void;
   placeholderClassName?: string;
   placeholderText?: string;
+  projectAdaptive?: boolean;
   readabilityVariant?: 'card' | 'controls' | 'hero';
+  showReadabilityOverlay?: boolean;
   value?: LocalImageAsset;
 };
 
@@ -32,6 +40,7 @@ export function ImageSlot({
   children,
   className,
   compact = false,
+  controlsMode = 'expanded',
   fallbackValue,
   imageClassName,
   label,
@@ -40,7 +49,9 @@ export function ImageSlot({
   onSave,
   placeholderClassName,
   placeholderText,
+  projectAdaptive = false,
   readabilityVariant = 'controls',
+  showReadabilityOverlay = true,
   value,
 }: ImageSlotProps) {
   const inputRef = useRef<HTMLInputElement>(null);
@@ -65,7 +76,12 @@ export function ImageSlot({
 
     try {
       setIsOptimizing(true);
-      setPendingImage(await createLocalImageAsset(file));
+      const preparedImage = await createLocalImageAsset(file);
+      setPendingImage(
+        projectAdaptive
+          ? applyRecommendedProjectImageDisplay(preparedImage)
+          : preparedImage,
+      );
     } catch (caughtError) {
       const imageError = caughtError as ImageProcessingError;
       setError(imageError.message || 'Could not prepare this image.');
@@ -113,22 +129,33 @@ export function ImageSlot({
         )}
       />
       {visibleImage ? (
-        <StoredImage
+        projectAdaptive ? (
+          <AdaptiveProjectImage
+            asset={visibleImage}
+            className="absolute inset-0"
+            foregroundClassName={imageClassName}
+          />
+        ) : (
+          <StoredImage
+            asset={visibleImage}
+            className={cn('absolute inset-0', imageClassName)}
+          />
+        )
+      ) : null}
+      {showReadabilityOverlay ? (
+        <ImageReadabilityOverlay
           asset={visibleImage}
-          className={cn('absolute inset-0', imageClassName)}
+          className="z-[2]"
+          variant={readabilityVariant}
         />
       ) : null}
-      <ImageReadabilityOverlay
-        asset={visibleImage}
-        className="z-[2]"
-        variant={readabilityVariant}
-      />
 
       <ImageUploadOverlay
         actionClassName={actionClassName}
         canAdjust={Boolean(storedImage)}
         canRemove={Boolean(storedImage)}
         compact={compact}
+        controlsMode={controlsMode}
         error={error ?? storedImage?.uploadError}
         hasImage={Boolean(visibleImage)}
         hasPendingImage={Boolean(pendingImage)}
@@ -153,6 +180,11 @@ export function ImageSlot({
           setError(null);
           onRemove();
         }}
+        onSmartFit={
+          projectAdaptive && storedImage
+            ? () => onSave(applyRecommendedProjectImageDisplay(storedImage))
+            : undefined
+        }
         onUpload={openFilePicker}
         placeholderText={placeholderText}
         processingMessage={
@@ -187,6 +219,11 @@ export function ImageSlot({
             setIsAdjusting(false);
           }}
           previewAspectClassName={aspectClassName || 'aspect-video'}
+          smartFitValues={
+            projectAdaptive
+              ? getRecommendedProjectImageDisplay(storedImage)
+              : undefined
+          }
         />
       ) : null}
     </div>

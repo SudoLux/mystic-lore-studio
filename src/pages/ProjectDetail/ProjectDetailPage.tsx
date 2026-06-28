@@ -184,9 +184,6 @@ export function ProjectDetailPage({
       <ProjectHero
         difficulty={difficulty}
         galleryImageCount={getProjectGalleryImages(project).length}
-        linkedFabrics={linkedMaterials
-          .map((item) => item.fabric)
-          .filter((fabric): fabric is Fabric => Boolean(fabric))}
         onBack={onBack}
         onDeleteProject={() => onDeleteProject(project)}
         onEditProject={() => onEditProject(project)}
@@ -274,7 +271,6 @@ export function ProjectDetailPage({
 function ProjectHero({
   difficulty,
   galleryImageCount,
-  linkedFabrics,
   onBack,
   onDeleteProject,
   onEditProject,
@@ -284,7 +280,6 @@ function ProjectHero({
 }: {
   difficulty: string;
   galleryImageCount: number;
-  linkedFabrics: Fabric[];
   onBack: () => void;
   onDeleteProject: () => void;
   onEditProject: () => void;
@@ -297,41 +292,42 @@ function ProjectHero({
     <Card className="overflow-hidden p-0 lg:hidden" elevated>
       <ImageSlot
         actionClassName="right-3 top-3 bottom-auto"
-        aspectClassName=""
-        className="h-64 rounded-none border-0 border-b border-bronze/20 bg-midnight/40 md:max-lg:h-[24rem]"
+        aspectClassName="aspect-[4/5] sm:aspect-[4/3]"
+        className="rounded-none border-0 border-b border-bronze/20 bg-midnight/40 md:max-lg:max-h-[32rem]"
         compact
+        controlsMode="menu"
         label="Hero"
+        labelClassName="hidden"
         onRemove={() => onUpdateProject({ ...project, heroImage: undefined })}
         onSave={(image) => onUpdateProject({ ...project, heroImage: image })}
         placeholderClassName="bg-[radial-gradient(circle_at_22%_18%,rgba(200,155,60,0.38),transparent_28%),radial-gradient(circle_at_82%_12%,rgba(45,92,107,0.42),transparent_32%),linear-gradient(145deg,rgba(27,58,99,0.84),rgba(10,10,10,0.76),rgba(61,43,31,0.86))]"
         placeholderText="Add project hero."
+        projectAdaptive
         readabilityVariant="hero"
+        showReadabilityOverlay={false}
         value={project.heroImage}
-      >
-        <div className="relative flex h-full flex-col justify-end p-4 [text-shadow:0_2px_16px_rgba(0,0,0,0.95)]">
-          <div className="mb-3 flex flex-wrap gap-2">
-            <Badge variant="teal">{project.status}</Badge>
-            <Badge variant="bronze">{project.phase}</Badge>
+      />
+      <div className="p-4">
+        <div className="flex flex-wrap gap-2">
+          <Badge variant="teal">{project.status}</Badge>
+          <Badge variant="bronze">{project.phase}</Badge>
+        </div>
+        <h1 className="font-display mt-4 text-[1.8rem] leading-[1.14] text-stardust sm:text-3xl">
+          {project.name}
+        </h1>
+        <div className="mt-4">
+          <div className="mb-2 flex items-center justify-between text-xs">
+            <span className="text-stardust/56">Project progress</span>
+            <span className="font-medium text-ember">{project.progress}%</span>
           </div>
-          <h1 className="font-display text-[1.75rem] leading-[1.15] text-stardust sm:text-3xl">
-            {project.name}
-          </h1>
-          <div className="mt-4">
-            <div className="mb-2 flex items-center justify-between text-xs">
-              <span className="text-stardust/70">Progress</span>
-              <span className="font-medium text-ember">{project.progress}%</span>
-            </div>
-            <div className="studio-progress-track">
-              <div
-                className="studio-progress-fill"
-                style={{ width: `${project.progress}%` }}
-              />
-            </div>
+          <div className="studio-progress-track">
+            <div
+              className="studio-progress-fill"
+              style={{ width: `${project.progress}%` }}
+            />
           </div>
         </div>
-      </ImageSlot>
-      <div className="p-4">
-        <p className="line-clamp-3 text-sm leading-6 text-stardust/68">
+        <p className="mt-4 line-clamp-3 text-sm leading-6 text-stardust/68">
           {project.summary}
         </p>
         <div className="mt-4 grid grid-cols-3 gap-2">
@@ -444,51 +440,18 @@ function ProjectHero({
           actionClassName="right-5 top-5 bottom-auto"
           aspectClassName=""
           className="min-h-[21rem] rounded-none border-0 border-t border-bronze/20 bg-midnight/40 lg:border-l lg:border-t-0"
+          controlsMode="menu"
           label="Project Hero"
+          labelClassName="hidden"
           onRemove={() => onUpdateProject({ ...project, heroImage: undefined })}
           onSave={(image) => onUpdateProject({ ...project, heroImage: image })}
           placeholderClassName="bg-[radial-gradient(circle_at_22%_18%,rgba(200,155,60,0.38),transparent_28%),radial-gradient(circle_at_82%_12%,rgba(45,92,107,0.42),transparent_32%),radial-gradient(circle_at_55%_82%,rgba(237,227,207,0.16),transparent_30%),linear-gradient(145deg,rgba(27,58,99,0.84),rgba(10,10,10,0.76),rgba(61,43,31,0.86))]"
           placeholderText="Add a hero image."
+          projectAdaptive
           readabilityVariant="hero"
+          showReadabilityOverlay={false}
           value={project.heroImage}
-        >
-          <div className="absolute inset-6 rounded-[2rem] border border-stardust/12 bg-midnight/18 shadow-[inset_0_0_90px_rgba(237,227,207,0.06)]" />
-          <div className="relative flex h-full min-h-[21rem] flex-col justify-between p-6">
-            <div className="flex items-center justify-end gap-3">
-              <span className="rounded-full border border-stardust/18 bg-midnight/72 px-3 py-1 text-xs text-stardust/88 shadow-[0_8px_24px_rgba(0,0,0,0.3)] backdrop-blur-xl">
-                {formatDate(project.startDate)}
-              </span>
-            </div>
-            <div>
-              <div className="mb-5 flex -space-x-2">
-                {linkedFabrics.slice(0, 4).map((fabric) => (
-                  <span
-                    aria-label={fabric.name}
-                    className="h-8 w-8 rounded-full border border-stardust/25 ring-2 ring-midnight"
-                    key={fabric.id}
-                    style={{ background: getFabricSwatch(fabric) }}
-                    title={fabric.name}
-                  />
-                ))}
-              </div>
-              <p className="max-w-md text-2xl font-semibold leading-tight text-stardust">
-                {project.garmentType} study for {project.collection}
-              </p>
-              <div className="mt-5">
-                <div className="mb-2 flex items-center justify-between text-xs">
-                  <span className="text-stardust/62">Project progress</span>
-                  <span className="font-medium text-ember">{project.progress}%</span>
-                </div>
-                <div className="studio-progress-track">
-                  <div
-                    className="studio-progress-fill"
-                    style={{ width: `${project.progress}%` }}
-                  />
-                </div>
-              </div>
-            </div>
-          </div>
-        </ImageSlot>
+        />
       </div>
     </Card>
     </>

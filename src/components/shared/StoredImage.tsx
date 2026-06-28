@@ -1,19 +1,31 @@
 import { useEffect, useRef, useState, type CSSProperties } from 'react';
 import { cn } from '../../lib/classes';
-import { getImageDisplay } from '../../lib/imageAssets';
+import {
+  getImageDisplay,
+  type ImageDisplaySettings,
+} from '../../lib/imageAssets';
 import { refreshSignedImageUrl } from '../../lib/supabaseStudio';
 import type { LocalImageAsset } from '../../types/studio';
 
 type StoredImageProps = {
+  alt?: string;
   asset: LocalImageAsset;
   className?: string;
+  decorative?: boolean;
+  displayOverride?: Partial<ImageDisplaySettings>;
 };
 
-export function StoredImage({ asset, className }: StoredImageProps) {
+export function StoredImage({
+  alt,
+  asset,
+  className,
+  decorative = false,
+  displayOverride,
+}: StoredImageProps) {
   const [hasError, setHasError] = useState(false);
   const [source, setSource] = useState(asset.remoteUrl ?? asset.dataUrl);
   const refreshAttempted = useRef(false);
-  const display = getImageDisplay(asset);
+  const display = { ...getImageDisplay(asset), ...displayOverride };
 
   useEffect(() => {
     setSource(asset.remoteUrl ?? asset.dataUrl);
@@ -27,7 +39,8 @@ export function StoredImage({ asset, className }: StoredImageProps) {
 
   return (
     <img
-      alt={asset.name}
+      alt={decorative ? '' : (alt ?? asset.name)}
+      aria-hidden={decorative || undefined}
       className={cn(
         'h-full w-full object-cover [transform:scale(var(--image-zoom))]',
         className,

@@ -1,5 +1,7 @@
-import { Clock3, ImagePlus, LoaderCircle } from 'lucide-react';
+import { useState } from 'react';
+import { Clock3, ImagePlus, LoaderCircle, MoreHorizontal } from 'lucide-react';
 import { cn } from '../../lib/classes';
+import { BottomSheet } from './BottomSheet';
 import { ImageActionsMenu } from './ImageActionsMenu';
 
 type ImageUploadOverlayProps = {
@@ -7,6 +9,7 @@ type ImageUploadOverlayProps = {
   canAdjust: boolean;
   canRemove: boolean;
   compact?: boolean;
+  controlsMode?: 'expanded' | 'menu';
   error?: string | null;
   hasImage: boolean;
   hasPendingImage: boolean;
@@ -16,6 +19,7 @@ type ImageUploadOverlayProps = {
   onCancelPreview: () => void;
   onConfirmPreview: () => void;
   onRemove: () => void;
+  onSmartFit?: () => void;
   onUpload: () => void;
   placeholderText?: string;
   processingMessage?: string | null;
@@ -28,6 +32,7 @@ export function ImageUploadOverlay({
   canAdjust,
   canRemove,
   compact = false,
+  controlsMode = 'expanded',
   error,
   hasImage,
   hasPendingImage,
@@ -37,20 +42,44 @@ export function ImageUploadOverlay({
   onCancelPreview,
   onConfirmPreview,
   onRemove,
+  onSmartFit,
   onUpload,
   placeholderText = 'Add an image directly to this slot.',
   processingMessage,
   processingIsActive = false,
   processingIsBlocking = false,
 }: ImageUploadOverlayProps) {
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
   const shouldKeepVisible = !hasImage || hasPendingImage || Boolean(error);
+  const usesCompactMenu =
+    controlsMode === 'menu' && hasImage && !hasPendingImage && !error;
+  const closeAndRun = (action: () => void) => {
+    setIsMenuOpen(false);
+    action();
+  };
+  const menuActions = (
+    <ImageActionsMenu
+      canAdjust={canAdjust}
+      canRemove={canRemove}
+      compact
+      hasPendingImage={false}
+      onAdjust={() => closeAndRun(onAdjust)}
+      onCancelPreview={onCancelPreview}
+      onConfirmPreview={onConfirmPreview}
+      onRemove={() => closeAndRun(onRemove)}
+      onSmartFit={onSmartFit ? () => closeAndRun(onSmartFit) : undefined}
+      onUpload={() => closeAndRun(onUpload)}
+    />
+  );
 
   return (
     <>
       <div
         className={cn(
           'pointer-events-none absolute inset-0 z-10 bg-[linear-gradient(180deg,rgba(10,10,10,0.34)_0%,rgba(10,10,10,0.03)_38%,rgba(10,10,10,0.44)_100%)] transition duration-200',
-          shouldKeepVisible
+          usesCompactMenu
+            ? 'opacity-0'
+            : shouldKeepVisible
             ? 'opacity-100'
             : 'opacity-100 md:opacity-0 md:group-hover/image-slot:opacity-100 md:group-focus-within/image-slot:opacity-100',
         )}
@@ -125,27 +154,67 @@ export function ImageUploadOverlay({
         </div>
       ) : null}
 
-      <div
-        className={cn(
-          'absolute bottom-3 left-3 right-3 z-30 flex justify-end transition duration-200',
-          shouldKeepVisible
-            ? 'opacity-100'
-            : 'opacity-100 md:opacity-0 md:group-hover/image-slot:opacity-100 md:group-focus-within/image-slot:opacity-100',
-          actionClassName,
-        )}
-      >
-        <ImageActionsMenu
-          canAdjust={canAdjust}
-          canRemove={canRemove}
-          compact={compact}
-          hasPendingImage={hasPendingImage}
-          onAdjust={onAdjust}
-          onCancelPreview={onCancelPreview}
-          onConfirmPreview={onConfirmPreview}
-          onRemove={onRemove}
-          onUpload={onUpload}
-        />
-      </div>
+      {usesCompactMenu ? (
+        <>
+          <button
+            aria-expanded={isMenuOpen}
+            aria-label={`Manage ${label}`}
+            className={cn(
+              'absolute right-3 top-3 z-30 flex h-11 w-11 items-center justify-center rounded-xl border border-bronze/42 bg-midnight/76 text-stardust/82 shadow-[0_14px_34px_rgba(0,0,0,0.32)] backdrop-blur-xl transition hover:border-ember/58 hover:text-stardust',
+              actionClassName,
+            )}
+            onClick={() => setIsMenuOpen((current) => !current)}
+            type="button"
+          >
+            <MoreHorizontal aria-hidden="true" size={20} strokeWidth={1.9} />
+          </button>
+          {isMenuOpen ? (
+            <>
+              <BottomSheet
+                isOpen
+                onClose={() => setIsMenuOpen(false)}
+                title={`Manage ${label}`}
+              >
+                {menuActions}
+              </BottomSheet>
+              <button
+                aria-label={`Close ${label} menu`}
+                className="fixed inset-0 z-40 hidden cursor-default bg-transparent lg:block"
+                onClick={() => setIsMenuOpen(false)}
+                type="button"
+              />
+              <div className="absolute right-3 top-16 z-50 hidden w-80 rounded-2xl border border-bronze/34 bg-[linear-gradient(145deg,rgba(24,22,20,0.98),rgba(10,10,10,0.98))] p-3 shadow-[0_28px_90px_rgba(0,0,0,0.52)] lg:block">
+                {menuActions}
+              </div>
+            </>
+          ) : null}
+        </>
+      ) : (
+        <div
+          className={cn(
+            'absolute bottom-3 left-3 right-3 z-30 flex justify-end transition duration-200',
+            controlsMode === 'menu' && hasPendingImage &&
+              'bottom-0 left-0 right-0 border-t border-bronze/24 bg-midnight/82 p-3 backdrop-blur-xl',
+            shouldKeepVisible
+              ? 'opacity-100'
+              : 'opacity-100 md:opacity-0 md:group-hover/image-slot:opacity-100 md:group-focus-within/image-slot:opacity-100',
+            controlsMode === 'expanded' && actionClassName,
+          )}
+        >
+          <ImageActionsMenu
+            canAdjust={canAdjust}
+            canRemove={canRemove}
+            compact={compact}
+            hasPendingImage={hasPendingImage}
+            onAdjust={onAdjust}
+            onCancelPreview={onCancelPreview}
+            onConfirmPreview={onConfirmPreview}
+            onRemove={onRemove}
+            onSmartFit={onSmartFit}
+            onUpload={onUpload}
+          />
+        </div>
+      )}
     </>
   );
 }

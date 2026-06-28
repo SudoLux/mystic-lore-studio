@@ -16,13 +16,13 @@ import {
   Sparkles,
 } from 'lucide-react';
 import { Badge } from '../../components/shared/Badge';
+import { AdaptiveProjectImage } from '../../components/projects/AdaptiveProjectImage';
 import { Button } from '../../components/shared/Button';
 import { Card } from '../../components/shared/Card';
 import { PageHeader } from '../../components/shared/PageHeader';
 import { MobilePageHeader } from '../../components/shared/MobilePageHeader';
 import { MobileSummaryStrip } from '../../components/shared/MobileSummaryStrip';
 import { ImageReadabilityOverlay } from '../../components/shared/ImageReadabilityOverlay';
-import { StoredImage } from '../../components/shared/StoredImage';
 import { useStudioData } from '../../hooks/useStudioData';
 import {
   formatStudioDate as formatDate,
@@ -607,9 +607,10 @@ function FeaturedGarmentHero({
 
         <div className="relative h-40 overflow-hidden border-t border-bronze/20 bg-[radial-gradient(circle_at_20%_10%,rgba(200,155,60,0.32),transparent_30%),radial-gradient(circle_at_84%_18%,rgba(45,92,107,0.4),transparent_34%),linear-gradient(135deg,rgba(27,58,99,0.76),rgba(10,10,10,0.72),rgba(61,43,31,0.78))] sm:h-[14.5rem] md:h-[16rem] xl:h-full xl:min-h-[22rem] xl:border-l xl:border-t-0">
           {heroImage ? (
-            <StoredImage
+            <AdaptiveProjectImage
               asset={heroImage}
-              className="absolute inset-0 h-full w-full object-cover transition duration-700 group-hover:[transform:scale(calc(var(--image-zoom)*1.035))]"
+              className="absolute inset-0"
+              foregroundClassName="transition duration-700 group-hover:[transform:scale(calc(var(--image-zoom)*1.035))]"
             />
           ) : null}
           <ImageReadabilityOverlay asset={heroImage} variant="hero" />
@@ -812,9 +813,11 @@ function ProjectImageBand({
       className={`${className} relative overflow-hidden border-b border-bronze/20 bg-[radial-gradient(circle_at_20%_10%,rgba(200,155,60,0.28),transparent_30%),linear-gradient(135deg,rgba(27,58,99,0.68),rgba(10,10,10,0.72),rgba(61,43,31,0.76))]`}
     >
       {heroImage ? (
-        <StoredImage
+        <AdaptiveProjectImage
           asset={heroImage}
-          className="h-full w-full object-cover transition duration-500 group-hover:[transform:scale(calc(var(--image-zoom)*1.03))]"
+          className="h-full w-full"
+          foregroundClassName="transition duration-500 group-hover:[transform:scale(calc(var(--image-zoom)*1.03))]"
+          mode="compact"
         />
       ) : null}
       <ImageReadabilityOverlay asset={heroImage} variant="card" />

@@ -8,6 +8,7 @@ import {
   SlidersHorizontal,
 } from 'lucide-react';
 import { Badge } from '../../components/shared/Badge';
+import { AdaptiveProjectImage } from '../../components/projects/AdaptiveProjectImage';
 import { Button } from '../../components/shared/Button';
 import { Card } from '../../components/shared/Card';
 import { FilterSheet } from '../../components/shared/FilterSheet';
@@ -15,7 +16,6 @@ import { MobileCardRow } from '../../components/shared/MobileCardRow';
 import { MobilePageHeader } from '../../components/shared/MobilePageHeader';
 import { PageHeader } from '../../components/shared/PageHeader';
 import { ImageReadabilityOverlay } from '../../components/shared/ImageReadabilityOverlay';
-import { StoredImage } from '../../components/shared/StoredImage';
 import { useStudioData } from '../../hooks/useStudioData';
 import { cn } from '../../lib/classes';
 import {
@@ -270,9 +270,10 @@ export function ProjectsPage({ onNewProject, onOpenProject }: ProjectsPageProps)
                 image={
                   <>
                     {heroImage ? (
-                      <StoredImage
+                      <AdaptiveProjectImage
                         asset={heroImage}
                         className="absolute inset-0 h-full w-full object-cover"
+                        mode="compact"
                       />
                     ) : null}
                     <ImageReadabilityOverlay asset={heroImage} variant="card" />
@@ -437,9 +438,11 @@ function ProjectGalleryCard({
     >
       <div className="relative h-40 overflow-hidden border-b border-bronze/24 bg-[radial-gradient(circle_at_20%_10%,rgba(200,155,60,0.38),transparent_30%),radial-gradient(circle_at_88%_18%,rgba(45,92,107,0.38),transparent_34%),linear-gradient(135deg,rgba(27,58,99,0.76),rgba(10,10,10,0.72),rgba(61,43,31,0.86))] p-4 shadow-[inset_0_-1px_0_rgba(237,227,207,0.05)]">
         {heroImage ? (
-          <StoredImage
+          <AdaptiveProjectImage
             asset={heroImage}
-            className="absolute inset-0 h-full w-full object-cover transition duration-500 group-hover:[transform:scale(calc(var(--image-zoom)*1.03))]"
+            className="absolute inset-0"
+            foregroundClassName="transition duration-500 group-hover:[transform:scale(calc(var(--image-zoom)*1.03))]"
+            mode="compact"
           />
         ) : null}
         <ImageReadabilityOverlay asset={heroImage} variant="card" />
@@ -526,9 +529,11 @@ function ProjectListCard({
     >
       <div className="relative h-28 overflow-hidden rounded-xl border border-bronze/20 bg-[linear-gradient(135deg,rgba(27,58,99,0.66),rgba(10,10,10,0.72),rgba(61,43,31,0.76))] sm:h-full sm:min-h-24">
         {heroImage ? (
-          <StoredImage
+          <AdaptiveProjectImage
             asset={heroImage}
-            className="h-full w-full object-cover transition duration-500 group-hover:[transform:scale(calc(var(--image-zoom)*1.04))]"
+            className="h-full w-full"
+            foregroundClassName="transition duration-500 group-hover:[transform:scale(calc(var(--image-zoom)*1.04))]"
+            mode="compact"
           />
         ) : null}
         <ImageReadabilityOverlay asset={heroImage} variant="card" />

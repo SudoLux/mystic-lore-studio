@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
 import { cn } from '../../lib/classes';
 
@@ -19,7 +20,7 @@ export function BottomSheet({
 }: BottomSheetProps) {
   if (!isOpen) return null;
 
-  return (
+  return createPortal(
     <div className="fixed inset-0 z-[120] flex items-end bg-midnight/76 px-3 pt-10 backdrop-blur-xl sm:items-center sm:justify-center lg:hidden">
       <section
         aria-labelledby="bottom-sheet-title"
@@ -48,6 +49,7 @@ export function BottomSheet({
         </div>
         {children}
       </section>
-    </div>
+    </div>,
+    document.body,
   );
 }
