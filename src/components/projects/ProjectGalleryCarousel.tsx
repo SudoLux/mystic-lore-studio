@@ -33,6 +33,7 @@ import {
   getRecommendedProjectImageDisplay,
   isUsableImageAsset,
   MAX_PROJECT_GALLERY_IMAGES,
+  PROJECT_GALLERY_RESPONSIVE_ASPECT_CLASS,
 } from '../../lib/imageAssets';
 import {
   createLocalImageAsset,
@@ -414,7 +415,10 @@ export const ProjectGalleryCarousel = forwardRef<
 
         <div className="xl:grid xl:grid-cols-[minmax(0,1fr)_9rem]">
           <div
-            className="group/gallery-stage relative aspect-[4/5] cursor-zoom-in overflow-hidden bg-midnight/64 sm:aspect-[4/3] xl:aspect-video"
+            className={cn(
+              'group/gallery-stage relative cursor-zoom-in overflow-hidden bg-midnight/64',
+              PROJECT_GALLERY_RESPONSIVE_ASPECT_CLASS,
+            )}
             onClick={() => {
               if (didSwipeRef.current) {
                 didSwipeRef.current = false;
@@ -537,6 +541,7 @@ export const ProjectGalleryCarousel = forwardRef<
 
       {adjustingImage ? (
         <ImageAdjustModal
+          adjustmentContext="projectGallery"
           asset={adjustingImage}
           label={`Gallery image ${activeIndex + 1}`}
           onClose={() => setAdjustingImage(null)}

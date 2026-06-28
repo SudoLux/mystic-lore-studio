@@ -63,6 +63,7 @@ import {
   getFabricImage,
   getLookbookHeroImage,
   getProjectGalleryImages,
+  PROJECT_HERO_RESPONSIVE_ASPECT_CLASS,
 } from '../../lib/imageAssets';
 import {
   calculateFabricYardage,
@@ -287,16 +288,26 @@ function ProjectHero({
   onUpdateProject: (project: ApparelProject) => void;
   project: ApparelProject;
 }) {
+  const nextStudioTask = getNextStudioTask(project.tasks);
+  const materialAttentionCount = project.linkedMaterials.filter(
+    (material) => material.status === 'Needed' || material.status === 'Need More',
+  ).length;
+  const materialSignal = getMaterialSignal(
+    project.linkedMaterials.length,
+    materialAttentionCount,
+  );
+
   return (
     <>
     <Card className="overflow-hidden p-0 lg:hidden" elevated>
       <ImageSlot
         actionClassName="right-3 top-3 bottom-auto"
-        aspectClassName="aspect-[4/5] sm:aspect-[4/3]"
+        adjustmentContext="projectHero"
+        aspectClassName={PROJECT_HERO_RESPONSIVE_ASPECT_CLASS}
         className="rounded-none border-0 border-b border-bronze/20 bg-midnight/40 md:max-lg:max-h-[32rem]"
         compact
         controlsMode="menu"
-        label="Hero"
+        label="Project Hero"
         labelClassName="hidden"
         onRemove={() => onUpdateProject({ ...project, heroImage: undefined })}
         onSave={(image) => onUpdateProject({ ...project, heroImage: image })}
@@ -376,7 +387,7 @@ function ProjectHero({
 
     <Card className="hidden overflow-hidden p-0 lg:block" elevated>
       <div className="grid min-h-[26rem] lg:grid-cols-[1.08fr_0.92fr]">
-        <div className="flex flex-col justify-between gap-10 p-5 sm:p-7 lg:p-8">
+        <div className="project-hero-copy flex flex-col p-5 sm:p-7 lg:p-8">
           <div>
             <div className="flex flex-wrap items-center justify-between gap-3">
               <BackButton onBack={onBack} />
@@ -412,7 +423,75 @@ function ProjectHero({
             </p>
           </div>
 
-          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          <div className="project-hero-progress mt-7">
+            <div className="mb-2.5 flex items-center justify-between gap-4 text-xs">
+              <span className="font-medium uppercase tracking-[0.14em] text-stardust/46">
+                Build progress · {project.phase}
+              </span>
+              <span className="font-semibold text-ember">{project.progress}%</span>
+            </div>
+            <div className="studio-progress-track">
+              <div
+                className="studio-progress-fill"
+                style={{ width: `${project.progress}%` }}
+              />
+            </div>
+          </div>
+
+          <section className="project-hero-expanded mt-7 border-y border-bronze/18 py-5">
+            <div className="flex items-end justify-between gap-5">
+              <div>
+                <p className="text-[0.64rem] font-medium uppercase tracking-[0.16em] text-ember/78">
+                  Design signatures
+                </p>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {project.keyFeatures.length > 0 ? (
+                    project.keyFeatures.slice(0, 4).map((feature) => (
+                      <span
+                        className="rounded-full border border-bronze/28 bg-midnight/34 px-3 py-1.5 text-xs text-stardust/68"
+                        key={feature}
+                      >
+                        {feature}
+                      </span>
+                    ))
+                  ) : (
+                    <span className="text-sm text-stardust/46">
+                      No design signatures added
+                    </span>
+                  )}
+                </div>
+              </div>
+              <span className="shrink-0 rounded-full border border-teal/28 bg-teal/10 px-3 py-1.5 text-xs font-medium text-stardust/64">
+                {project.season || 'Season open'}
+              </span>
+            </div>
+
+            <div className="mt-5 grid grid-cols-2 border-t border-bronze/16 pt-5">
+              <StudioPulseItem
+                detail={
+                  nextStudioTask
+                    ? `${nextStudioTask.status} · ${
+                        nextStudioTask.dueDate
+                          ? formatDate(nextStudioTask.dueDate)
+                          : 'No due date'
+                      }`
+                    : 'The task board is clear'
+                }
+                icon={<ClipboardList aria-hidden="true" size={17} strokeWidth={1.9} />}
+                label="Next studio move"
+                value={nextStudioTask?.title ?? 'No open tasks'}
+              />
+              <StudioPulseItem
+                className="border-l border-bronze/16 pl-5"
+                detail={materialSignal.detail}
+                icon={<Package aria-hidden="true" size={17} strokeWidth={1.9} />}
+                label="Material signal"
+                value={materialSignal.value}
+              />
+            </div>
+          </section>
+
+          <div className="project-hero-metrics mt-auto grid grid-cols-2 gap-3 pt-7">
             <HeroMetric
               icon={<Shirt aria-hidden="true" size={18} strokeWidth={1.9} />}
               label="Garment"
@@ -424,9 +503,9 @@ function ProjectHero({
               value={project.collection}
             />
             <HeroMetric
-              icon={<Target aria-hidden="true" size={18} strokeWidth={1.9} />}
-              label="Progress"
-              value={`${project.progress}%`}
+              icon={<CalendarDays aria-hidden="true" size={18} strokeWidth={1.9} />}
+              label="Target date"
+              value={project.targetDate ? formatDate(project.targetDate) : 'Not scheduled'}
             />
             <HeroMetric
               icon={<Sparkles aria-hidden="true" size={18} strokeWidth={1.9} />}
@@ -438,7 +517,8 @@ function ProjectHero({
 
         <ImageSlot
           actionClassName="right-5 top-5 bottom-auto"
-          aspectClassName=""
+          adjustmentContext="projectHero"
+          aspectClassName={PROJECT_HERO_RESPONSIVE_ASPECT_CLASS}
           className="min-h-[21rem] rounded-none border-0 border-t border-bronze/20 bg-midnight/40 lg:border-l lg:border-t-0"
           controlsMode="menu"
           label="Project Hero"
@@ -2773,6 +2853,78 @@ function HeroMetric({
       <p className="mt-1 truncate text-sm font-semibold text-stardust">{value}</p>
     </div>
   );
+}
+
+function StudioPulseItem({
+  className,
+  detail,
+  icon,
+  label,
+  value,
+}: {
+  className?: string;
+  detail: string;
+  icon: React.ReactNode;
+  label: string;
+  value: string;
+}) {
+  return (
+    <div className={cn('min-w-0 pr-5', className)}>
+      <div className="flex items-center gap-2 text-ember">
+        {icon}
+        <p className="text-[0.64rem] font-medium uppercase tracking-[0.14em] text-stardust/44">
+          {label}
+        </p>
+      </div>
+      <p className="mt-2 line-clamp-2 text-sm font-semibold leading-5 text-stardust">
+        {value}
+      </p>
+      <p className="mt-1 text-xs leading-5 text-stardust/48">{detail}</p>
+    </div>
+  );
+}
+
+const heroTaskPriority: Record<TaskPriority, number> = {
+  Critical: 0,
+  High: 1,
+  Medium: 2,
+  Low: 3,
+};
+
+function getNextStudioTask(tasks: StudioTask[]) {
+  return [...tasks]
+    .filter((task) => task.status !== 'Done')
+    .sort((left, right) => {
+      const blockedDifference =
+        Number(right.status === 'Blocked') - Number(left.status === 'Blocked');
+      if (blockedDifference !== 0) return blockedDifference;
+
+      const priorityDifference =
+        heroTaskPriority[left.priority] - heroTaskPriority[right.priority];
+      if (priorityDifference !== 0) return priorityDifference;
+
+      const leftDueDate = left.dueDate
+        ? studioDateTimestamp(left.dueDate)
+        : Number.POSITIVE_INFINITY;
+      const rightDueDate = right.dueDate
+        ? studioDateTimestamp(right.dueDate)
+        : Number.POSITIVE_INFINITY;
+      return leftDueDate - rightDueDate;
+    })[0];
+}
+
+function getMaterialSignal(total: number, attention: number) {
+  if (total === 0) {
+    return { detail: 'Add materials when sourcing begins', value: 'No materials linked' };
+  }
+
+  return {
+    detail:
+      attention > 0
+        ? `${attention} ${attention === 1 ? 'item needs' : 'items need'} attention`
+        : 'All linked materials are selected',
+    value: `${total} linked ${total === 1 ? 'material' : 'materials'}`,
+  };
 }
 
 function InfoBlock({ label, value }: { label: string; value: string }) {

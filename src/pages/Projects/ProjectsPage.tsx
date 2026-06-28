@@ -22,7 +22,10 @@ import {
   formatStudioDate as formatDate,
   studioDateTimestamp,
 } from '../../lib/dates';
-import { getProjectHeroImage } from '../../lib/imageAssets';
+import {
+  getProjectHeroImage,
+  PROJECT_LIBRARY_CARD_ASPECT_CLASS,
+} from '../../lib/imageAssets';
 import {
   garmentTypes,
   projectPhases,
@@ -436,7 +439,12 @@ function ProjectGalleryCard({
       style={style}
       type="button"
     >
-      <div className="relative h-40 overflow-hidden border-b border-bronze/24 bg-[radial-gradient(circle_at_20%_10%,rgba(200,155,60,0.38),transparent_30%),radial-gradient(circle_at_88%_18%,rgba(45,92,107,0.38),transparent_34%),linear-gradient(135deg,rgba(27,58,99,0.76),rgba(10,10,10,0.72),rgba(61,43,31,0.86))] p-4 shadow-[inset_0_-1px_0_rgba(237,227,207,0.05)]">
+      <div
+        className={cn(
+          'relative overflow-hidden border-b border-bronze/24 bg-[radial-gradient(circle_at_20%_10%,rgba(200,155,60,0.38),transparent_30%),radial-gradient(circle_at_88%_18%,rgba(45,92,107,0.38),transparent_34%),linear-gradient(135deg,rgba(27,58,99,0.76),rgba(10,10,10,0.72),rgba(61,43,31,0.86))] p-4 shadow-[inset_0_-1px_0_rgba(237,227,207,0.05)]',
+          PROJECT_LIBRARY_CARD_ASPECT_CLASS,
+        )}
+      >
         {heroImage ? (
           <AdaptiveProjectImage
             asset={heroImage}

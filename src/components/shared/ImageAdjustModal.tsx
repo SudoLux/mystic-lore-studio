@@ -9,14 +9,20 @@ import {
   RotateCcw,
   X,
 } from 'lucide-react';
+import { ProjectImageFramingStudio } from '../projects/ProjectImageFramingStudio';
 import { cn } from '../../lib/classes';
-import { defaultImageDisplay, getImageDisplay } from '../../lib/imageAssets';
+import {
+  defaultImageDisplay,
+  getImageDisplay,
+  type ImageAdjustmentContext,
+} from '../../lib/imageAssets';
 import type { LocalImageAsset } from '../../types/studio';
 import { Button } from './Button';
 import { ImageReadabilityOverlay } from './ImageReadabilityOverlay';
 import { StoredImage } from './StoredImage';
 
 type ImageAdjustModalProps = {
+  adjustmentContext?: ImageAdjustmentContext;
   asset: LocalImageAsset;
   label: string;
   onClose: () => void;
@@ -41,6 +47,7 @@ const positionPresets: PositionPreset[] = [
 ];
 
 export function ImageAdjustModal({
+  adjustmentContext = 'standard',
   asset,
   label,
   onClose,
@@ -48,6 +55,39 @@ export function ImageAdjustModal({
   previewAspectClassName = 'aspect-video',
   smartFitValues,
 }: ImageAdjustModalProps) {
+  if (adjustmentContext !== 'standard') {
+    return (
+      <ProjectImageFramingStudio
+        asset={asset}
+        context={adjustmentContext}
+        label={label}
+        onClose={onClose}
+        onSave={onSave}
+        smartFitValues={smartFitValues}
+      />
+    );
+  }
+
+  return (
+    <StandardImageAdjustModal
+      asset={asset}
+      label={label}
+      onClose={onClose}
+      onSave={onSave}
+      previewAspectClassName={previewAspectClassName}
+      smartFitValues={smartFitValues}
+    />
+  );
+}
+
+function StandardImageAdjustModal({
+  asset,
+  label,
+  onClose,
+  onSave,
+  previewAspectClassName = 'aspect-video',
+  smartFitValues,
+}: Omit<ImageAdjustModalProps, 'adjustmentContext'>) {
   const [draft, setDraft] = useState<LocalImageAsset>(() => ({
     ...asset,
     ...getImageDisplay(asset),

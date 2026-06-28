@@ -220,6 +220,34 @@ textarea:focus-visible {
   @apply h-full rounded-full bg-[linear-gradient(90deg,#C89B3C,#2D5C6B,#EDE3CF)] shadow-[0_0_18px_rgba(200,155,60,0.28)] transition-all duration-500;
 }
 
+.project-hero-copy {
+  container-name: project-hero-copy;
+  container-type: inline-size;
+}
+
+.project-hero-progress,
+.project-hero-expanded {
+  display: none;
+}
+
+@container project-hero-copy (min-width: 30rem) {
+  .project-hero-progress {
+    display: block;
+  }
+}
+
+@container project-hero-copy (min-width: 36rem) {
+  .project-hero-metrics {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+@container project-hero-copy (min-width: 40rem) {
+  .project-hero-expanded {
+    display: block;
+  }
+}
+
 @keyframes studio-card-rise {
   from {
     opacity: 0;

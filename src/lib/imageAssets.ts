@@ -15,6 +15,90 @@ export const defaultImageDisplay = {
 
 export const MAX_PROJECT_GALLERY_IMAGES = 5;
 
+export const PROJECT_HERO_RESPONSIVE_ASPECT_CLASS =
+  'aspect-[4/5] sm:aspect-[4/3] lg:aspect-[3/4]';
+export const PROJECT_GALLERY_RESPONSIVE_ASPECT_CLASS =
+  'aspect-[4/5] sm:aspect-[4/3] xl:aspect-video';
+export const PROJECT_LIBRARY_CARD_ASPECT_CLASS = 'aspect-[5/2]';
+export const PROJECT_DASHBOARD_BAND_ASPECT_CLASS = 'aspect-[4/1]';
+export const PROJECT_MOBILE_CARD_ASPECT_CLASS = 'aspect-square';
+
+export type ImageAdjustmentContext =
+  | 'projectGallery'
+  | 'projectHero'
+  | 'standard';
+
+export type ProjectImageSurfaceDefinition = {
+  aspectRatio: number;
+  id: 'cards' | 'desktop' | 'phone' | 'tablet';
+  label: string;
+  ratioLabel: string;
+  renderMode: 'cards' | 'primary';
+};
+
+export const projectHeroImageSurfaces: ProjectImageSurfaceDefinition[] = [
+  {
+    aspectRatio: 4 / 5,
+    id: 'phone',
+    label: 'Phone',
+    ratioLabel: '4:5',
+    renderMode: 'primary',
+  },
+  {
+    aspectRatio: 4 / 3,
+    id: 'tablet',
+    label: 'Tablet',
+    ratioLabel: '4:3',
+    renderMode: 'primary',
+  },
+  {
+    aspectRatio: 3 / 4,
+    id: 'desktop',
+    label: 'Desktop',
+    ratioLabel: '3:4',
+    renderMode: 'primary',
+  },
+  {
+    aspectRatio: 4 / 3,
+    id: 'cards',
+    label: 'Cards',
+    ratioLabel: 'Crop check',
+    renderMode: 'cards',
+  },
+];
+
+export const projectGalleryImageSurfaces: ProjectImageSurfaceDefinition[] = [
+  {
+    aspectRatio: 4 / 5,
+    id: 'phone',
+    label: 'Phone',
+    ratioLabel: '4:5',
+    renderMode: 'primary',
+  },
+  {
+    aspectRatio: 4 / 3,
+    id: 'tablet',
+    label: 'Tablet',
+    ratioLabel: '4:3',
+    renderMode: 'primary',
+  },
+  {
+    aspectRatio: 16 / 9,
+    id: 'desktop',
+    label: 'Desktop',
+    ratioLabel: '16:9',
+    renderMode: 'primary',
+  },
+];
+
+export function getProjectImageSurfaces(
+  context: Exclude<ImageAdjustmentContext, 'standard'>,
+) {
+  return context === 'projectGallery'
+    ? projectGalleryImageSurfaces
+    : projectHeroImageSurfaces;
+}
+
 export type ImageDisplaySettings = {
   objectFit: 'cover' | 'contain';
   overlayIntensity: 'auto' | 'light' | 'strong';
