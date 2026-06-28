@@ -16,6 +16,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Expand,
+  Focus,
   ImagePlus,
   LoaderCircle,
   MoreHorizontal,
@@ -28,6 +29,8 @@ import {
 } from 'lucide-react';
 import { cn } from '../../lib/classes';
 import {
+  applyRecommendedProjectImageDisplay,
+  getRecommendedProjectImageDisplay,
   isUsableImageAsset,
   MAX_PROJECT_GALLERY_IMAGES,
 } from '../../lib/imageAssets';
@@ -40,6 +43,7 @@ import { Badge } from '../shared/Badge';
 import { BottomSheet } from '../shared/BottomSheet';
 import { ImageAdjustModal } from '../shared/ImageAdjustModal';
 import { StoredImage } from '../shared/StoredImage';
+import { AdaptiveProjectImage } from './AdaptiveProjectImage';
 
 export type ProjectGalleryCarouselHandle = {
   openFilePicker: () => void;
@@ -174,7 +178,9 @@ export const ProjectGalleryCarousel = forwardRef<
         batch.map((file) => createLocalImageAsset(file)),
       );
       results.forEach((result, resultIndex) => {
-        if (result.status === 'fulfilled') prepared.push(result.value);
+        if (result.status === 'fulfilled') {
+          prepared.push(applyRecommendedProjectImageDisplay(result.value));
+        }
         else {
           const error = result.reason as ImageProcessingError;
           failures.push(
@@ -213,7 +219,9 @@ export const ProjectGalleryCarousel = forwardRef<
     setProcessedCount(0);
     setNotice(null);
     try {
-      const replacement = await createLocalImageAsset(file);
+      const replacement = applyRecommendedProjectImageDisplay(
+        await createLocalImageAsset(file),
+      );
       const nextImages = galleryImages.map((image) =>
         image.id === activeImage.id ? replacement : image,
       );
@@ -310,6 +318,16 @@ export const ProjectGalleryCarousel = forwardRef<
         replaceInputRef.current?.click();
         setIsManaging(false);
       }}
+      onSmartFit={() => {
+        commitVisibleImages(
+          galleryImages.map((image) =>
+            image.id === activeImage.id
+              ? applyRecommendedProjectImageDisplay(image)
+              : image,
+          ),
+        );
+        setIsManaging(false);
+      }}
     />
   );
 
@@ -396,7 +414,7 @@ export const ProjectGalleryCarousel = forwardRef<
 
         <div className="xl:grid xl:grid-cols-[minmax(0,1fr)_9rem]">
           <div
-            className="group/gallery-stage relative aspect-[4/3] cursor-zoom-in overflow-hidden bg-midnight/64 sm:aspect-[4/3] xl:aspect-video"
+            className="group/gallery-stage relative aspect-[4/5] cursor-zoom-in overflow-hidden bg-midnight/64 sm:aspect-[4/3] xl:aspect-video"
             onClick={() => {
               if (didSwipeRef.current) {
                 didSwipeRef.current = false;
@@ -408,7 +426,7 @@ export const ProjectGalleryCarousel = forwardRef<
             onPointerUp={handlePointerUp}
             style={{ touchAction: 'pan-y' }}
           >
-            <StoredImage
+            <AdaptiveProjectImage
               asset={activeImage}
               className="gallery-image-enter absolute inset-0"
               key={activeImage.id}
@@ -530,7 +548,8 @@ export const ProjectGalleryCarousel = forwardRef<
             );
             setAdjustingImage(null);
           }}
-          previewAspectClassName="aspect-[4/3]"
+          previewAspectClassName="aspect-[4/5] sm:aspect-[4/3]"
+          smartFitValues={getRecommendedProjectImageDisplay(adjustingImage)}
         />
       ) : null}
     </>
@@ -576,7 +595,7 @@ function GalleryThumbnail({
       aria-label={`Show gallery image ${index + 1}`}
       aria-pressed={active}
       className={cn(
-        'relative aspect-[4/3] w-28 shrink-0 overflow-hidden rounded-xl border bg-midnight/52 transition duration-200 xl:w-full',
+        'relative aspect-[3/4] w-20 shrink-0 overflow-hidden rounded-xl border bg-midnight/52 transition duration-200 sm:w-24 xl:w-full',
         active
           ? 'border-ember/74 shadow-[0_0_22px_rgba(200,155,60,0.18)]'
           : 'border-bronze/24 opacity-58 hover:border-bronze/54 hover:opacity-100',
@@ -584,7 +603,11 @@ function GalleryThumbnail({
       onClick={onClick}
       type="button"
     >
-      <StoredImage asset={image} className="absolute inset-0" />
+      <AdaptiveProjectImage
+        asset={image}
+        className="absolute inset-0"
+        mode="thumbnail"
+      />
       <span className="absolute bottom-1.5 left-1.5 flex h-6 min-w-6 items-center justify-center rounded-lg border border-stardust/14 bg-midnight/72 px-1.5 text-[0.65rem] text-stardust/80 backdrop-blur-lg">
         {index + 1}
       </span>
@@ -600,6 +623,7 @@ function GalleryManagementActions({
   onMoveRight,
   onRemove,
   onReplace,
+  onSmartFit,
 }: {
   activeIndex: number;
   imageCount: number;
@@ -608,9 +632,11 @@ function GalleryManagementActions({
   onMoveRight: () => void;
   onRemove: () => void;
   onReplace: () => void;
+  onSmartFit: () => void;
 }) {
   return (
     <div className="grid gap-2">
+      <ManagementButton icon={Focus} label="Smart Fit" onClick={onSmartFit} />
       <ManagementButton icon={SlidersHorizontal} label="Adjust framing" onClick={onAdjust} />
       <ManagementButton icon={RotateCcw} label="Replace image" onClick={onReplace} />
       <div className="grid grid-cols-2 gap-2">

@@ -23,6 +23,8 @@ export type ImageDisplaySettings = {
   zoom: number;
 };
 
+export type ImageOrientation = 'landscape' | 'portrait' | 'square';
+
 export function isUsableImageAsset(
   image: LocalImageAsset | null | undefined,
 ): image is LocalImageAsset {
@@ -84,6 +86,41 @@ export function getImageDisplay(asset: LocalImageAsset): ImageDisplaySettings {
     objectPositionX: clampNumber(asset.objectPositionX, 50, 0, 100),
     objectPositionY: clampNumber(asset.objectPositionY, 50, 0, 100),
     zoom: clampNumber(asset.zoom, 1, 1, 2.5),
+  };
+}
+
+export function getImageOrientation(
+  asset: Pick<LocalImageAsset, 'height' | 'width'>,
+): ImageOrientation {
+  if (!asset.width || !asset.height) return 'landscape';
+  const ratio = asset.width / asset.height;
+  if (ratio <= 0.86) return 'portrait';
+  if (ratio >= 1.16) return 'landscape';
+  return 'square';
+}
+
+export function getRecommendedProjectImageDisplay(
+  asset: Pick<LocalImageAsset, 'height' | 'width'>,
+): Pick<
+  LocalImageAsset,
+  'objectFit' | 'objectPositionX' | 'objectPositionY' | 'zoom'
+> {
+  return {
+    objectFit:
+      getImageOrientation(asset) === 'portrait' ? 'contain' : 'cover',
+    objectPositionX: 50,
+    objectPositionY: 50,
+    zoom: 1,
+  };
+}
+
+export function applyRecommendedProjectImageDisplay(
+  asset: LocalImageAsset,
+): LocalImageAsset {
+  return {
+    ...asset,
+    ...getRecommendedProjectImageDisplay(asset),
+    updatedAt: new Date().toISOString(),
   };
 }
 

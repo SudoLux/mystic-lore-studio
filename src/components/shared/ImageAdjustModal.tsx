@@ -22,6 +22,7 @@ type ImageAdjustModalProps = {
   onClose: () => void;
   onSave: (asset: LocalImageAsset) => void;
   previewAspectClassName?: string;
+  smartFitValues?: Partial<LocalImageAsset>;
 };
 
 type PositionPreset = {
@@ -45,6 +46,7 @@ export function ImageAdjustModal({
   onClose,
   onSave,
   previewAspectClassName = 'aspect-video',
+  smartFitValues,
 }: ImageAdjustModalProps) {
   const [draft, setDraft] = useState<LocalImageAsset>(() => ({
     ...asset,
@@ -166,6 +168,16 @@ export function ImageAdjustModal({
                     onClick={() => updateDraft({ objectFit: 'contain' })}
                   />
                 </div>
+                {smartFitValues ? (
+                  <button
+                    className="mt-2 flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border border-teal/34 bg-teal/10 px-4 text-sm font-medium text-stardust/78 transition hover:border-ember/48 hover:bg-stardust/[0.07] hover:text-stardust"
+                    onClick={() => updateDraft(smartFitValues)}
+                    type="button"
+                  >
+                    <Focus aria-hidden="true" size={16} strokeWidth={1.9} />
+                    Smart Fit
+                  </button>
+                ) : null}
               </ControlGroup>
 
               <ControlGroup label="Quick Position">

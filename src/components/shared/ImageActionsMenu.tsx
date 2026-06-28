@@ -1,4 +1,4 @@
-import { Check, ImagePlus, SlidersHorizontal, RotateCcw, Trash2, X } from 'lucide-react';
+import { Check, Focus, ImagePlus, SlidersHorizontal, RotateCcw, Trash2, X } from 'lucide-react';
 import { cn } from '../../lib/classes';
 
 type ImageActionsMenuProps = {
@@ -10,6 +10,7 @@ type ImageActionsMenuProps = {
   onAdjust: () => void;
   onConfirmPreview: () => void;
   onRemove: () => void;
+  onSmartFit?: () => void;
   onUpload: () => void;
 };
 
@@ -25,6 +26,7 @@ export function ImageActionsMenu({
   onCancelPreview,
   onConfirmPreview,
   onRemove,
+  onSmartFit,
   onUpload,
 }: ImageActionsMenuProps) {
   if (hasPendingImage) {
@@ -60,6 +62,20 @@ export function ImageActionsMenu({
 
   return (
     <div className={cn('flex flex-wrap justify-end gap-2', compact && 'w-full')}>
+      {onSmartFit ? (
+        <button
+          className={cn(
+            actionButtonClassName,
+            'border-teal/42 bg-midnight/78 text-stardust',
+            compact && 'flex-1 sm:flex-none',
+          )}
+          onClick={onSmartFit}
+          type="button"
+        >
+          <Focus aria-hidden="true" size={14} strokeWidth={1.9} />
+          Smart Fit
+        </button>
+      ) : null}
       {canAdjust ? (
         <button
           className={cn(
