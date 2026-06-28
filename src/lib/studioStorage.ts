@@ -255,6 +255,11 @@ export function deleteProjectInData(
     notes: data.notes.filter((note) => note.projectId !== projectId),
     projects: data.projects.filter((project) => project.id !== projectId),
     tasks: data.tasks.filter((task) => task.projectId !== projectId),
+    yardageEntries: data.yardageEntries.map((entry) =>
+      entry.projectId === projectId
+        ? { ...entry, projectId: undefined }
+        : entry,
+    ),
   };
 }
 
@@ -281,6 +286,14 @@ export function deleteFabricInData(
   return {
     ...data,
     fabrics: data.fabrics.filter((fabric) => fabric.id !== fabricId),
+    linkedMaterials: data.linkedMaterials.map((material) =>
+      material.fabricId === fabricId
+        ? { ...material, fabricId: undefined }
+        : material,
+    ),
+    yardageEntries: data.yardageEntries.filter(
+      (entry) => entry.fabricId !== fabricId,
+    ),
   };
 }
 
@@ -383,6 +396,11 @@ export function deleteLinkedMaterialInData(
       task.linkedMaterialId === linkedMaterialId
         ? { ...task, linkedMaterialId: undefined }
         : task,
+    ),
+    yardageEntries: data.yardageEntries.map((entry) =>
+      entry.materialId === linkedMaterialId
+        ? { ...entry, materialId: undefined }
+        : entry,
     ),
   });
 }

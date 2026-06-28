@@ -77,6 +77,7 @@ layer expects these user-owned tables with Row Level Security enabled:
 - `yardage_entries`
 - `project_images`
 - `lookbook_pages`
+- `sync_tombstones`
 
 Every synced row includes `user_id`, a UUID primary key, and a unique
 user-scoped `client_id`. The browser continues using its existing stable string
@@ -134,15 +135,18 @@ record-level upsert/delete operations. Repeated edits to the same record are
 coalesced, parent records are sent before their dependents, database writes use
 batches of 50, and no more than two images upload at once.
 Database requests time out after 15 seconds and image requests after 45 seconds;
-only network failures retry with 1, 2, and 4 second backoff. Explicit delete
-tombstones remain queued until confirmed by the cloud.
+only network failures retry with 1, 2, and 4 second backoff. Confirmed deletes
+are retained in `sync_tombstones`, preventing an older device cache from
+recreating removed records. A genuinely newer offline edit may restore a record
+and clears its older tombstone.
 
 Migration runs in the background after confirmation and reports validation,
 record preparation, record saving, image upload, and verification phases. A
 migration is complete only after its queue drains and a verification fetch
 succeeds. The app retries on browser focus, network reconnect, or the manual
 Retry Sync action. Conflicts are resolved using the newest `updated_at` value.
-The legacy localStorage copy is removed only after its IndexedDB recovery backup
+Missing Storage objects are repaired per image instead of failing the complete
+studio refresh. The legacy localStorage copy is removed only after its IndexedDB recovery backup
 has been read back and verified byte-for-byte. A local cache quota warning does
 not turn a successful cloud sync into a cloud sync error.
 
@@ -151,5 +155,5 @@ not turn a successful cloud sync into a cloud sync error.
 Status: MVP feature foundation in progress.
 
 Authenticated sessions use Supabase as the cloud source of truth with local
-cache and offline queue recovery. Cloud sync requires both repository SQL
-migrations to be applied to the configured Supabase project.
+cache and offline queue recovery. Cloud sync requires every repository SQL
+migration to be applied to the configured Supabase project in timestamp order.

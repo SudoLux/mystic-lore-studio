@@ -45,6 +45,7 @@ import {
   fetchCloudStudioData,
   markCloudMigrationComplete,
   mergeByNewest,
+  type CloudSnapshot,
 } from '../lib/supabaseStudio';
 import { deleteImageBlob } from '../lib/imageBlobStore';
 import {
@@ -116,6 +117,7 @@ type StudioDataContextValue = {
   saveData: (nextData: StudioData) => void;
   saveLookbookPage: (lookbookPage: LookbookPage) => void;
   syncError: string | null;
+  syncNotice: string | null;
   syncPhase: SyncPhase;
   syncProgress: SyncProgress;
   syncStatus: SyncStatus;
@@ -148,6 +150,7 @@ export function StudioDataProvider({
     failedSyncOperationCount(initialQueue),
   );
   const [syncError, setSyncError] = useState<string | null>(null);
+  const [syncNotice, setSyncNotice] = useState<string | null>(null);
   const [syncPhase, setSyncPhase] = useState<SyncPhase>('idle');
   const [syncProgress, setSyncProgress] = useState<SyncProgress>({
     completed: 0,
@@ -230,6 +233,34 @@ export function StudioDataProvider({
     [saveLocalData],
   );
 
+  const reconcileCloudSnapshot = useCallback(
+    async (cloud: CloudSnapshot) => {
+      const merged = mergeByNewest(cloud.data, rawDataRef.current, {
+        cloudInitialized: cloud.cloudInitialized,
+        tombstones: cloud.tombstones,
+      });
+      const resolved = await migrateStudioImagePayloads({
+        ...merged,
+        settings: rawDataRef.current.settings,
+      });
+      saveLocalData(resolved);
+      cacheRemotePreviews(resolved);
+
+      if (cloud.mediaRepairs.length > 0) {
+        const count = cloud.mediaRepairs.length;
+        setSyncNotice(
+          `${count} missing cloud image ${count === 1 ? 'reference was' : 'references were'} removed safely.`,
+        );
+      }
+
+      return [
+        ...buildDataSyncOperations(cloud.data, resolved),
+        ...buildDataSyncOperations(resolved, resolved, cloud.mediaRepairs),
+      ];
+    },
+    [cacheRemotePreviews, saveLocalData],
+  );
+
   const performQueueDrain = useCallback(async () => {
     if (!navigator.onLine) {
       setSyncStatus('offline');
@@ -259,11 +290,39 @@ export function StudioDataProvider({
       cloudReadyRef.current = true;
     }
 
+    let reconciliationPasses = 0;
+
     while (!cancelRequestedRef.current) {
       await migrateQueuedImagePayloads(userId);
       const queue = refreshQueueState();
 
       if (!queue || queue.operations.length === 0) {
+        setSyncPhase('verifying');
+        const cloud = await fetchCloudStudioData(userId);
+        const followUpOperations = await reconcileCloudSnapshot(cloud);
+
+        if (followUpOperations.length > 0) {
+          reconciliationPasses += 1;
+          if (reconciliationPasses > 4) {
+            throw new Error(
+              'Cloud reconciliation did not settle. Your local data remains available; retry sync.',
+            );
+          }
+          const followUpQueue = enqueueSyncOperations(
+            userId,
+            followUpOperations,
+          );
+          setPendingCount(syncQueueCount(followUpQueue));
+          setFailedOperationCount(failedSyncOperationCount(followUpQueue));
+          continue;
+        }
+
+        if (migrationInProgressRef.current) {
+          await markCloudMigrationComplete(userId);
+          setMigrationDecision(userId, 'completed');
+          setMigrationInProgress(false);
+          migrationInProgressRef.current = false;
+        }
         break;
       }
 
@@ -342,19 +401,6 @@ export function StudioDataProvider({
       return false;
     }
 
-    if (migrationInProgressRef.current) {
-      setSyncPhase('verifying');
-      const cloud = await fetchCloudStudioData(userId);
-
-      if (!getSyncQueue(userId)) {
-        saveLocalData(mergeByNewest(cloud.data, rawDataRef.current));
-      }
-      await markCloudMigrationComplete(userId);
-      setMigrationDecision(userId, 'completed');
-      setMigrationInProgress(false);
-      migrationInProgressRef.current = false;
-    }
-
     setPendingCount(0);
     setFailedOperationCount(0);
     setSyncProgress({ completed: 0, total: 0 });
@@ -363,7 +409,7 @@ export function StudioDataProvider({
     setSyncError(null);
     setLastSyncedAt(new Date().toISOString());
     return true;
-  }, [applyImageState, refreshQueueState, saveLocalData, userId]);
+  }, [applyImageState, reconcileCloudSnapshot, refreshQueueState, userId]);
 
   const flushQueue = useCallback(() => {
     if (flushPromiseRef.current) {
@@ -407,6 +453,7 @@ export function StudioDataProvider({
     setSyncStatus('syncing');
     setSyncPhase('validating');
     setSyncError(null);
+    setSyncNotice(null);
     const readiness = await checkCloudSyncReadiness(userId);
 
     if (!readiness.ready) {
@@ -430,30 +477,20 @@ export function StudioDataProvider({
       const meaningful = hasMeaningfulLocalData(rawDataRef.current);
       const migrationPending = getMigrationDecision(userId) === 'pending';
 
-      if (!cloud.hasCloudData && meaningful && migrationPending) {
+      if (!cloud.cloudInitialized && meaningful && migrationPending) {
         setMigrationAvailable(true);
         setSyncStatus('offline');
         setSyncPhase('idle');
         return;
       }
 
-      if (cloud.hasCloudData) {
+      if (cloud.cloudInitialized || cloud.hasCloudData) {
         await preserveLegacyCache();
-        const merged = mergeByNewest(cloud.data, rawDataRef.current);
-        const resolved = await migrateStudioImagePayloads({
-          ...merged,
-          settings: rawDataRef.current.settings,
-        });
-        saveLocalData(resolved);
-        cacheRemotePreviews(resolved);
+        const followUpOperations = await reconcileCloudSnapshot(cloud);
         setMigrationDecision(userId, 'completed');
 
-        const localNewerOperations = buildDataSyncOperations(
-          cloud.data,
-          resolved,
-        );
-        if (localNewerOperations.length > 0) {
-          const queue = enqueueSyncOperations(userId, localNewerOperations);
+        if (followUpOperations.length > 0) {
+          const queue = enqueueSyncOperations(userId, followUpOperations);
           setPendingCount(syncQueueCount(queue));
           setFailedOperationCount(failedSyncOperationCount(queue));
           await flushQueue();
@@ -469,7 +506,7 @@ export function StudioDataProvider({
       setSyncStatus(navigator.onLine ? 'error' : 'offline');
       setSyncPhase('idle');
     }
-  }, [cacheRemotePreviews, flushQueue, preserveLegacyCache, saveLocalData, userId]);
+  }, [flushQueue, preserveLegacyCache, reconcileCloudSnapshot, userId]);
 
   useEffect(() => {
     let active = true;
@@ -501,12 +538,19 @@ export function StudioDataProvider({
 
     const refresh = () =>
       void (getSyncQueue(userId) ? flushQueue() : refreshCloud());
+    const refreshWhenVisible = () => {
+      if (document.visibilityState === 'visible') refresh();
+    };
     window.addEventListener('focus', refresh);
     window.addEventListener('online', refresh);
+    window.addEventListener('pageshow', refresh);
+    document.addEventListener('visibilitychange', refreshWhenVisible);
     return () => {
       active = false;
       window.removeEventListener('focus', refresh);
       window.removeEventListener('online', refresh);
+      window.removeEventListener('pageshow', refresh);
+      document.removeEventListener('visibilitychange', refreshWhenVisible);
     };
   }, [flushQueue, preserveLegacyCache, refreshCloud, saveLocalData, userId]);
 
@@ -710,6 +754,7 @@ export function StudioDataProvider({
     saveData,
     saveLookbookPage,
     syncError,
+    syncNotice,
     syncPhase,
     syncProgress,
     syncStatus,
@@ -720,7 +765,7 @@ export function StudioDataProvider({
     updateProjectPhase,
     updateTask,
     updateTaskStatus,
-  }), [acceptCloudMigration, cancelSync, createFabric, createLinkedMaterial, createNote, createProject, createTask, deleteFabric, deleteLinkedMaterial, deleteNote, deleteProject, deleteTask, dismissCloudMigration, exportData, failedOperationCount, importData, lastSyncedAt, localCacheWarning, migrationAvailable, migrationInProgress, pendingCount, previewImportData, rawData, reopenCloudMigration, resetData, retrySync, saveData, saveLookbookPage, syncError, syncPhase, syncProgress, syncStatus, updateFabric, updateLinkedMaterial, updateNote, updateProject, updateProjectPhase, updateTask, updateTaskStatus]);
+  }), [acceptCloudMigration, cancelSync, createFabric, createLinkedMaterial, createNote, createProject, createTask, deleteFabric, deleteLinkedMaterial, deleteNote, deleteProject, deleteTask, dismissCloudMigration, exportData, failedOperationCount, importData, lastSyncedAt, localCacheWarning, migrationAvailable, migrationInProgress, pendingCount, previewImportData, rawData, reopenCloudMigration, resetData, retrySync, saveData, saveLookbookPage, syncError, syncNotice, syncPhase, syncProgress, syncStatus, updateFabric, updateLinkedMaterial, updateNote, updateProject, updateProjectPhase, updateTask, updateTaskStatus]);
 
   return <StudioDataContext.Provider value={value}>{children}</StudioDataContext.Provider>;
 }
@@ -805,16 +850,17 @@ function collectImageDeletions(current: StudioData, next: StudioData): SyncDelet
     next.fabrics.map((fabric) => fabric.image?.id).filter(Boolean),
   );
   const fabricImageDeletions = current.fabrics
-    .map((fabric) => fabric.image)
+    .map((fabric) => ({ fabricId: fabric.id, image: fabric.image }))
     .filter(
-      (image): image is LocalImageAsset =>
-        Boolean(image && !nextFabricImages.has(image.id)),
+      (item): item is { fabricId: string; image: LocalImageAsset } =>
+        Boolean(item.image && !nextFabricImages.has(item.image.id)),
     )
-    .map((image) =>
+    .map(({ fabricId, image }) =>
       deletion(
         'fabric_image',
         image.id,
         image.storagePath ? [image.storagePath] : [],
+        fabricId,
       ),
     );
   return [...projectImageDeletions, ...fabricImageDeletions];
@@ -956,8 +1002,19 @@ function mergeMigratedImagePayloads(base: StudioData, migrated: StudioData) {
   };
 }
 
-function deletion(entity: SyncDeletion['entity'], clientId: string, storagePaths: string[] = []): SyncDeletion {
-  return { clientId, deletedAt: new Date().toISOString(), entity, storagePaths };
+function deletion(
+  entity: SyncDeletion['entity'],
+  clientId: string,
+  storagePaths: string[] = [],
+  ownerId?: string,
+): SyncDeletion {
+  return {
+    clientId,
+    deletedAt: new Date().toISOString(),
+    entity,
+    ownerId,
+    storagePaths,
+  };
 }
 
 function errorMessage(error: unknown) {
