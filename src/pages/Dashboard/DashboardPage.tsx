@@ -28,7 +28,10 @@ import {
   formatStudioDate as formatDate,
   studioDateTimestamp,
 } from '../../lib/dates';
-import { getProjectHeroImage } from '../../lib/imageAssets';
+import {
+  getProjectHeroImage,
+  PROJECT_DASHBOARD_BAND_ASPECT_CLASS,
+} from '../../lib/imageAssets';
 import { LOW_YARDAGE_THRESHOLD, calculateFabricYardage } from '../../lib/yardage';
 import { projectPhases, type ApparelProject } from '../../types/studio';
 import type { PageId } from '../../types/navigation';
@@ -722,7 +725,10 @@ function FeaturedProjectMiniCard({
 }) {
   return (
     <article className="group flex min-h-[16rem] w-[15.75rem] shrink-0 snap-start flex-col overflow-hidden rounded-2xl border border-bronze/28 bg-[linear-gradient(145deg,rgba(10,10,10,0.44),rgba(61,43,31,0.2))] shadow-[inset_0_1px_0_rgba(237,227,207,0.035)] transition duration-300 hover:-translate-y-1 hover:border-ember/48 hover:bg-midnight/50 sm:min-h-[18.5rem] sm:w-[20rem] xl:w-[22rem]">
-      <ProjectImageBand project={project} className="h-20" />
+      <ProjectImageBand
+        project={project}
+        className={PROJECT_DASHBOARD_BAND_ASPECT_CLASS}
+      />
       <div className="flex flex-1 flex-col p-3.5">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">

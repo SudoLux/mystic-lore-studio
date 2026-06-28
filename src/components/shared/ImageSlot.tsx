@@ -4,6 +4,7 @@ import {
   applyRecommendedProjectImageDisplay,
   getRecommendedProjectImageDisplay,
   isUsableImageAsset,
+  type ImageAdjustmentContext,
 } from '../../lib/imageAssets';
 import { createLocalImageAsset, type ImageProcessingError } from '../../lib/localImages';
 import type { LocalImageAsset } from '../../types/studio';
@@ -15,6 +16,7 @@ import { StoredImage } from './StoredImage';
 
 type ImageSlotProps = {
   actionClassName?: string;
+  adjustmentContext?: ImageAdjustmentContext;
   aspectClassName?: string;
   children?: ReactNode;
   className?: string;
@@ -36,6 +38,7 @@ type ImageSlotProps = {
 
 export function ImageSlot({
   actionClassName,
+  adjustmentContext = 'standard',
   aspectClassName = 'aspect-[5/3]',
   children,
   className,
@@ -211,6 +214,7 @@ export function ImageSlot({
 
       {isAdjusting && storedImage ? (
         <ImageAdjustModal
+          adjustmentContext={adjustmentContext}
           asset={storedImage}
           label={label}
           onClose={() => setIsAdjusting(false)}
