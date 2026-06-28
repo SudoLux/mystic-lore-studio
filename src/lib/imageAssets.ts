@@ -13,6 +13,8 @@ export const defaultImageDisplay = {
   zoom: 1,
 };
 
+export const MAX_PROJECT_GALLERY_IMAGES = 5;
+
 export type ImageDisplaySettings = {
   objectFit: 'cover' | 'contain';
   overlayIntensity: 'auto' | 'light' | 'strong';
@@ -40,7 +42,23 @@ export function getProjectHeroImage(project: ApparelProject) {
 }
 
 export function getProjectGalleryImages(project: ApparelProject) {
-  return (project.galleryImages ?? []).filter(isUsableImageAsset);
+  return limitProjectGalleryImages(project.galleryImages);
+}
+
+export function limitProjectGalleryImages(
+  images: LocalImageAsset[] | null | undefined,
+) {
+  return (images ?? [])
+    .filter(isUsableImageAsset)
+    .slice(0, MAX_PROJECT_GALLERY_IMAGES);
+}
+
+export function getProjectGalleryOverflowCount(project: ApparelProject) {
+  return Math.max(
+    (project.galleryImages ?? []).filter(isUsableImageAsset).length -
+      MAX_PROJECT_GALLERY_IMAGES,
+    0,
+  );
 }
 
 export function getFabricImage(fabric: Fabric | undefined) {
