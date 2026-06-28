@@ -21,7 +21,7 @@ import type {
   YardageEntry,
 } from '../types/studio';
 
-const QUEUE_VERSION = 2;
+const QUEUE_VERSION = 3;
 const PREFIX = 'mystic-lore-studio:sync';
 const queueCache = new Map<string, StudioSyncQueue | null>();
 const durableWriteChains = new Map<string, Promise<void>>();
@@ -50,6 +50,7 @@ export type SyncDeletion = {
   clientId: string;
   deletedAt: string;
   entity: SyncEntity;
+  ownerId?: string;
   storagePaths?: string[];
 };
 
@@ -70,6 +71,7 @@ export type SyncOperation = {
   id: string;
   key: string;
   lastError?: string;
+  ownerId?: string;
   payload?: unknown;
   queuedAt: string;
   storagePaths?: string[];
@@ -522,18 +524,33 @@ function imageOperation(
   projectId = ownerType === 'project' ? ownerId : undefined,
 ) {
   const entity = ownerType === 'fabric' ? 'fabric_image' : 'project_image';
-  return createOperation(entity, 'upsert', image.id, {
-    image,
-    order,
+  return createOperation(
+    entity,
+    'upsert',
+    image.id,
+    {
+      image,
+      order,
+      ownerId,
+      ownerType,
+      projectId,
+      slotType,
+    } satisfies SyncImagePayload,
+    undefined,
+    image.updatedAt,
     ownerId,
-    ownerType,
-    projectId,
-    slotType,
-  } satisfies SyncImagePayload);
+  );
 }
 
 function upsertOperation(entity: SyncEntity, record: { id: string }) {
-  return createOperation(entity, 'upsert', record.id, record);
+  return createOperation(
+    entity,
+    'upsert',
+    record.id,
+    record,
+    undefined,
+    recordTimestamp(record),
+  );
 }
 
 function deletionOperation(deletion: SyncDeletion) {
@@ -544,6 +561,7 @@ function deletionOperation(deletion: SyncDeletion) {
     undefined,
     deletion.storagePaths,
     deletion.deletedAt,
+    deletion.ownerId,
   );
 }
 
@@ -554,6 +572,7 @@ function createOperation(
   payload?: unknown,
   storagePaths?: string[],
   timestamp = new Date().toISOString(),
+  ownerId?: string,
 ): SyncOperation {
   return {
     action,
@@ -562,6 +581,7 @@ function createOperation(
     entity,
     id: `sync-${crypto.randomUUID()}`,
     key: `${entity}:${clientId}`,
+    ownerId,
     payload,
     queuedAt: timestamp,
     storagePaths,
@@ -569,7 +589,26 @@ function createOperation(
   };
 }
 
+function recordTimestamp(record: { id: string }) {
+  const timestamp = (record as { createdAt?: string; updatedAt?: string }).updatedAt ??
+    (record as { createdAt?: string }).createdAt;
+  return timestamp && Number.isFinite(Date.parse(timestamp))
+    ? timestamp
+    : new Date().toISOString();
+}
+
 function sanitizeOperation(operation: SyncOperation) {
+  if (
+    operation.action === 'delete' &&
+    operation.entity === 'fabric_image' &&
+    !operation.ownerId
+  ) {
+    return {
+      ...operation,
+      ownerId: ownerIdFromStoragePath(operation.storagePaths?.[0], 'fabrics'),
+    };
+  }
+
   if (operation.action !== 'upsert' || !operation.payload) return operation;
 
   if (operation.entity === 'project') {
@@ -594,6 +633,16 @@ function sanitizeOperation(operation: SyncOperation) {
   }
 
   return operation;
+}
+
+function ownerIdFromStoragePath(
+  storagePath: string | undefined,
+  ownerSegment: 'fabrics' | 'projects',
+) {
+  if (!storagePath) return undefined;
+  const segments = storagePath.split('/');
+  const ownerIndex = segments.indexOf(ownerSegment);
+  return ownerIndex >= 0 ? segments[ownerIndex + 1] : undefined;
 }
 
 function createQueue(operations: SyncOperation[]): StudioSyncQueue {

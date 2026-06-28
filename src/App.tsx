@@ -108,6 +108,7 @@ function StudioApp() {
     rawData,
     retrySync,
     syncError,
+    syncNotice,
     syncPhase,
     syncProgress,
     syncStatus,
@@ -320,6 +321,7 @@ function StudioApp() {
         phase={syncPhase}
         progress={syncProgress}
         status={syncStatus}
+        syncNotice={syncNotice}
       />
       {projectForm ? (
         <ProjectFormModal

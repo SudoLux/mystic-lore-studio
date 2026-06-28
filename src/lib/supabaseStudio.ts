@@ -12,6 +12,7 @@ import type {
 } from '../types/studio';
 import {
   isImageOperation,
+  type SyncDeletion,
   type SyncEntity,
   type SyncImagePayload,
   type SyncOperation,
@@ -35,18 +36,29 @@ const REQUIRED_TABLES = [
   'lookbook_pages',
   'yardage_entries',
   'project_images',
+  'sync_tombstones',
 ] as const;
 
 type CloudRow = Record<string, unknown>;
-type CloudSnapshot = {
+export type CloudTombstone = {
+  clientId: string;
+  deletedAt: string;
+  entity: SyncEntity;
+};
+
+export type CloudSnapshot = {
+  cloudInitialized: boolean;
   data: StudioData;
   hasCloudData: boolean;
+  mediaRepairs: SyncDeletion[];
+  tombstones: CloudTombstone[];
 };
 
 export type CloudReadinessIssue =
   | 'authentication'
   | 'bucket-missing'
   | 'network'
+  | 'object-missing'
   | 'permissions'
   | 'schema-missing'
   | 'timeout'
@@ -146,6 +158,8 @@ export async function fetchCloudStudioData(userId: string): Promise<CloudSnapsho
     'lookbook_pages',
     'yardage_entries',
     'project_images',
+    'sync_tombstones',
+    'profiles',
   ] as const;
   const results = await Promise.all(
     tableNames.map((table) =>
@@ -155,13 +169,55 @@ export async function fetchCloudStudioData(userId: string): Promise<CloudSnapsho
     ),
   );
 
-  const [projectRows, fabricRows, materialRows, taskRows, noteRows, lookbookRows, yardageRows, imageRows] =
-    results.map((result) => result ?? []);
+  const [
+    rawProjectRows,
+    rawFabricRows,
+    rawMaterialRows,
+    rawTaskRows,
+    rawNoteRows,
+    rawLookbookRows,
+    rawYardageRows,
+    rawImageRows,
+    tombstoneRows,
+    profileRows,
+  ] = results.map((result) => result ?? []);
+  const tombstones = tombstoneRows.map(rowToTombstone);
+  const projectRows = activeRows(rawProjectRows, 'project', tombstones);
+  const fabricRows = activeRows(rawFabricRows, 'fabric', tombstones);
+  let materialRows = activeRows(rawMaterialRows, 'material', tombstones);
+  let taskRows = activeRows(rawTaskRows, 'task', tombstones);
+  let noteRows = activeRows(rawNoteRows, 'note', tombstones);
+  let lookbookRows = activeRows(rawLookbookRows, 'lookbook', tombstones);
+  let yardageRows = activeRows(rawYardageRows, 'yardage', tombstones);
+  let imageRows = activeRows(rawImageRows, 'project_image', tombstones);
   const projectClientById = idMap(projectRows);
   const fabricClientById = idMap(fabricRows);
+  materialRows = materialRows.filter((row) =>
+    projectClientById.has(asString(row.project_id)),
+  );
   const materialClientById = idMap(materialRows);
+  taskRows = taskRows.filter((row) =>
+    projectClientById.has(asString(row.project_id)),
+  );
+  noteRows = noteRows.filter((row) =>
+    projectClientById.has(asString(row.project_id)),
+  );
+  lookbookRows = lookbookRows.filter((row) =>
+    projectClientById.has(asString(row.project_id)),
+  );
+  yardageRows = yardageRows.filter((row) => {
+    const projectId = nullableString(row.project_id);
+    const materialId = nullableString(row.material_id);
+    return fabricClientById.has(asString(row.fabric_id)) &&
+      (!projectId || projectClientById.has(projectId)) &&
+      (!materialId || materialClientById.has(materialId));
+  });
+  imageRows = imageRows.filter((row) =>
+    projectClientById.has(asString(row.project_id)),
+  );
   const projects = projectRows.map(rowToProject);
-  const fabrics = await Promise.all(fabricRows.map(rowToFabric));
+  const fabricResults = await Promise.all(fabricRows.map(rowToFabric));
+  const fabrics = fabricResults.map((result) => result.fabric);
   const linkedMaterials = materialRows.map((row) =>
     rowToMaterial(row, projectClientById, fabricClientById),
   );
@@ -176,12 +232,16 @@ export async function fetchCloudStudioData(userId: string): Promise<CloudSnapsho
     rowToYardage(row, projectClientById, fabricClientById, materialClientById),
   );
 
-  await applyProjectImages(
+  const projectImageRepairs = await applyProjectImages(
     projects,
     lookbookPages,
     imageRows,
     projectClientById,
   );
+  const mediaRepairs = [
+    ...fabricResults.flatMap((result) => result.repair ? [result.repair] : []),
+    ...projectImageRepairs,
+  ];
 
   const seed = createSeedStudioData();
   const data: StudioData = {
@@ -197,8 +257,14 @@ export async function fetchCloudStudioData(userId: string): Promise<CloudSnapsho
   };
 
   return {
+    cloudInitialized:
+      results.slice(0, 8).some((result) => result.length > 0) ||
+      tombstones.length > 0 ||
+      profileRows.some((row) => Boolean(row.cloud_migration_completed_at)),
     data,
-    hasCloudData: results.some((result) => result.length > 0),
+    hasCloudData: results.slice(0, 8).some((result) => result.length > 0),
+    mediaRepairs,
+    tombstones,
   };
 }
 
@@ -223,8 +289,27 @@ export async function executeSyncOperations(
     failures: [],
     imageUpdates: [],
   };
-  const upserts = operations.filter((operation) => operation.action === 'upsert');
-  const deletions = operations.filter((operation) => operation.action === 'delete');
+  let executableOperations = operations;
+
+  try {
+    const tombstones = await fetchCloudTombstones(userId);
+    const tombstoneByKey = tombstoneMap(tombstones);
+    const suppressed = operations.filter((operation) => {
+      if (operation.action !== 'upsert') return false;
+      const tombstone = tombstoneByKey.get(operation.key);
+      return tombstone && Date.parse(tombstone.deletedAt) >= Date.parse(operation.updatedAt);
+    });
+    const suppressedIds = new Set(suppressed.map((operation) => operation.id));
+    result.completedOperationIds.push(...suppressedIds);
+    executableOperations = operations.filter(
+      (operation) => !suppressedIds.has(operation.id),
+    );
+  } catch (error) {
+    return failedResult(result, operations, error);
+  }
+
+  const upserts = executableOperations.filter((operation) => operation.action === 'upsert');
+  const deletions = executableOperations.filter((operation) => operation.action === 'delete');
   const recordUpserts = upserts.filter((operation) => !isImageOperation(operation));
   const imageUpserts = upserts.filter(isImageOperation);
   const total = operations.length;
@@ -512,6 +597,12 @@ async function upsertImageOperation(
         .eq('user_id', userId)
         .eq('client_id', payload.ownerId),
     );
+    await clearOlderTombstone(
+      userId,
+      'fabric_image',
+      payload.image.id,
+      payload.image.updatedAt,
+    );
   } else {
     const projectId = payload.projectId
       ? maps.projects.get(payload.projectId)
@@ -623,22 +714,36 @@ function fabricImageUpdatePayload(
 }
 
 async function executeDeleteOperation(userId: string, operation: SyncOperation) {
-  if (operation.storagePaths?.length) {
-    await storageRequest('delete image data', () =>
-      requireSupabase().storage.from(IMAGE_BUCKET).remove(operation.storagePaths!),
+  await recordCloudTombstone(userId, operation);
+
+  const table = TABLE_BY_ENTITY[operation.entity];
+  if (operation.entity === 'fabric_image' && operation.ownerId) {
+    await databaseRequest('clear deleted fabric image metadata', () =>
+      requireSupabase().rpc('clear_fabric_image_if_matches', {
+        p_fabric_client_id: operation.ownerId,
+        p_image_client_id: operation.clientId,
+        p_storage_path: operation.storagePaths?.[0] ?? null,
+      }),
+    );
+  } else if (table) {
+    await databaseRequest(`delete ${operation.entity}`, () =>
+      requireSupabase()
+        .from(table)
+        .delete()
+        .eq('user_id', userId)
+        .eq('client_id', operation.clientId),
     );
   }
 
-  const table = TABLE_BY_ENTITY[operation.entity];
-  if (!table || operation.entity === 'fabric_image') return;
-
-  await databaseRequest(`delete ${operation.entity}`, () =>
-    requireSupabase()
-      .from(table)
-      .delete()
-      .eq('user_id', userId)
-      .eq('client_id', operation.clientId),
-  );
+  if (operation.storagePaths?.length) {
+    try {
+      await storageRequest('delete image data', () =>
+        requireSupabase().storage.from(IMAGE_BUCKET).remove(operation.storagePaths!),
+      );
+    } catch (error) {
+      if (!isMissingStorageObject(error)) throw error;
+    }
+  }
 }
 
 function failedResult(
@@ -655,18 +760,73 @@ function failedResult(
   return result;
 }
 
-export function mergeByNewest(cloud: StudioData, local: StudioData): StudioData {
+export function mergeByNewest(
+  cloud: StudioData,
+  local: StudioData,
+  options: {
+    cloudInitialized?: boolean;
+    tombstones?: CloudTombstone[];
+  } = {},
+): StudioData {
+  const tombstones = options.tombstones ?? [];
+  const cloudInitialized = options.cloudInitialized ?? true;
+  const cloudProjects = new Map(cloud.projects.map((project) => [project.id, project]));
+  const cloudFabrics = new Map(cloud.fabrics.map((fabric) => [fabric.id, fabric]));
+  const cloudLookbooks = new Map(cloud.lookbookPages.map((page) => [page.id, page]));
+  const localProjects = new Map(local.projects.map((project) => [project.id, project]));
+  const localFabrics = new Map(local.fabrics.map((fabric) => [fabric.id, fabric]));
+  const localLookbooks = new Map(local.lookbookPages.map((page) => [page.id, page]));
+  const projects = mergeRecords(
+    'project',
+    cloud.projects,
+    local.projects,
+    tombstones,
+    cloudInitialized,
+  ).map((project) => ({
+    ...project,
+    galleryImages: cloudProjects.has(project.id)
+      ? cloudProjects.get(project.id)?.galleryImages
+      : localProjects.get(project.id)?.galleryImages,
+    heroImage: cloudProjects.has(project.id)
+      ? cloudProjects.get(project.id)?.heroImage
+      : localProjects.get(project.id)?.heroImage,
+  }));
+  const fabrics = mergeRecords(
+    'fabric',
+    cloud.fabrics,
+    local.fabrics,
+    tombstones,
+    cloudInitialized,
+  ).map((fabric) => ({
+    ...fabric,
+    image: cloudFabrics.has(fabric.id)
+      ? cloudFabrics.get(fabric.id)?.image
+      : localFabrics.get(fabric.id)?.image,
+  }));
+  const lookbookPages = mergeRecords(
+    'lookbook',
+    cloud.lookbookPages,
+    local.lookbookPages,
+    tombstones,
+    cloudInitialized,
+  ).map((page) => ({
+    ...page,
+    heroImage: cloudLookbooks.has(page.id)
+      ? cloudLookbooks.get(page.id)?.heroImage
+      : localLookbooks.get(page.id)?.heroImage,
+  }));
+
   return mergeLocalImageCache({
     ...cloud,
-    fabrics: mergeRecords(cloud.fabrics, local.fabrics),
-    linkedMaterials: mergeRecords(cloud.linkedMaterials, local.linkedMaterials),
-    lookbookPages: mergeRecords(cloud.lookbookPages, local.lookbookPages),
-    notes: mergeRecords(cloud.notes, local.notes),
-    projects: mergeRecords(cloud.projects, local.projects),
+    fabrics,
+    linkedMaterials: mergeRecords('material', cloud.linkedMaterials, local.linkedMaterials, tombstones, cloudInitialized),
+    lookbookPages,
+    notes: mergeRecords('note', cloud.notes, local.notes, tombstones, cloudInitialized),
+    projects,
     settings: local.settings,
-    tasks: mergeRecords(cloud.tasks, local.tasks),
+    tasks: mergeRecords('task', cloud.tasks, local.tasks, tombstones, cloudInitialized),
     version: Math.max(cloud.version, local.version),
-    yardageEntries: mergeRecords(cloud.yardageEntries, local.yardageEntries),
+    yardageEntries: mergeRecords('yardage', cloud.yardageEntries, local.yardageEntries, tombstones, cloudInitialized),
   }, local);
 }
 
@@ -733,14 +893,22 @@ async function applyProjectImages(
   const lookbookById = new Map(lookbooks.map((page) => [page.id, page]));
   const galleryByProject = new Map<string, Array<{ image: LocalImageAsset; order: number }>>();
 
-  await Promise.all(
+  const repairs = await Promise.all(
     rows.map(async (row) => {
       const projectId = projectClientById.get(asString(row.project_id));
       const storagePath = asString(row.storage_path);
 
-      if (!projectId || !storagePath) return;
+      if (!projectId || !storagePath) {
+        return imageRepair(row, storagePath ? [storagePath] : []);
+      }
 
-      const image = await withSignedUrl(rowToImage(row), storagePath);
+      let image: LocalImageAsset;
+      try {
+        image = await withSignedUrl(rowToImage(row), storagePath);
+      } catch (error) {
+        if (!isMissingStorageObject(error)) throw error;
+        return imageRepair(row, [storagePath]);
+      }
       const slot = asString(row.slot_type);
       const project = projectById.get(projectId);
 
@@ -755,6 +923,7 @@ async function applyProjectImages(
         const page = lookbookById.get(lookbookId);
         if (page) page.heroImage = image;
       }
+      return undefined;
     }),
   );
 
@@ -762,6 +931,17 @@ async function applyProjectImages(
     const project = projectById.get(projectId);
     if (project) project.galleryImages = gallery.sort((a, b) => a.order - b.order).map(({ image }) => image);
   });
+
+  return repairs.filter((repair): repair is SyncDeletion => Boolean(repair));
+}
+
+function imageRepair(row: CloudRow, storagePaths: string[]): SyncDeletion {
+  return {
+    clientId: asString(row.client_id),
+    deletedAt: new Date().toISOString(),
+    entity: 'project_image',
+    storagePaths,
+  };
 }
 
 function imagePayload(
@@ -804,6 +984,47 @@ async function fetchUuidMap(table: string, userId: string) {
   );
   return new Map(
     data.map((row) => [asString(row.client_id), asString(row.id)]),
+  );
+}
+
+async function fetchCloudTombstones(userId: string) {
+  const rows = await databaseRequest<CloudRow[]>('load sync tombstones', () =>
+    requireSupabase()
+      .from('sync_tombstones')
+      .select('entity,client_id,deleted_at')
+      .eq('user_id', userId),
+  );
+  return rows.map(rowToTombstone);
+}
+
+async function recordCloudTombstone(
+  userId: string,
+  operation: SyncOperation,
+) {
+  void userId;
+  await databaseRequest(`record ${operation.entity} deletion`, () =>
+    requireSupabase().rpc('record_sync_tombstone', {
+      p_client_id: operation.clientId,
+      p_deleted_at: operation.updatedAt,
+      p_entity: operation.entity,
+    }),
+  );
+}
+
+async function clearOlderTombstone(
+  userId: string,
+  entity: SyncEntity,
+  clientId: string,
+  updatedAt: string,
+) {
+  await databaseRequest(`clear restored ${entity} deletion`, () =>
+    requireSupabase()
+      .from('sync_tombstones')
+      .delete()
+      .eq('user_id', userId)
+      .eq('entity', entity)
+      .eq('client_id', clientId)
+      .lt('deleted_at', updatedAt),
   );
 }
 
@@ -999,33 +1220,47 @@ function rowToProject(row: CloudRow): StoredProject {
   };
 }
 
-async function rowToFabric(row: CloudRow): Promise<Fabric> {
+async function rowToFabric(
+  row: CloudRow,
+): Promise<{ fabric: Fabric; repair?: SyncDeletion }> {
   const metadata = asRecord(row.metadata);
   const fabric = { ...(metadata as Fabric), id: asString(row.client_id), updatedAt: asString(row.updated_at) };
   const storagePath = nullableString(row.image_path);
   const imageMeta = asRecord(metadata.image);
   if (storagePath) {
-    fabric.image = await withSignedUrl(
-      {
-        dataUrl: nullableString(imageMeta.offlinePreviewDataUrl) ?? undefined,
-        height: optionalNumber(row.image_height),
-        id: asString(imageMeta.id, `fabric-image-${fabric.id}`),
-        mimeType: asString(row.image_mime_type, 'image/webp'),
-        name: asString(row.image_filename, fabric.name),
-        objectFit: asString(row.image_fit, 'cover') as 'cover' | 'contain',
-        objectPositionX: asNumber(row.image_position_x, 50),
-        objectPositionY: asNumber(row.image_position_y, 50),
-        overlayIntensity: asString(imageMeta.overlayIntensity, 'auto') as LocalImageAsset['overlayIntensity'],
-        size: asNumber(row.image_size_bytes),
-        storagePath,
-        updatedAt: asString(imageMeta.updatedAt, fabric.updatedAt),
-        width: optionalNumber(row.image_width),
-        zoom: asNumber(row.image_zoom, 1),
-      },
+    const image: LocalImageAsset = {
+      dataUrl: nullableString(imageMeta.offlinePreviewDataUrl) ?? undefined,
+      height: optionalNumber(row.image_height),
+      id: asString(imageMeta.id, `fabric-image-${fabric.id}`),
+      mimeType: asString(row.image_mime_type, 'image/webp'),
+      name: asString(row.image_filename, fabric.name),
+      objectFit: asString(row.image_fit, 'cover') as 'cover' | 'contain',
+      objectPositionX: asNumber(row.image_position_x, 50),
+      objectPositionY: asNumber(row.image_position_y, 50),
+      overlayIntensity: asString(imageMeta.overlayIntensity, 'auto') as LocalImageAsset['overlayIntensity'],
+      size: asNumber(row.image_size_bytes),
       storagePath,
-    );
+      updatedAt: asString(imageMeta.updatedAt, fabric.updatedAt),
+      width: optionalNumber(row.image_width),
+      zoom: asNumber(row.image_zoom, 1),
+    };
+    try {
+      fabric.image = await withSignedUrl(image, storagePath);
+    } catch (error) {
+      if (!isMissingStorageObject(error)) throw error;
+      return {
+        fabric,
+        repair: {
+          clientId: image.id,
+          deletedAt: new Date().toISOString(),
+          entity: 'fabric_image',
+          ownerId: fabric.id,
+          storagePaths: [storagePath],
+        },
+      };
+    }
   }
-  return fabric;
+  return { fabric };
 }
 
 function rowToMaterial(row: CloudRow, projects: Map<string, string>, fabrics: Map<string, string>): LinkedMaterial {
@@ -1110,13 +1345,63 @@ function rowToImage(row: CloudRow): LocalImageAsset {
   };
 }
 
-function mergeRecords<T extends { id: string; updatedAt?: string }>(cloud: T[], local: T[]) {
+function mergeRecords<T extends { id: string; updatedAt?: string }>(
+  entity: SyncEntity,
+  cloud: T[],
+  local: T[],
+  tombstones: CloudTombstone[],
+  cloudInitialized: boolean,
+) {
   const merged = new Map(cloud.map((record) => [record.id, record]));
+  const deletions = tombstoneMap(tombstones);
   local.forEach((record) => {
     const current = merged.get(record.id);
-    if (!current || timestamp(record) > timestamp(current)) merged.set(record.id, record);
+    const deletion = deletions.get(`${entity}:${record.id}`);
+    if (deletion && Date.parse(deletion.deletedAt) >= timestamp(record)) {
+      merged.delete(record.id);
+      return;
+    }
+    if (current && timestamp(record) > timestamp(current)) {
+      merged.set(record.id, record);
+      return;
+    }
+    if (!current && (!cloudInitialized || Boolean(deletion))) {
+      merged.set(record.id, record);
+    }
   });
   return [...merged.values()];
+}
+
+function rowToTombstone(row: CloudRow): CloudTombstone {
+  return {
+    clientId: asString(row.client_id),
+    deletedAt: asString(row.deleted_at),
+    entity: asString(row.entity) as SyncEntity,
+  };
+}
+
+function tombstoneMap(tombstones: CloudTombstone[]) {
+  return new Map(
+    tombstones.map((tombstone) => [
+      `${tombstone.entity}:${tombstone.clientId}`,
+      tombstone,
+    ]),
+  );
+}
+
+function activeRows(
+  rows: CloudRow[],
+  entity: SyncEntity,
+  tombstones: CloudTombstone[],
+) {
+  const deletions = tombstoneMap(tombstones);
+  return rows.filter((row) => {
+    const deletion = deletions.get(`${entity}:${asString(row.client_id)}`);
+    return !deletion || Date.parse(deletion.deletedAt) < timestamp({
+      createdAt: asString(row.created_at),
+      updatedAt: asString(row.updated_at),
+    });
+  });
 }
 
 function timestamp(record: { updatedAt?: string; createdAt?: string }) {
@@ -1258,6 +1543,17 @@ function requestError(error: RequestErrorLike, label: string) {
     );
   }
 
+  if (
+    status === 404 ||
+    rawMessage.toLowerCase().includes('object not found') ||
+    rawMessage.toLowerCase().includes('not found') && label.includes('image access')
+  ) {
+    return new CloudSyncRequestError(
+      `Could not ${label}: the stored image object no longer exists.`,
+      'object-missing',
+    );
+  }
+
   if (status === 401) {
     return new CloudSyncRequestError(
       'Your Supabase session expired. Sign in again before syncing.',
@@ -1308,6 +1604,11 @@ function normalizeCloudError(error: unknown) {
     );
   }
 
+
+  if (lowerMessage.includes('object not found')) {
+    return new CloudSyncRequestError(message, 'object-missing');
+  }
+
   if (lowerMessage.includes('timed out')) {
     return new CloudSyncRequestError(message, 'timeout', true);
   }
@@ -1325,6 +1626,10 @@ function normalizeCloudError(error: unknown) {
   }
 
   return new CloudSyncRequestError(message, 'unknown');
+}
+
+function isMissingStorageObject(error: unknown) {
+  return normalizeCloudError(error).issue === 'object-missing';
 }
 
 function delay(milliseconds: number | undefined) {

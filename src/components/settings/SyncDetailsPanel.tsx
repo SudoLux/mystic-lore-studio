@@ -36,6 +36,7 @@ export function SyncDetailsPanel({
   phase,
   progress,
   status,
+  syncNotice,
 }: {
   error: string | null;
   failedCount: number;
@@ -50,6 +51,7 @@ export function SyncDetailsPanel({
   phase: SyncPhase;
   progress: SyncProgress;
   status: SyncStatus;
+  syncNotice: string | null;
 }) {
   if (!isOpen) return null;
 
@@ -109,6 +111,17 @@ export function SyncDetailsPanel({
             </p>
             <p className="mt-2 text-sm leading-6 text-stardust/76">
               {localCacheWarning}
+            </p>
+          </div>
+        ) : null}
+
+        {syncNotice ? (
+          <div className="mt-5 rounded-2xl border border-teal/32 bg-teal/10 p-4">
+            <p className="text-xs font-medium uppercase tracking-[0.12em] text-teal">
+              Cloud repair
+            </p>
+            <p className="mt-2 text-sm leading-6 text-stardust/76">
+              {syncNotice}
             </p>
           </div>
         ) : null}
