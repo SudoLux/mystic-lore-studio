@@ -769,33 +769,40 @@ function FabricDetailPage({
         kicker={`${formatNumber(yardage.availableYards)} yd available`}
         title={fabric.name}
       />
+      <div className="hidden sm:flex sm:items-center sm:justify-between">
+        <Button
+          icon={<ArrowLeft aria-hidden="true" size={16} strokeWidth={1.9} />}
+          onClick={onBack}
+          size="sm"
+          variant="ghost"
+        >
+          Back to Vault
+        </Button>
+        <p className="text-xs font-medium uppercase tracking-[0.16em] text-stardust/38">
+          Fabric Detail
+        </p>
+      </div>
       <Card className="overflow-hidden p-0" elevated>
         <div className="grid min-h-[34rem] lg:grid-cols-[0.92fr_1.08fr]">
           <ImageSlot
-            actionClassName="right-5 top-5 bottom-auto"
-            aspectClassName=""
-            className="min-h-80 rounded-none border-0 border-b border-bronze/20 lg:border-b-0 lg:border-r"
+            actionClassName="right-4 top-4 sm:right-5 sm:top-5"
+            adaptivePresentation
+            aspectClassName="aspect-[4/5] sm:aspect-[4/3] lg:aspect-auto"
+            className="min-h-80 rounded-none border-0 border-b border-bronze/20 lg:min-h-[34rem] lg:border-b-0 lg:border-r"
+            contentMode="overlay"
+            controlsMode="menu"
             label="Fabric Image"
-            labelClassName="left-auto right-5 top-5"
             onRemove={() => onUpdateFabric({ ...fabric, image: undefined })}
             onSave={(image) => onUpdateFabric({ ...fabric, image })}
             placeholderClassName={getFabricVisualClass(fabric)}
             placeholderText="Add a fabric image."
             readabilityVariant="hero"
+            showLabel={false}
             value={fabric.image}
           >
             <div className="pointer-events-none absolute inset-0 opacity-35 [background-image:linear-gradient(90deg,rgba(237,227,207,0.08)_1px,transparent_1px),linear-gradient(0deg,rgba(237,227,207,0.07)_1px,transparent_1px)] [background-size:18px_18px]" />
-            <div className="relative flex min-h-80 flex-col justify-between p-5 sm:p-7">
-              <div>
-                <Button
-                  icon={<ArrowLeft aria-hidden="true" size={16} strokeWidth={1.9} />}
-                  onClick={onBack}
-                  size="sm"
-                >
-                  Back to Vault
-                </Button>
-              </div>
-              <div>
+            <div className="relative flex h-full min-h-80 flex-col justify-end p-5 pr-16 sm:p-7 sm:pr-20">
+              <div className="max-w-xl">
                 <div className="flex flex-wrap gap-2">
                   <Badge variant="teal">{fabric.archiveStatus}</Badge>
                   <Badge variant="bronze">{fabric.rarity}</Badge>

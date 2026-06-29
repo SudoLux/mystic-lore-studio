@@ -8,7 +8,7 @@ import {
 } from '../../lib/imageAssets';
 import { createLocalImageAsset, type ImageProcessingError } from '../../lib/localImages';
 import type { LocalImageAsset } from '../../types/studio';
-import { AdaptiveProjectImage } from '../projects/AdaptiveProjectImage';
+import { AdaptiveStoredImage } from './AdaptiveStoredImage';
 import { ImageAdjustModal } from './ImageAdjustModal';
 import { ImageReadabilityOverlay } from './ImageReadabilityOverlay';
 import { ImageUploadOverlay } from './ImageUploadOverlay';
@@ -16,16 +16,19 @@ import { StoredImage } from './StoredImage';
 
 type ImageSlotProps = {
   actionClassName?: string;
+  adaptivePresentation?: boolean;
   adjustmentContext?: ImageAdjustmentContext;
   aspectClassName?: string;
   children?: ReactNode;
   className?: string;
   compact?: boolean;
+  contentMode?: 'flow' | 'overlay';
   controlsMode?: 'expanded' | 'menu';
   fallbackValue?: LocalImageAsset;
   imageClassName?: string;
   label: string;
   labelClassName?: string;
+  showLabel?: boolean;
   onRemove: () => void;
   onSave: (image: LocalImageAsset) => void;
   placeholderClassName?: string;
@@ -38,11 +41,13 @@ type ImageSlotProps = {
 
 export function ImageSlot({
   actionClassName,
+  adaptivePresentation = false,
   adjustmentContext = 'standard',
   aspectClassName = 'aspect-[5/3]',
   children,
   className,
   compact = false,
+  contentMode = 'flow',
   controlsMode = 'expanded',
   fallbackValue,
   imageClassName,
@@ -55,6 +60,7 @@ export function ImageSlot({
   projectAdaptive = false,
   readabilityVariant = 'controls',
   showReadabilityOverlay = true,
+  showLabel = true,
   value,
 }: ImageSlotProps) {
   const inputRef = useRef<HTMLInputElement>(null);
@@ -81,7 +87,7 @@ export function ImageSlot({
       setIsOptimizing(true);
       const preparedImage = await createLocalImageAsset(file);
       setPendingImage(
-        projectAdaptive
+        projectAdaptive || adaptivePresentation
           ? applyRecommendedProjectImageDisplay(preparedImage)
           : preparedImage,
       );
@@ -132,8 +138,8 @@ export function ImageSlot({
         )}
       />
       {visibleImage ? (
-        projectAdaptive ? (
-          <AdaptiveProjectImage
+        projectAdaptive || adaptivePresentation ? (
+          <AdaptiveStoredImage
             asset={visibleImage}
             className="absolute inset-0"
             foregroundClassName={imageClassName}
@@ -164,6 +170,7 @@ export function ImageSlot({
         hasPendingImage={Boolean(pendingImage)}
         label={label}
         labelClassName={labelClassName}
+        showLabel={showLabel}
         onAdjust={() => setIsAdjusting(true)}
         onCancelPreview={() => {
           setPendingImage(null);
@@ -184,7 +191,7 @@ export function ImageSlot({
           onRemove();
         }}
         onSmartFit={
-          projectAdaptive && storedImage
+          (projectAdaptive || adaptivePresentation) && storedImage
             ? () => onSave(applyRecommendedProjectImageDisplay(storedImage))
             : undefined
         }
@@ -207,7 +214,14 @@ export function ImageSlot({
       />
 
       {children ? (
-        <div className="relative z-20 h-full [text-shadow:0_2px_14px_rgba(0,0,0,0.92)]">
+        <div
+          className={cn(
+            'z-20 [text-shadow:0_2px_14px_rgba(0,0,0,0.92)]',
+            contentMode === 'overlay'
+              ? 'absolute inset-0'
+              : 'relative h-full',
+          )}
+        >
           {children}
         </div>
       ) : null}
@@ -224,7 +238,7 @@ export function ImageSlot({
           }}
           previewAspectClassName={aspectClassName || 'aspect-video'}
           smartFitValues={
-            projectAdaptive
+            projectAdaptive || adaptivePresentation
               ? getRecommendedProjectImageDisplay(storedImage)
               : undefined
           }
