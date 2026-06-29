@@ -83,7 +83,7 @@ export const noteCategories = [
   'Idea',
 ] as const;
 export type NoteCategory = (typeof noteCategories)[number];
-export type FabricWeight = 'Light' | 'Medium' | 'Heavy';
+export type FabricWeight = 'Light' | 'Medium' | 'Medium-heavy' | 'Heavy';
 export type FabricStatus = 'In Stock' | 'Reserved' | 'Low Stock' | 'Depleted';
 export type FabricArchiveStatus =
   | 'Active'
@@ -91,7 +91,7 @@ export type FabricArchiveStatus =
   | 'Low Yardage'
   | 'Archived'
   | 'Depleted';
-export type FabricDrape = 'Crisp' | 'Structured' | 'Fluid' | 'Soft' | 'Stretch';
+export type FabricDrape = 'Fluid' | 'Soft' | 'Balanced' | 'Crisp' | 'Structured';
 export type FabricOpacity = 'Sheer' | 'Semi-sheer' | 'Opaque';
 export type FabricRarity = 'Core' | 'Seasonal' | 'Rare' | 'One-off' | 'Archive';
 export type FabricStretch = 'None' | 'Mechanical' | 'Two-way' | 'Four-way';
@@ -262,8 +262,11 @@ export type Fabric = {
   composition: string;
   colorFamily: string;
   primaryColor: string;
+  primaryColorHex?: string;
   secondaryColors: string[];
   weight: FabricWeight;
+  weightGsm?: number;
+  weightInputUnit?: 'gsm' | 'oz';
   drape: FabricDrape;
   weaveOrKnit: string;
   stretch: FabricStretch;

@@ -26,6 +26,7 @@ import {
   getProjectHeroImage,
   PROJECT_LIBRARY_CARD_ASPECT_CLASS,
 } from '../../lib/imageAssets';
+import { getFabricSwatchBackground } from '../../lib/fabricMetadata';
 import {
   garmentTypes,
   projectPhases,
@@ -653,7 +654,7 @@ function FabricSwatch({
         'inline-flex h-5 w-5 shrink-0 rounded-full border border-stardust/25',
         className,
       )}
-      style={{ background: getFabricSwatch(fabric) }}
+      style={{ background: getFabricSwatchBackground(fabric) }}
       title={fabric.name}
     />
   );
@@ -680,17 +681,4 @@ function getLastUpdated(project: ApparelProject) {
   )[0];
 
   return formatDate(latestNote?.createdAt ?? project.startDate);
-}
-
-function getFabricSwatch(fabric: Fabric) {
-  const swatches: Record<string, string> = {
-    'Midnight indigo': 'linear-gradient(135deg,#05070E,#1B3A63,#111827)',
-    Black: 'linear-gradient(135deg,#030303,#202020,#0A0A0A)',
-    'Golden ember': 'linear-gradient(135deg,#C89B3C,#9A6C3C,#EDE3CF)',
-    'Deep espresso': 'linear-gradient(135deg,#3D2B1F,#9A6C3C,#1f130d)',
-    'Stardust ivory': 'linear-gradient(135deg,#EDE3CF,#bda984,#f8f1e5)',
-    'Nebula teal': 'linear-gradient(135deg,#2D5C6B,#1B3A63,#58a0a7)',
-  };
-
-  return swatches[fabric.colorFamily] ?? 'linear-gradient(135deg,#C89B3C,#2D5C6B)';
 }

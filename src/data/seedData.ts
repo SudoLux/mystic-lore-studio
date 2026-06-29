@@ -250,7 +250,7 @@ export const demoFabrics: Fabric[] = [
     primaryColor: 'Nebula teal',
     secondaryColors: ['Deep blue green'],
     weight: 'Medium',
-    drape: 'Stretch',
+    drape: 'Soft',
     weaveOrKnit: 'Cotton spandex rib knit',
     stretch: 'Four-way',
     opacity: 'Opaque',

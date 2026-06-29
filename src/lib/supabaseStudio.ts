@@ -10,6 +10,7 @@ import type {
   StudioTask,
   YardageEntry,
 } from '../types/studio';
+import { normalizeFabricDrape, normalizeWovenKnit } from './fabricMetadata';
 import {
   isImageOperation,
   type SyncDeletion,
@@ -1225,6 +1226,8 @@ async function rowToFabric(
 ): Promise<{ fabric: Fabric; repair?: SyncDeletion }> {
   const metadata = asRecord(row.metadata);
   const fabric = { ...(metadata as Fabric), id: asString(row.client_id), updatedAt: asString(row.updated_at) };
+  fabric.drape = normalizeFabricDrape(fabric.drape);
+  fabric.weaveOrKnit = normalizeWovenKnit(fabric.weaveOrKnit);
   const storagePath = nullableString(row.image_path);
   const imageMeta = asRecord(metadata.image);
   if (storagePath) {
