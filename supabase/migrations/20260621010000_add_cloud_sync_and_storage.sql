@@ -43,14 +43,51 @@ create unique index if not exists project_images_user_client_id_uidx
 create unique index if not exists yardage_entries_user_client_id_uidx
   on public.yardage_entries(user_id, client_id);
 
-alter table public.project_images
-  rename column image_role to slot_type;
-alter table public.project_images
-  rename column object_fit to fit;
-alter table public.project_images
-  rename column object_position_x to position_x;
-alter table public.project_images
-  rename column object_position_y to position_y;
+-- Rename legacy image columns only when the old name still exists. This block
+-- is safe after either a complete run or a run that stopped between renames.
+do $$
+begin
+  if exists (
+    select 1 from information_schema.columns
+    where table_schema = 'public' and table_name = 'project_images' and column_name = 'image_role'
+  ) and not exists (
+    select 1 from information_schema.columns
+    where table_schema = 'public' and table_name = 'project_images' and column_name = 'slot_type'
+  ) then
+    alter table public.project_images rename column image_role to slot_type;
+  end if;
+
+  if exists (
+    select 1 from information_schema.columns
+    where table_schema = 'public' and table_name = 'project_images' and column_name = 'object_fit'
+  ) and not exists (
+    select 1 from information_schema.columns
+    where table_schema = 'public' and table_name = 'project_images' and column_name = 'fit'
+  ) then
+    alter table public.project_images rename column object_fit to fit;
+  end if;
+
+  if exists (
+    select 1 from information_schema.columns
+    where table_schema = 'public' and table_name = 'project_images' and column_name = 'object_position_x'
+  ) and not exists (
+    select 1 from information_schema.columns
+    where table_schema = 'public' and table_name = 'project_images' and column_name = 'position_x'
+  ) then
+    alter table public.project_images rename column object_position_x to position_x;
+  end if;
+
+  if exists (
+    select 1 from information_schema.columns
+    where table_schema = 'public' and table_name = 'project_images' and column_name = 'object_position_y'
+  ) and not exists (
+    select 1 from information_schema.columns
+    where table_schema = 'public' and table_name = 'project_images' and column_name = 'position_y'
+  ) then
+    alter table public.project_images rename column object_position_y to position_y;
+  end if;
+end;
+$$;
 
 alter table public.project_images
   add column if not exists filename text,
@@ -94,16 +131,19 @@ create index if not exists lookbook_pages_user_id_idx
 create index if not exists lookbook_pages_project_id_idx
   on public.lookbook_pages(project_id);
 
+drop trigger if exists set_lookbook_pages_updated_at on public.lookbook_pages;
 create trigger set_lookbook_pages_updated_at
   before update on public.lookbook_pages
   for each row execute function public.set_updated_at();
 
 alter table public.lookbook_pages enable row level security;
 
+drop policy if exists "Authenticated users can select own lookbook pages" on public.lookbook_pages;
 create policy "Authenticated users can select own lookbook pages"
   on public.lookbook_pages for select to authenticated
   using (auth.uid() is not null and auth.uid() = user_id);
 
+drop policy if exists "Authenticated users can insert own lookbook pages" on public.lookbook_pages;
 create policy "Authenticated users can insert own lookbook pages"
   on public.lookbook_pages for insert to authenticated
   with check (
@@ -116,6 +156,7 @@ create policy "Authenticated users can insert own lookbook pages"
     )
   );
 
+drop policy if exists "Authenticated users can update own lookbook pages" on public.lookbook_pages;
 create policy "Authenticated users can update own lookbook pages"
   on public.lookbook_pages for update to authenticated
   using (auth.uid() is not null and auth.uid() = user_id)
@@ -129,6 +170,7 @@ create policy "Authenticated users can update own lookbook pages"
     )
   );
 
+drop policy if exists "Authenticated users can delete own lookbook pages" on public.lookbook_pages;
 create policy "Authenticated users can delete own lookbook pages"
   on public.lookbook_pages for delete to authenticated
   using (auth.uid() is not null and auth.uid() = user_id);
@@ -147,6 +189,7 @@ on conflict (id) do update set
   file_size_limit = excluded.file_size_limit,
   allowed_mime_types = excluded.allowed_mime_types;
 
+drop policy if exists "Users can read own project images" on storage.objects;
 create policy "Users can read own project images"
   on storage.objects for select to authenticated
   using (
@@ -155,6 +198,7 @@ create policy "Users can read own project images"
     and (storage.foldername(name))[2] = auth.uid()::text
   );
 
+drop policy if exists "Users can upload own project images" on storage.objects;
 create policy "Users can upload own project images"
   on storage.objects for insert to authenticated
   with check (
@@ -163,6 +207,7 @@ create policy "Users can upload own project images"
     and (storage.foldername(name))[2] = auth.uid()::text
   );
 
+drop policy if exists "Users can update own project images" on storage.objects;
 create policy "Users can update own project images"
   on storage.objects for update to authenticated
   using (
@@ -176,6 +221,7 @@ create policy "Users can update own project images"
     and (storage.foldername(name))[2] = auth.uid()::text
   );
 
+drop policy if exists "Users can delete own project images" on storage.objects;
 create policy "Users can delete own project images"
   on storage.objects for delete to authenticated
   using (

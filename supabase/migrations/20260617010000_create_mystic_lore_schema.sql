@@ -18,7 +18,7 @@ comment on function public.set_updated_at() is
   'Maintains updated_at timestamps for Mystic Lore Studio user-owned rows.';
 
 -- Stores one profile record per authenticated Supabase user.
-create table public.profiles (
+create table if not exists public.profiles (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null unique references auth.users(id) on delete cascade,
   display_name text,
@@ -32,7 +32,7 @@ comment on table public.profiles is
   'User profile and studio identity metadata for Mystic Lore Studio.';
 
 -- Stores apparel project records such as garments, capsule pieces, and collections.
-create table public.projects (
+create table if not exists public.projects (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null references auth.users(id) on delete cascade,
   title text not null,
@@ -62,7 +62,7 @@ comment on table public.projects is
   'Apparel project records that drive the project library, detail pages, and global Kanban workflow.';
 
 -- Stores fabric inventory records for the Fabric Vault.
-create table public.fabrics (
+create table if not exists public.fabrics (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null references auth.users(id) on delete cascade,
   name text not null,
@@ -104,7 +104,7 @@ comment on table public.fabrics is
   'Fabric Vault inventory records including yardage, material properties, storage details, and visual metadata.';
 
 -- Stores material allocations and fabric-to-project links.
-create table public.materials (
+create table if not exists public.materials (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null references auth.users(id) on delete cascade,
   project_id uuid not null references public.projects(id) on delete cascade,
@@ -125,7 +125,7 @@ comment on table public.materials is
   'Linked project materials, including fabric allocations, roles, statuses, and yardage planning values.';
 
 -- Stores task-board cards for individual apparel projects.
-create table public.tasks (
+create table if not exists public.tasks (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null references auth.users(id) on delete cascade,
   project_id uuid not null references public.projects(id) on delete cascade,
@@ -147,7 +147,7 @@ comment on table public.tasks is
   'Project-specific task records used by garment task boards and workflow planning.';
 
 -- Stores organized studio journal notes for each apparel project.
-create table public.notes (
+create table if not exists public.notes (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null references auth.users(id) on delete cascade,
   project_id uuid not null references public.projects(id) on delete cascade,
@@ -163,7 +163,7 @@ comment on table public.notes is
   'Categorized project journal notes such as design notes, construction notes, fit notes, and build logs.';
 
 -- Stores project image references for hero, gallery, and lookbook display surfaces.
-create table public.project_images (
+create table if not exists public.project_images (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null references auth.users(id) on delete cascade,
   project_id uuid not null references public.projects(id) on delete cascade,
@@ -184,7 +184,7 @@ comment on table public.project_images is
   'Image records and non-destructive display settings for project hero, gallery, and lookbook visuals.';
 
 -- Stores transparent fabric reservation and usage events.
-create table public.yardage_entries (
+create table if not exists public.yardage_entries (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null references auth.users(id) on delete cascade,
   project_id uuid references public.projects(id) on delete set null,
@@ -202,59 +202,71 @@ create table public.yardage_entries (
 comment on table public.yardage_entries is
   'Audit-friendly yardage reservation, cutting, usage, and adjustment entries for fabric inventory tracking.';
 
+-- Recreate timestamp triggers so reruns repair a partial trigger setup.
+drop trigger if exists set_profiles_updated_at on public.profiles;
 create trigger set_profiles_updated_at
   before update on public.profiles
   for each row execute function public.set_updated_at();
 
+drop trigger if exists set_projects_updated_at on public.projects;
 create trigger set_projects_updated_at
   before update on public.projects
   for each row execute function public.set_updated_at();
 
+drop trigger if exists set_fabrics_updated_at on public.fabrics;
 create trigger set_fabrics_updated_at
   before update on public.fabrics
   for each row execute function public.set_updated_at();
 
+drop trigger if exists set_materials_updated_at on public.materials;
 create trigger set_materials_updated_at
   before update on public.materials
   for each row execute function public.set_updated_at();
 
+drop trigger if exists set_tasks_updated_at on public.tasks;
 create trigger set_tasks_updated_at
   before update on public.tasks
   for each row execute function public.set_updated_at();
 
+drop trigger if exists set_notes_updated_at on public.notes;
 create trigger set_notes_updated_at
   before update on public.notes
   for each row execute function public.set_updated_at();
 
+drop trigger if exists set_project_images_updated_at on public.project_images;
 create trigger set_project_images_updated_at
   before update on public.project_images
   for each row execute function public.set_updated_at();
 
+drop trigger if exists set_yardage_entries_updated_at on public.yardage_entries;
 create trigger set_yardage_entries_updated_at
   before update on public.yardage_entries
   for each row execute function public.set_updated_at();
 
-create index profiles_user_id_idx on public.profiles(user_id);
-create index projects_user_id_idx on public.projects(user_id);
-create index projects_user_phase_idx on public.projects(user_id, workflow_phase);
-create index projects_user_status_idx on public.projects(user_id, status);
-create index fabrics_user_id_idx on public.fabrics(user_id);
-create index fabrics_user_archive_status_idx on public.fabrics(user_id, archive_status);
-create index materials_user_id_idx on public.materials(user_id);
-create index materials_project_id_idx on public.materials(project_id);
-create index materials_fabric_id_idx on public.materials(fabric_id);
-create index tasks_user_id_idx on public.tasks(user_id);
-create index tasks_project_id_idx on public.tasks(project_id);
-create index tasks_project_status_idx on public.tasks(project_id, status);
-create index notes_user_id_idx on public.notes(user_id);
-create index notes_project_id_idx on public.notes(project_id);
-create index project_images_user_id_idx on public.project_images(user_id);
-create index project_images_project_id_idx on public.project_images(project_id);
-create index yardage_entries_user_id_idx on public.yardage_entries(user_id);
-create index yardage_entries_project_id_idx on public.yardage_entries(project_id);
-create index yardage_entries_fabric_id_idx on public.yardage_entries(fabric_id);
-create index yardage_entries_material_id_idx on public.yardage_entries(material_id);
+-- Add lookup indexes without replacing indexes that are already healthy.
+create index if not exists profiles_user_id_idx on public.profiles(user_id);
+create index if not exists projects_user_id_idx on public.projects(user_id);
+create index if not exists projects_user_phase_idx on public.projects(user_id, workflow_phase);
+create index if not exists projects_user_status_idx on public.projects(user_id, status);
+create index if not exists fabrics_user_id_idx on public.fabrics(user_id);
+create index if not exists fabrics_user_archive_status_idx on public.fabrics(user_id, archive_status);
+create index if not exists materials_user_id_idx on public.materials(user_id);
+create index if not exists materials_project_id_idx on public.materials(project_id);
+create index if not exists materials_fabric_id_idx on public.materials(fabric_id);
+create index if not exists tasks_user_id_idx on public.tasks(user_id);
+create index if not exists tasks_project_id_idx on public.tasks(project_id);
+create index if not exists tasks_project_status_idx on public.tasks(project_id, status);
+create index if not exists notes_user_id_idx on public.notes(user_id);
+create index if not exists notes_project_id_idx on public.notes(project_id);
+create index if not exists project_images_user_id_idx on public.project_images(user_id);
+create index if not exists project_images_project_id_idx on public.project_images(project_id);
+create index if not exists yardage_entries_user_id_idx on public.yardage_entries(user_id);
+create index if not exists yardage_entries_project_id_idx on public.yardage_entries(project_id);
+create index if not exists yardage_entries_fabric_id_idx on public.yardage_entries(fabric_id);
+create index if not exists yardage_entries_material_id_idx on public.yardage_entries(material_id);
 
+-- RLS is always enabled. Named policies are replaced in place so a partial
+-- policy install can be safely rerun without exposing or deleting row data.
 alter table public.profiles enable row level security;
 alter table public.projects enable row level security;
 alter table public.tasks enable row level security;
@@ -264,53 +276,63 @@ alter table public.materials enable row level security;
 alter table public.project_images enable row level security;
 alter table public.yardage_entries enable row level security;
 
+drop policy if exists "Authenticated users can select own profiles" on public.profiles;
 create policy "Authenticated users can select own profiles"
   on public.profiles for select
   to authenticated
   using (auth.uid() is not null and auth.uid() = user_id);
 
+drop policy if exists "Authenticated users can insert own profiles" on public.profiles;
 create policy "Authenticated users can insert own profiles"
   on public.profiles for insert
   to authenticated
   with check (auth.uid() is not null and auth.uid() = user_id);
 
+drop policy if exists "Authenticated users can update own profiles" on public.profiles;
 create policy "Authenticated users can update own profiles"
   on public.profiles for update
   to authenticated
   using (auth.uid() is not null and auth.uid() = user_id)
   with check (auth.uid() is not null and auth.uid() = user_id);
 
+drop policy if exists "Authenticated users can delete own profiles" on public.profiles;
 create policy "Authenticated users can delete own profiles"
   on public.profiles for delete
   to authenticated
   using (auth.uid() is not null and auth.uid() = user_id);
 
+drop policy if exists "Authenticated users can select own projects" on public.projects;
 create policy "Authenticated users can select own projects"
   on public.projects for select
   to authenticated
   using (auth.uid() is not null and auth.uid() = user_id);
 
+drop policy if exists "Authenticated users can insert own projects" on public.projects;
 create policy "Authenticated users can insert own projects"
   on public.projects for insert
   to authenticated
   with check (auth.uid() is not null and auth.uid() = user_id);
 
+drop policy if exists "Authenticated users can update own projects" on public.projects;
 create policy "Authenticated users can update own projects"
   on public.projects for update
   to authenticated
   using (auth.uid() is not null and auth.uid() = user_id)
   with check (auth.uid() is not null and auth.uid() = user_id);
 
+drop policy if exists "Authenticated users can delete own projects" on public.projects;
 create policy "Authenticated users can delete own projects"
   on public.projects for delete
   to authenticated
   using (auth.uid() is not null and auth.uid() = user_id);
 
+drop policy if exists "Authenticated users can select own tasks" on public.tasks;
 create policy "Authenticated users can select own tasks"
   on public.tasks for select
   to authenticated
   using (auth.uid() is not null and auth.uid() = user_id);
 
+drop policy if exists "Authenticated users can insert own tasks" on public.tasks;
 create policy "Authenticated users can insert own tasks"
   on public.tasks for insert
   to authenticated
@@ -334,6 +356,7 @@ create policy "Authenticated users can insert own tasks"
     )
   );
 
+drop policy if exists "Authenticated users can update own tasks" on public.tasks;
 create policy "Authenticated users can update own tasks"
   on public.tasks for update
   to authenticated
@@ -358,16 +381,19 @@ create policy "Authenticated users can update own tasks"
     )
   );
 
+drop policy if exists "Authenticated users can delete own tasks" on public.tasks;
 create policy "Authenticated users can delete own tasks"
   on public.tasks for delete
   to authenticated
   using (auth.uid() is not null and auth.uid() = user_id);
 
+drop policy if exists "Authenticated users can select own notes" on public.notes;
 create policy "Authenticated users can select own notes"
   on public.notes for select
   to authenticated
   using (auth.uid() is not null and auth.uid() = user_id);
 
+drop policy if exists "Authenticated users can insert own notes" on public.notes;
 create policy "Authenticated users can insert own notes"
   on public.notes for insert
   to authenticated
@@ -382,6 +408,7 @@ create policy "Authenticated users can insert own notes"
     )
   );
 
+drop policy if exists "Authenticated users can update own notes" on public.notes;
 create policy "Authenticated users can update own notes"
   on public.notes for update
   to authenticated
@@ -397,37 +424,44 @@ create policy "Authenticated users can update own notes"
     )
   );
 
+drop policy if exists "Authenticated users can delete own notes" on public.notes;
 create policy "Authenticated users can delete own notes"
   on public.notes for delete
   to authenticated
   using (auth.uid() is not null and auth.uid() = user_id);
 
+drop policy if exists "Authenticated users can select own fabrics" on public.fabrics;
 create policy "Authenticated users can select own fabrics"
   on public.fabrics for select
   to authenticated
   using (auth.uid() is not null and auth.uid() = user_id);
 
+drop policy if exists "Authenticated users can insert own fabrics" on public.fabrics;
 create policy "Authenticated users can insert own fabrics"
   on public.fabrics for insert
   to authenticated
   with check (auth.uid() is not null and auth.uid() = user_id);
 
+drop policy if exists "Authenticated users can update own fabrics" on public.fabrics;
 create policy "Authenticated users can update own fabrics"
   on public.fabrics for update
   to authenticated
   using (auth.uid() is not null and auth.uid() = user_id)
   with check (auth.uid() is not null and auth.uid() = user_id);
 
+drop policy if exists "Authenticated users can delete own fabrics" on public.fabrics;
 create policy "Authenticated users can delete own fabrics"
   on public.fabrics for delete
   to authenticated
   using (auth.uid() is not null and auth.uid() = user_id);
 
+drop policy if exists "Authenticated users can select own materials" on public.materials;
 create policy "Authenticated users can select own materials"
   on public.materials for select
   to authenticated
   using (auth.uid() is not null and auth.uid() = user_id);
 
+drop policy if exists "Authenticated users can insert own materials" on public.materials;
 create policy "Authenticated users can insert own materials"
   on public.materials for insert
   to authenticated
@@ -451,6 +485,7 @@ create policy "Authenticated users can insert own materials"
     )
   );
 
+drop policy if exists "Authenticated users can update own materials" on public.materials;
 create policy "Authenticated users can update own materials"
   on public.materials for update
   to authenticated
@@ -475,16 +510,19 @@ create policy "Authenticated users can update own materials"
     )
   );
 
+drop policy if exists "Authenticated users can delete own materials" on public.materials;
 create policy "Authenticated users can delete own materials"
   on public.materials for delete
   to authenticated
   using (auth.uid() is not null and auth.uid() = user_id);
 
+drop policy if exists "Authenticated users can select own project images" on public.project_images;
 create policy "Authenticated users can select own project images"
   on public.project_images for select
   to authenticated
   using (auth.uid() is not null and auth.uid() = user_id);
 
+drop policy if exists "Authenticated users can insert own project images" on public.project_images;
 create policy "Authenticated users can insert own project images"
   on public.project_images for insert
   to authenticated
@@ -499,6 +537,7 @@ create policy "Authenticated users can insert own project images"
     )
   );
 
+drop policy if exists "Authenticated users can update own project images" on public.project_images;
 create policy "Authenticated users can update own project images"
   on public.project_images for update
   to authenticated
@@ -514,16 +553,19 @@ create policy "Authenticated users can update own project images"
     )
   );
 
+drop policy if exists "Authenticated users can delete own project images" on public.project_images;
 create policy "Authenticated users can delete own project images"
   on public.project_images for delete
   to authenticated
   using (auth.uid() is not null and auth.uid() = user_id);
 
+drop policy if exists "Authenticated users can select own yardage entries" on public.yardage_entries;
 create policy "Authenticated users can select own yardage entries"
   on public.yardage_entries for select
   to authenticated
   using (auth.uid() is not null and auth.uid() = user_id);
 
+drop policy if exists "Authenticated users can insert own yardage entries" on public.yardage_entries;
 create policy "Authenticated users can insert own yardage entries"
   on public.yardage_entries for insert
   to authenticated
@@ -556,6 +598,7 @@ create policy "Authenticated users can insert own yardage entries"
     )
   );
 
+drop policy if exists "Authenticated users can update own yardage entries" on public.yardage_entries;
 create policy "Authenticated users can update own yardage entries"
   on public.yardage_entries for update
   to authenticated
@@ -589,6 +632,7 @@ create policy "Authenticated users can update own yardage entries"
     )
   );
 
+drop policy if exists "Authenticated users can delete own yardage entries" on public.yardage_entries;
 create policy "Authenticated users can delete own yardage entries"
   on public.yardage_entries for delete
   to authenticated
