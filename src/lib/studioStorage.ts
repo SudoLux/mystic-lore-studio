@@ -12,6 +12,7 @@ import {
   getDerivedFabricStatus,
   getDerivedFabricStorageStatus,
 } from './yardage';
+import { normalizeFabricDrape, normalizeWovenKnit } from './fabricMetadata';
 import type {
   ApparelProject,
   Fabric,
@@ -23,7 +24,7 @@ import type {
   YardageEntry,
 } from '../types/studio';
 
-export const LOCAL_DATA_VERSION = 3;
+export const LOCAL_DATA_VERSION = 4;
 const STORAGE_KEY = 'mystic-lore-studio:data';
 const USER_STORAGE_PREFIX = `${STORAGE_KEY}:user`;
 
@@ -534,11 +535,20 @@ function parseStudioDataBackup(serializedData: string): StudioData {
 function normalizeStudioData(data: StudioData): StudioData {
   return {
     ...data,
+    fabrics: data.fabrics.map(normalizeFabricRecord),
     settings: normalizeAppSettings(data.settings),
     version: typeof data.version === 'number' ? data.version : LOCAL_DATA_VERSION,
     yardageEntries: Array.isArray(data.yardageEntries)
       ? data.yardageEntries
       : [],
+  };
+}
+
+function normalizeFabricRecord(fabric: Fabric): Fabric {
+  return {
+    ...fabric,
+    drape: normalizeFabricDrape(fabric.drape),
+    weaveOrKnit: normalizeWovenKnit(fabric.weaveOrKnit),
   };
 }
 

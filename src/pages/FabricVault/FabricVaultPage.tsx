@@ -36,6 +36,12 @@ import {
   formatStudioDate,
   studioDateTimestamp,
 } from '../../lib/dates';
+import {
+  getFabricFallbackBackground,
+  getFabricSwatchBackground,
+  fabricWeights,
+  gsmToOunces,
+} from '../../lib/fabricMetadata';
 import { getFabricImage } from '../../lib/imageAssets';
 import {
   LOW_YARDAGE_THRESHOLD,
@@ -96,7 +102,7 @@ export function FabricVaultPage({
       drapes: getUniqueValues(fabrics, 'drape'),
       rarities: getUniqueValues(fabrics, 'rarity'),
       types: getUniqueValues(fabrics, 'category'),
-      weights: getUniqueValues(fabrics, 'weight'),
+      weights: fabricWeights,
     }),
     [fabrics],
   );
@@ -497,6 +503,9 @@ export function FabricVaultPage({
                 }
                 image={
                   <>
+                    {!fabricImage ? (
+                      <div className="absolute inset-0" style={{ background: getFabricFallbackBackground(fabric) }} />
+                    ) : null}
                     {fabricImage ? (
                       <StoredImage
                         asset={fabricImage}
@@ -566,6 +575,7 @@ function FabricCard({
           'relative h-44 overflow-hidden border-b border-bronze/24 p-4 shadow-[inset_0_-1px_0_rgba(237,227,207,0.05)]',
           getFabricVisualClass(fabric),
         )}
+        style={!fabricImage ? { background: getFabricFallbackBackground(fabric) } : undefined}
       >
         <div className="absolute inset-0 opacity-35 [background-image:linear-gradient(90deg,rgba(237,227,207,0.08)_1px,transparent_1px),linear-gradient(0deg,rgba(237,227,207,0.07)_1px,transparent_1px)] [background-size:18px_18px]" />
         {fabricImage ? (
@@ -964,15 +974,21 @@ function FabricDetailPage({
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
               <DetailDatum label="Fabric Type" value={fabric.category} />
               <DetailDatum label="Fiber Content" value={fabric.composition} />
-              <DetailDatum label="Weave / Knit" value={fabric.weaveOrKnit} />
-              <DetailDatum label="Weight" value={fabric.weight} />
+              <DetailDatum label="Woven/Knit" value={fabric.weaveOrKnit} />
+              <DetailDatum
+                label="Exact Weight"
+                value={
+                  fabric.weightGsm
+                    ? `${formatNumber(gsmToOunces(fabric.weightGsm))} oz/yd² · ${formatNumber(fabric.weightGsm)} GSM`
+                    : 'Not measured'
+                }
+              />
+              <DetailDatum label="Weight Class" value={fabric.weight} />
               <DetailDatum label="Width" value={`${fabric.widthInches} in`} />
               <DetailDatum label="Stretch" value={fabric.stretch} />
               <DetailDatum label="Opacity" value={fabric.opacity} />
               <DetailDatum label="Drape" value={fabric.drape} />
               <DetailDatum label="Hand Feel" value={fabric.handFeel} />
-              <DetailDatum label="Texture" value={fabric.texture} />
-              <DetailDatum label="Structure" value={fabric.structure} />
               <DetailDatum label="Storage Status" value={fabric.storageStatus} />
             </div>
           </DetailSection>
@@ -1116,10 +1132,8 @@ function DetailCallout({
 function PaletteSwatch({ fabric }: { fabric: Fabric }) {
   return (
     <span
-      className={cn(
-        'block h-5 w-5 rounded-full border border-stardust/24 shadow-[0_0_24px_rgba(237,227,207,0.16)]',
-        getFabricVisualClass(fabric),
-      )}
+      className="block h-5 w-5 rounded-full border border-stardust/24 shadow-[0_0_24px_rgba(237,227,207,0.16)]"
+      style={{ background: getFabricSwatchBackground(fabric) }}
     />
   );
 }

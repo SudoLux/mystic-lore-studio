@@ -65,6 +65,7 @@ import {
   getProjectGalleryImages,
   PROJECT_HERO_RESPONSIVE_ASPECT_CLASS,
 } from '../../lib/imageAssets';
+import { getFabricSwatchBackground } from '../../lib/fabricMetadata';
 import {
   calculateFabricYardage,
   hasInsufficientYardage,
@@ -944,7 +945,7 @@ function MaterialCard({
       <div className="flex items-start gap-4">
         <span
           className="h-14 w-14 shrink-0 overflow-hidden rounded-2xl border border-stardust/20 bg-espresso/60"
-          style={{ background: fabric ? getFabricSwatch(fabric) : undefined }}
+          style={{ background: fabric ? getFabricSwatchBackground(fabric) : undefined }}
         >
           {fabricImage ? (
             <StoredImage
@@ -2969,18 +2970,6 @@ function SectionHeading({
   );
 }
 
-function getFabricSwatch(fabric: Fabric) {
-  const swatches: Record<string, string> = {
-    'Midnight indigo': 'linear-gradient(135deg,#05070E,#1B3A63,#111827)',
-    Black: 'linear-gradient(135deg,#030303,#202020,#0A0A0A)',
-    'Golden ember': 'linear-gradient(135deg,#C89B3C,#9A6C3C,#EDE3CF)',
-    'Deep espresso': 'linear-gradient(135deg,#3D2B1F,#9A6C3C,#1f130d)',
-    'Stardust ivory': 'linear-gradient(135deg,#EDE3CF,#bda984,#f8f1e5)',
-    'Nebula teal': 'linear-gradient(135deg,#2D5C6B,#1B3A63,#58a0a7)',
-  };
-
-  return swatches[fabric.colorFamily] ?? 'linear-gradient(135deg,#C89B3C,#2D5C6B)';
-}
 
 function hasYardageWarning(
   allocation: LinkedMaterial,
