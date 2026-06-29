@@ -63,6 +63,51 @@ Site configuration > Environment variables
 After updating Netlify environment variables, trigger a new deploy so Vite can
 include the values in the client build.
 
+### Manual Supabase Setup
+
+The migrations are additive and safe to rerun after a partial SQL Editor run.
+They do not drop app tables or delete existing records. In the Supabase
+Dashboard, open **SQL Editor**, create a new query for each step, paste the
+complete file contents, and run the files in this order:
+
+1. **Run migration 001 / foundation schema:**
+   `supabase/migrations/20260617010000_create_mystic_lore_schema.sql`
+2. **Run the cloud and Storage migrations:** first
+   `supabase/migrations/20260621010000_add_cloud_sync_and_storage.sql`, then
+   `supabase/migrations/20260628010000_add_sync_tombstones.sql`.
+3. **Verify tables:** open **Table Editor** and confirm `profiles`, `projects`,
+   `fabrics`, `materials`, `tasks`, `notes`, `project_images`,
+   `yardage_entries`, `lookbook_pages`, and `sync_tombstones` exist.
+4. **Verify image Storage:** open **Storage** and confirm the private
+   `project-images` bucket exists. Do not make this bucket public.
+5. **Retry the app:** return to Mystic Lore Studio, open the sync status panel,
+   and choose **Retry Sync**. Refresh or refocus other signed-in devices after
+   the first successful sync.
+
+The Storage policies restrict every object to the authenticated owner's path:
+`users/{userId}/...`. The database tables have Row Level Security enabled and
+authenticated users can only read or change rows where `auth.uid() = user_id`.
+
+#### Setup Troubleshooting
+
+- **`relation ... already exists`:** use the current migration files from this
+  repository and rerun the same step. Their tables and indexes use `if not
+  exists`, so a completed statement from a partial run is preserved.
+- **`policy ... already exists`:** use the current file and rerun it. Each
+  migration drops only its named policy before recreating it; no table data is
+  removed.
+- **Bucket already exists:** rerun the Storage migration. It keeps
+  `project-images` private, refreshes its limits, and safely recreates the
+  owner-path policies.
+- **Cloud sync needs attention:** confirm all three migration files completed,
+  both Supabase environment variables point to the same project, and the
+  `project-images` bucket is private. Then sign in again and choose **Retry
+  Sync**.
+- **Intentionally resetting a broken development project:** only then run
+  `supabase/dev_reset_mystic_lore.sql`. That file permanently deletes all
+  Mystic Lore cloud rows and images before you rerun the migrations. Never use
+  it as part of normal setup.
+
 ### Required Database Objects
 
 Apply the SQL migrations in `supabase/migrations` in timestamp order. The sync

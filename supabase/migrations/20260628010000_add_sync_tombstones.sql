@@ -39,19 +39,23 @@ create trigger set_sync_tombstones_updated_at
   before update on public.sync_tombstones
   for each row execute function public.set_updated_at();
 
+drop policy if exists "Authenticated users can select own sync tombstones" on public.sync_tombstones;
 create policy "Authenticated users can select own sync tombstones"
   on public.sync_tombstones for select to authenticated
   using (auth.uid() is not null and auth.uid() = user_id);
 
+drop policy if exists "Authenticated users can insert own sync tombstones" on public.sync_tombstones;
 create policy "Authenticated users can insert own sync tombstones"
   on public.sync_tombstones for insert to authenticated
   with check (auth.uid() is not null and auth.uid() = user_id);
 
+drop policy if exists "Authenticated users can update own sync tombstones" on public.sync_tombstones;
 create policy "Authenticated users can update own sync tombstones"
   on public.sync_tombstones for update to authenticated
   using (auth.uid() is not null and auth.uid() = user_id)
   with check (auth.uid() is not null and auth.uid() = user_id);
 
+drop policy if exists "Authenticated users can delete own sync tombstones" on public.sync_tombstones;
 create policy "Authenticated users can delete own sync tombstones"
   on public.sync_tombstones for delete to authenticated
   using (auth.uid() is not null and auth.uid() = user_id);
