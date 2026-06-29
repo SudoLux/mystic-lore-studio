@@ -26,7 +26,7 @@ import {
   getProjectHeroImage,
   PROJECT_LIBRARY_CARD_ASPECT_CLASS,
 } from '../../lib/imageAssets';
-import { getFabricSwatchBackground } from '../../lib/fabricMetadata';
+import { FabricColorOrb } from '../../components/fabrics/FabricColorOrb';
 import {
   garmentTypes,
   projectPhases,
@@ -648,14 +648,13 @@ function FabricSwatch({
   fabric: Fabric;
 }) {
   return (
-    <span
-      aria-label={fabric.name}
+    <FabricColorOrb
       className={cn(
-        'inline-flex h-5 w-5 shrink-0 rounded-full border border-stardust/25',
+        'h-5 w-5',
         className,
       )}
-      style={{ background: getFabricSwatchBackground(fabric) }}
-      title={fabric.name}
+      fabric={fabric}
+      label={fabric.name}
     />
   );
 }

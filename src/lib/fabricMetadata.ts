@@ -147,11 +147,10 @@ export function getFabricColorHex(
   return preset?.hex ?? '#C89B3C';
 }
 
-export function getFabricSwatchBackground(
-  fabric: Pick<Fabric, 'colorFamily' | 'primaryColor' | 'primaryColorHex'>,
+export function getFabricDisplayColorName(
+  fabric: Pick<Fabric, 'colorFamily' | 'primaryColor'>,
 ) {
-  const hex = getFabricColorHex(fabric);
-  return `linear-gradient(135deg, ${shadeHex(hex, -34)}, ${hex}, ${shadeHex(hex, 28)})`;
+  return fabric.primaryColor.trim() || fabric.colorFamily;
 }
 
 export function getFabricFallbackBackground(
@@ -168,7 +167,7 @@ export function isHexColor(value: unknown): value is string {
 function shadeHex(hex: string, amount: number) {
   const number = Number.parseInt(hex.slice(1), 16);
   const channel = (shift: number) =>
-    Math.min(255, Math.max(0, (number >> shift) + amount));
+    Math.min(255, Math.max(0, ((number >> shift) & 0xff) + amount));
   return `#${[channel(16), channel(8), channel(0)]
     .map((value) => value.toString(16).padStart(2, '0'))
     .join('')}`;

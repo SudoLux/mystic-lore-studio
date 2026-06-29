@@ -354,7 +354,11 @@ function StudioApp() {
               return;
             }
 
-            updateFabric(fabric);
+            const latestFabric = fabrics.find((item) => item.id === fabric.id);
+            updateFabric({
+              ...fabric,
+              image: latestFabric?.image,
+            });
             setFabricForm(null);
           }}
         />

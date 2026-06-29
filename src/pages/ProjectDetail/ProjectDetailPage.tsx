@@ -65,7 +65,7 @@ import {
   getProjectGalleryImages,
   PROJECT_HERO_RESPONSIVE_ASPECT_CLASS,
 } from '../../lib/imageAssets';
-import { getFabricSwatchBackground } from '../../lib/fabricMetadata';
+import { FabricColorOrb } from '../../components/fabrics/FabricColorOrb';
 import {
   calculateFabricYardage,
   hasInsufficientYardage,
@@ -943,14 +943,17 @@ function MaterialCard({
       )}
     >
       <div className="flex items-start gap-4">
-        <span
-          className="h-14 w-14 shrink-0 overflow-hidden rounded-2xl border border-stardust/20 bg-espresso/60"
-          style={{ background: fabric ? getFabricSwatchBackground(fabric) : undefined }}
-        >
+        <span className="relative h-14 w-14 shrink-0 overflow-hidden rounded-2xl border border-stardust/20 bg-espresso/60">
+          {fabric ? (
+            <FabricColorOrb
+              className="absolute inset-0 h-full w-full rounded-2xl border-0"
+              fabric={fabric}
+            />
+          ) : null}
           {fabricImage ? (
             <StoredImage
               asset={fabricImage}
-              className="h-full w-full object-cover"
+              className="relative h-full w-full object-cover"
             />
           ) : null}
         </span>
