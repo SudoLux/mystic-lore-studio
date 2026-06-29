@@ -22,6 +22,7 @@ import { Badge } from '../../components/shared/Badge';
 import { Button } from '../../components/shared/Button';
 import { Card } from '../../components/shared/Card';
 import { FabricWeightGuideModal } from '../../components/fabrics/FabricWeightGuideModal';
+import { FabricColorOrb } from '../../components/fabrics/FabricColorOrb';
 import { FilterSheet } from '../../components/shared/FilterSheet';
 import { ImageSlot } from '../../components/shared/ImageSlot';
 import { ImageReadabilityOverlay } from '../../components/shared/ImageReadabilityOverlay';
@@ -38,7 +39,7 @@ import {
 } from '../../lib/dates';
 import {
   getFabricFallbackBackground,
-  getFabricSwatchBackground,
+  getFabricDisplayColorName,
   fabricWeights,
   gsmToOunces,
 } from '../../lib/fabricMetadata';
@@ -948,7 +949,7 @@ function FabricDetailPage({
               <DetailCallout
                 icon={<PaletteSwatch fabric={fabric} />}
                 label="Primary Color"
-                value={fabric.primaryColor}
+                value={getFabricDisplayColorName(fabric)}
               />
               <DetailCallout
                 icon={<Package aria-hidden="true" size={18} strokeWidth={1.9} />}
@@ -1037,7 +1038,10 @@ function FabricDetailPage({
           >
             <div className="space-y-4">
               <DetailDatum label="Color Family" value={fabric.colorFamily} />
-              <DetailDatum label="Primary Color" value={fabric.primaryColor} />
+              <DetailDatum
+                label="Primary Color"
+                value={getFabricDisplayColorName(fabric)}
+              />
               {fabric.secondaryColors.length > 0 ? (
                 <div>
                   <p className="text-xs font-medium uppercase tracking-[0.14em] text-stardust/38">
@@ -1131,9 +1135,11 @@ function DetailCallout({
 
 function PaletteSwatch({ fabric }: { fabric: Fabric }) {
   return (
-    <span
-      className="block h-5 w-5 rounded-full border border-stardust/24 shadow-[0_0_24px_rgba(237,227,207,0.16)]"
-      style={{ background: getFabricSwatchBackground(fabric) }}
+    <FabricColorOrb
+      animated
+      className="h-6 w-6"
+      fabric={fabric}
+      label={`${getFabricDisplayColorName(fabric)} fabric color`}
     />
   );
 }

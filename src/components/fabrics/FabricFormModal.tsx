@@ -269,7 +269,6 @@ export function FabricFormModal({ fabric, mode, onClose, onSubmit }: FabricFormM
                               setValues((current) => ({
                                 ...current,
                                 colorFamily: preset.label,
-                                primaryColor: preset.label,
                                 primaryColorHex: preset.hex,
                               }));
                               setErrors((current) => ({ ...current, primaryColor: '' }));
@@ -286,8 +285,8 @@ export function FabricFormModal({ fabric, mode, onClose, onSubmit }: FabricFormM
 
                     <div className="mt-4 grid gap-4 md:grid-cols-[minmax(0,1fr)_12rem]">
                       <TextField
-                        helper="Optional shade name, such as Crimson, Oxblood, or Sage."
-                        label="Shade name"
+                        helper="Optional expressive shade name, such as Crimson, Oxblood, or Sage."
+                        label="Shade Vibe"
                         onChange={(value) => updateValue('primaryColor', value)}
                         value={values.primaryColor}
                       />
@@ -492,6 +491,11 @@ function NumberField({ error, label, min, onChange, prefix, step, unit, value }:
           inputMode="decimal"
           min={min}
           onChange={(event) => onChange(event.target.value)}
+          onFocus={(event) => {
+            if (Number(event.currentTarget.value) === 0) {
+              event.currentTarget.select();
+            }
+          }}
           step={step}
           type="number"
           value={value}
@@ -715,13 +719,12 @@ function formValuesToFabric(values: FabricFormValues, existingFabric?: Fabric): 
     drape: values.drape,
     handFeel: values.handFeel.trim(),
     id: existingFabric?.id ?? createFabricId(safeName),
-    image: existingFabric?.image,
     loreNote: values.loreNote.trim(),
     moodTags: values.moodTags,
     name: safeName,
     notes: values.loreNote.trim() || existingFabric?.notes || '',
     opacity: values.opacity,
-    primaryColor: values.primaryColor.trim() || values.colorFamily,
+    primaryColor: values.primaryColor.trim(),
     primaryColorHex: isHexColor(values.primaryColorHex) ? values.primaryColorHex.toUpperCase() : undefined,
     purchaseDate: values.purchaseDate || existingFabric?.purchaseDate || todayString(),
     rarity: values.rarity,
@@ -791,6 +794,7 @@ function inferColorFamily(fabric: Fabric) {
 }
 
 function inferPrimaryShade(fabric: Fabric) {
+  const inferredFamily = inferColorFamily(fabric);
   const colorFamilyIsPreset = fabricColorPresets.some(
     (preset) => preset.label.toLowerCase() === fabric.colorFamily.toLowerCase(),
   );
@@ -799,6 +803,7 @@ function inferPrimaryShade(fabric: Fabric) {
   );
 
   if (!colorFamilyIsPreset && primaryColorIsPreset) return fabric.colorFamily;
+  if (fabric.primaryColor.toLowerCase() === inferredFamily.toLowerCase()) return '';
   return fabric.primaryColor;
 }
 
