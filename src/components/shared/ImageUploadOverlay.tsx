@@ -25,6 +25,7 @@ type ImageUploadOverlayProps = {
   processingMessage?: string | null;
   processingIsActive?: boolean;
   processingIsBlocking?: boolean;
+  showLabel?: boolean;
 };
 
 export function ImageUploadOverlay({
@@ -48,6 +49,7 @@ export function ImageUploadOverlay({
   processingMessage,
   processingIsActive = false,
   processingIsBlocking = false,
+  showLabel = true,
 }: ImageUploadOverlayProps) {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const shouldKeepVisible = !hasImage || hasPendingImage || Boolean(error);
@@ -85,16 +87,18 @@ export function ImageUploadOverlay({
         )}
       />
 
-      <div
-        className={cn(
-          'pointer-events-none absolute left-3 top-3 z-20 flex flex-wrap items-center gap-2',
-          labelClassName,
-        )}
-      >
-        <span className="rounded-full border border-bronze/46 bg-midnight/78 px-3 py-1 text-xs font-medium text-stardust shadow-[0_8px_24px_rgba(0,0,0,0.32),inset_0_1px_0_rgba(237,227,207,0.06)] backdrop-blur-xl">
-          {label}
-        </span>
-      </div>
+      {showLabel ? (
+        <div
+          className={cn(
+            'pointer-events-none absolute left-3 top-3 z-20 flex flex-wrap items-center gap-2',
+            labelClassName,
+          )}
+        >
+          <span className="rounded-full border border-bronze/46 bg-midnight/78 px-3 py-1 text-xs font-medium text-stardust shadow-[0_8px_24px_rgba(0,0,0,0.32),inset_0_1px_0_rgba(237,227,207,0.06)] backdrop-blur-xl">
+            {label}
+          </span>
+        </div>
+      ) : null}
 
       {!hasImage ? (
         <div className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center p-4 text-center">
