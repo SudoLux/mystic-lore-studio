@@ -19,6 +19,8 @@ import type {
   FabricDetailsInput,
   LinkedMaterial,
   LookbookPage,
+  ProjectDetailsInput,
+  ProjectHeroImageIntent,
   StudioNote,
   StudioTask,
   TaskStatus,
@@ -241,6 +243,34 @@ export function updateProjectInData(
     projects: data.projects.map((currentProject) =>
       currentProject.id === project.id ? project : currentProject,
     ),
+  };
+}
+
+export function updateProjectDetailsInData(
+  data: StudioData,
+  projectId: string,
+  details: ProjectDetailsInput,
+  heroImageIntent: ProjectHeroImageIntent = { type: 'unchanged' },
+): StudioData {
+  return {
+    ...data,
+    projects: data.projects.map((project) => {
+      if (project.id !== projectId) return project;
+
+      const heroImage = heroImageIntent.type === 'set'
+        ? heroImageIntent.image
+        : heroImageIntent.type === 'remove'
+          ? undefined
+          : project.heroImage;
+
+      return {
+        ...project,
+        ...details,
+        galleryImages: project.galleryImages,
+        heroImage,
+        id: project.id,
+      };
+    }),
   };
 }
 

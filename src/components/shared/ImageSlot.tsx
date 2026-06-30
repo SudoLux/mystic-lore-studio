@@ -1,4 +1,4 @@
-import { useRef, useState, type MouseEvent, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type MouseEvent, type ReactNode } from 'react';
 import { cn } from '../../lib/classes';
 import {
   applyRecommendedProjectImageDisplay,
@@ -6,7 +6,11 @@ import {
   isUsableImageAsset,
   type ImageAdjustmentContext,
 } from '../../lib/imageAssets';
-import { createLocalImageAsset, type ImageProcessingError } from '../../lib/localImages';
+import {
+  createLocalImageAsset,
+  discardLocalImageAsset,
+  type ImageProcessingError,
+} from '../../lib/localImages';
 import type { LocalImageAsset } from '../../types/studio';
 import { AdaptiveStoredImage } from './AdaptiveStoredImage';
 import { ImageAdjustModal } from './ImageAdjustModal';
@@ -65,6 +69,7 @@ export function ImageSlot({
 }: ImageSlotProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [pendingImage, setPendingImage] = useState<LocalImageAsset | null>(null);
+  const pendingImageRef = useRef<LocalImageAsset | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isAdjusting, setIsAdjusting] = useState(false);
   const [isOptimizing, setIsOptimizing] = useState(false);
@@ -73,6 +78,10 @@ export function ImageSlot({
     ? fallbackValue
     : undefined;
   const visibleImage = pendingImage ?? storedImage ?? fallbackImage;
+
+  useEffect(() => () => {
+    void discardLocalImageAsset(pendingImageRef.current ?? undefined);
+  }, []);
 
   const openFilePicker = () => inputRef.current?.click();
 
@@ -86,11 +95,12 @@ export function ImageSlot({
     try {
       setIsOptimizing(true);
       const preparedImage = await createLocalImageAsset(file);
-      setPendingImage(
-        projectAdaptive || adaptivePresentation
-          ? applyRecommendedProjectImageDisplay(preparedImage)
-          : preparedImage,
-      );
+      const nextImage = projectAdaptive || adaptivePresentation
+        ? applyRecommendedProjectImageDisplay(preparedImage)
+        : preparedImage;
+      void discardLocalImageAsset(pendingImageRef.current ?? undefined);
+      pendingImageRef.current = nextImage;
+      setPendingImage(nextImage);
     } catch (caughtError) {
       const imageError = caughtError as ImageProcessingError;
       setError(imageError.message || 'Could not prepare this image.');
@@ -173,6 +183,8 @@ export function ImageSlot({
         showLabel={showLabel}
         onAdjust={() => setIsAdjusting(true)}
         onCancelPreview={() => {
+          void discardLocalImageAsset(pendingImageRef.current ?? undefined);
+          pendingImageRef.current = null;
           setPendingImage(null);
           setError(null);
         }}
@@ -181,11 +193,14 @@ export function ImageSlot({
             return;
           }
 
+          pendingImageRef.current = null;
           onSave(pendingImage);
           setPendingImage(null);
           setError(null);
         }}
         onRemove={() => {
+          void discardLocalImageAsset(pendingImageRef.current ?? undefined);
+          pendingImageRef.current = null;
           setPendingImage(null);
           setError(null);
           onRemove();

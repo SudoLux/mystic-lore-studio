@@ -1,6 +1,7 @@
 import type { LocalImageAsset } from '../types/studio';
 import { compressImageForApp } from './imageCompression';
 import {
+  deleteImageBlob,
   imageBlobKey,
   previewImageBlobKey,
   saveImageBlob,
@@ -51,6 +52,16 @@ export async function createLocalImageAsset(file: File): Promise<LocalImageAsset
     width: compressed.width,
     zoom: 1,
   };
+}
+
+export async function discardLocalImageAsset(image?: LocalImageAsset) {
+  if (!image || image.storagePath) return;
+
+  await Promise.all(
+    [image.blobKey, image.previewBlobKey]
+      .filter((key): key is string => Boolean(key))
+      .map((key) => deleteImageBlob(key).catch(() => undefined)),
+  );
 }
 
 async function dataUrlToBlob(dataUrl: string) {

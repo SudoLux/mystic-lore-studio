@@ -113,7 +113,7 @@ function StudioApp() {
     syncProgress,
     syncStatus,
     updateFabricDetails,
-    updateProject,
+    updateProjectDetails,
   } = useStudioData();
   const { signOut, user } = useAuth();
   const [route, setRoute] = useState<AppRoute>(getInitialRoute);
@@ -327,18 +327,23 @@ function StudioApp() {
         <ProjectFormModal
           mode={projectForm.mode}
           onClose={() => setProjectForm(null)}
-          onSubmit={(project) => {
+          onSubmit={({ details, heroImageIntent, id }) => {
             if (projectForm.mode === 'create') {
-              createProject(project);
+              createProject({
+                ...details,
+                heroImage: heroImageIntent.type === 'set' ? heroImageIntent.image : undefined,
+                id,
+              });
               setProjectForm(null);
-              openProject(project.id);
+              openProject(id);
               return;
             }
 
-            updateProject(project);
+            updateProjectDetails(id, details, heroImageIntent);
             setProjectForm(null);
           }}
           project={projectForm.project}
+          projects={projects}
         />
       ) : null}
       {fabricForm ? (
