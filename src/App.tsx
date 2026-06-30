@@ -112,7 +112,7 @@ function StudioApp() {
     syncPhase,
     syncProgress,
     syncStatus,
-    updateFabric,
+    updateFabricDetails,
     updateProject,
   } = useStudioData();
   const { signOut, user } = useAuth();
@@ -346,19 +346,15 @@ function StudioApp() {
           fabric={fabricForm.fabric}
           mode={fabricForm.mode}
           onClose={() => setFabricForm(null)}
-          onSubmit={(fabric) => {
+          onSubmit={({ details, id }) => {
             if (fabricForm.mode === 'create') {
-              createFabric(fabric);
+              createFabric({ ...details, id });
               setFabricForm(null);
-              openFabric(fabric.id);
+              openFabric(id);
               return;
             }
 
-            const latestFabric = fabrics.find((item) => item.id === fabric.id);
-            updateFabric({
-              ...fabric,
-              image: latestFabric?.image,
-            });
+            updateFabricDetails(id, details);
             setFabricForm(null);
           }}
         />

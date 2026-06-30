@@ -8,7 +8,7 @@ import {
   Trash2,
   X,
 } from 'lucide-react';
-import { useState, type FormEvent, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react';
 import {
   fabricColorPresets,
   fabricDrapes,
@@ -26,6 +26,7 @@ import {
 import { cn } from '../../lib/classes';
 import type {
   Fabric,
+  FabricDetailsInput,
   FabricArchiveStatus,
   FabricDrape,
   FabricOpacity,
@@ -40,7 +41,12 @@ type FabricFormModalProps = {
   fabric?: Fabric;
   mode: 'create' | 'edit';
   onClose: () => void;
-  onSubmit: (fabric: Fabric) => void;
+  onSubmit: (submission: FabricFormSubmission) => void;
+};
+
+type FabricFormSubmission = {
+  details: FabricDetailsInput;
+  id: string;
 };
 
 type FiberRow = { fiber: string; id: string; percent: string };
@@ -116,9 +122,14 @@ const textareaClassName =
 export function FabricFormModal({ fabric, mode, onClose, onSubmit }: FabricFormModalProps) {
   const [activeStep, setActiveStep] = useState(0);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const contentRef = useRef<HTMLDivElement>(null);
   const [values, setValues] = useState<FabricFormValues>(() =>
     fabric ? fabricToFormValues(fabric) : getEmptyFormValues(),
   );
+
+  useEffect(() => {
+    contentRef.current?.scrollTo({ behavior: 'smooth', top: 0 });
+  }, [activeStep]);
 
   const totalYards = parseNumber(values.totalYards);
   const reservedYards = parseNumber(values.reservedYards);
@@ -145,15 +156,42 @@ export function FabricFormModal({ fabric, mode, onClose, onSubmit }: FabricFormM
     });
   };
 
+  const goToStep = (step: number) => {
+    setActiveStep(Math.min(steps.length - 1, Math.max(0, step)));
+  };
+
+  const goToNextStep = () => {
+    setActiveStep((current) => Math.min(steps.length - 1, current + 1));
+  };
+
+  const goToPreviousStep = () => {
+    setActiveStep((current) => Math.max(0, current - 1));
+  };
+
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+
+    // Enter and other implicit submissions may navigate, but only the explicit
+    // final-step action is allowed to save and close this editor.
+    if (activeStep < steps.length - 1) {
+      goToNextStep();
+    }
+  };
+
+  const saveFabric = () => {
+    if (activeStep !== steps.length - 1) return;
+
     const validation = validateFabricForm(values);
     if (Object.keys(validation).length > 0) {
       setErrors(validation);
-      setActiveStep(getErrorStep(validation));
+      goToStep(getErrorStep(validation));
       return;
     }
-    onSubmit(formValuesToFabric(values, fabric));
+    const details = formValuesToFabricDetails(values, fabric);
+    onSubmit({
+      details,
+      id: fabric?.id ?? createFabricId(details.name),
+    });
   };
 
   const changeWeightUnit = (unit: WeightUnit) => {
@@ -204,7 +242,7 @@ export function FabricFormModal({ fabric, mode, onClose, onSubmit }: FabricFormM
                     index === activeStep ? 'bg-ember' : index < activeStep ? 'bg-teal' : 'bg-stardust/12',
                   )}
                   key={step.title}
-                  onClick={() => setActiveStep(index)}
+                  onClick={() => goToStep(index)}
                   type="button"
                 />
               ))}
@@ -212,7 +250,7 @@ export function FabricFormModal({ fabric, mode, onClose, onSubmit }: FabricFormM
             <p className="mt-2 text-sm font-medium text-stardust/72">{steps[activeStep].title}</p>
           </div>
 
-          <div className="studio-scrollbar min-h-0 flex-1 overflow-y-auto lg:grid lg:grid-cols-[15rem_minmax(0,1fr)]">
+          <div ref={contentRef} className="studio-scrollbar min-h-0 flex-1 overflow-y-auto lg:grid lg:grid-cols-[15rem_minmax(0,1fr)]">
             <nav className="hidden border-r border-bronze/20 p-5 lg:block" aria-label="Fabric form sections">
               <div className="sticky top-28 space-y-2">
                 {steps.map((step, index) => (
@@ -224,7 +262,7 @@ export function FabricFormModal({ fabric, mode, onClose, onSubmit }: FabricFormM
                         : 'border-transparent text-stardust/52 hover:border-bronze/25 hover:bg-stardust/[0.04] hover:text-stardust/78',
                     )}
                     key={step.title}
-                    onClick={() => setActiveStep(index)}
+                    onClick={() => goToStep(index)}
                     type="button"
                   >
                     <span className="text-xs font-semibold text-ember">{step.eyebrow}</span>
@@ -429,12 +467,12 @@ export function FabricFormModal({ fabric, mode, onClose, onSubmit }: FabricFormM
             <Button onClick={onClose} size="sm" type="button" variant="ghost">Cancel</Button>
             <div className="flex items-center gap-2">
               {activeStep > 0 ? (
-                <Button icon={<ArrowLeft size={16} />} onClick={() => setActiveStep((step) => step - 1)} size="sm" type="button">Back</Button>
+                <Button icon={<ArrowLeft size={16} />} onClick={goToPreviousStep} size="sm" type="button">Back</Button>
               ) : null}
               {activeStep < steps.length - 1 ? (
-                <Button icon={<ArrowRight size={16} />} onClick={() => setActiveStep((step) => step + 1)} size="sm" type="button" variant="primary">Next</Button>
+                <Button icon={<ArrowRight size={16} />} onClick={goToNextStep} size="sm" type="button" variant="primary">Next</Button>
               ) : (
-                <Button icon={<Check size={16} />} size="sm" type="submit" variant="primary">
+                <Button icon={<Check size={16} />} onClick={saveFabric} size="sm" type="button" variant="primary">
                   {mode === 'create' ? 'Add Fabric' : 'Save Changes'}
                 </Button>
               )}
@@ -698,7 +736,10 @@ function fabricToFormValues(fabric: Fabric): FabricFormValues {
   };
 }
 
-function formValuesToFabric(values: FabricFormValues, existingFabric?: Fabric): Fabric {
+function formValuesToFabricDetails(
+  values: FabricFormValues,
+  existingFabric?: Fabric,
+): FabricDetailsInput {
   const safeName = values.name.trim() || 'Untitled Fabric';
   const totalYards = parseNumber(values.totalYards);
   const reservedYards = parseNumber(values.reservedYards);
@@ -718,7 +759,6 @@ function formValuesToFabric(values: FabricFormValues, existingFabric?: Fabric): 
     costPerYard: parseNumber(values.costPerYard),
     drape: values.drape,
     handFeel: values.handFeel.trim(),
-    id: existingFabric?.id ?? createFabricId(safeName),
     loreNote: values.loreNote.trim(),
     moodTags: values.moodTags,
     name: safeName,

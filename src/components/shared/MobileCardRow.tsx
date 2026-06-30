@@ -5,7 +5,7 @@ import { cn } from '../../lib/classes';
 type MobileCardRowProps = {
   badge?: ReactNode;
   image?: ReactNode;
-  meta?: string;
+  meta?: ReactNode;
   onClick: () => void;
   signal?: ReactNode;
   title: string;
@@ -38,7 +38,7 @@ export function MobileCardRow({
         <p className="line-clamp-2 text-base font-semibold leading-snug">
           {title}
         </p>
-        {meta ? <p className="mt-1 line-clamp-1 text-xs text-stardust/52">{meta}</p> : null}
+        {meta ? <div className="mt-1 line-clamp-1 text-xs text-stardust/52">{meta}</div> : null}
         {signal ? <div className="mt-3">{signal}</div> : null}
       </div>
       <ArrowRight
