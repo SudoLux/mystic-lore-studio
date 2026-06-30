@@ -517,7 +517,16 @@ export function FabricVaultPage({
                   </>
                 }
                 key={fabric.id}
-                meta={`${fabric.colorFamily} / ${fabric.composition}`}
+                meta={
+                  <span className="inline-flex max-w-full items-center gap-1.5">
+                    <FabricColorOrb
+                      className="h-3.5 w-3.5 border border-stardust/22"
+                      fabric={fabric}
+                      label={`${getFabricDisplayColorName(fabric)} fabric color`}
+                    />
+                    <span className="truncate">{fabric.composition}</span>
+                  </span>
+                }
                 onClick={() => onOpenFabric(fabric.id)}
                 signal={
                   <p className={cn('text-xs font-medium', lowYardage ? 'text-ember' : 'text-stardust/62')}>
@@ -598,13 +607,15 @@ function FabricCard({
           </span>
         </div>
         <div className="relative z-10 mt-14 flex items-end justify-between gap-4 [text-shadow:0_2px_14px_rgba(0,0,0,0.96)]">
-          <div>
+          <div className="flex flex-col items-start gap-2">
             <p className="text-xs font-medium uppercase tracking-[0.14em] text-stardust/58">
               {fabric.category}
             </p>
-            <p className="mt-1 text-2xl font-semibold text-stardust">
-              {fabric.colorFamily}
-            </p>
+            <FabricColorOrb
+              className="h-6 w-6 border border-stardust/24 shadow-[0_5px_16px_rgba(0,0,0,0.3)]"
+              fabric={fabric}
+              label={`${getFabricDisplayColorName(fabric)} fabric color`}
+            />
           </div>
           {lowYardage ? (
             <span className="inline-flex items-center gap-1 rounded-full border border-ember/45 bg-ember/16 px-3 py-1 text-xs font-medium text-ember">

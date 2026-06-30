@@ -297,6 +297,8 @@ export type Fabric = {
   updatedAt: string;
 };
 
+export type FabricDetailsInput = Omit<Fabric, 'id' | 'image'>;
+
 export type ApparelProject = {
   createdAt?: string;
   id: string;

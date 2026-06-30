@@ -26,6 +26,7 @@ import {
   previewStudioDataImport,
   resetStudioData,
   saveStudioData,
+  updateFabricDetailsInData,
   updateFabricInData,
   updateLinkedMaterialInData,
   updateNoteInData,
@@ -71,6 +72,7 @@ import {
 } from '../lib/studioSyncStorage';
 import type {
   Fabric,
+  FabricDetailsInput,
   LinkedMaterial,
   LocalImageAsset,
   LookbookPage,
@@ -122,6 +124,7 @@ type StudioDataContextValue = {
   syncProgress: SyncProgress;
   syncStatus: SyncStatus;
   updateFabric: (fabric: Fabric) => void;
+  updateFabricDetails: (fabricId: string, details: FabricDetailsInput) => void;
   updateLinkedMaterial: (linkedMaterial: LinkedMaterial) => void;
   updateNote: (note: StudioNote) => void;
   updateProject: (project: StoredProject) => void;
@@ -702,6 +705,11 @@ export function StudioDataProvider({
   const createNote = useCallback((note: StudioNote) => mutate((data) => createNoteInData(data, note)), [mutate]);
   const updateProject = useCallback((project: StoredProject) => mutate((data) => updateProjectInData(data, project)), [mutate]);
   const updateFabric = useCallback((fabric: Fabric) => mutate((data) => updateFabricInData(data, fabric)), [mutate]);
+  const updateFabricDetails = useCallback(
+    (fabricId: string, details: FabricDetailsInput) =>
+      mutate((data) => updateFabricDetailsInData(data, fabricId, details)),
+    [mutate],
+  );
   const updateLinkedMaterial = useCallback((material: LinkedMaterial) => mutate((data) => updateLinkedMaterialInData(data, material)), [mutate]);
   const updateTask = useCallback((task: StudioTask) => mutate((data) => updateTaskInData(data, task)), [mutate]);
   const updateNote = useCallback((note: StudioNote) => mutate((data) => updateNoteInData(data, note)), [mutate]);
@@ -759,13 +767,14 @@ export function StudioDataProvider({
     syncProgress,
     syncStatus,
     updateFabric,
+    updateFabricDetails,
     updateLinkedMaterial,
     updateNote,
     updateProject,
     updateProjectPhase,
     updateTask,
     updateTaskStatus,
-  }), [acceptCloudMigration, cancelSync, createFabric, createLinkedMaterial, createNote, createProject, createTask, deleteFabric, deleteLinkedMaterial, deleteNote, deleteProject, deleteTask, dismissCloudMigration, exportData, failedOperationCount, importData, lastSyncedAt, localCacheWarning, migrationAvailable, migrationInProgress, pendingCount, previewImportData, rawData, reopenCloudMigration, resetData, retrySync, saveData, saveLookbookPage, syncError, syncNotice, syncPhase, syncProgress, syncStatus, updateFabric, updateLinkedMaterial, updateNote, updateProject, updateProjectPhase, updateTask, updateTaskStatus]);
+  }), [acceptCloudMigration, cancelSync, createFabric, createLinkedMaterial, createNote, createProject, createTask, deleteFabric, deleteLinkedMaterial, deleteNote, deleteProject, deleteTask, dismissCloudMigration, exportData, failedOperationCount, importData, lastSyncedAt, localCacheWarning, migrationAvailable, migrationInProgress, pendingCount, previewImportData, rawData, reopenCloudMigration, resetData, retrySync, saveData, saveLookbookPage, syncError, syncNotice, syncPhase, syncProgress, syncStatus, updateFabric, updateFabricDetails, updateLinkedMaterial, updateNote, updateProject, updateProjectPhase, updateTask, updateTaskStatus]);
 
   return <StudioDataContext.Provider value={value}>{children}</StudioDataContext.Provider>;
 }

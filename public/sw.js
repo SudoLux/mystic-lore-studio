@@ -1,4 +1,4 @@
-const CACHE_VERSION = 'mystic-lore-studio-v1';
+const CACHE_VERSION = 'mystic-lore-studio-v2';
 const APP_SHELL_CACHE = `${CACHE_VERSION}-app-shell`;
 const RUNTIME_CACHE = `${CACHE_VERSION}-runtime`;
 const APP_SHELL_URLS = [
@@ -38,6 +38,10 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
+  if (isDevelopmentRequest(requestUrl.pathname)) {
+    return;
+  }
+
   if (request.mode === 'navigate') {
     event.respondWith(networkFirstNavigation(request));
     return;
@@ -45,6 +49,17 @@ self.addEventListener('fetch', (event) => {
 
   event.respondWith(staleWhileRevalidate(request));
 });
+
+function isDevelopmentRequest(pathname) {
+  return [
+    '/src/',
+    '/@vite/',
+    '/@react-refresh',
+    '/@id/',
+    '/@fs/',
+    '/node_modules/.vite/',
+  ].some((prefix) => pathname.startsWith(prefix));
+}
 
 async function networkFirstNavigation(request) {
   try {

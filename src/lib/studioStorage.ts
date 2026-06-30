@@ -16,6 +16,7 @@ import { normalizeFabricDrape, normalizeWovenKnit } from './fabricMetadata';
 import type {
   ApparelProject,
   Fabric,
+  FabricDetailsInput,
   LinkedMaterial,
   LookbookPage,
   StudioNote,
@@ -276,6 +277,21 @@ export function updateFabricInData(data: StudioData, fabric: Fabric): StudioData
     ...data,
     fabrics: data.fabrics.map((currentFabric) =>
       currentFabric.id === fabric.id ? fabric : currentFabric,
+    ),
+  };
+}
+
+export function updateFabricDetailsInData(
+  data: StudioData,
+  fabricId: string,
+  details: FabricDetailsInput,
+): StudioData {
+  return {
+    ...data,
+    fabrics: data.fabrics.map((fabric) =>
+      fabric.id === fabricId
+        ? { ...fabric, ...details, id: fabric.id, image: fabric.image }
+        : fabric,
     ),
   };
 }
