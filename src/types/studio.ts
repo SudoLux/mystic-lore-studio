@@ -258,6 +258,7 @@ export type Fabric = {
   id: string;
   name: string;
   supplier: string;
+  countryOfOrigin?: string;
   category: string;
   composition: string;
   colorFamily: string;

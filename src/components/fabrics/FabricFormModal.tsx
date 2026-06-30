@@ -61,6 +61,7 @@ type FabricFormValues = {
   colorFamily: string;
   composition: string;
   costPerYard: string;
+  countryOfOrigin: string;
   drape: FabricDrape;
   fiberMode: 'builder' | 'custom';
   fiberRows: FiberRow[];
@@ -288,6 +289,12 @@ export function FabricFormModal({ fabric, mode, onClose, onSubmit }: FabricFormM
                       value={values.category}
                     />
                     <TextField label="Supplier/source" onChange={(value) => updateValue('supplier', value)} value={values.supplier} />
+                    <TextField
+                      helper="Where the textile was woven, knitted, milled, or manufactured."
+                      label="Country/region of origin"
+                      onChange={(value) => updateValue('countryOfOrigin', value)}
+                      value={values.countryOfOrigin}
+                    />
                   </div>
 
                   <div className="mt-7 border-t border-bronze/20 pt-6">
@@ -690,7 +697,7 @@ function Notice({ children, tone }: { children: ReactNode; tone: 'warning' }) {
 
 function getEmptyFormValues(): FabricFormValues {
   return {
-    archiveStatus: 'Active', bestUses: [], binNumber: '', careNotes: '', category: '', colorFamily: '', composition: '', costPerYard: '0', drape: 'Balanced', fiberMode: 'builder', fiberRows: [], handFeel: '', handFeelPreset: '', loreNote: '', moodTags: [], name: '', opacity: 'Opaque', primaryColor: '', primaryColorHex: '#C89B3C', purchaseDate: todayString(), rarity: 'Core', reservedYards: '0', secondaryColors: [], shelf: '', storageLocation: '', storageStatus: 'Filed', stretch: 'None', supplier: '', totalYards: '0', usedYards: '0', weaveOrKnit: '', weightUnit: 'oz', weightValue: '', widthInches: '0',
+    archiveStatus: 'Active', bestUses: [], binNumber: '', careNotes: '', category: '', colorFamily: '', composition: '', costPerYard: '0', countryOfOrigin: '', drape: 'Balanced', fiberMode: 'builder', fiberRows: [], handFeel: '', handFeelPreset: '', loreNote: '', moodTags: [], name: '', opacity: 'Opaque', primaryColor: '', primaryColorHex: '#C89B3C', purchaseDate: todayString(), rarity: 'Core', reservedYards: '0', secondaryColors: [], shelf: '', storageLocation: '', storageStatus: 'Filed', stretch: 'None', supplier: '', totalYards: '0', usedYards: '0', weaveOrKnit: '', weightUnit: 'oz', weightValue: '', widthInches: '0',
   };
 }
 
@@ -707,6 +714,7 @@ function fabricToFormValues(fabric: Fabric): FabricFormValues {
     colorFamily: inferColorFamily(fabric),
     composition: fabric.composition,
     costPerYard: fabric.costPerYard.toString(),
+    countryOfOrigin: fabric.countryOfOrigin ?? '',
     drape: normalizeFabricDrape(fabric.drape),
     fiberMode: fiberRows.length > 0 ? 'builder' : 'custom',
     fiberRows,
@@ -757,6 +765,7 @@ function formValuesToFabricDetails(
     colorFamily: values.colorFamily,
     composition,
     costPerYard: parseNumber(values.costPerYard),
+    countryOfOrigin: values.countryOfOrigin.trim(),
     drape: values.drape,
     handFeel: values.handFeel.trim(),
     loreNote: values.loreNote.trim(),
