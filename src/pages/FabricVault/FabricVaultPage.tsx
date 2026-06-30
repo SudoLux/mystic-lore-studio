@@ -118,6 +118,7 @@ export function FabricVaultPage({
           fabric.category,
           fabric.colorFamily,
           fabric.composition,
+          fabric.countryOfOrigin,
           fabric.notes,
           ...fabric.bestUses,
           ...fabric.moodTags,
@@ -1011,6 +1012,7 @@ function FabricDetailPage({
           >
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
               <DetailDatum label="Supplier / Source" value={fabric.supplier} />
+              <DetailDatum label="Country / Region of Origin" value={fabric.countryOfOrigin || 'Not recorded'} />
               <DetailDatum label="Purchase Date" value={formatDate(fabric.purchaseDate)} />
               <DetailDatum label="Cost / Yard" value={formatCurrency(fabric.costPerYard)} />
               <DetailDatum label="Total Cost" value={formatCurrency(totalCost)} />
