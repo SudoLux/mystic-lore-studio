@@ -329,3 +329,21 @@ export type ApparelProject = {
   notes: StudioNote[];
   lookbookPages: LookbookPage[];
 };
+
+export type ProjectDetailsInput = Omit<
+  ApparelProject,
+  | 'createdAt'
+  | 'galleryImages'
+  | 'heroImage'
+  | 'id'
+  | 'linkedMaterials'
+  | 'lookbookPages'
+  | 'notes'
+  | 'tasks'
+  | 'updatedAt'
+>;
+
+export type ProjectHeroImageIntent =
+  | { type: 'unchanged' }
+  | { image: LocalImageAsset; type: 'set' }
+  | { type: 'remove' };
