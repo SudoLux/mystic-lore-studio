@@ -33,9 +33,9 @@ export const navigationItems: NavItem[] = [
   },
   {
     id: 'lookbooks',
-    label: 'Lookbooks',
-    shortLabel: 'Books',
-    description: 'Presentation studio',
+    label: 'Editorial Collections',
+    shortLabel: 'Editorial',
+    description: 'Editorial presentation studio',
     icon: BookOpen,
   },
   {

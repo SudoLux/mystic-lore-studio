@@ -18,6 +18,7 @@ import { PageHeader } from '../../components/shared/PageHeader';
 import { ImageReadabilityOverlay } from '../../components/shared/ImageReadabilityOverlay';
 import { useStudioData } from '../../hooks/useStudioData';
 import { cn } from '../../lib/classes';
+import { getEditorialDisplayLabel } from '../../lib/editorialLabels';
 import {
   formatStudioDate as formatDate,
   studioDateTimestamp,
@@ -268,7 +269,7 @@ export function ProjectsPage({ onNewProject, onOpenProject }: ProjectsPageProps)
                     <Badge variant={project.status === 'Blocked' ? 'ember' : 'teal'}>
                       {project.status}
                     </Badge>
-                    <Badge variant="bronze">{project.phase}</Badge>
+                    <Badge variant="bronze">{getEditorialDisplayLabel(project.phase)}</Badge>
                   </>
                 }
                 image={
@@ -409,7 +410,7 @@ function FilterSelect({
         <option value={allValue}>All {label}</option>
         {options.map((option) => (
           <option key={option} value={option}>
-            {option}
+            {getEditorialDisplayLabel(option)}
           </option>
         ))}
       </select>
@@ -490,7 +491,7 @@ function ProjectGalleryCard({
         </p>
 
         <div className="mt-5 grid grid-cols-2 gap-2 md:max-xl:hidden">
-          <ProjectDatum label="Phase" value={project.phase} />
+          <ProjectDatum label="Phase" value={getEditorialDisplayLabel(project.phase)} />
           <ProjectDatum label="Priority" value={project.priority} />
           <ProjectDatum label="Difficulty" value={difficulty} />
           <ProjectDatum label="Progress" value={`${project.progress}%`} />
@@ -553,7 +554,7 @@ function ProjectListCard({
           <Badge variant={project.status === 'Blocked' ? 'ember' : 'teal'}>
             {project.status}
           </Badge>
-          <Badge variant="bronze">{project.phase}</Badge>
+          <Badge variant="bronze">{getEditorialDisplayLabel(project.phase)}</Badge>
         </div>
         <p className="mt-3 truncate text-lg font-semibold text-stardust">
           {project.name}

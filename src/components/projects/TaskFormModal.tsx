@@ -1,6 +1,7 @@
 import { X } from 'lucide-react';
 import { useState, type FormEvent, type ReactNode } from 'react';
 import { Button } from '../shared/Button';
+import { getEditorialDisplayLabel } from '../../lib/editorialLabels';
 import {
   taskCategories,
   taskStatuses,
@@ -127,7 +128,7 @@ export function TaskFormModal({
               label="Category"
               onChange={(value) => updateValue('category', value as TaskCategory)}
               options={taskCategories.map((category) => ({
-                label: category,
+                label: getEditorialDisplayLabel(category),
                 value: category,
               }))}
               value={values.category}

@@ -11,9 +11,10 @@ import { useMemo, useState } from 'react';
 import { Badge } from '../shared/Badge';
 import { Button } from '../shared/Button';
 import { cn } from '../../lib/classes';
+import { getEditorialDisplayLabel } from '../../lib/editorialLabels';
 import type { ApparelProject, Fabric } from '../../types/studio';
 
-type SearchResultType = 'Projects' | 'Fabrics' | 'Tasks' | 'Notes' | 'Lookbooks';
+type SearchResultType = 'Projects' | 'Fabrics' | 'Tasks' | 'Notes' | 'Editorial Collections';
 
 type SearchResult = {
   description: string;
@@ -41,12 +42,12 @@ const resultTypes: SearchResultType[] = [
   'Fabrics',
   'Tasks',
   'Notes',
-  'Lookbooks',
+  'Editorial Collections',
 ];
 
 const typeIcons: Record<SearchResultType, typeof Shirt> = {
   Fabrics: Package,
-  Lookbooks: BookOpen,
+  'Editorial Collections': BookOpen,
   Notes: NotebookTabs,
   Projects: Shirt,
   Tasks: FileText,
@@ -110,7 +111,7 @@ export function GlobalSearch({
           <input
             className="min-w-0 flex-1 bg-transparent text-sm text-stardust outline-none placeholder:text-stardust/38"
             onChange={(event) => setQuery(event.target.value)}
-            placeholder="Search projects, fabrics, tasks, notes, lookbooks..."
+            placeholder="Search projects, fabrics, tasks, notes, editorial collections..."
             value={query}
           />
           {hasQuery ? (
@@ -134,7 +135,7 @@ export function GlobalSearch({
               <p className="mt-2 text-sm text-stardust/56">
                 {hasQuery
                   ? `${totalResults} ${totalResults === 1 ? 'result' : 'results'} for "${query.trim()}"`
-                  : 'Find projects, fabrics, tasks, notes, and lookbooks.'}
+                  : 'Find projects, fabrics, tasks, notes, and editorial collections.'}
               </p>
             </div>
             <Button
@@ -192,7 +193,7 @@ export function GlobalSearch({
               </p>
               <p className="mt-2 text-sm leading-6 text-stardust/58">
                 Try a project title, material color, task category, note phrase,
-                or lookbook headline.
+                or editorial collection headline.
               </p>
             </div>
           ) : (
@@ -324,7 +325,7 @@ function buildSearchIndex(
     project.tasks.map<SearchIndexEntry>((task) => ({
       description: task.description || task.notes || project.name,
       id: task.id,
-      meta: `${project.name} / ${task.category} / ${task.status}`,
+      meta: `${project.name} / ${getEditorialDisplayLabel(task.category)} / ${task.status}`,
       projectId: project.id,
       targetId: project.id,
       title: task.title,
@@ -366,7 +367,7 @@ function buildSearchIndex(
       projectId: project.id,
       targetId: project.id,
       title: page.headline || page.title,
-      type: 'Lookbooks',
+      type: 'Editorial Collections',
       searchText: joinSearchText([
         page.headline,
         page.subheadline,

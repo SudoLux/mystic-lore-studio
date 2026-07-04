@@ -9,11 +9,13 @@ import {
   type ReactNode,
 } from 'react';
 import {
+  createEditorialCollectionInData,
   createFabricInData,
   createLinkedMaterialInData,
   createNoteInData,
   createProjectInData,
   createTaskInData,
+  deleteEditorialCollectionInData,
   deleteFabricInData,
   deleteLinkedMaterialInData,
   deleteNoteInData,
@@ -26,6 +28,7 @@ import {
   previewStudioDataImport,
   resetStudioData,
   saveStudioData,
+  updateEditorialCollectionInData,
   updateFabricDetailsInData,
   updateFabricInData,
   updateLinkedMaterialInData,
@@ -85,6 +88,7 @@ import type {
   TaskStatus,
   YardageEntry,
 } from '../types/studio';
+import type { EditorialCollection } from '../types/editorial';
 
 export type SyncProgress = {
   completed: number;
@@ -94,12 +98,14 @@ export type SyncProgress = {
 type StudioDataContextValue = {
   acceptCloudMigration: () => Promise<void>;
   cancelSync: () => void;
+  createEditorialCollection: (collection: EditorialCollection) => void;
   createFabric: (fabric: Fabric) => void;
   createLinkedMaterial: (linkedMaterial: LinkedMaterial) => void;
   createNote: (note: StudioNote) => void;
   createProject: (project: StoredProject) => void;
   createTask: (task: StudioTask) => void;
   data: StudioDataView;
+  deleteEditorialCollection: (collectionId: string) => void;
   deleteFabric: (fabricId: string) => void;
   deleteLinkedMaterial: (linkedMaterialId: string) => void;
   deleteNote: (noteId: string) => void;
@@ -126,6 +132,7 @@ type StudioDataContextValue = {
   syncPhase: SyncPhase;
   syncProgress: SyncProgress;
   syncStatus: SyncStatus;
+  updateEditorialCollection: (collection: EditorialCollection) => void;
   updateFabric: (fabric: Fabric) => void;
   updateFabricDetails: (fabricId: string, details: FabricDetailsInput) => void;
   updateLinkedMaterial: (linkedMaterial: LinkedMaterial) => void;
@@ -707,11 +714,21 @@ export function StudioDataProvider({
   const previewImportData = useCallback((value: string) => previewStudioDataImport(value), []);
 
   const createProject = useCallback((project: StoredProject) => mutate((data) => createProjectInData(data, project)), [mutate]);
+  const createEditorialCollection = useCallback(
+    (collection: EditorialCollection) =>
+      mutate((data) => createEditorialCollectionInData(data, collection)),
+    [mutate],
+  );
   const createFabric = useCallback((fabric: Fabric) => mutate((data) => createFabricInData(data, fabric)), [mutate]);
   const createLinkedMaterial = useCallback((material: LinkedMaterial) => mutate((data) => createLinkedMaterialInData(data, material)), [mutate]);
   const createTask = useCallback((task: StudioTask) => mutate((data) => createTaskInData(data, task)), [mutate]);
   const createNote = useCallback((note: StudioNote) => mutate((data) => createNoteInData(data, note)), [mutate]);
   const updateProject = useCallback((project: StoredProject) => mutate((data) => updateProjectInData(data, project)), [mutate]);
+  const updateEditorialCollection = useCallback(
+    (collection: EditorialCollection) =>
+      mutate((data) => updateEditorialCollectionInData(data, collection)),
+    [mutate],
+  );
   const updateProjectDetails = useCallback(
     (
       projectId: string,
@@ -739,6 +756,11 @@ export function StudioDataProvider({
       deletion('project', projectId, projectImagePaths(rawDataRef.current, project)),
     ]);
   }, [mutate]);
+  const deleteEditorialCollection = useCallback(
+    (collectionId: string) =>
+      mutate((data) => deleteEditorialCollectionInData(data, collectionId)),
+    [mutate],
+  );
   const deleteFabric = useCallback((fabricId: string) => {
     const fabric = rawDataRef.current.fabrics.find((item) => item.id === fabricId);
     mutate((data) => deleteFabricInData(data, fabricId), [deletion('fabric', fabricId, fabric?.image?.storagePath ? [fabric.image.storagePath] : [])]);
@@ -750,12 +772,14 @@ export function StudioDataProvider({
   const value = useMemo<StudioDataContextValue>(() => ({
     acceptCloudMigration,
     cancelSync,
+    createEditorialCollection,
     createFabric,
     createLinkedMaterial,
     createNote,
     createProject,
     createTask,
     data: hydrateStudioData(rawData),
+    deleteEditorialCollection,
     deleteFabric,
     deleteLinkedMaterial,
     deleteNote,
@@ -782,6 +806,7 @@ export function StudioDataProvider({
     syncPhase,
     syncProgress,
     syncStatus,
+    updateEditorialCollection,
     updateFabric,
     updateFabricDetails,
     updateLinkedMaterial,
@@ -791,7 +816,7 @@ export function StudioDataProvider({
     updateProjectPhase,
     updateTask,
     updateTaskStatus,
-  }), [acceptCloudMigration, cancelSync, createFabric, createLinkedMaterial, createNote, createProject, createTask, deleteFabric, deleteLinkedMaterial, deleteNote, deleteProject, deleteTask, dismissCloudMigration, exportData, failedOperationCount, importData, lastSyncedAt, localCacheWarning, migrationAvailable, migrationInProgress, pendingCount, previewImportData, rawData, reopenCloudMigration, resetData, retrySync, saveData, saveLookbookPage, syncError, syncNotice, syncPhase, syncProgress, syncStatus, updateFabric, updateFabricDetails, updateLinkedMaterial, updateNote, updateProject, updateProjectDetails, updateProjectPhase, updateTask, updateTaskStatus]);
+  }), [acceptCloudMigration, cancelSync, createEditorialCollection, createFabric, createLinkedMaterial, createNote, createProject, createTask, deleteEditorialCollection, deleteFabric, deleteLinkedMaterial, deleteNote, deleteProject, deleteTask, dismissCloudMigration, exportData, failedOperationCount, importData, lastSyncedAt, localCacheWarning, migrationAvailable, migrationInProgress, pendingCount, previewImportData, rawData, reopenCloudMigration, resetData, retrySync, saveData, saveLookbookPage, syncError, syncNotice, syncPhase, syncProgress, syncStatus, updateEditorialCollection, updateFabric, updateFabricDetails, updateLinkedMaterial, updateNote, updateProject, updateProjectDetails, updateProjectPhase, updateTask, updateTaskStatus]);
 
   return <StudioDataContext.Provider value={value}>{children}</StudioDataContext.Provider>;
 }
@@ -805,6 +830,10 @@ export function useStudioData() {
 function stampChangedRecords(current: StudioData, next: StudioData): StudioData {
   return {
     ...next,
+    editorialCollections: stampCollection(
+      current.editorialCollections,
+      next.editorialCollections,
+    ),
     fabrics: stampCollection(current.fabrics, next.fabrics),
     linkedMaterials: stampCollection(current.linkedMaterials, next.linkedMaterials),
     lookbookPages: stampCollection(current.lookbookPages, next.lookbookPages),

@@ -18,6 +18,7 @@ import {
 } from 'react';
 import { cn } from '../../lib/classes';
 import { formatStudioDate } from '../../lib/dates';
+import { getEditorialDisplayLabel } from '../../lib/editorialLabels';
 import { discardLocalImageAsset } from '../../lib/localImages';
 import type {
   ApparelProject,
@@ -635,7 +636,7 @@ function ChoiceField({ error, label, onChange, options, value }: { error?: strin
             onClick={() => onChange(option)}
             type="button"
           >
-            {option}
+            {getEditorialDisplayLabel(option)}
           </button>
         ))}
       </div>
@@ -810,7 +811,7 @@ function ProjectReview({ heroImage, onEdit, progress, values }: { heroImage?: Lo
         <div className="p-5 sm:p-6">
           <div className="flex flex-wrap gap-2">
             <Badge variant="teal">{values.status}</Badge>
-            <Badge variant="bronze">{values.phase}</Badge>
+            <Badge variant="bronze">{getEditorialDisplayLabel(values.phase)}</Badge>
             <Badge variant="ember">{progress}%</Badge>
           </div>
           <p className="mt-4 text-sm leading-6 text-stardust/56">{values.summary.trim() || values.designIntent.trim() || 'The project story can continue developing after creation.'}</p>
