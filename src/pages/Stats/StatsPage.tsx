@@ -15,6 +15,7 @@ import { MobileSummaryStrip } from '../../components/shared/MobileSummaryStrip';
 import { PageHeader } from '../../components/shared/PageHeader';
 import { useStudioData } from '../../hooks/useStudioData';
 import { cn } from '../../lib/classes';
+import { getEditorialDisplayLabel } from '../../lib/editorialLabels';
 import {
   formatStudioDate,
   studioDateTimestamp,
@@ -57,7 +58,7 @@ export function StatsPage() {
 
       <PageHeader
         badge="Stats"
-        description="Studio analytics for garment flow, task load, fabric inventory, and lookbook readiness."
+        description="Studio analytics for garment flow, task load, fabric inventory, and editorial readiness."
         title="Studio Stats"
       />
 
@@ -124,9 +125,9 @@ export function StatsPage() {
           <div className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
             <MiniStat label="Paused" value={projectStats.pausedProjects} />
             <MiniStat label="Blocked" value={projectStats.blockedProjects} />
-            <MiniStat label="Lookbooks" value={lookbookStats.projectsWithLookbooks} />
+            <MiniStat label="Editorial Collections" value={lookbookStats.projectsWithLookbooks} />
             <MiniStat
-              label="Lookbook Ready"
+              label="Editorial Ready"
               value={lookbookStats.lookbookReadyProjects}
             />
           </div>
@@ -146,18 +147,18 @@ export function StatsPage() {
 
         <Card>
           <SectionTitle
-            badge="Lookbooks"
+            badge="Editorial Collections"
             title="Presentation readiness"
-            description="Lookbook coverage and projects already at lookbook phase."
+            description="Editorial collection coverage and projects already at the editorial-ready phase."
           />
           <div className="mt-6 space-y-4">
             <ReadinessMeter
-              label="Projects with lookbooks"
+              label="Projects with editorial collections"
               total={projectStats.totalProjects}
               value={lookbookStats.projectsWithLookbooks}
             />
             <ReadinessMeter
-              label="Lookbook-ready projects"
+              label="Editorial-ready projects"
               total={projectStats.totalProjects}
               value={lookbookStats.lookbookReadyProjects}
             />
@@ -170,8 +171,8 @@ export function StatsPage() {
               strokeWidth={1.8}
             />
             <p className="mt-4 text-sm leading-6 text-stardust/62">
-              Lookbook-ready counts use workflow phase. Projects with lookbooks
-              count any project with one or more lookbook records.
+              Editorial-ready counts use workflow phase. Projects with editorial
+              collections count any project with one or more presentation records.
             </p>
           </div>
         </Card>
@@ -359,7 +360,7 @@ function BarList({
             <div key={row.label}>
               <div className="mb-2 flex items-center justify-between gap-3">
                 <span className="truncate text-sm font-medium text-stardust">
-                  {row.label}
+                  {getEditorialDisplayLabel(row.label)}
                 </span>
                 <span className="text-sm text-ember">{row.value}</span>
               </div>
@@ -445,7 +446,7 @@ function DueDateCard({
           <CalendarDays aria-hidden="true" size={13} strokeWidth={1.9} />
           {task.dueDate ? formatDate(task.dueDate) : 'No date'}
         </span>
-        <span>{task.category}</span>
+        <span>{getEditorialDisplayLabel(task.category)}</span>
         <span>{task.status}</span>
       </div>
     </article>

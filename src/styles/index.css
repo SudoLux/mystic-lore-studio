@@ -28,6 +28,39 @@
   font-synthesis: none;
 }
 
+.field-label {
+  display: block;
+  color: rgba(237, 227, 207, 0.5);
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  line-height: 1.25rem;
+  margin-bottom: 0.45rem;
+  text-transform: uppercase;
+}
+
+.editorial-input {
+  width: 100%;
+  min-height: 3.25rem;
+  border: 1px solid rgba(154, 108, 60, 0.32);
+  border-radius: 0.75rem;
+  background: rgba(10, 10, 10, 0.58);
+  color: #ede3cf;
+  padding: 0 0.9rem;
+  transition: border-color 180ms ease, box-shadow 180ms ease, background 180ms ease;
+}
+
+.editorial-input::placeholder {
+  color: rgba(237, 227, 207, 0.28);
+}
+
+.editorial-input:focus {
+  border-color: rgba(200, 155, 60, 0.68);
+  background: rgba(10, 10, 10, 0.78);
+  box-shadow: 0 0 0 3px rgba(200, 155, 60, 0.09);
+  outline: none;
+}
+
 .fabric-color-orb {
   --fabric-orb-color: #c89b3c;
   background-color: var(--fabric-orb-color);

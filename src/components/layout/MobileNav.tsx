@@ -12,7 +12,7 @@ type MobileNavProps = {
 const primaryMobileLabels: Partial<Record<PageId, string>> = {
   dashboard: 'Home',
   projects: 'Projects',
-  lookbooks: 'Books',
+  lookbooks: 'Editorial',
   fabrics: 'Fabrics',
 };
 

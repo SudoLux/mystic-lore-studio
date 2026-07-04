@@ -114,12 +114,12 @@ export function AuthScreen() {
               Enter the Studio.
             </h1>
             <p className="mx-auto mt-2 max-w-sm text-sm leading-6 text-stardust/62 sm:mt-5 sm:max-w-xl sm:text-base sm:leading-8 lg:mx-0">
-              Manage garments, materials, and lookbook stories from one private
+              Manage garments, materials, and editorial stories from one private
               Mystic Lore workspace.
             </p>
           </div>
           <p className="mx-auto mt-4 hidden max-w-md rounded-full border border-bronze/24 bg-midnight/34 px-4 py-2 text-sm text-stardust/60 shadow-[inset_0_1px_0_rgba(237,227,207,0.04)] backdrop-blur-xl sm:inline-flex lg:mx-0">
-            Private studio access for projects, fabrics, notes, and lookbooks.
+            Private studio access for projects, fabrics, notes, and editorial collections.
           </p>
         </section>
 

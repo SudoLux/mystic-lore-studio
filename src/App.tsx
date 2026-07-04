@@ -479,7 +479,7 @@ function DeleteProjectDialog({
         </h2>
         <p className="mt-3 text-sm leading-6 text-stardust/64">
           This will remove the project and its linked tasks, notes, materials,
-          and lookbook pages from local studio data.
+          and editorial collection pages from local studio data.
         </p>
         <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
           <Button onClick={onCancel} variant="ghost">

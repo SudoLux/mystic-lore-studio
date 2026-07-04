@@ -26,8 +26,9 @@ import type {
   TaskStatus,
   YardageEntry,
 } from '../types/studio';
+import type { EditorialCollection } from '../types/editorial';
 
-export const LOCAL_DATA_VERSION = 4;
+export const LOCAL_DATA_VERSION = 5;
 const STORAGE_KEY = 'mystic-lore-studio:data';
 const USER_STORAGE_PREFIX = `${STORAGE_KEY}:user`;
 
@@ -43,6 +44,7 @@ export type StoredProject = Omit<
 >;
 
 export type StudioData = {
+  editorialCollections: EditorialCollection[];
   fabrics: Fabric[];
   linkedMaterials: LinkedMaterial[];
   lookbookPages: LookbookPage[];
@@ -59,6 +61,7 @@ export type LocalCacheWriteResult =
   | { error: string; status: 'quota-exceeded' | 'unavailable' };
 
 export type ImportPreview = {
+  editorialCollections: number;
   fabrics: number;
   linkedMaterials: number;
   lookbooks: number;
@@ -75,6 +78,7 @@ export type StudioDataView = Omit<StudioData, 'projects'> & {
 
 export function createSeedStudioData(): StudioData {
   return {
+    editorialCollections: [],
     fabrics: demoFabrics,
     linkedMaterials: demoLinkedMaterials,
     lookbookPages: demoLookbookPages,
@@ -201,6 +205,7 @@ export function previewStudioDataImport(serializedData: string): ImportPreview {
   const data = parseStudioDataBackup(serializedData);
 
   return {
+    editorialCollections: data.editorialCollections.length,
     fabrics: data.fabrics.length,
     linkedMaterials: data.linkedMaterials.length,
     lookbooks: data.lookbookPages.length,
@@ -280,6 +285,9 @@ export function deleteProjectInData(
 ): StudioData {
   return {
     ...data,
+    editorialCollections: data.editorialCollections.filter(
+      (collection) => collection.projectId !== projectId,
+    ),
     linkedMaterials: data.linkedMaterials.filter(
       (material) => material.projectId !== projectId,
     ),
@@ -291,6 +299,40 @@ export function deleteProjectInData(
       entry.projectId === projectId
         ? { ...entry, projectId: undefined }
         : entry,
+    ),
+  };
+}
+
+export function createEditorialCollectionInData(
+  data: StudioData,
+  collection: EditorialCollection,
+): StudioData {
+  return {
+    ...data,
+    editorialCollections: [collection, ...data.editorialCollections],
+  };
+}
+
+export function updateEditorialCollectionInData(
+  data: StudioData,
+  collection: EditorialCollection,
+): StudioData {
+  return {
+    ...data,
+    editorialCollections: data.editorialCollections.map((currentCollection) =>
+      currentCollection.id === collection.id ? collection : currentCollection,
+    ),
+  };
+}
+
+export function deleteEditorialCollectionInData(
+  data: StudioData,
+  collectionId: string,
+): StudioData {
+  return {
+    ...data,
+    editorialCollections: data.editorialCollections.filter(
+      (collection) => collection.id !== collectionId,
     ),
   };
 }
@@ -581,6 +623,9 @@ function parseStudioDataBackup(serializedData: string): StudioData {
 function normalizeStudioData(data: StudioData): StudioData {
   return {
     ...data,
+    editorialCollections: Array.isArray(data.editorialCollections)
+      ? data.editorialCollections
+      : [],
     fabrics: data.fabrics.map(normalizeFabricRecord),
     settings: normalizeAppSettings(data.settings),
     version: typeof data.version === 'number' ? data.version : LOCAL_DATA_VERSION,
@@ -602,7 +647,7 @@ function createDefaultAppSettings(): AppSettings {
   return {
     backupReminderCadenceDays: 14,
     backupReminderCopy:
-      'Export a fresh backup after major project, fabric, task, or lookbook updates.',
+      'Export a fresh backup after major project, fabric, task, or editorial collection updates.',
     updatedAt: todayString(),
   };
 }

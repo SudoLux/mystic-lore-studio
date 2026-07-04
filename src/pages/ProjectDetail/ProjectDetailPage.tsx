@@ -55,6 +55,7 @@ import { PageHeader } from '../../components/shared/PageHeader';
 import { StoredImage } from '../../components/shared/StoredImage';
 import { useStudioData } from '../../hooks/useStudioData';
 import { cn } from '../../lib/classes';
+import { getEditorialDisplayLabel } from '../../lib/editorialLabels';
 import {
   formatStudioDate,
   studioDateTimestamp,
@@ -110,7 +111,7 @@ const detailTabs = [
   { id: 'materials', label: 'Materials', icon: Package },
   { id: 'tasks', label: 'Tasks', icon: ClipboardList },
   { id: 'notes', label: 'Notes', icon: NotebookTabs },
-  { id: 'lookbook', label: 'Lookbook', icon: BookOpen },
+  { id: 'lookbook', label: 'Editorial Collection', icon: BookOpen },
 ] satisfies Array<{ id: DetailTab; label: string; icon: typeof Sparkles }>;
 
 export function ProjectDetailPage({
@@ -322,7 +323,7 @@ function ProjectHero({
       <div className="p-4">
         <div className="flex flex-wrap gap-2">
           <Badge variant="teal">{project.status}</Badge>
-          <Badge variant="bronze">{project.phase}</Badge>
+          <Badge variant="bronze">{getEditorialDisplayLabel(project.phase)}</Badge>
         </div>
         <h1 className="font-display mt-4 text-[1.8rem] leading-[1.14] text-stardust sm:text-3xl">
           {project.name}
@@ -413,7 +414,7 @@ function ProjectHero({
             </div>
             <div className="mt-8 flex flex-wrap gap-2">
               <Badge variant="teal">{project.status}</Badge>
-              <Badge variant="bronze">{project.phase}</Badge>
+              <Badge variant="bronze">{getEditorialDisplayLabel(project.phase)}</Badge>
               <Badge variant="ember">{project.priority} Priority</Badge>
             </div>
             <h1 className="font-display mt-5 max-w-3xl text-4xl leading-[1.12] text-stardust sm:text-5xl">
@@ -427,7 +428,7 @@ function ProjectHero({
           <div className="project-hero-progress mt-7">
             <div className="mb-2.5 flex items-center justify-between gap-4 text-xs">
               <span className="font-medium uppercase tracking-[0.14em] text-stardust/46">
-                Build progress · {project.phase}
+                Build progress · {getEditorialDisplayLabel(project.phase)}
               </span>
               <span className="font-semibold text-ember">{project.progress}%</span>
             </div>
@@ -593,7 +594,7 @@ function PhasePath({ currentPhase }: { currentPhase: ProjectPhase }) {
                     isCurrent ? 'font-semibold text-stardust' : 'text-stardust/48',
                   )}
                 >
-                  {phase}
+                  {getEditorialDisplayLabel(phase)}
                 </span>
               </li>
             );
@@ -1401,7 +1402,7 @@ function TaskBoardCard({
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <span className={cn('task-chip', categoryStyles[task.category])}>
-            {task.category}
+            {getEditorialDisplayLabel(task.category)}
           </span>
           <h3 className="mt-3 text-base font-semibold leading-6 text-stardust">
             {task.title}
@@ -1427,7 +1428,7 @@ function TaskBoardCard({
           {task.priority}
         </span>
         <span className="task-chip border-bronze/35 bg-bronze/12 text-stardust/70">
-          {task.phase}
+          {getEditorialDisplayLabel(task.phase)}
         </span>
       </div>
 
@@ -1859,7 +1860,7 @@ function LookbookTab({
       <Card className="border-bronze/30 bg-[linear-gradient(135deg,rgba(27,58,99,0.22),rgba(10,10,10,0.5),rgba(61,43,31,0.34))]">
         <div className="flex flex-col gap-5 xl:flex-row xl:items-end xl:justify-between">
           <div>
-            <Badge variant="teal">Lookbook Preview</Badge>
+            <Badge variant="teal">Editorial Collection Preview</Badge>
             <h2 className="mt-4 text-2xl font-semibold text-stardust">
               Project presentation
             </h2>
@@ -1897,7 +1898,7 @@ function LookbookTab({
               size="sm"
               variant="primary"
             >
-              Edit Lookbook
+              Edit Editorial Collection
             </Button>
           </div>
         </div>
@@ -1929,7 +1930,7 @@ function LookbookTab({
             </div>
 
             <div className="grid gap-3 sm:grid-cols-3">
-              <LookbookMetric label="Phase" value={project.phase} />
+              <LookbookMetric label="Phase" value={getEditorialDisplayLabel(project.phase)} />
               <LookbookMetric label="Progress" value={`${project.progress}%`} />
               <LookbookMetric label="Difficulty" value={project.difficulty} />
             </div>
@@ -1940,11 +1941,11 @@ function LookbookTab({
             aspectClassName=""
             className="min-h-[24rem] rounded-none border-0 border-t border-bronze/20 lg:border-l lg:border-t-0"
             fallbackValue={preview.heroImage}
-            label="Lookbook Hero"
+            label="Editorial Collection Hero"
             onRemove={() => saveLookbookImage(undefined)}
             onSave={saveLookbookImage}
             placeholderClassName={preview.visualClassName}
-            placeholderText="Add a lookbook hero visual."
+            placeholderText="Add an editorial collection hero visual."
             readabilityVariant="hero"
             value={lookbookPage?.heroImage}
           >
@@ -2245,14 +2246,14 @@ function LookbookEditModal({
         <div className="sticky top-0 z-10 flex items-start justify-between gap-4 border-b border-bronze/24 bg-midnight/92 p-4 backdrop-blur-xl sm:p-6">
           <div>
             <p className="text-xs font-medium uppercase tracking-[0.16em] text-ember">
-              Edit Lookbook
+              Edit Editorial Collection
             </p>
             <h2 className="mt-2 text-2xl font-semibold text-stardust">
               {project.name} presentation
             </h2>
           </div>
           <button
-            aria-label="Close lookbook editor"
+            aria-label="Close editorial collection editor"
             className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-bronze/30 bg-midnight/65 text-stardust/72 transition hover:border-ember/45 hover:text-stardust"
             onClick={onClose}
             type="button"
@@ -2340,7 +2341,7 @@ function LookbookEditModal({
                 Cancel
               </Button>
               <Button type="submit" variant="primary">
-                Save Lookbook
+                Save Editorial Collection
               </Button>
             </div>
           </div>
@@ -2466,7 +2467,7 @@ function buildLookbookPreview(
     ? preferredPage.materialNotes.map((note) => ({
         name: note.split(':')[0]?.trim() || 'Material Note',
         notes: note,
-        role: 'Lookbook Note',
+        role: 'Editorial Note',
         status: 'Saved',
       }))
     : projectFallback.materialNotes);
@@ -2588,7 +2589,7 @@ function formValuesToLookbookPage(
     stylingNotes: parseList(values.stylingNotes),
     subheadline,
     template: values.template,
-    title: `${project.name} lookbook preview`,
+    title: `${project.name} editorial collection preview`,
     updatedAt: todayString(),
   };
 }
@@ -2696,7 +2697,7 @@ function getTemplateGarmentStory(
   }
 
   if (template === 'Development Story') {
-    return `${project.generalNotes} The current phase is ${project.phase.toLowerCase()}, with the garment moving at ${project.progress}% completion.`;
+    return `${project.generalNotes} The current phase is ${getEditorialDisplayLabel(project.phase).toLowerCase()}, with the garment moving at ${project.progress}% completion.`;
   }
 
   return pageBody || `${project.summary} ${project.designIntent}`;
@@ -2716,7 +2717,7 @@ function getTemplateStylingNotes(
 
   if (template === 'Development Story') {
     return [
-      `Lead with the ${project.phase.toLowerCase()} milestone.`,
+      `Lead with the ${getEditorialDisplayLabel(project.phase).toLowerCase()} milestone.`,
       'Use process details to show how the garment arrived at its current shape.',
       'Keep the next fit or construction question visible for studio review.',
     ];

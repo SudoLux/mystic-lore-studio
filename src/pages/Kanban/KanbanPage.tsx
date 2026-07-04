@@ -27,6 +27,7 @@ import { ImageReadabilityOverlay } from '../../components/shared/ImageReadabilit
 import { StoredImage } from '../../components/shared/StoredImage';
 import { useStudioData } from '../../hooks/useStudioData';
 import { cn } from '../../lib/classes';
+import { getEditorialDisplayLabel } from '../../lib/editorialLabels';
 import { getProjectHeroImage } from '../../lib/imageAssets';
 import { projectPhases, type ApparelProject, type ProjectPhase } from '../../types/studio';
 
@@ -107,7 +108,7 @@ export function KanbanPage() {
 
       <PageHeader
         badge="Global Kanban"
-        description="Move garments through the Mystic Lore workflow, from early concept work to lookbook readiness."
+        description="Move garments through the Mystic Lore workflow, from early concept work to editorial readiness."
         title="Project Workflow"
       />
 
@@ -184,7 +185,7 @@ export function KanbanPage() {
                 onClick={() => setMobilePhase(phase)}
                 type="button"
               >
-                {phase} · {count}
+                {getEditorialDisplayLabel(phase)} · {count}
               </button>
             );
           })}
@@ -289,7 +290,7 @@ function MobileKanbanProjectCard({
           >
             {projectPhases.map((phase) => (
               <option key={phase} value={phase}>
-                {phase}
+                {getEditorialDisplayLabel(phase)}
               </option>
             ))}
           </select>
@@ -346,7 +347,7 @@ function KanbanColumn({
     >
       <div className="mb-3 flex items-start justify-between gap-3 rounded-2xl border border-bronze/24 bg-midnight/42 p-3">
         <div className="min-w-0">
-          <p className="truncate text-sm font-semibold text-stardust">{phase}</p>
+          <p className="truncate text-sm font-semibold text-stardust">{getEditorialDisplayLabel(phase)}</p>
           <p className="mt-1 text-xs text-stardust/45">
             {projects.length} {projects.length === 1 ? 'project' : 'projects'}
           </p>
@@ -369,7 +370,7 @@ function KanbanColumn({
                 : 'border-bronze/24 bg-midnight/20 text-stardust/42',
             )}
           >
-            Drop a garment here to move it into {phase}.
+            Drop a garment here to move it into {getEditorialDisplayLabel(phase)}.
           </div>
         ) : null}
       </div>

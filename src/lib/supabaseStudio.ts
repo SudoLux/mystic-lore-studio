@@ -246,6 +246,7 @@ export async function fetchCloudStudioData(userId: string): Promise<CloudSnapsho
 
   const seed = createSeedStudioData();
   const data: StudioData = {
+    editorialCollections: [],
     fabrics,
     linkedMaterials,
     lookbookPages,
@@ -819,6 +820,7 @@ export function mergeByNewest(
 
   return mergeLocalImageCache({
     ...cloud,
+    editorialCollections: local.editorialCollections,
     fabrics,
     linkedMaterials: mergeRecords('material', cloud.linkedMaterials, local.linkedMaterials, tombstones, cloudInitialized),
     lookbookPages,

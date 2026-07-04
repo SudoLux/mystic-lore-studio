@@ -154,7 +154,7 @@ export function SettingsPage() {
         <SettingsStatusCard
           label="Backups"
           status={`${currentSummary.projects} projects`}
-          text={`${currentSummary.fabrics} fabrics, ${currentSummary.tasks} tasks, ${currentSummary.notes} notes, and ${currentSummary.lookbooks} lookbook records are in local data.`}
+          text={`${currentSummary.fabrics} fabrics, ${currentSummary.tasks} tasks, ${currentSummary.notes} notes, and ${currentSummary.lookbooks} editorial collection records are in local data.`}
         />
         <SettingsStatusCard
           label="PWA"
@@ -207,7 +207,7 @@ export function SettingsPage() {
             </h2>
             <p className="mt-3 text-sm leading-7 text-stardust/68">
               Backups include projects, fabrics, tasks, notes, linked material
-              allocations, lookbooks, app settings, and data version metadata.
+              allocations, editorial collections, app settings, and data version metadata.
             </p>
             <p className="mt-3 rounded-2xl border border-bronze/26 bg-midnight/38 p-4 text-sm leading-6 text-stardust/64 shadow-[inset_0_1px_0_rgba(237,227,207,0.035)]">
               {rawData.settings.backupReminderCopy} A good rhythm is every{' '}
@@ -222,7 +222,7 @@ export function SettingsPage() {
               <BackupMetric label="Fabrics" value={currentSummary.fabrics} />
               <BackupMetric label="Tasks" value={currentSummary.tasks} />
               <BackupMetric label="Notes" value={currentSummary.notes} />
-              <BackupMetric label="Lookbooks" value={currentSummary.lookbooks} />
+              <BackupMetric label="Editorial Collections" value={currentSummary.lookbooks} />
               <BackupMetric label="Version" value={currentSummary.version} />
             </div>
 
@@ -298,7 +298,7 @@ export function SettingsPage() {
             </h2>
             <p className="mt-3 text-sm leading-7 text-stardust/68">
               The app shell is cached after production load, and browser-local
-              project, fabric, image, and lookbook data stays in local storage.
+              project, fabric, image, and editorial collection data stays in local storage.
             </p>
           </div>
           <div className="grid gap-3 sm:grid-cols-3">
@@ -350,7 +350,7 @@ function ImportPreviewCard({
         <BackupMetric label="Fabrics" value={preview.fabrics} />
         <BackupMetric label="Tasks" value={preview.tasks} />
         <BackupMetric label="Notes" value={preview.notes} />
-        <BackupMetric label="Lookbooks" value={preview.lookbooks} />
+        <BackupMetric label="Editorial Collections" value={preview.lookbooks} />
         <BackupMetric label="Version" value={preview.version} />
       </div>
     </Card>
@@ -374,7 +374,7 @@ function ResetConfirmCard({
           </h2>
           <p className="mt-3 text-sm leading-7 text-stardust/68">
             This replaces current projects, fabrics, tasks, notes, linked
-            materials, and lookbooks stored in this browser.
+            materials, and editorial collections stored in this browser.
           </p>
         </div>
         <div className="flex flex-col gap-3 sm:flex-row">

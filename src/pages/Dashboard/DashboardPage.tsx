@@ -28,6 +28,7 @@ import {
   formatStudioDate as formatDate,
   studioDateTimestamp,
 } from '../../lib/dates';
+import { getEditorialDisplayLabel } from '../../lib/editorialLabels';
 import {
   getProjectHeroImage,
   PROJECT_DASHBOARD_BAND_ASPECT_CLASS,
@@ -70,7 +71,7 @@ const quickActions = [
     pageId: 'kanban',
   },
   {
-    label: 'Create Lookbook',
+    label: 'Create Editorial Collection',
     icon: BookOpen,
     pageId: 'lookbooks',
   },
@@ -337,7 +338,7 @@ export function DashboardPage({
                       </Badge>
                     </div>
                     <div className="mt-3 flex flex-wrap gap-2 text-xs text-stardust/52">
-                      <span>{task.phase}</span>
+                      <span>{getEditorialDisplayLabel(task.phase)}</span>
                       <span>•</span>
                       <span>{task.dueDate ? formatDate(task.dueDate) : 'No due date'}</span>
                     </div>
@@ -545,7 +546,7 @@ function FeaturedGarmentHero({
               <Badge variant={project.status === 'Blocked' ? 'ember' : 'teal'}>
                 {project.status}
               </Badge>
-              <Badge variant="bronze">{project.phase}</Badge>
+              <Badge variant="bronze">{getEditorialDisplayLabel(project.phase)}</Badge>
               <Badge variant="blue">{project.garmentType}</Badge>
             </div>
 
@@ -624,7 +625,7 @@ function FeaturedGarmentHero({
                 Featured garment
               </p>
               <p className="mt-2 text-lg font-semibold leading-tight text-stardust sm:text-xl xl:text-2xl">
-                {project.progress}% complete / {project.phase}
+                {project.progress}% complete / {getEditorialDisplayLabel(project.phase)}
               </p>
             </div>
           </div>
@@ -751,7 +752,7 @@ function FeaturedProjectMiniCard({
         </p>
         <div className="mt-auto pt-4">
           <div className="mb-2 flex items-center justify-between text-xs">
-            <span className="text-stardust/52">{project.phase}</span>
+            <span className="text-stardust/52">{getEditorialDisplayLabel(project.phase)}</span>
             <span className="font-medium text-ember">{project.progress}%</span>
           </div>
           <div className="studio-progress-track">
