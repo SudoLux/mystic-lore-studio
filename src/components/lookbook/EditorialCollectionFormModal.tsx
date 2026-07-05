@@ -1,20 +1,22 @@
 import { useEffect, useState, type FormEvent, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
-import { Check, Image as ImageIcon, Layers3, X } from 'lucide-react';
+import { Check, Image as ImageIcon, Layers3, Sparkles, X } from 'lucide-react';
 import { cn } from '../../lib/classes';
 import {
   createEditorialScenes,
   editorialTemplateOptions,
   editorialThemeOptions,
+  normalizeEditorialTemplateType,
 } from '../../lib/editorialCollections';
 import type {
   EditorialCollection,
   EditorialTemplateType,
 } from '../../types/editorial';
-import type { ApparelProject } from '../../types/studio';
+import type { ApparelProject, LocalImageAsset } from '../../types/studio';
 import { Badge } from '../shared/Badge';
 import { Button } from '../shared/Button';
 import { EditorialCollectionCover } from './EditorialCollectionCover';
+import { AdaptiveProjectImage } from '../projects/AdaptiveProjectImage';
 
 type EditorialCollectionFormModalProps = {
   collection?: EditorialCollection;
@@ -39,7 +41,7 @@ export function EditorialCollectionFormModal({
     collection?.description ?? project.designIntent ?? project.summary,
   );
   const [templateType, setTemplateType] = useState<EditorialTemplateType>(
-    collection?.templateType ?? 'editorial-story',
+    normalizeEditorialTemplateType(collection?.templateType),
   );
   const [themeId, setThemeId] = useState(
     collection?.themeId ?? 'midnight-atelier',
@@ -47,8 +49,13 @@ export function EditorialCollectionFormModal({
   const [coverImageUrl, setCoverImageUrl] = useState(
     collection?.coverImageUrl ?? '',
   );
-  const [useProjectHero, setUseProjectHero] = useState(
-    Boolean(collection?.coverImageId ?? project.heroImage) && !collection?.coverImageUrl,
+  const projectImages = [project.heroImage, ...(project.galleryImages ?? [])]
+    .filter((image): image is LocalImageAsset => Boolean(image))
+    .filter((image, index, images) => images.findIndex((item) => item.id === image.id) === index);
+  const [selectedProjectImageId, setSelectedProjectImageId] = useState<string | undefined>(
+    collection?.coverImageUrl
+      ? undefined
+      : collection?.coverImageId ?? project.heroImage?.id,
   );
 
   useEffect(() => {
@@ -60,8 +67,8 @@ export function EditorialCollectionFormModal({
   }, [onClose]);
 
   const previewCollection: EditorialCollection = {
-    coverImageId: useProjectHero ? project.heroImage?.id : undefined,
-    coverImageUrl: useProjectHero ? undefined : coverImageUrl.trim() || undefined,
+    coverImageId: selectedProjectImageId,
+    coverImageUrl: selectedProjectImageId ? undefined : coverImageUrl.trim() || undefined,
     createdAt: collection?.createdAt ?? new Date().toISOString(),
     description,
     id: collection?.id ?? 'editorial-preview',
@@ -80,8 +87,8 @@ export function EditorialCollectionFormModal({
     const id = collection?.id ?? `editorial-collection-${crypto.randomUUID()}`;
 
     onSubmit({
-      coverImageId: useProjectHero ? project.heroImage?.id : undefined,
-      coverImageUrl: useProjectHero ? undefined : coverImageUrl.trim() || undefined,
+      coverImageId: selectedProjectImageId,
+      coverImageUrl: selectedProjectImageId ? undefined : coverImageUrl.trim() || undefined,
       createdAt: collection?.createdAt ?? timestamp,
       description: description.trim(),
       id,
@@ -109,7 +116,7 @@ export function EditorialCollectionFormModal({
           <div>
             <Badge variant="ember">Editorial Studio</Badge>
             <h2 className="font-display mt-3 text-xl leading-tight sm:text-2xl" id="editorial-form-title">
-              {mode === 'create' ? 'New Collection' : 'Edit Collection'}
+              {mode === 'create' ? 'New Editorial Collection' : 'Edit Collection'}
             </h2>
             <p className="mt-1 text-sm text-stardust/54">For {project.name}</p>
           </div>
@@ -209,29 +216,64 @@ export function EditorialCollectionFormModal({
             </section>
 
             <FormSection label="Cover treatment" icon={<ImageIcon size={16} />}>
-              <button
-                className={cn(
-                  'min-h-14 rounded-xl border px-4 text-left text-sm transition',
-                  useProjectHero
-                    ? 'border-ember/58 bg-ember/12 text-stardust'
-                    : 'border-bronze/26 bg-midnight/34 text-stardust/58',
-                )}
-                disabled={!project.heroImage}
-                onClick={() => setUseProjectHero(true)}
-                type="button"
-              >
-                <span className="font-semibold">Use project hero</span>
-                <span className="mt-1 block text-xs opacity-65">
-                  {project.heroImage ? 'Keeps the cover connected to the garment.' : 'No project hero is available.'}
-                </span>
-              </button>
-              <label className="block">
+              <div className="sm:col-span-2">
+                <p className="field-label">Project images</p>
+                <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
+                  <button
+                    className={cn(
+                      'relative aspect-[3/4] overflow-hidden rounded-xl border bg-[linear-gradient(145deg,rgba(27,58,99,.38),rgba(10,10,10,.92),rgba(154,108,60,.28))] transition',
+                      !selectedProjectImageId && !coverImageUrl.trim()
+                        ? 'border-ember/68 shadow-[0_0_24px_rgba(200,155,60,.12)]'
+                        : 'border-bronze/24 hover:border-bronze/50',
+                    )}
+                    onClick={() => {
+                      setSelectedProjectImageId(undefined);
+                      setCoverImageUrl('');
+                    }}
+                    type="button"
+                  >
+                    <Sparkles className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-ember" size={19} />
+                    <span className="absolute inset-x-1 bottom-2 text-[0.58rem] uppercase tracking-[0.12em] text-stardust/62">Gradient</span>
+                  </button>
+                  {projectImages.map((image, index) => (
+                    <button
+                      aria-label={`Use ${index === 0 && image.id === project.heroImage?.id ? 'project hero' : `project image ${index + 1}`} as cover`}
+                      className={cn(
+                        'relative aspect-[3/4] overflow-hidden rounded-xl border bg-midnight transition',
+                        selectedProjectImageId === image.id
+                          ? 'border-ember/70 shadow-[0_0_24px_rgba(200,155,60,.16)]'
+                          : 'border-bronze/24 hover:border-bronze/52',
+                      )}
+                      key={image.id}
+                      onClick={() => {
+                        setSelectedProjectImageId(image.id);
+                        setCoverImageUrl('');
+                      }}
+                      type="button"
+                    >
+                      <AdaptiveProjectImage asset={image} className="absolute inset-0" mode="thumbnail" />
+                      <span className="absolute inset-x-0 bottom-0 bg-midnight/76 px-1 py-1.5 text-[0.56rem] uppercase tracking-[0.1em] text-stardust/78 backdrop-blur-md">
+                        {index === 0 && image.id === project.heroImage?.id ? 'Hero' : `Gallery ${index + 1}`}
+                      </span>
+                      {selectedProjectImageId === image.id ? (
+                        <span className="absolute right-1.5 top-1.5 flex h-6 w-6 items-center justify-center rounded-full bg-ember text-midnight">
+                          <Check size={13} strokeWidth={2.5} />
+                        </span>
+                      ) : null}
+                    </button>
+                  ))}
+                </div>
+                {projectImages.length === 0 ? (
+                  <p className="mt-2 text-xs leading-5 text-stardust/42">No project images yet. Use the editorial gradient or add a cover URL.</p>
+                ) : null}
+              </div>
+              <label className="block sm:col-span-2">
                 <span className="field-label">Or external cover URL</span>
                 <input
                   className="editorial-input"
                   onChange={(event) => {
                     setCoverImageUrl(event.target.value);
-                    if (event.target.value) setUseProjectHero(false);
+                    if (event.target.value) setSelectedProjectImageId(undefined);
                   }}
                   placeholder="https://..."
                   type="url"
@@ -259,7 +301,7 @@ export function EditorialCollectionFormModal({
           <footer className="col-span-full flex shrink-0 items-center justify-end gap-3 border-t border-bronze/24 bg-midnight/92 px-4 py-3 backdrop-blur-2xl sm:px-6">
             <Button onClick={onClose} variant="ghost">Cancel</Button>
             <Button disabled={!title.trim()} type="submit" variant="primary">
-              {mode === 'create' ? 'Create Collection' : 'Save Changes'}
+              {mode === 'create' ? 'Create Editorial Collection' : 'Save Changes'}
             </Button>
           </footer>
         </form>

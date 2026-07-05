@@ -12,6 +12,14 @@ export type EditorialJsonObject = {
 };
 
 export type EditorialTemplateType =
+  | 'fashion-editorial'
+  | 'collection-lookbook'
+  | 'design-journey'
+  | 'technical-presentation'
+  | 'campaign'
+  | 'client-presentation'
+  | 'blank-collection'
+  // Legacy values remain readable for existing local backups.
   | 'editorial-story'
   | 'technical-showcase'
   | 'development-story'
@@ -22,6 +30,10 @@ export type EditorialSceneType =
   | 'cover'
   | 'opening'
   | 'story'
+  | 'gallery'
+  | 'fabric-story'
+  | 'construction'
+  | 'closing'
   | 'look'
   | 'detail'
   | 'materials'
