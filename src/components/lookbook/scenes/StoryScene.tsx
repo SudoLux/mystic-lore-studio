@@ -1,4 +1,4 @@
-import { BlockContent, EditorialStage, SceneLabel, ScenePlaceholder } from './ScenePrimitives';
+import { BlockContent, EditorialStage, SceneLabel, SceneNarrative, ScenePlaceholder } from './ScenePrimitives';
 import type { EditorialSceneRendererProps } from './types';
 
 export function StoryScene({ collection, project, scene, theme }: EditorialSceneRendererProps) {
@@ -8,6 +8,7 @@ export function StoryScene({ collection, project, scene, theme }: EditorialScene
         <div>
           <SceneLabel label="Story" />
           <h2 className="font-display mt-5 text-[clamp(2.4rem,6vw,5.5rem)] leading-[1.03]">{scene.title}</h2>
+          <SceneNarrative scene={scene} />
         </div>
         <div className="border-l border-[var(--editorial-accent)]/30 pl-5 sm:pl-8">
           {scene.blocks.length > 0 ? (

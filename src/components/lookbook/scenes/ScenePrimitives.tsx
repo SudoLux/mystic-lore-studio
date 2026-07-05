@@ -3,6 +3,7 @@ import { Sparkles } from 'lucide-react';
 import type {
   EditorialBlock,
   EditorialCollection,
+  EditorialScene,
   EditorialTheme,
 } from '../../../types/editorial';
 import type { ApparelProject, LocalImageAsset } from '../../../types/studio';
@@ -59,6 +60,22 @@ export function ScenePlaceholder({ label }: { label: string }) {
     <div className="mt-6 inline-flex items-center gap-2 rounded-full border border-stardust/12 bg-midnight/34 px-3 py-2 text-xs text-stardust/38 backdrop-blur-xl">
       <Sparkles className="text-[var(--editorial-accent)] opacity-70" size={13} />
       {label}
+    </div>
+  );
+}
+
+export function SceneNarrative({
+  centered = false,
+  scene,
+}: {
+  centered?: boolean;
+  scene: EditorialScene;
+}) {
+  if (!scene.subtitle && !scene.description) return null;
+  return (
+    <div className={centered ? 'mx-auto max-w-2xl text-center' : 'max-w-2xl'}>
+      {scene.subtitle ? <p className="mt-3 text-sm font-semibold text-stardust/72 sm:text-base">{scene.subtitle}</p> : null}
+      {scene.description ? <p className="mt-2 text-sm leading-6 text-stardust/48 sm:leading-7">{scene.description}</p> : null}
     </div>
   );
 }

@@ -1,7 +1,7 @@
 import { cn } from '../../../lib/classes';
 import type { LocalImageAsset } from '../../../types/studio';
 import { AdaptiveProjectImage } from '../../projects/AdaptiveProjectImage';
-import { BlockContent, projectImages, SceneLabel, themeStyle } from './ScenePrimitives';
+import { BlockContent, projectImages, SceneLabel, SceneNarrative, themeStyle } from './ScenePrimitives';
 import type { EditorialSceneRendererProps } from './types';
 
 export function GalleryScene({ collection, project, scene, theme }: EditorialSceneRendererProps) {
@@ -16,6 +16,7 @@ export function GalleryScene({ collection, project, scene, theme }: EditorialSce
           <div>
             <SceneLabel label="Gallery" />
             <h2 className="font-display mt-2 text-2xl sm:text-4xl">{scene.title}</h2>
+            <SceneNarrative scene={scene} />
           </div>
           <span className="text-xs text-stardust/38">{images.length} project images</span>
         </div>

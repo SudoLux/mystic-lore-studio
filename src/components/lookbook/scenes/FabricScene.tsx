@@ -1,6 +1,6 @@
 import { CircleDot } from 'lucide-react';
 import type { LinkedMaterial } from '../../../types/studio';
-import { BlockContent, EditorialStage, SceneLabel, ScenePlaceholder } from './ScenePrimitives';
+import { BlockContent, EditorialStage, SceneLabel, SceneNarrative, ScenePlaceholder } from './ScenePrimitives';
 import type { EditorialSceneRendererProps } from './types';
 
 export function FabricScene({ collection, project, scene, theme }: EditorialSceneRendererProps) {
@@ -16,6 +16,7 @@ export function FabricScene({ collection, project, scene, theme }: EditorialScen
         <div className="mt-4 grid gap-7 lg:grid-cols-[.8fr_1.2fr] lg:items-end">
           <div>
             <h2 className="font-display text-[clamp(2.3rem,5vw,5rem)] leading-[1.03]">{scene.title}</h2>
+            <SceneNarrative scene={scene} />
             <p className="mt-5 max-w-xl text-base leading-7 text-stardust/64 sm:text-lg">
               {project?.colorStory || 'Materials establish the hand, structure, and atmosphere of the garment.'}
             </p>

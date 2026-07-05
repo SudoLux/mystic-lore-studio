@@ -189,6 +189,48 @@ export function createEditorialScenes(
   }));
 }
 
+export const editorialSceneTypeOptions: Array<{
+  description: string;
+  label: string;
+  value: EditorialSceneType;
+}> = [
+  { description: 'A cinematic opening title and campaign image.', label: 'Cover', value: 'cover' },
+  { description: 'Narrative copy, inspiration, and design direction.', label: 'Story', value: 'story' },
+  { description: 'A visual sequence drawn from project photography.', label: 'Gallery', value: 'gallery' },
+  { description: 'Textile choices, color, and material character.', label: 'Fabric Story', value: 'fabric-story' },
+  { description: 'Pattern, sewing, fitting, and process milestones.', label: 'Construction', value: 'construction' },
+  { description: 'Measurements, specifications, and project signals.', label: 'Technical', value: 'technical' },
+  { description: 'A final reflection, credit, or campaign sign-off.', label: 'Closing', value: 'closing' },
+];
+
+export function editorialSceneTypeLabel(sceneType: EditorialSceneType) {
+  return editorialSceneTypeOptions.find((option) => option.value === sceneType)?.label
+    ?? sceneType.replaceAll('-', ' ').replace(/\b\w/g, (character) => character.toUpperCase());
+}
+
+export function createEditorialScene(
+  collectionId: string,
+  order: number,
+  sceneType: EditorialSceneType = 'story',
+  timestamp = new Date().toISOString(),
+): EditorialScene {
+  return {
+    background: { type: 'color', value: '#0A0A0A' },
+    blocks: [],
+    collectionId,
+    createdAt: timestamp,
+    description: '',
+    id: `editorial-scene-${crypto.randomUUID()}`,
+    narrativeRole: 'supporting',
+    order,
+    sceneType,
+    subtitle: '',
+    title: editorialSceneTypeLabel(sceneType),
+    transition: { durationMs: 600, type: 'fade' },
+    updatedAt: timestamp,
+  };
+}
+
 export function duplicateEditorialCollection(
   collection: EditorialCollection,
 ): EditorialCollection {
