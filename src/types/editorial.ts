@@ -53,16 +53,105 @@ export type EditorialNarrativeRole =
 
 export type EditorialBlockType =
   | 'heading'
+  | 'paragraph'
   | 'text'
   | 'image'
   | 'gallery'
   | 'quote'
+  | 'fabricSwatch'
+  | 'measurementTable'
+  | 'callout'
   | 'specifications'
   | 'materials'
   | 'divider'
   | 'spacer'
   | 'credits'
   | 'custom';
+
+export type EditorialHeadingContent = {
+  align?: 'left' | 'center' | 'right';
+  eyebrow?: string;
+  level?: 1 | 2 | 3;
+  text: string;
+};
+
+export type EditorialParagraphContent = {
+  align?: 'left' | 'center' | 'right';
+  text: string;
+};
+
+export type EditorialQuoteContent = {
+  attribution?: string;
+  text: string;
+};
+
+export type EditorialImageContent = {
+  alt?: string;
+  caption?: string;
+  fit?: 'cover' | 'contain';
+  url: string;
+};
+
+export type EditorialGalleryImage = EditorialImageContent & {
+  id?: string;
+};
+
+export type EditorialGalleryContent = {
+  columns?: 1 | 2 | 3;
+  images: EditorialGalleryImage[];
+};
+
+export type EditorialDividerContent = {
+  label?: string;
+  style?: 'solid' | 'gradient' | 'dotted';
+};
+
+export type EditorialSpacerContent = {
+  size?: 'small' | 'medium' | 'large';
+};
+
+export type EditorialFabricSwatchContent = {
+  colorHex?: string;
+  composition?: string;
+  name: string;
+  notes?: string;
+};
+
+export type EditorialMeasurementRow = {
+  label: string;
+  values: string[];
+};
+
+export type EditorialMeasurementTableContent = {
+  columns: string[];
+  rows: EditorialMeasurementRow[];
+  title?: string;
+};
+
+export type EditorialCalloutContent = {
+  body: string;
+  title?: string;
+  tone?: 'note' | 'highlight' | 'warning';
+};
+
+export type EditorialBlockContentMap = {
+  callout: EditorialCalloutContent;
+  divider: EditorialDividerContent;
+  fabricSwatch: EditorialFabricSwatchContent;
+  gallery: EditorialGalleryContent;
+  heading: EditorialHeadingContent;
+  image: EditorialImageContent;
+  measurementTable: EditorialMeasurementTableContent;
+  paragraph: EditorialParagraphContent;
+  quote: EditorialQuoteContent;
+  spacer: EditorialSpacerContent;
+};
+
+export type TypedEditorialBlock<T extends keyof EditorialBlockContentMap> =
+  Omit<EditorialBlock, 'content' | 'type'> & {
+    content: EditorialBlockContentMap[T];
+    type: T;
+  };
 
 export type EditorialTransitionType =
   | 'none'
@@ -93,7 +182,7 @@ export interface EditorialBlock {
   sceneId: string;
   type: EditorialBlockType;
   order: number;
-  content: EditorialJsonValue;
+  content: EditorialJsonValue | EditorialBlockContentMap[keyof EditorialBlockContentMap];
   settings: EditorialJsonObject;
 }
 
