@@ -1,5 +1,5 @@
 import { Scissors } from 'lucide-react';
-import { BlockContent, EditorialStage, SceneLabel } from './ScenePrimitives';
+import { BlockContent, EditorialStage, SceneLabel, SceneNarrative } from './ScenePrimitives';
 import type { EditorialSceneRendererProps } from './types';
 
 export function ConstructionScene({ collection, project, scene, theme }: EditorialSceneRendererProps) {
@@ -13,6 +13,7 @@ export function ConstructionScene({ collection, project, scene, theme }: Editori
       <div className="w-full max-w-6xl">
         <SceneLabel label="Construction" />
         <h2 className="font-display mt-4 text-[clamp(2.4rem,5vw,5rem)] leading-none">{scene.title}</h2>
+        <SceneNarrative scene={scene} />
         <div className="mt-8 grid gap-2 sm:grid-cols-2 lg:grid-cols-4 lg:gap-3">
           {cards.map((task, index) => (
             <div className="rounded-xl border border-bronze/24 bg-[linear-gradient(145deg,rgba(237,227,207,.045),rgba(10,10,10,.52))] p-4 sm:p-5" key={typeof task === 'string' ? task : task.id}>

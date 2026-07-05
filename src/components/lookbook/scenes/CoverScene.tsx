@@ -1,4 +1,4 @@
-import { BlockContent, themeStyle } from './ScenePrimitives';
+import { BlockContent, SceneNarrative, themeStyle } from './ScenePrimitives';
 import type { EditorialSceneRendererProps } from './types';
 import { EditorialCollectionCover } from '../EditorialCollectionCover';
 
@@ -25,6 +25,7 @@ export function CoverScene({
         <p className="mt-5 max-w-2xl text-base leading-7 text-stardust/72 sm:text-xl sm:leading-8">
           {collection.subtitle || project?.name}
         </p>
+        <SceneNarrative scene={scene} />
         <BlockContent blocks={scene.blocks} theme={theme} />
       </div>
     </section>

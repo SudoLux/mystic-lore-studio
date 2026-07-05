@@ -190,6 +190,8 @@ export interface EditorialScene {
   id: string;
   collectionId: string;
   title: string;
+  subtitle?: string;
+  description?: string;
   sceneType: EditorialSceneType;
   narrativeRole: EditorialNarrativeRole;
   order: number;

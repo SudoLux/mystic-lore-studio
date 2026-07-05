@@ -1,6 +1,6 @@
 import { Ruler } from 'lucide-react';
 import { formatStudioDate } from '../../../lib/dates';
-import { BlockContent, EditorialStage, SceneLabel, ScenePlaceholder } from './ScenePrimitives';
+import { BlockContent, EditorialStage, SceneLabel, SceneNarrative, ScenePlaceholder } from './ScenePrimitives';
 import type { EditorialSceneRendererProps } from './types';
 
 export function TechnicalScene({ collection, project, scene, theme }: EditorialSceneRendererProps) {
@@ -21,6 +21,7 @@ export function TechnicalScene({ collection, project, scene, theme }: EditorialS
           <div>
             <Ruler className="text-[var(--editorial-accent)]" size={25} />
             <h2 className="font-display mt-5 text-[clamp(2.3rem,5vw,5rem)] leading-[1.02]">{scene.title}</h2>
+            <SceneNarrative scene={scene} />
           </div>
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 sm:gap-3">
             {details.map(([label, value]) => (

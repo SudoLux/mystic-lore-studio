@@ -9,11 +9,13 @@ import {
   Layers3,
   Pencil,
   Plus,
+  Settings2,
   Sparkles,
   Trash2,
 } from 'lucide-react';
 import { EditorialCollectionCover } from '../../components/lookbook/EditorialCollectionCover';
 import { EditorialCollectionFormModal } from '../../components/lookbook/EditorialCollectionFormModal';
+import { EditorialSceneBuilder } from '../../components/lookbook/EditorialSceneBuilder';
 import { EditorialCollectionViewer } from '../../components/lookbook/EditorialCollectionViewer';
 import { Badge } from '../../components/shared/Badge';
 import { Button } from '../../components/shared/Button';
@@ -45,6 +47,7 @@ export function LookbooksPage() {
   );
   const [formState, setFormState] = useState<CollectionFormState | null>(null);
   const [openCollection, setOpenCollection] = useState<EditorialCollection | null>(null);
+  const [builderCollection, setBuilderCollection] = useState<EditorialCollection | null>(null);
   const [deleteCandidate, setDeleteCandidate] = useState<EditorialCollection | null>(null);
 
   useEffect(() => {
@@ -119,7 +122,8 @@ export function LookbooksPage() {
                   onDuplicate={() => createEditorialCollection(
                     duplicateEditorialCollection(collection),
                   )}
-                  onEdit={() => setFormState({ collection, mode: 'edit' })}
+                  onEdit={() => setBuilderCollection(collection)}
+                  onEditDetails={() => setFormState({ collection, mode: 'edit' })}
                   onOpen={() => setOpenCollection(collection)}
                   project={selectedProject}
                 />
@@ -150,6 +154,18 @@ export function LookbooksPage() {
           collection={openCollection}
           onClose={() => setOpenCollection(null)}
           project={projects.find((project) => project.id === openCollection.projectId)}
+        />
+      ) : null}
+
+      {builderCollection ? (
+        <EditorialSceneBuilder
+          collection={builderCollection}
+          onClose={() => setBuilderCollection(null)}
+          onSave={(collection) => {
+            updateEditorialCollection(collection);
+            setBuilderCollection(collection);
+          }}
+          project={projects.find((project) => project.id === builderCollection.projectId)}
         />
       ) : null}
 
@@ -217,6 +233,7 @@ function EditorialPosterCard({
   onDelete,
   onDuplicate,
   onEdit,
+  onEditDetails,
   onOpen,
   project,
 }: {
@@ -224,6 +241,7 @@ function EditorialPosterCard({
   onDelete: () => void;
   onDuplicate: () => void;
   onEdit: () => void;
+  onEditDetails: () => void;
   onOpen: () => void;
   project: ApparelProject;
 }) {
@@ -264,7 +282,8 @@ function EditorialPosterCard({
         >
           Open
         </Button>
-        <PosterAction icon={<Pencil size={16} />} label="Edit collection" onClick={onEdit} />
+        <PosterAction icon={<Pencil size={16} />} label="Edit scenes" onClick={onEdit} />
+        <PosterAction icon={<Settings2 size={16} />} label="Edit collection details" onClick={onEditDetails} />
         <PosterAction icon={<Copy size={16} />} label="Duplicate collection" onClick={onDuplicate} />
         <PosterAction danger icon={<Trash2 size={16} />} label="Delete collection" onClick={onDelete} />
       </div>

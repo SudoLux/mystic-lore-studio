@@ -1,5 +1,5 @@
 import { Sparkles } from 'lucide-react';
-import { BlockContent, EditorialStage, SceneLabel } from './ScenePrimitives';
+import { BlockContent, EditorialStage, SceneLabel, SceneNarrative } from './ScenePrimitives';
 import type { EditorialSceneRendererProps } from './types';
 
 export function ClosingScene({ collection, project, scene, theme }: EditorialSceneRendererProps) {
@@ -9,6 +9,7 @@ export function ClosingScene({ collection, project, scene, theme }: EditorialSce
         <Sparkles className="mx-auto text-[var(--editorial-accent)]" size={24} />
         <SceneLabel label="Closing" />
         <h2 className="font-display mt-5 text-[clamp(2.5rem,7vw,6rem)] leading-[1]">{scene.title}</h2>
+        <SceneNarrative centered scene={scene} />
         {scene.blocks.length > 0 ? (
           <BlockContent blocks={scene.blocks} prominent theme={theme} />
         ) : (
