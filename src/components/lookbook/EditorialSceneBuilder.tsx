@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import {
-  Check,
   ChevronDown,
   ChevronUp,
   Layers3,
@@ -23,6 +22,7 @@ import { cn } from '../../lib/classes';
 import { Badge } from '../shared/Badge';
 import { Button } from '../shared/Button';
 import { EditorialCollectionViewer } from './EditorialCollectionViewer';
+import { EditorialBlockInspector } from './EditorialBlockInspector';
 import { EditorialSceneRenderer } from './scenes/EditorialSceneRenderer';
 
 type EditorialSceneBuilderProps = {
@@ -151,7 +151,7 @@ export function EditorialSceneBuilder({
           </Button>
         </header>
 
-        <div className="grid min-h-0 flex-1 grid-rows-[auto_minmax(20rem,52vh)_minmax(0,1fr)] md:grid-cols-[13rem_minmax(0,1fr)] md:grid-rows-[minmax(0,1fr)_minmax(15rem,auto)] lg:grid-cols-[15rem_minmax(0,1fr)_19rem] lg:grid-rows-1">
+        <div className="grid min-h-0 flex-1 grid-rows-[auto_minmax(20rem,52vh)_minmax(0,1fr)] md:grid-cols-[13rem_minmax(0,1fr)] md:grid-rows-[minmax(0,1fr)_minmax(15rem,auto)] lg:grid-cols-[15rem_minmax(0,1fr)_21rem] lg:grid-rows-1 xl:grid-cols-[15rem_minmax(0,1fr)_23rem]">
           <SceneList
             activeSceneId={activeScene?.id}
             onAdd={addScene}
@@ -311,10 +311,11 @@ function SceneInspector({
           <InspectorField label="Description (optional)">
             <textarea className="min-h-28 w-full resize-y rounded-xl border border-bronze/28 bg-midnight/64 px-3 py-3 text-sm leading-6 text-stardust outline-none transition placeholder:text-stardust/24 focus:border-ember/58" maxLength={420} onChange={(event) => onUpdate({ description: event.target.value })} placeholder="Set the intention or narrative for this scene." value={scene.description ?? ''} />
           </InspectorField>
-          <div className="rounded-xl border border-bronze/18 bg-midnight/38 p-3">
-            <div className="flex items-center gap-2 text-xs text-stardust/52"><Check className="text-teal-200/70" size={14} /> Blocks preserved</div>
-            <p className="mt-2 text-xs leading-5 text-stardust/34">Changing scene settings does not remove its {scene.blocks.length} content {scene.blocks.length === 1 ? 'block' : 'blocks'}.</p>
-          </div>
+          <EditorialBlockInspector
+            blocks={scene.blocks}
+            onChange={(blocks) => onUpdate({ blocks })}
+            sceneId={scene.id}
+          />
           <div className="border-t border-bronze/18 pt-5">
             {deleteArmed ? (
               <div className="rounded-xl border border-red-300/24 bg-red-300/[0.06] p-3">
