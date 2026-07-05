@@ -5,6 +5,7 @@ import { cn } from '../../lib/classes';
 import {
   createEditorialScenes,
   editorialTemplateOptions,
+  editorialTemplateStructure,
   editorialThemeOptions,
   normalizeEditorialTemplateType,
 } from '../../lib/editorialCollections';
@@ -169,6 +170,7 @@ export function EditorialCollectionFormModal({
               <div className="mt-3 grid gap-3 sm:grid-cols-2">
                 {editorialTemplateOptions.map((option) => {
                   const selected = templateType === option.value;
+                  const structure = editorialTemplateStructure(option.value);
                   return (
                     <button
                       className={cn(
@@ -187,6 +189,10 @@ export function EditorialCollectionFormModal({
                       </span>
                       <span className="mt-2 block text-xs leading-5 text-stardust/50">
                         {option.description}
+                      </span>
+                      <span className="mt-3 block text-[0.6rem] uppercase tracking-[0.14em] text-ember/72">
+                        {structure.sceneCount} {structure.sceneCount === 1 ? 'cover scene' : 'scenes'}
+                        {structure.blockCount > 0 ? ` · ${structure.blockCount} starter blocks` : ''}
                       </span>
                     </button>
                   );
