@@ -11,10 +11,10 @@ import {
   Plus,
   Sparkles,
   Trash2,
-  X,
 } from 'lucide-react';
 import { EditorialCollectionCover } from '../../components/lookbook/EditorialCollectionCover';
 import { EditorialCollectionFormModal } from '../../components/lookbook/EditorialCollectionFormModal';
+import { EditorialCollectionViewer } from '../../components/lookbook/EditorialCollectionViewer';
 import { Badge } from '../../components/shared/Badge';
 import { Button } from '../../components/shared/Button';
 import { MobilePageHeader } from '../../components/shared/MobilePageHeader';
@@ -93,7 +93,7 @@ export function LookbooksPage() {
           onClick={openNewCollection}
           variant="primary"
         >
-          New Collection
+          New Editorial Collection
         </Button>
       </PageHeader>
 
@@ -146,13 +146,9 @@ export function LookbooksPage() {
       ) : null}
 
       {openCollection ? (
-        <CollectionPreview
+        <EditorialCollectionViewer
           collection={openCollection}
           onClose={() => setOpenCollection(null)}
-          onEdit={() => {
-            setOpenCollection(null);
-            setFormState({ collection: openCollection, mode: 'edit' });
-          }}
           project={projects.find((project) => project.id === openCollection.projectId)}
         />
       ) : null}
@@ -338,88 +334,6 @@ function NoProjectsState() {
         Add a project before building its Editorial Collection. The collection will stay connected to that garment’s story and imagery.
       </p>
     </section>
-  );
-}
-
-function CollectionPreview({
-  collection,
-  onClose,
-  onEdit,
-  project,
-}: {
-  collection: EditorialCollection;
-  onClose: () => void;
-  onEdit: () => void;
-  project?: ApparelProject;
-}) {
-  useEffect(() => {
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') onClose();
-    };
-    document.addEventListener('keydown', onKeyDown);
-    return () => document.removeEventListener('keydown', onKeyDown);
-  }, [onClose]);
-
-  return createPortal(
-    <div className="fixed inset-0 z-[140] overflow-y-auto bg-midnight/90 p-3 backdrop-blur-2xl sm:p-6">
-      <section
-        aria-labelledby="collection-preview-title"
-        aria-modal="true"
-        className="mx-auto grid min-h-[calc(100dvh-1.5rem)] max-w-6xl overflow-hidden rounded-xl border border-bronze/36 bg-midnight shadow-[0_36px_120px_rgba(0,0,0,0.72)] sm:min-h-[calc(100dvh-3rem)] lg:grid-cols-[minmax(19rem,0.82fr)_1.18fr]"
-        role="dialog"
-      >
-        <div className="relative min-h-[44dvh] overflow-hidden lg:min-h-0">
-          <EditorialCollectionCover collection={collection} project={project} />
-          <div className="absolute inset-x-0 bottom-0 z-10 p-6 lg:p-8">
-            <Badge variant="bronze">{editorialTemplateLabel(collection.templateType)}</Badge>
-            <h2 className="font-display mt-5 text-3xl leading-tight sm:text-4xl" id="collection-preview-title">{collection.title}</h2>
-            <p className="mt-3 text-base leading-7 text-stardust/68">{collection.subtitle}</p>
-          </div>
-        </div>
-        <div className="flex min-w-0 flex-col p-5 sm:p-7 lg:p-9">
-          <div className="flex items-start justify-between gap-4">
-            <div>
-              <p className="text-[0.66rem] uppercase tracking-[0.2em] text-ember">Collection treatment</p>
-              <p className="mt-2 text-sm text-stardust/48">
-                {collection.scenes.length} scenes · Updated {formatStudioDate(collection.updatedAt, { day: 'numeric', month: 'long', year: 'numeric' })}
-              </p>
-            </div>
-            <button
-              aria-label="Close collection preview"
-              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-bronze/28 text-stardust/58 hover:text-stardust"
-              onClick={onClose}
-              type="button"
-            >
-              <X size={19} />
-            </button>
-          </div>
-          <p className="mt-7 text-sm leading-7 text-stardust/62 sm:text-base">
-            {collection.description || 'A visual collection ready to be shaped into a complete garment story.'}
-          </p>
-          <div className="mt-8 flex-1">
-            <p className="text-[0.66rem] uppercase tracking-[0.2em] text-stardust/42">Scene sequence</p>
-            <ol className="mt-4 space-y-2">
-              {collection.scenes.map((scene, index) => (
-                <li className="flex items-center gap-4 rounded-xl border border-bronze/20 bg-stardust/[0.025] px-4 py-3" key={scene.id}>
-                  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-ember/34 text-xs text-ember">
-                    {String(index + 1).padStart(2, '0')}
-                  </span>
-                  <div className="min-w-0">
-                    <p className="truncate text-sm font-semibold text-stardust">{scene.title}</p>
-                    <p className="mt-0.5 text-xs capitalize text-stardust/42">{scene.narrativeRole}</p>
-                  </div>
-                </li>
-              ))}
-            </ol>
-          </div>
-          <div className="mt-7 flex justify-end gap-3 border-t border-bronze/20 pt-5">
-            <Button onClick={onClose} variant="ghost">Close</Button>
-            <Button icon={<Pencil size={16} />} onClick={onEdit} variant="primary">Edit Collection</Button>
-          </div>
-        </div>
-      </section>
-    </div>,
-    document.body,
   );
 }
 
