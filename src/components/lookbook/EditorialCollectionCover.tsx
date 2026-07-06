@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { cn } from '../../lib/classes';
 import { resolveEditorialTheme } from '../../lib/editorialThemes';
 import type { EditorialCollection } from '../../types/editorial';
@@ -23,11 +23,15 @@ export function EditorialCollectionCover({
     ? projectImages.find((image) => image?.id === collection.coverImageId)
     : project?.heroImage;
   const theme = resolveEditorialTheme(collection.themeId);
+  const imageFit = collection.coverImageFit ?? 'cover';
+
+  useEffect(() => setUrlFailed(false), [collection.coverImageUrl]);
 
   return (
     <div
       className={cn(
-        'relative h-full w-full overflow-hidden',
+        'h-full w-full overflow-hidden',
+        !className && 'relative',
         className,
       )}
       data-editorial-theme={theme.id}
@@ -36,7 +40,10 @@ export function EditorialCollectionCover({
       {collection.coverImageUrl && !urlFailed ? (
         <img
           alt=""
-          className="absolute inset-0 h-full w-full object-cover"
+          className={cn(
+            'absolute inset-0 h-full w-full',
+            imageFit === 'contain' ? 'object-contain' : 'object-cover',
+          )}
           onError={() => setUrlFailed(true)}
           src={collection.coverImageUrl}
         />
@@ -44,7 +51,8 @@ export function EditorialCollectionCover({
         <AdaptiveProjectImage
           asset={projectImage}
           className="absolute inset-0"
-          mode="compact"
+          displayFit={imageFit}
+          mode={imageFit === 'contain' ? 'primary' : 'compact'}
         />
       ) : null}
       <div className="absolute inset-0" style={{ background: theme.backgroundTreatment.coverScrim }} />

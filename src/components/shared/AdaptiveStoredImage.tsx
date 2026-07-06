@@ -6,6 +6,7 @@ import { StoredImage } from './StoredImage';
 type AdaptiveStoredImageProps = {
   asset: LocalImageAsset;
   className?: string;
+  displayFit?: 'cover' | 'contain';
   foregroundClassName?: string;
   mode?: 'compact' | 'primary' | 'thumbnail';
 };
@@ -13,20 +14,24 @@ type AdaptiveStoredImageProps = {
 export function AdaptiveStoredImage({
   asset,
   className,
+  displayFit,
   foregroundClassName,
   mode = 'primary',
 }: AdaptiveStoredImageProps) {
   const orientation = getImageOrientation(asset);
-  const display = getImageDisplay(asset);
+  const display = {
+    ...getImageDisplay(asset),
+    ...(displayFit ? { objectFit: displayFit, zoom: displayFit === 'contain' ? 1 : getImageDisplay(asset).zoom } : {}),
+  };
   const useAmbientPortrait =
     mode === 'primary' &&
     orientation === 'portrait' &&
     display.objectFit === 'contain';
   const compactDisplay =
-    mode === 'primary'
+    mode === 'primary' && !displayFit
       ? undefined
       : {
-          objectFit: 'cover' as const,
+          objectFit: displayFit ?? ('cover' as const),
           objectPositionX: display.objectPositionX,
           objectPositionY: display.objectPositionY,
           zoom: display.zoom,
