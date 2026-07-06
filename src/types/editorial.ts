@@ -173,6 +173,8 @@ export type EditorialTransitionType =
 
 export type EditorialSceneDurationMs = 5000 | 8000 | 12000;
 
+export type EditorialViewerMode = 'editorial' | 'book';
+
 export type EditorialPlaybackSettings = {
   autoPlay: boolean;
   sceneDurationMs: EditorialSceneDurationMs;
@@ -236,6 +238,7 @@ export interface EditorialCollection {
   coverLabel?: string;
   templateType: EditorialTemplateType;
   themeId: string;
+  viewerMode?: EditorialViewerMode;
   scenes: EditorialScene[];
   sceneDurationMs?: EditorialSceneDurationMs;
   createdAt: string;

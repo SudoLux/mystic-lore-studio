@@ -10,19 +10,23 @@ import {
 import { createPortal } from 'react-dom';
 import {
   ArrowLeft,
+  BookOpen,
   ChevronLeft,
   ChevronRight,
   Layers3,
   Maximize2,
   Minimize2,
   Pause,
+  PanelsTopLeft,
   Play,
 } from 'lucide-react';
 import { cn } from '../../lib/classes';
 import { normalizeEditorialPlayback } from '../../lib/editorialPlayback';
 import { resolveEditorialTheme } from '../../lib/editorialThemes';
-import type { EditorialCollection } from '../../types/editorial';
+import { normalizeEditorialViewerMode, resolveEditorialBookSpread } from '../../lib/editorialViewerMode';
+import type { EditorialCollection, EditorialViewerMode } from '../../types/editorial';
 import type { ApparelProject, Fabric } from '../../types/studio';
+import { EditorialBookViewer } from './EditorialBookViewer';
 import { EditorialSceneRenderer } from './scenes/EditorialSceneRenderer';
 
 type EditorialCollectionViewerProps = {
@@ -44,6 +48,7 @@ export function EditorialCollectionViewer({
   const scenes = useMemo(() => [...collection.scenes].sort((a, b) => a.order - b.order), [collection.scenes]);
   const theme = useMemo(() => resolveEditorialTheme(collection.themeId), [collection.themeId]);
   const playback = useMemo(() => normalizeEditorialPlayback(collection), [collection]);
+  const spreads = useMemo(() => scenes.map(resolveEditorialBookSpread), [scenes]);
   const viewerRef = useRef<HTMLDivElement>(null);
   const transitionTimersRef = useRef<number[]>([]);
   const chromeTimerRef = useRef<number | undefined>(undefined);
@@ -52,7 +57,9 @@ export function EditorialCollectionViewer({
   const wasFullscreenRef = useRef(false);
   const resumeAfterVisibilityRef = useRef(false);
   const lastTickRef = useRef(Date.now());
+  const touchStartRef = useRef<{ x: number; y: number } | null>(null);
   const [activeIndex, setActiveIndex] = useState(0);
+  const [bookPageIndex, setBookPageIndex] = useState(0);
   const [direction, setDirection] = useState<'back' | 'forward'>('forward');
   const [isExiting, setIsExiting] = useState(false);
   const [isPlaying, setIsPlaying] = useState(playback.autoPlay && scenes.length > 1);
@@ -61,10 +68,16 @@ export function EditorialCollectionViewer({
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [canFullscreen, setCanFullscreen] = useState(false);
   const [reducedMotion, setReducedMotion] = useState(false);
+  const [isSinglePageBook, setIsSinglePageBook] = useState(false);
+  const [viewerMode, setViewerMode] = useState<EditorialViewerMode>(normalizeEditorialViewerMode(collection));
   const activeScene = scenes[activeIndex];
+  const activeSpread = spreads[activeIndex];
+  const activePageCount = viewerMode === 'book' && isSinglePageBook ? activeSpread?.pageCount ?? 1 : 1;
+  const activeUnitDurationMs = playback.sceneDurationMs / activePageCount;
   const sceneProgress = playback.sceneDurationMs > 0
-    ? Math.min(1, elapsedMs / playback.sceneDurationMs)
+    ? Math.min(1, (bookPageIndex * activeUnitDurationMs + elapsedMs) / playback.sceneDurationMs)
     : 0;
+  const isAtEnd = activeIndex === scenes.length - 1 && bookPageIndex >= activePageCount - 1;
 
   const scheduleChromeFade = useCallback(() => {
     window.clearTimeout(chromeTimerRef.current);
@@ -77,7 +90,7 @@ export function EditorialCollectionViewer({
     scheduleChromeFade();
   }, [scheduleChromeFade]);
 
-  const goTo = useCallback((nextIndex: number) => {
+  const goTo = useCallback((nextIndex: number, targetPage = 0) => {
     if (
       nextIndex < 0
       || nextIndex >= scenes.length
@@ -89,6 +102,7 @@ export function EditorialCollectionViewer({
     setDirection(nextIndex > activeIndex ? 'forward' : 'back');
     if (reducedMotion) {
       setActiveIndex(nextIndex);
+      setBookPageIndex(targetPage);
       return;
     }
 
@@ -96,6 +110,7 @@ export function EditorialCollectionViewer({
     setIsExiting(true);
     const exitTimer = window.setTimeout(() => {
       setActiveIndex(nextIndex);
+      setBookPageIndex(targetPage);
       setIsExiting(false);
       const unlockTimer = window.setTimeout(() => {
         transitionLockedRef.current = false;
@@ -105,8 +120,54 @@ export function EditorialCollectionViewer({
     transitionTimersRef.current.push(exitTimer);
   }, [activeIndex, reducedMotion, revealChrome, scenes.length, theme.transitionStyle.durationMs]);
 
-  const previous = useCallback(() => goTo(activeIndex - 1), [activeIndex, goTo]);
-  const next = useCallback(() => goTo(activeIndex + 1), [activeIndex, goTo]);
+  const goToBookPage = useCallback((nextPage: number) => {
+    if (nextPage < 0 || nextPage >= activePageCount || nextPage === bookPageIndex || transitionLockedRef.current) return;
+    revealChrome();
+    setElapsedMs(0);
+    setDirection(nextPage > bookPageIndex ? 'forward' : 'back');
+    if (reducedMotion) {
+      setBookPageIndex(nextPage);
+      return;
+    }
+    transitionLockedRef.current = true;
+    setIsExiting(true);
+    const exitTimer = window.setTimeout(() => {
+      setBookPageIndex(nextPage);
+      setIsExiting(false);
+      const unlockTimer = window.setTimeout(() => {
+        transitionLockedRef.current = false;
+      }, theme.transitionStyle.durationMs);
+      transitionTimersRef.current.push(unlockTimer);
+    }, EXIT_DURATION_MS);
+    transitionTimersRef.current.push(exitTimer);
+  }, [activePageCount, bookPageIndex, reducedMotion, revealChrome, theme.transitionStyle.durationMs]);
+
+  const previous = useCallback(() => {
+    if (viewerMode === 'book' && isSinglePageBook && bookPageIndex > 0) {
+      goToBookPage(bookPageIndex - 1);
+      return;
+    }
+    const previousIndex = activeIndex - 1;
+    const previousPage = viewerMode === 'book' && isSinglePageBook
+      ? Math.max(0, (spreads[previousIndex]?.pageCount ?? 1) - 1)
+      : 0;
+    goTo(previousIndex, previousPage);
+  }, [activeIndex, bookPageIndex, goTo, goToBookPage, isSinglePageBook, spreads, viewerMode]);
+
+  const next = useCallback(() => {
+    if (viewerMode === 'book' && isSinglePageBook && bookPageIndex < activePageCount - 1) {
+      goToBookPage(bookPageIndex + 1);
+      return;
+    }
+    goTo(activeIndex + 1, 0);
+  }, [activeIndex, activePageCount, bookPageIndex, goTo, goToBookPage, isSinglePageBook, viewerMode]);
+
+  const toggleViewerMode = useCallback(() => {
+    revealChrome();
+    setElapsedMs(0);
+    setBookPageIndex(0);
+    setViewerMode((current) => current === 'book' ? 'editorial' : 'book');
+  }, [revealChrome]);
 
   const requestClose = useCallback(async () => {
     if (document.fullscreenElement) {
@@ -129,12 +190,12 @@ export function EditorialCollectionViewer({
 
   const togglePlayback = useCallback(() => {
     revealChrome();
-    if (activeIndex === scenes.length - 1 && elapsedMs >= playback.sceneDurationMs) {
+    if (isAtEnd && elapsedMs >= activeUnitDurationMs) {
       setElapsedMs(0);
     }
     lastTickRef.current = Date.now();
     setIsPlaying((current) => !current);
-  }, [activeIndex, elapsedMs, playback.sceneDurationMs, revealChrome, scenes.length]);
+  }, [activeUnitDurationMs, elapsedMs, isAtEnd, revealChrome]);
 
   useEffect(() => {
     const previousOverflow = document.body.style.overflow;
@@ -150,6 +211,14 @@ export function EditorialCollectionViewer({
   useEffect(() => {
     const media = window.matchMedia('(prefers-reduced-motion: reduce)');
     const update = () => setReducedMotion(media.matches);
+    update();
+    media.addEventListener('change', update);
+    return () => media.removeEventListener('change', update);
+  }, []);
+
+  useEffect(() => {
+    const media = window.matchMedia('(max-width: 1023px), (orientation: portrait)');
+    const update = () => setIsSinglePageBook(media.matches);
     update();
     media.addEventListener('change', update);
     return () => media.removeEventListener('change', update);
@@ -210,20 +279,25 @@ export function EditorialCollectionViewer({
       const now = Date.now();
       const delta = now - lastTickRef.current;
       lastTickRef.current = now;
-      setElapsedMs((current) => Math.min(playback.sceneDurationMs, current + delta));
+      setElapsedMs((current) => Math.min(activeUnitDurationMs, current + delta));
     }, PROGRESS_TICK_MS);
     return () => window.clearInterval(timer);
-  }, [isPlaying, playback.sceneDurationMs, scenes.length]);
+  }, [activeUnitDurationMs, isPlaying, scenes.length]);
 
   useEffect(() => {
-    if (!isPlaying || elapsedMs < playback.sceneDurationMs) return;
-    if (activeIndex >= scenes.length - 1) {
+    if (!isPlaying || elapsedMs < activeUnitDurationMs) return;
+    if (isAtEnd) {
       setIsPlaying(false);
       revealChrome();
       return;
     }
-    goTo(activeIndex + 1);
-  }, [activeIndex, elapsedMs, goTo, isPlaying, playback.sceneDurationMs, revealChrome, scenes.length]);
+    next();
+  }, [activeUnitDurationMs, elapsedMs, isAtEnd, isPlaying, next, revealChrome]);
+
+  useEffect(() => {
+    if (viewerMode !== 'book' || !isSinglePageBook || bookPageIndex < activePageCount) return;
+    setBookPageIndex(Math.max(0, activePageCount - 1));
+  }, [activePageCount, bookPageIndex, isSinglePageBook, viewerMode]);
 
   useEffect(() => {
     revealChrome();
@@ -238,6 +312,21 @@ export function EditorialCollectionViewer({
       onFocusCapture={revealChrome}
       onPointerDown={revealChrome}
       onPointerMove={revealChrome}
+      onTouchEnd={(event) => {
+        const start = touchStartRef.current;
+        const touch = event.changedTouches[0];
+        touchStartRef.current = null;
+        if (!start || !touch) return;
+        const deltaX = touch.clientX - start.x;
+        const deltaY = touch.clientY - start.y;
+        if (Math.abs(deltaX) < 48 || Math.abs(deltaX) <= Math.abs(deltaY)) return;
+        if (deltaX < 0) next();
+        else previous();
+      }}
+      onTouchStart={(event) => {
+        const touch = event.touches[0];
+        if (touch) touchStartRef.current = { x: touch.clientX, y: touch.clientY };
+      }}
       ref={viewerRef}
       role="dialog"
       tabIndex={-1}
@@ -248,11 +337,15 @@ export function EditorialCollectionViewer({
         collection={collection}
         isFullscreen={isFullscreen}
         isPlaying={isPlaying}
+        pageCount={activePageCount}
+        pageIndex={bookPageIndex}
         onClose={() => void requestClose()}
         onToggleFullscreen={() => void toggleFullscreen()}
         onTogglePlayback={togglePlayback}
+        onToggleViewerMode={toggleViewerMode}
         sceneTitle={activeScene?.title}
         total={scenes.length}
+        viewerMode={viewerMode}
       />
 
       <ViewerProgress
@@ -272,13 +365,25 @@ export function EditorialCollectionViewer({
                 ? `editorial-scene-exit editorial-scene-direction-${direction}`
                 : `editorial-scene-transition-${theme.transitionStyle.type} editorial-scene-direction-${direction}`,
             )}
-            key={activeScene.id}
+            key={`${activeScene.id}-${viewerMode}-${bookPageIndex}`}
             style={{
               '--editorial-transition-duration': `${theme.transitionStyle.durationMs}ms`,
               '--editorial-transition-easing': theme.transitionStyle.easing,
             } as CSSProperties}
           >
-            <EditorialSceneRenderer collection={collection} fabrics={fabrics} project={project} scene={activeScene} theme={theme} />
+            {viewerMode === 'book' && activeSpread ? (
+              <EditorialBookViewer
+                collection={collection}
+                descriptor={activeSpread}
+                fabrics={fabrics}
+                isSinglePage={isSinglePageBook}
+                pageIndex={bookPageIndex}
+                project={project}
+                theme={theme}
+              />
+            ) : (
+              <EditorialSceneRenderer collection={collection} fabrics={fabrics} project={project} scene={activeScene} theme={theme} />
+            )}
           </div>
         ) : (
           <div className="flex h-full items-center justify-center p-8 text-center">
@@ -289,9 +394,9 @@ export function EditorialCollectionViewer({
 
       {scenes.length > 0 ? (
         <footer className="editorial-viewer-chrome editorial-viewer-chrome-bottom absolute inset-x-0 bottom-0 z-40 flex items-end justify-between gap-3 bg-[linear-gradient(180deg,transparent,rgba(5,5,5,.68)_38%,rgba(5,5,5,.94))] px-3 pb-[max(0.85rem,env(safe-area-inset-bottom))] pt-12 sm:px-5 sm:pb-5 lg:px-7">
-          <ViewerNavigationButton disabled={activeIndex === 0} icon={<ChevronLeft size={19} />} label="Previous" onClick={previous} sceneName={scenes[activeIndex - 1]?.title} />
+          <ViewerNavigationButton disabled={activeIndex === 0 && bookPageIndex === 0} icon={<ChevronLeft size={19} />} label="Previous" onClick={previous} sceneName={bookPageIndex > 0 ? `${activeScene?.title} · Page ${bookPageIndex}` : scenes[activeIndex - 1]?.title} />
           <p className="hidden max-w-sm pb-2 text-center text-[0.62rem] uppercase tracking-[0.18em] text-stardust/32 md:block">Space to advance · arrows to navigate</p>
-          <ViewerNavigationButton align="right" disabled={activeIndex === scenes.length - 1} icon={<ChevronRight size={19} />} label="Next" onClick={next} sceneName={scenes[activeIndex + 1]?.title} />
+          <ViewerNavigationButton align="right" disabled={isAtEnd} icon={<ChevronRight size={19} />} label="Next" onClick={next} sceneName={bookPageIndex < activePageCount - 1 ? `${activeScene?.title} · Page ${bookPageIndex + 2}` : scenes[activeIndex + 1]?.title} />
         </footer>
       ) : null}
     </div>,
@@ -305,22 +410,30 @@ function ViewerHeader({
   collection,
   isFullscreen,
   isPlaying,
+  pageCount,
+  pageIndex,
   onClose,
   onToggleFullscreen,
   onTogglePlayback,
+  onToggleViewerMode,
   sceneTitle,
   total,
+  viewerMode,
 }: {
   activeIndex: number;
   canFullscreen: boolean;
   collection: EditorialCollection;
   isFullscreen: boolean;
   isPlaying: boolean;
+  pageCount: number;
+  pageIndex: number;
   onClose: () => void;
   onToggleFullscreen: () => void;
   onTogglePlayback: () => void;
+  onToggleViewerMode: () => void;
   sceneTitle?: string;
   total: number;
+  viewerMode: EditorialViewerMode;
 }) {
   return (
     <header className="editorial-viewer-chrome editorial-viewer-chrome-top absolute inset-x-0 top-0 z-40 flex items-center gap-2 bg-[linear-gradient(180deg,rgba(5,5,5,.68),transparent)] px-3 pb-8 pt-[max(0.75rem,env(safe-area-inset-top))] sm:gap-3 sm:px-5 sm:pt-5 lg:px-7">
@@ -330,8 +443,16 @@ function ViewerHeader({
         <p className="mt-1 truncate text-xs text-stardust/68">{sceneTitle ?? 'Collection'}</p>
       </div>
       {total > 1 ? <ViewerChromeButton icon={isPlaying ? <Pause size={16} /> : <Play size={16} />} label={isPlaying ? 'Pause auto-play' : 'Play collection'} onClick={onTogglePlayback} /> : null}
+      <ViewerChromeButton
+        icon={viewerMode === 'book' ? <PanelsTopLeft size={16} /> : <BookOpen size={16} />}
+        label={viewerMode === 'book' ? 'Switch to Editorial Mode' : 'Switch to Book Mode'}
+        onClick={onToggleViewerMode}
+      />
       {canFullscreen ? <ViewerChromeButton icon={isFullscreen ? <Minimize2 size={16} /> : <Maximize2 size={16} />} label={isFullscreen ? 'Exit fullscreen' : 'Enter fullscreen'} onClick={onToggleFullscreen} /> : null}
-      <div className="flex h-11 min-w-14 shrink-0 items-center justify-center rounded-full border border-stardust/14 bg-midnight/52 px-3 text-xs tabular-nums text-stardust/68 backdrop-blur-xl">{total > 0 ? `${activeIndex + 1} / ${total}` : '0 / 0'}</div>
+      <div className="flex h-11 min-w-14 shrink-0 flex-col items-center justify-center rounded-full border border-stardust/14 bg-midnight/52 px-3 text-xs tabular-nums text-stardust/68 backdrop-blur-xl">
+        <span>{total > 0 ? `${activeIndex + 1} / ${total}` : '0 / 0'}</span>
+        {viewerMode === 'book' && pageCount > 1 ? <span className="text-[0.5rem] uppercase tracking-[0.08em] text-stardust/38">Page {pageIndex + 1}/{pageCount}</span> : null}
+      </div>
     </header>
   );
 }

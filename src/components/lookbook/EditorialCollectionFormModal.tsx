@@ -1,6 +1,6 @@
 import { useEffect, useState, type FormEvent, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
-import { Check, Clock3, Image as ImageIcon, Layers3, RotateCcw, Sparkles, X } from 'lucide-react';
+import { BookOpen, Check, Clock3, Image as ImageIcon, Layers3, PanelsTopLeft, RotateCcw, Sparkles, X } from 'lucide-react';
 import { cn } from '../../lib/classes';
 import {
   createEditorialScenes,
@@ -14,7 +14,8 @@ import {
   resolveEditorialTheme,
 } from '../../lib/editorialThemes';
 import { editorialSceneDurations, normalizeEditorialPlayback } from '../../lib/editorialPlayback';
-import type { EditorialCollection, EditorialSceneDurationMs, EditorialTemplateType } from '../../types/editorial';
+import { normalizeEditorialViewerMode } from '../../lib/editorialViewerMode';
+import type { EditorialCollection, EditorialSceneDurationMs, EditorialTemplateType, EditorialViewerMode } from '../../types/editorial';
 import type { ApparelProject, LocalImageAsset } from '../../types/studio';
 import { AdaptiveProjectImage } from '../projects/AdaptiveProjectImage';
 import { Badge } from '../shared/Badge';
@@ -51,6 +52,7 @@ export function EditorialCollectionFormModal({
   const initialPlayback = normalizeEditorialPlayback(collection);
   const [autoPlay, setAutoPlay] = useState(initialPlayback.autoPlay);
   const [sceneDurationMs, setSceneDurationMs] = useState<EditorialSceneDurationMs>(initialPlayback.sceneDurationMs);
+  const [viewerMode, setViewerMode] = useState<EditorialViewerMode>(normalizeEditorialViewerMode(collection));
   const projectImages = [project.heroImage, ...(project.galleryImages ?? [])]
     .filter((image): image is LocalImageAsset => Boolean(image))
     .filter((image, index, images) => images.findIndex((item) => item.id === image.id) === index);
@@ -87,6 +89,7 @@ export function EditorialCollectionFormModal({
     themeId,
     title: title || 'Untitled Collection',
     updatedAt: new Date().toISOString(),
+    viewerMode,
   };
 
   const handleSubmit = (event: FormEvent) => {
@@ -113,6 +116,7 @@ export function EditorialCollectionFormModal({
       themeId,
       title: title.trim(),
       updatedAt: timestamp,
+      viewerMode,
     });
   };
 
@@ -254,6 +258,26 @@ export function EditorialCollectionFormModal({
                   </div>
                 </section>
                 <section className="border-t border-bronze/18 pt-6">
+                  <p className="field-label">Presentation mode</p>
+                  <p className="mt-1 text-xs leading-5 text-stardust/44">Choose the collection's default viewing experience. Readers can temporarily switch modes during presentation.</p>
+                  <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                    <PresentationModeCard
+                      active={viewerMode === 'editorial'}
+                      description="Cinematic scenes with immersive full-screen composition."
+                      icon={<PanelsTopLeft size={20} />}
+                      label="Editorial Mode"
+                      onClick={() => setViewerMode('editorial')}
+                    />
+                    <PresentationModeCard
+                      active={viewerMode === 'book'}
+                      description="Paired magazine spreads with page-first mobile reading."
+                      icon={<BookOpen size={20} />}
+                      label="Book Mode"
+                      onClick={() => setViewerMode('book')}
+                    />
+                  </div>
+                </section>
+                <section className="border-t border-bronze/18 pt-6">
                   <div className="flex items-center gap-2 text-ember">
                     <Clock3 size={16} />
                     <p className="field-label !mb-0 !text-ember">Presentation playback</p>
@@ -306,4 +330,18 @@ function TabButton({ active, icon, label, onClick }: { active: boolean; icon: Re
 
 function FitButton({ active, label, onClick }: { active: boolean; label: string; onClick: () => void }) {
   return <button className={cn('min-h-11 rounded-lg px-3 text-sm font-semibold transition', active ? 'bg-ember text-midnight shadow-[0_8px_22px_rgba(200,155,60,.18)]' : 'text-stardust/58 hover:text-stardust')} onClick={onClick} type="button">{label}</button>;
+}
+
+function PresentationModeCard({ active, description, icon, label, onClick }: { active: boolean; description: string; icon: ReactNode; label: string; onClick: () => void }) {
+  return (
+    <button
+      aria-pressed={active}
+      className={cn('min-h-28 rounded-xl border p-4 text-left transition', active ? 'border-ember/66 bg-ember/12 shadow-[0_12px_34px_rgba(200,155,60,.1)]' : 'border-bronze/24 bg-midnight/34 hover:border-bronze/50')}
+      onClick={onClick}
+      type="button"
+    >
+      <span className="flex items-center justify-between gap-3 text-[var(--editorial-accent,#c89b3c)]"><span className="flex items-center gap-2">{icon}<strong className="text-sm text-stardust">{label}</strong></span>{active ? <Check size={17} /> : null}</span>
+      <span className="mt-3 block text-xs leading-5 text-stardust/48">{description}</span>
+    </button>
+  );
 }
