@@ -8,7 +8,8 @@ export function GalleryScene({ collection, project, scene, theme }: EditorialSce
   const images = projectImages(project, collection);
   return (
     <section
-      className="relative h-full overflow-hidden bg-[var(--editorial-background)] px-3 pb-24 pt-24 sm:px-6 sm:pb-28 sm:pt-28 lg:px-8"
+      className="editorial-theme-surface editorial-scene-frame relative h-full overflow-hidden bg-[var(--editorial-background)]"
+      data-editorial-theme={theme.id}
       style={themeStyle(theme)}
     >
       <div className="mx-auto flex h-full max-w-7xl flex-col">

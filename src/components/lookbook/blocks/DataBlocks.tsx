@@ -9,7 +9,7 @@ export function FabricSwatchBlock({ block }: EditorialBlockRendererProps) {
   const composition = contentString(block.content, 'composition');
   const notes = contentString(block.content, 'notes');
   return (
-    <article className="flex max-w-xl items-center gap-4 rounded-xl border border-stardust/13 bg-midnight/48 p-4 backdrop-blur-xl">
+    <article className="editorial-theme-card flex max-w-xl items-center gap-4 border p-4">
       <span
         aria-label={`${name} color`}
         className="h-16 w-16 shrink-0 rounded-full border border-stardust/28 shadow-[inset_0_1px_2px_rgba(255,255,255,.26),0_0_24px_color-mix(in_srgb,var(--swatch-color)_28%,transparent)]"
@@ -41,7 +41,7 @@ export function MeasurementTableBlock({ block }: EditorialBlockRendererProps) {
     return label ? [{ label, values }] : [];
   });
   return (
-    <section className="max-w-4xl overflow-hidden rounded-xl border border-stardust/14 bg-midnight/52 backdrop-blur-xl">
+    <section className="editorial-theme-card max-w-4xl overflow-hidden border">
       <header className="flex items-center gap-2 border-b border-stardust/12 px-4 py-3 text-[var(--editorial-accent)]">
         <Ruler size={15} />
         <h4 className="text-xs font-semibold uppercase tracking-[0.16em]">{title}</h4>

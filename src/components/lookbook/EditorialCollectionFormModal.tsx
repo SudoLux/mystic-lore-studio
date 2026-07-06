@@ -6,9 +6,9 @@ import {
   createEditorialScenes,
   editorialTemplateOptions,
   editorialTemplateStructure,
-  editorialThemeOptions,
   normalizeEditorialTemplateType,
 } from '../../lib/editorialCollections';
+import { editorialThemeOptions, normalizeEditorialThemeId } from '../../lib/editorialThemes';
 import type {
   EditorialCollection,
   EditorialTemplateType,
@@ -45,7 +45,7 @@ export function EditorialCollectionFormModal({
     normalizeEditorialTemplateType(collection?.templateType),
   );
   const [themeId, setThemeId] = useState(
-    collection?.themeId ?? 'midnight-atelier',
+    normalizeEditorialThemeId(collection?.themeId),
   );
   const [coverImageUrl, setCoverImageUrl] = useState(
     collection?.coverImageUrl ?? '',
@@ -202,20 +202,27 @@ export function EditorialCollectionFormModal({
 
             <section>
               <p className="field-label">Visual theme</p>
-              <div className="mt-3 flex flex-wrap gap-2">
+              <div className="mt-3 grid gap-3 sm:grid-cols-2">
                 {editorialThemeOptions.map((option) => (
                   <button
                     className={cn(
-                      'min-h-11 rounded-full border px-4 text-sm transition',
+                      'rounded-xl border p-3 text-left transition',
                       themeId === option.value
-                        ? 'border-ember/66 bg-ember/14 text-stardust'
+                        ? 'border-ember/66 bg-ember/12 text-stardust shadow-[0_12px_34px_rgba(200,155,60,.10)]'
                         : 'border-bronze/26 bg-midnight/36 text-stardust/62 hover:border-bronze/48',
                     )}
                     key={option.value}
                     onClick={() => setThemeId(option.value)}
                     type="button"
                   >
-                    {option.label}
+                    <span className="flex items-center justify-between gap-3">
+                      <span className="font-semibold">{option.label}</span>
+                      <span className="flex gap-1.5" aria-hidden="true">
+                        {[option.background, option.accent, option.text].map((color) => <span className="h-4 w-4 rounded-full border border-stardust/20" key={color} style={{ backgroundColor: color }} />)}
+                      </span>
+                    </span>
+                    <span className="mt-2 block text-xs leading-5 text-stardust/48">{option.description}</span>
+                    <span className="mt-3 block text-[0.58rem] uppercase tracking-[0.13em] text-ember/72">{option.spacing} spacing · {option.transition}</span>
                   </button>
                 ))}
               </div>

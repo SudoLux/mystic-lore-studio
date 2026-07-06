@@ -25,7 +25,7 @@ export function TechnicalScene({ collection, project, scene, theme }: EditorialS
           </div>
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 sm:gap-3">
             {details.map(([label, value]) => (
-              <div className="rounded-xl border border-bronze/22 bg-midnight/46 p-4 backdrop-blur-xl" key={label}>
+              <div className="editorial-theme-card border p-4" key={label}>
                 <p className="text-[0.6rem] uppercase tracking-[0.16em] text-stardust/38">{label}</p>
                 <p className="mt-2 text-sm font-semibold text-stardust sm:text-base">{value}</p>
               </div>

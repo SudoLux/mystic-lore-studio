@@ -235,6 +235,29 @@ export interface EditorialTheme {
     displayWeight?: number;
     bodyWeight?: number;
   };
+  backgroundTreatment: {
+    backgroundImage: string;
+    coverScrim: string;
+    gridColor: string;
+  };
+  cardTreatment: {
+    backdropBlur: string;
+    background: string;
+    border: string;
+    borderRadius: string;
+    shadow: string;
+  };
+  sceneSpacing: {
+    block: string;
+    contentGap: string;
+    inline: string;
+    maxWidth: string;
+  };
+  transitionStyle: {
+    durationMs: number;
+    easing: string;
+    type: Exclude<EditorialTransitionType, 'none'>;
+  };
   settings: EditorialJsonObject;
   createdAt: string;
   updatedAt: string;
