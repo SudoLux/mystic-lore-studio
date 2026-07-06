@@ -2,7 +2,7 @@ import { Sparkles } from 'lucide-react';
 import { BlockContent, EditorialStage, SceneLabel, SceneNarrative } from './ScenePrimitives';
 import type { EditorialSceneRendererProps } from './types';
 
-export function ClosingScene({ collection, project, scene, theme }: EditorialSceneRendererProps) {
+export function ClosingScene({ collection, fabrics, project, scene, theme }: EditorialSceneRendererProps) {
   return (
     <EditorialStage collection={collection} project={project} theme={theme}>
       <div className="mx-auto max-w-4xl text-center">
@@ -11,7 +11,7 @@ export function ClosingScene({ collection, project, scene, theme }: EditorialSce
         <h2 className="font-display mt-5 text-[clamp(2.5rem,7vw,6rem)] leading-[1]">{scene.title}</h2>
         <SceneNarrative centered scene={scene} />
         {scene.blocks.length > 0 ? (
-          <BlockContent blocks={scene.blocks} prominent theme={theme} />
+          <BlockContent blocks={scene.blocks} fabrics={fabrics} project={project} prominent theme={theme} />
         ) : (
           <p className="mx-auto mt-6 max-w-2xl text-base leading-8 text-stardust/64 sm:text-xl">
             {project?.generalNotes || collection.description || 'The garment story continues beyond the final frame.'}

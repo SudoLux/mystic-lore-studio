@@ -1,6 +1,6 @@
 import { useEffect, useState, type FormEvent, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
-import { Check, Image as ImageIcon, Layers3, RotateCcw, Sparkles, X } from 'lucide-react';
+import { Check, Clock3, Image as ImageIcon, Layers3, RotateCcw, Sparkles, X } from 'lucide-react';
 import { cn } from '../../lib/classes';
 import {
   createEditorialScenes,
@@ -13,7 +13,8 @@ import {
   normalizeEditorialThemeId,
   resolveEditorialTheme,
 } from '../../lib/editorialThemes';
-import type { EditorialCollection, EditorialTemplateType } from '../../types/editorial';
+import { editorialSceneDurations, normalizeEditorialPlayback } from '../../lib/editorialPlayback';
+import type { EditorialCollection, EditorialSceneDurationMs, EditorialTemplateType } from '../../types/editorial';
 import type { ApparelProject, LocalImageAsset } from '../../types/studio';
 import { AdaptiveProjectImage } from '../projects/AdaptiveProjectImage';
 import { Badge } from '../shared/Badge';
@@ -47,6 +48,9 @@ export function EditorialCollectionFormModal({
   const [templateType, setTemplateType] = useState<EditorialTemplateType>(normalizeEditorialTemplateType(collection?.templateType));
   const [themeId, setThemeId] = useState(normalizeEditorialThemeId(collection?.themeId));
   const [coverImageUrl, setCoverImageUrl] = useState(collection?.coverImageUrl ?? '');
+  const initialPlayback = normalizeEditorialPlayback(collection);
+  const [autoPlay, setAutoPlay] = useState(initialPlayback.autoPlay);
+  const [sceneDurationMs, setSceneDurationMs] = useState<EditorialSceneDurationMs>(initialPlayback.sceneDurationMs);
   const projectImages = [project.heroImage, ...(project.galleryImages ?? [])]
     .filter((image): image is LocalImageAsset => Boolean(image))
     .filter((image, index, images) => images.findIndex((item) => item.id === image.id) === index);
@@ -66,6 +70,7 @@ export function EditorialCollectionFormModal({
   }, [onClose]);
 
   const previewCollection: EditorialCollection = {
+    autoPlay,
     coverAccentColor: accentIsValid ? coverAccentColor.trim() || undefined : undefined,
     coverImageFit,
     coverImageId: selectedProjectImageId,
@@ -76,6 +81,7 @@ export function EditorialCollectionFormModal({
     id: collection?.id ?? 'editorial-preview',
     projectId: project.id,
     scenes: collection?.scenes ?? [],
+    sceneDurationMs,
     subtitle,
     templateType,
     themeId,
@@ -90,6 +96,7 @@ export function EditorialCollectionFormModal({
     const id = collection?.id ?? `editorial-collection-${crypto.randomUUID()}`;
 
     onSubmit({
+      autoPlay,
       coverAccentColor: coverAccentColor.trim() || undefined,
       coverImageFit,
       coverImageId: selectedProjectImageId,
@@ -100,6 +107,7 @@ export function EditorialCollectionFormModal({
       id,
       projectId: project.id,
       scenes: collection?.scenes.length ? collection.scenes : createEditorialScenes(id, templateType, timestamp),
+      sceneDurationMs,
       subtitle: subtitle.trim(),
       templateType,
       themeId,
@@ -241,6 +249,30 @@ export function EditorialCollectionFormModal({
                         <span className="flex items-center justify-between gap-3"><span className="font-semibold">{option.label}</span><span className="flex gap-1.5" aria-hidden="true">{[option.background, option.accent, option.text].map((color) => <span className="h-4 w-4 rounded-full border border-stardust/20" key={color} style={{ backgroundColor: color }} />)}</span></span>
                         <span className="mt-2 block text-xs leading-5 text-stardust/48">{option.description}</span>
                         <span className="mt-3 block text-[0.58rem] uppercase tracking-[0.13em] text-ember/72">{option.spacing} spacing · {option.transition}</span>
+                      </button>
+                    ))}
+                  </div>
+                </section>
+                <section className="border-t border-bronze/18 pt-6">
+                  <div className="flex items-center gap-2 text-ember">
+                    <Clock3 size={16} />
+                    <p className="field-label !mb-0 !text-ember">Presentation playback</p>
+                  </div>
+                  <p className="mt-2 text-xs leading-5 text-stardust/44">Set the collection’s opening pace. Viewers can still pause or resume during presentation.</p>
+                  <div className="mt-4 grid grid-cols-2 rounded-xl border border-bronze/28 bg-midnight/44 p-1">
+                    <FitButton active={!autoPlay} label="Manual" onClick={() => setAutoPlay(false)} />
+                    <FitButton active={autoPlay} label="Auto-play" onClick={() => setAutoPlay(true)} />
+                  </div>
+                  <div className="mt-3 grid grid-cols-3 gap-2">
+                    {editorialSceneDurations.map((duration) => (
+                      <button
+                        aria-pressed={sceneDurationMs === duration}
+                        className={cn('min-h-11 rounded-xl border px-3 text-sm transition', sceneDurationMs === duration ? 'border-ember/64 bg-ember/12 text-stardust' : 'border-bronze/22 bg-midnight/34 text-stardust/52 hover:border-bronze/48')}
+                        key={duration}
+                        onClick={() => setSceneDurationMs(duration)}
+                        type="button"
+                      >
+                        {duration / 1000}s
                       </button>
                     ))}
                   </div>

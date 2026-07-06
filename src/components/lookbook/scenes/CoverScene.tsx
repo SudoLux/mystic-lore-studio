@@ -4,6 +4,7 @@ import { EditorialPosterArtwork } from '../EditorialPosterArtwork';
 
 export function CoverScene({
   collection,
+  fabrics,
   project,
   scene,
   theme,
@@ -13,7 +14,7 @@ export function CoverScene({
       <EditorialPosterArtwork className="h-full" collection={collection} project={project} variant="viewer">
         <div className="max-w-4xl">
         <SceneNarrative scene={scene} />
-        <BlockContent blocks={scene.blocks} theme={theme} />
+        <BlockContent blocks={scene.blocks} fabrics={fabrics} project={project} theme={theme} />
         </div>
       </EditorialPosterArtwork>
     </section>

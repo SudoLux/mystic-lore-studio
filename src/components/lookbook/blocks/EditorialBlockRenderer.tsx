@@ -33,12 +33,16 @@ export function EditorialBlockRenderer(props: EditorialBlockRendererProps) {
 export function EditorialBlockList({
   blocks,
   className = 'mt-6 flex flex-col gap-[var(--editorial-content-gap)]',
+  fabrics,
   prominent = false,
+  project,
   theme,
 }: {
   blocks: EditorialBlockRendererProps['block'][];
   className?: string;
+  fabrics?: EditorialBlockRendererProps['fabrics'];
   prominent?: boolean;
+  project?: EditorialBlockRendererProps['project'];
   theme: EditorialBlockRendererProps['theme'];
 }) {
   if (blocks.length === 0) return null;
@@ -49,8 +53,10 @@ export function EditorialBlockList({
         .map((block) => (
           <EditorialBlockRenderer
             block={block}
+            fabrics={fabrics}
             key={block.id}
             prominent={prominent}
+            project={project}
             theme={theme}
           />
         ))}

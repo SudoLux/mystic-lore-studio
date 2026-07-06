@@ -1,7 +1,7 @@
 import { BlockContent, EditorialStage, SceneLabel, SceneNarrative, ScenePlaceholder } from './ScenePrimitives';
 import type { EditorialSceneRendererProps } from './types';
 
-export function StoryScene({ collection, project, scene, theme }: EditorialSceneRendererProps) {
+export function StoryScene({ collection, fabrics, project, scene, theme }: EditorialSceneRendererProps) {
   return (
     <EditorialStage collection={collection} project={project} theme={theme}>
       <div className="grid w-full max-w-6xl items-center gap-8 lg:grid-cols-[0.72fr_1.28fr] lg:gap-16">
@@ -12,7 +12,7 @@ export function StoryScene({ collection, project, scene, theme }: EditorialScene
         </div>
         <div className="border-l border-[var(--editorial-accent)]/30 pl-5 sm:pl-8">
           {scene.blocks.length > 0 ? (
-            <BlockContent blocks={scene.blocks} prominent theme={theme} />
+            <BlockContent blocks={scene.blocks} fabrics={fabrics} project={project} prominent theme={theme} />
           ) : (
             <>
               <p className="text-lg leading-8 text-stardust/76 sm:text-2xl sm:leading-10">

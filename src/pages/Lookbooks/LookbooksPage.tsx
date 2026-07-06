@@ -35,7 +35,7 @@ type CollectionFormState =
 export function LookbooksPage() {
   const {
     createEditorialCollection,
-    data: { editorialCollections, projects },
+    data: { editorialCollections, fabrics, projects },
     deleteEditorialCollection,
     updateEditorialCollection,
   } = useStudioData();
@@ -149,6 +149,7 @@ export function LookbooksPage() {
       {openCollection ? (
         <EditorialCollectionViewer
           collection={openCollection}
+          fabrics={fabrics}
           onClose={() => setOpenCollection(null)}
           project={projects.find((project) => project.id === openCollection.projectId)}
         />
@@ -157,6 +158,7 @@ export function LookbooksPage() {
       {builderCollection ? (
         <EditorialSceneBuilder
           collection={builderCollection}
+          fabrics={fabrics}
           onClose={() => setBuilderCollection(null)}
           onSave={(collection) => {
             updateEditorialCollection(collection);

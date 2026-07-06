@@ -3,7 +3,7 @@ import { formatStudioDate } from '../../../lib/dates';
 import { BlockContent, EditorialStage, SceneLabel, SceneNarrative, ScenePlaceholder } from './ScenePrimitives';
 import type { EditorialSceneRendererProps } from './types';
 
-export function TechnicalScene({ collection, project, scene, theme }: EditorialSceneRendererProps) {
+export function TechnicalScene({ collection, fabrics, project, scene, theme }: EditorialSceneRendererProps) {
   const details = [
     ['Garment', project?.garmentType ?? 'Not specified'],
     ['Phase', project?.phase ?? 'Not specified'],
@@ -32,7 +32,7 @@ export function TechnicalScene({ collection, project, scene, theme }: EditorialS
             ))}
           </div>
         </div>
-        {scene.blocks.length > 0 ? <BlockContent blocks={scene.blocks} theme={theme} /> : <ScenePlaceholder label="Specifications and technical blocks will appear here." />}
+        {scene.blocks.length > 0 ? <BlockContent blocks={scene.blocks} fabrics={fabrics} project={project} theme={theme} /> : <ScenePlaceholder label="Specifications and technical blocks will appear here." />}
       </div>
     </EditorialStage>
   );

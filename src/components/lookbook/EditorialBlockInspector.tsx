@@ -3,6 +3,7 @@ import {
   ChevronDown,
   ChevronUp,
   FileText,
+  Images,
   Image as ImageIcon,
   MessageSquareText,
   Minus,
@@ -11,8 +12,11 @@ import {
   Space,
   Trash2,
   Type,
+  SwatchBook,
 } from 'lucide-react';
 import { cn } from '../../lib/classes';
+import { fabricEditorialFallback, projectEditorialImages, projectLinkedEditorialFabrics } from '../../lib/editorialAssets';
+import type { LinkedEditorialFabric } from '../../lib/editorialAssets';
 import {
   convertEditorialBlockType,
   createEditorialBlock,
@@ -21,18 +25,26 @@ import {
   editorialBlockSummary,
   type EditableEditorialBlockType,
 } from '../../lib/editorialBlocks';
+import { getFabricColorHex } from '../../lib/fabricMetadata';
 import type { EditorialBlock, EditorialJsonObject, EditorialJsonValue } from '../../types/editorial';
-import { contentString, isContentRecord } from './blocks/blockContent';
+import type { ApparelProject, Fabric, LocalImageAsset } from '../../types/studio';
+import { AdaptiveProjectImage } from '../projects/AdaptiveProjectImage';
+import { FabricColorOrb } from '../fabrics/FabricColorOrb';
+import { contentArray, contentNumber, contentString, isContentRecord } from './blocks/blockContent';
 
 type EditorialBlockInspectorProps = {
   blocks: EditorialBlock[];
+  fabrics?: Fabric[];
   onChange: (blocks: EditorialBlock[]) => void;
+  project?: ApparelProject;
   sceneId: string;
 };
 
 export function EditorialBlockInspector({
   blocks,
+  fabrics = [],
   onChange,
+  project,
   sceneId,
 }: EditorialBlockInspectorProps) {
   const orderedBlocks = [...blocks].sort((a, b) => a.order - b.order);
@@ -133,7 +145,7 @@ export function EditorialBlockInspector({
                 </div>
               </div>
               <div className="mt-4">
-                <BlockFields block={activeBlock} onChange={updateBlock} />
+                <BlockFields block={activeBlock} fabrics={fabrics} onChange={updateBlock} project={project} />
               </div>
             </div>
           ) : null}
@@ -150,10 +162,14 @@ export function EditorialBlockInspector({
 
 function BlockFields({
   block,
+  fabrics,
   onChange,
+  project,
 }: {
   block: EditorialBlock;
+  fabrics: Fabric[];
   onChange: (block: EditorialBlock) => void;
+  project?: ApparelProject;
 }) {
   const isEditable = editableEditorialBlockOptions.some((option) => option.value === block.type);
   const updateContent = (updates: Record<string, EditorialJsonValue>) => {
@@ -162,6 +178,8 @@ function BlockFields({
       : {};
     onChange({ ...block, content: { ...currentContent, ...updates } });
   };
+  const availableImages = projectEditorialImages(project);
+  const linkedFabrics = projectLinkedEditorialFabrics(project, fabrics);
 
   return (
     <div className="space-y-4">
@@ -200,7 +218,14 @@ function BlockFields({
 
       {block.type === 'image' ? (
         <>
-          <BlockField label="Image URL"><input className={fieldClassName} inputMode="url" onChange={(event) => updateContent({ url: event.target.value })} placeholder="https://..." type="url" value={contentString(block.content, 'url')} /></BlockField>
+          <BlockField label="Project image">
+            <ProjectImagePicker
+              images={availableImages}
+              onSelect={(image) => updateContent({ assetId: image.id, assetName: image.name, url: '' })}
+              selectedIds={[contentString(block.content, 'assetId')]}
+            />
+          </BlockField>
+          <BlockField label="Or external image URL"><input className={fieldClassName} inputMode="url" onChange={(event) => updateContent({ assetId: '', assetName: '', url: event.target.value })} placeholder="https://..." type="url" value={contentString(block.content, 'url')} /></BlockField>
           <BlockField label="Alt text"><input className={fieldClassName} onChange={(event) => updateContent({ alt: event.target.value })} placeholder="Describe the image" value={contentString(block.content, 'alt')} /></BlockField>
           <BlockField label="Caption (optional)"><input className={fieldClassName} onChange={(event) => updateContent({ caption: event.target.value })} value={contentString(block.content, 'caption')} /></BlockField>
           <BlockField label="Image fit">
@@ -210,6 +235,35 @@ function BlockFields({
             </select>
           </BlockField>
         </>
+      ) : null}
+
+      {block.type === 'gallery' ? (
+        <GalleryAssetEditor
+          columns={contentNumber(block.content, 'columns', 3)}
+          images={availableImages}
+          items={contentArray(block.content, 'images')}
+          onChange={(images) => updateContent({ images })}
+          onColumnsChange={(columns) => updateContent({ columns })}
+        />
+      ) : null}
+
+      {block.type === 'fabricSwatch' ? (
+        <BlockField label="Project fabric">
+          <FabricPicker
+            fabrics={linkedFabrics}
+            onSelect={({ fabric, material }) => {
+              const fallback = fabricEditorialFallback(fabric, material);
+              updateContent({
+                colorHex: fallback.colorHex ?? getFabricColorHex(fabric),
+                composition: fallback.composition ?? '',
+                fabricId: fabric.id,
+                name: fabric.name,
+                notes: fallback.notes ?? '',
+              });
+            }}
+            selectedId={contentString(block.content, 'fabricId')}
+          />
+        </BlockField>
       ) : null}
 
       {block.type === 'divider' ? (
@@ -246,6 +300,133 @@ function BlockFields({
       {!isEditable ? <p className="rounded-lg border border-bronze/20 bg-midnight/42 p-3 text-xs leading-5 text-stardust/44">This existing block is preserved. Choose one of the supported types above to replace it with an editable block.</p> : null}
     </div>
   );
+}
+
+function ProjectImagePicker({
+  emptyMessage = 'Add project photography before linking an image block.',
+  images,
+  onSelect,
+  selectedIds,
+}: {
+  emptyMessage?: string;
+  images: LocalImageAsset[];
+  onSelect: (image: LocalImageAsset) => void;
+  selectedIds: string[];
+}) {
+  if (images.length === 0) return <PickerEmptyState message={emptyMessage} />;
+  return (
+    <div className="grid grid-cols-3 gap-2">
+      {images.map((image, index) => {
+        const selected = selectedIds.includes(image.id);
+        return (
+          <button
+            aria-pressed={selected}
+            className={cn('relative aspect-[3/4] overflow-hidden rounded-lg border transition', selected ? 'border-ember shadow-[0_0_18px_rgba(200,155,60,.18)]' : 'border-bronze/22 hover:border-bronze/52')}
+            key={image.id}
+            onClick={() => onSelect(image)}
+            type="button"
+          >
+            <AdaptiveProjectImage asset={image} className="absolute inset-0" mode="thumbnail" />
+            <span className="absolute inset-x-0 bottom-0 bg-midnight/76 px-1 py-1.5 text-[0.52rem] uppercase tracking-[0.08em] text-stardust/78 backdrop-blur-md">{index === 0 ? 'Hero' : `Gallery ${index}`}</span>
+            {selected ? <span className="absolute right-1.5 top-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-ember text-midnight">✓</span> : null}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+function GalleryAssetEditor({
+  columns,
+  images,
+  items,
+  onChange,
+  onColumnsChange,
+}: {
+  columns: number;
+  images: LocalImageAsset[];
+  items: EditorialJsonValue[];
+  onChange: (items: EditorialJsonValue[]) => void;
+  onColumnsChange: (columns: number) => void;
+}) {
+  const selectedIds = items.flatMap((item) => isContentRecord(item) && typeof item.assetId === 'string' ? [item.assetId] : []);
+  const addImage = (image: LocalImageAsset) => {
+    if (selectedIds.includes(image.id)) return;
+    onChange([...items, { alt: image.name, assetId: image.id, assetName: image.name, caption: '', fit: 'cover', url: '' }]);
+  };
+  const move = (index: number, direction: -1 | 1) => {
+    const nextIndex = index + direction;
+    if (nextIndex < 0 || nextIndex >= items.length) return;
+    const reordered = [...items];
+    [reordered[index], reordered[nextIndex]] = [reordered[nextIndex], reordered[index]];
+    onChange(reordered);
+  };
+
+  return (
+    <div className="space-y-4">
+      <BlockField label="Add project images">
+        <ProjectImagePicker emptyMessage={images.length > 0 ? 'Every project image is already in this gallery.' : undefined} images={images.filter((image) => !selectedIds.includes(image.id))} onSelect={addImage} selectedIds={selectedIds} />
+      </BlockField>
+      <BlockField label={`Gallery order · ${items.length}`}>
+        {items.length > 0 ? (
+          <div className="space-y-2">
+            {items.map((item, index) => {
+              const content = isContentRecord(item) ? item : {};
+              const assetId = typeof content.assetId === 'string' ? content.assetId : '';
+              const asset = images.find((image) => image.id === assetId);
+              const label = asset?.name || (typeof content.assetName === 'string' ? content.assetName : '') || (typeof content.url === 'string' ? content.url : '') || `Image ${index + 1}`;
+              return (
+                <div className="flex items-center gap-2 rounded-lg border border-bronze/18 bg-midnight/36 p-2" key={`${assetId || label}-${index}`}>
+                  <div className="h-12 w-10 shrink-0 overflow-hidden rounded-md border border-stardust/10 bg-midnight">
+                    {asset ? <AdaptiveProjectImage asset={asset} className="h-full w-full" mode="thumbnail" /> : <ImageIcon className="m-auto mt-3 text-stardust/24" size={16} />}
+                  </div>
+                  <span className="min-w-0 flex-1 truncate text-xs text-stardust/62">{label}</span>
+                  <BlockToolButton disabled={index === 0} label="Move image up" onClick={() => move(index, -1)}><ChevronUp size={14} /></BlockToolButton>
+                  <BlockToolButton disabled={index === items.length - 1} label="Move image down" onClick={() => move(index, 1)}><ChevronDown size={14} /></BlockToolButton>
+                  <BlockToolButton danger label="Remove image" onClick={() => onChange(items.filter((_, itemIndex) => itemIndex !== index))}><Trash2 size={14} /></BlockToolButton>
+                </div>
+              );
+            })}
+          </div>
+        ) : <PickerEmptyState message="Choose project images to compose this gallery." />}
+      </BlockField>
+      <BlockField label="Columns">
+        <select className={fieldClassName} onChange={(event) => onColumnsChange(Number(event.target.value))} value={columns}>
+          <option value="1">One</option><option value="2">Two</option><option value="3">Three</option>
+        </select>
+      </BlockField>
+    </div>
+  );
+}
+
+function FabricPicker({
+  fabrics,
+  onSelect,
+  selectedId,
+}: {
+  fabrics: LinkedEditorialFabric[];
+  onSelect: (record: LinkedEditorialFabric) => void;
+  selectedId: string;
+}) {
+  if (fabrics.length === 0) return <PickerEmptyState message="Link a Fabric Vault record in Project Materials before adding a fabric swatch." />;
+  return (
+    <div className="space-y-2">
+      {fabrics.map((record) => {
+        const selected = record.fabric.id === selectedId;
+        return (
+          <button aria-pressed={selected} className={cn('flex w-full items-center gap-3 rounded-xl border p-3 text-left transition', selected ? 'border-ember/58 bg-ember/10' : 'border-bronze/20 bg-midnight/34 hover:border-bronze/46')} key={record.fabric.id} onClick={() => onSelect(record)} type="button">
+            <FabricColorOrb className="h-8 w-8" fabric={record.fabric} />
+            <span className="min-w-0 flex-1"><span className="block truncate text-xs font-semibold text-stardust">{record.fabric.name}</span><span className="mt-1 block truncate text-[0.62rem] text-stardust/42">{record.material.role} · {record.fabric.composition}</span></span>
+            {selected ? <span className="text-ember">✓</span> : null}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+function PickerEmptyState({ message }: { message: string }) {
+  return <div className="rounded-lg border border-dashed border-bronze/22 px-3 py-4 text-center text-xs leading-5 text-stardust/38">{message}</div>;
 }
 
 function AlignmentField({
@@ -297,6 +478,8 @@ function blockIcon(type: EditorialBlock['type']) {
     case 'paragraph': case 'text': return <FileText size={14} />;
     case 'quote': return <Quote size={14} />;
     case 'image': return <ImageIcon size={14} />;
+    case 'gallery': return <Images size={14} />;
+    case 'fabricSwatch': case 'materials': return <SwatchBook size={14} />;
     case 'divider': return <Minus size={14} />;
     case 'spacer': return <Space size={14} />;
     case 'callout': return <MessageSquareText size={14} />;

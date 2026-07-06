@@ -3,10 +3,11 @@ import type {
   EditorialScene,
   EditorialTheme,
 } from '../../../types/editorial';
-import type { ApparelProject } from '../../../types/studio';
+import type { ApparelProject, Fabric } from '../../../types/studio';
 
 export type EditorialSceneRendererProps = {
   collection: EditorialCollection;
+  fabrics?: Fabric[];
   project?: ApparelProject;
   scene: EditorialScene;
   theme: EditorialTheme;
