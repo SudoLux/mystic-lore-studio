@@ -208,8 +208,11 @@ export interface EditorialCollection {
   title: string;
   subtitle: string;
   description: string;
+  coverAccentColor?: string;
   coverImageId?: string;
+  coverImageFit?: 'cover' | 'contain';
   coverImageUrl?: string;
+  coverLabel?: string;
   templateType: EditorialTemplateType;
   themeId: string;
   scenes: EditorialScene[];

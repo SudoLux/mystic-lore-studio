@@ -4,6 +4,7 @@ import { AdaptiveStoredImage } from '../shared/AdaptiveStoredImage';
 type AdaptiveProjectImageProps = {
   asset: LocalImageAsset;
   className?: string;
+  displayFit?: 'cover' | 'contain';
   foregroundClassName?: string;
   mode?: 'compact' | 'primary' | 'thumbnail';
 };
@@ -11,6 +12,7 @@ type AdaptiveProjectImageProps = {
 export function AdaptiveProjectImage({
   asset,
   className,
+  displayFit,
   foregroundClassName,
   mode = 'primary',
 }: AdaptiveProjectImageProps) {
@@ -18,6 +20,7 @@ export function AdaptiveProjectImage({
     <AdaptiveStoredImage
       asset={asset}
       className={className}
+      displayFit={displayFit}
       foregroundClassName={foregroundClassName}
       mode={mode}
     />

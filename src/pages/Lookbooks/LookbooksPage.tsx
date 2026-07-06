@@ -13,8 +13,8 @@ import {
   Sparkles,
   Trash2,
 } from 'lucide-react';
-import { EditorialCollectionCover } from '../../components/lookbook/EditorialCollectionCover';
 import { EditorialCollectionFormModal } from '../../components/lookbook/EditorialCollectionFormModal';
+import { EditorialPosterArtwork } from '../../components/lookbook/EditorialPosterArtwork';
 import { EditorialSceneBuilder } from '../../components/lookbook/EditorialSceneBuilder';
 import { EditorialCollectionViewer } from '../../components/lookbook/EditorialCollectionViewer';
 import { Badge } from '../../components/shared/Badge';
@@ -24,10 +24,7 @@ import { PageHeader } from '../../components/shared/PageHeader';
 import { useStudioData } from '../../hooks/useStudioData';
 import { cn } from '../../lib/classes';
 import { formatStudioDate } from '../../lib/dates';
-import {
-  duplicateEditorialCollection,
-  editorialTemplateLabel,
-} from '../../lib/editorialCollections';
+import { duplicateEditorialCollection } from '../../lib/editorialCollections';
 import type { EditorialCollection } from '../../types/editorial';
 import type { ApparelProject } from '../../types/studio';
 
@@ -248,28 +245,17 @@ function EditorialPosterCard({
   return (
     <article className="group overflow-hidden rounded-xl border border-bronze/30 bg-[linear-gradient(155deg,rgba(25,25,25,0.94),rgba(10,10,10,0.98))] shadow-[0_20px_52px_rgba(0,0,0,0.34)] transition duration-300 hover:-translate-y-1 hover:border-ember/52 hover:shadow-[0_28px_70px_rgba(0,0,0,0.48),0_0_30px_rgba(200,155,60,0.08)]">
       <div className="relative aspect-[3/4] overflow-hidden">
-        <EditorialCollectionCover collection={collection} project={project} />
-        <div className="absolute inset-x-0 top-0 z-10 flex items-start justify-between gap-3 p-3">
-          <Badge className="bg-midnight/68 backdrop-blur-xl" variant="bronze">
-            {editorialTemplateLabel(collection.templateType)}
-          </Badge>
+        <EditorialPosterArtwork collection={collection} project={project}>
+          <div className="mt-4 flex items-center gap-2 text-[0.7rem] text-[var(--poster-muted)]">
+            <CalendarDays aria-hidden="true" size={13} />
+            Updated {formatStudioDate(collection.updatedAt, { day: 'numeric', month: 'short', year: 'numeric' })}
+          </div>
+        </EditorialPosterArtwork>
+        <div className="absolute right-3 top-3 z-20">
           <span className="inline-flex items-center gap-1.5 rounded-full border border-stardust/18 bg-midnight/72 px-2.5 py-1 text-[0.68rem] text-stardust/76 backdrop-blur-xl">
             <Film aria-hidden="true" size={12} />
             {collection.scenes.length}
           </span>
-        </div>
-        <div className="absolute inset-x-0 bottom-0 z-10 p-4 sm:p-5">
-          <p className="text-[0.62rem] uppercase tracking-[0.22em] text-ember/90">Mystic Lore Editorial</p>
-          <h2 className="font-display mt-3 break-words text-[1.35rem] leading-[1.18] text-stardust sm:text-[1.55rem]">
-            {collection.title}
-          </h2>
-          <p className="mt-2 line-clamp-2 text-sm leading-5 text-stardust/64">
-            {collection.subtitle || project.name}
-          </p>
-          <div className="mt-4 flex items-center gap-2 text-[0.7rem] text-stardust/46">
-            <CalendarDays aria-hidden="true" size={13} />
-            Updated {formatStudioDate(collection.updatedAt, { day: 'numeric', month: 'short', year: 'numeric' })}
-          </div>
         </div>
       </div>
       <div className="flex items-center gap-1 border-t border-bronze/22 p-2.5">
