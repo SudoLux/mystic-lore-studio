@@ -87,9 +87,11 @@ export type EditorialQuoteContent = {
 
 export type EditorialImageContent = {
   alt?: string;
+  assetId?: string;
+  assetName?: string;
   caption?: string;
   fit?: 'cover' | 'contain';
-  url: string;
+  url?: string;
 };
 
 export type EditorialGalleryImage = EditorialImageContent & {
@@ -113,6 +115,15 @@ export type EditorialSpacerContent = {
 export type EditorialFabricSwatchContent = {
   colorHex?: string;
   composition?: string;
+  fabricId?: string;
+  name: string;
+  notes?: string;
+};
+
+export type EditorialFabricFallback = {
+  colorHex?: string;
+  composition?: string;
+  fabricId: string;
   name: string;
   notes?: string;
 };
@@ -160,6 +171,13 @@ export type EditorialTransitionType =
   | 'slide'
   | 'reveal';
 
+export type EditorialSceneDurationMs = 5000 | 8000 | 12000;
+
+export type EditorialPlaybackSettings = {
+  autoPlay: boolean;
+  sceneDurationMs: EditorialSceneDurationMs;
+};
+
 export interface EditorialTransition {
   type: EditorialTransitionType;
   durationMs?: number;
@@ -198,11 +216,14 @@ export interface EditorialScene {
   blocks: EditorialBlock[];
   transition: EditorialTransition;
   background: EditorialBackground;
+  fabricFallbacks?: EditorialFabricFallback[];
+  fabricIds?: string[];
   createdAt: string;
   updatedAt: string;
 }
 
 export interface EditorialCollection {
+  autoPlay?: boolean;
   id: string;
   projectId: string;
   title: string;
@@ -216,6 +237,7 @@ export interface EditorialCollection {
   templateType: EditorialTemplateType;
   themeId: string;
   scenes: EditorialScene[];
+  sceneDurationMs?: EditorialSceneDurationMs;
   createdAt: string;
   updatedAt: string;
 }

@@ -4,7 +4,7 @@ import { AdaptiveProjectImage } from '../../projects/AdaptiveProjectImage';
 import { BlockContent, projectImages, SceneLabel, SceneNarrative, themeStyle } from './ScenePrimitives';
 import type { EditorialSceneRendererProps } from './types';
 
-export function GalleryScene({ collection, project, scene, theme }: EditorialSceneRendererProps) {
+export function GalleryScene({ collection, fabrics, project, scene, theme }: EditorialSceneRendererProps) {
   const images = projectImages(project, collection);
   return (
     <section
@@ -26,7 +26,7 @@ export function GalleryScene({ collection, project, scene, theme }: EditorialSce
             <GalleryFrame image={images[index]} index={index} key={index} />
           ))}
         </div>
-        {scene.blocks.length > 0 ? <BlockContent blocks={scene.blocks} theme={theme} /> : null}
+        {scene.blocks.length > 0 ? <BlockContent blocks={scene.blocks} fabrics={fabrics} project={project} theme={theme} /> : null}
       </div>
     </section>
   );

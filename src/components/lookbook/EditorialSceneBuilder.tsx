@@ -16,17 +16,20 @@ import {
   editorialSceneTypeOptions,
 } from '../../lib/editorialCollections';
 import { resolveEditorialTheme } from '../../lib/editorialThemes';
+import { fabricEditorialFallback, projectLinkedEditorialFabrics } from '../../lib/editorialAssets';
 import type { EditorialCollection, EditorialScene, EditorialSceneType } from '../../types/editorial';
-import type { ApparelProject } from '../../types/studio';
+import type { ApparelProject, Fabric } from '../../types/studio';
 import { cn } from '../../lib/classes';
 import { Badge } from '../shared/Badge';
 import { Button } from '../shared/Button';
 import { EditorialCollectionViewer } from './EditorialCollectionViewer';
 import { EditorialBlockInspector } from './EditorialBlockInspector';
 import { EditorialSceneRenderer } from './scenes/EditorialSceneRenderer';
+import { FabricColorOrb } from '../fabrics/FabricColorOrb';
 
 type EditorialSceneBuilderProps = {
   collection: EditorialCollection;
+  fabrics?: Fabric[];
   onClose: () => void;
   onSave: (collection: EditorialCollection) => void;
   project?: ApparelProject;
@@ -34,6 +37,7 @@ type EditorialSceneBuilderProps = {
 
 export function EditorialSceneBuilder({
   collection,
+  fabrics = [],
   onClose,
   onSave,
   project,
@@ -168,7 +172,7 @@ export function EditorialSceneBuilder({
               </div>
               <div className="editorial-builder-preview relative min-h-0 flex-1 overflow-hidden rounded-xl border border-bronze/32 bg-midnight shadow-[0_22px_70px_rgba(0,0,0,.46)] [&_h1]:!text-[clamp(2rem,5vw,4rem)] [&_h2]:!text-[clamp(1.8rem,4vw,3.5rem)]">
                 {activeScene ? (
-                  <EditorialSceneRenderer collection={draftCollection} project={project} scene={activeScene} theme={theme} />
+                  <EditorialSceneRenderer collection={draftCollection} fabrics={fabrics} project={project} scene={activeScene} theme={theme} />
                 ) : (
                   <div className="flex h-full items-center justify-center p-8 text-center">
                     <div>
@@ -183,18 +187,20 @@ export function EditorialSceneBuilder({
 
           <SceneInspector
             deleteArmed={deleteArmed}
+            fabrics={fabrics}
             onArmDelete={() => setDeleteArmed(true)}
             onCancelDelete={() => setDeleteArmed(false)}
             onDelete={deleteScene}
             onPresent={() => setIsPresenting(true)}
             onUpdate={updateActiveScene}
+            project={project}
             scene={activeScene}
           />
         </div>
       </section>
 
       {isPresenting ? (
-        <EditorialCollectionViewer collection={draftCollection} onClose={() => setIsPresenting(false)} project={project} />
+        <EditorialCollectionViewer collection={draftCollection} fabrics={fabrics} onClose={() => setIsPresenting(false)} project={project} />
       ) : null}
 
       {isDiscarding ? (
@@ -268,19 +274,23 @@ function SceneList({
 
 function SceneInspector({
   deleteArmed,
+  fabrics,
   onArmDelete,
   onCancelDelete,
   onDelete,
   onPresent,
   onUpdate,
+  project,
   scene,
 }: {
   deleteArmed: boolean;
+  fabrics: Fabric[];
   onArmDelete: () => void;
   onCancelDelete: () => void;
   onDelete: () => void;
   onPresent: () => void;
   onUpdate: (updates: Partial<EditorialScene>) => void;
+  project?: ApparelProject;
   scene?: EditorialScene;
 }) {
   return (
@@ -311,9 +321,14 @@ function SceneInspector({
           <InspectorField label="Description (optional)">
             <textarea className="min-h-28 w-full resize-y rounded-xl border border-bronze/28 bg-midnight/64 px-3 py-3 text-sm leading-6 text-stardust outline-none transition placeholder:text-stardust/24 focus:border-ember/58" maxLength={420} onChange={(event) => onUpdate({ description: event.target.value })} placeholder="Set the intention or narrative for this scene." value={scene.description ?? ''} />
           </InspectorField>
+          {['fabric-story', 'materials'].includes(scene.sceneType) ? (
+            <SceneFabricPicker fabrics={fabrics} onUpdate={onUpdate} project={project} scene={scene} />
+          ) : null}
           <EditorialBlockInspector
             blocks={scene.blocks}
+            fabrics={fabrics}
             onChange={(blocks) => onUpdate({ blocks })}
+            project={project}
             sceneId={scene.id}
           />
           <div className="border-t border-bronze/18 pt-5">
@@ -335,6 +350,82 @@ function SceneInspector({
         <div className="mt-8 rounded-xl border border-dashed border-bronze/22 p-5 text-center text-sm text-stardust/42">Add a scene to reveal its settings.</div>
       )}
     </aside>
+  );
+}
+
+function SceneFabricPicker({
+  fabrics,
+  onUpdate,
+  project,
+  scene,
+}: {
+  fabrics: Fabric[];
+  onUpdate: (updates: Partial<EditorialScene>) => void;
+  project?: ApparelProject;
+  scene: EditorialScene;
+}) {
+  const linkedFabrics = projectLinkedEditorialFabrics(project, fabrics);
+  const selectedIds = scene.fabricIds ?? [];
+  const missingIds = selectedIds.filter((fabricId) => !linkedFabrics.some(({ fabric }) => fabric.id === fabricId));
+  const toggleFabric = (fabricId: string) => {
+    const selected = selectedIds.includes(fabricId);
+    if (!selected && selectedIds.length >= 4) return;
+    const nextIds = selected ? selectedIds.filter((id) => id !== fabricId) : [...selectedIds, fabricId];
+    const linked = linkedFabrics.find(({ fabric }) => fabric.id === fabricId);
+    const retainedFallbacks = (scene.fabricFallbacks ?? []).filter((item) => nextIds.includes(item.fabricId));
+    const nextFallbacks = !selected && linked
+      ? [...retainedFallbacks, fabricEditorialFallback(linked.fabric, linked.material)]
+      : retainedFallbacks;
+    onUpdate({ fabricFallbacks: nextFallbacks, fabricIds: nextIds });
+  };
+
+  return (
+    <section>
+      <div className="flex items-end justify-between gap-3">
+        <div>
+          <p className="text-[0.62rem] font-semibold uppercase tracking-[0.15em] text-stardust/42">Scene fabrics</p>
+          <p className="mt-1 text-xs text-stardust/34">Choose up to four linked records.</p>
+        </div>
+        <span className="text-xs tabular-nums text-ember/72">{selectedIds.length}/4</span>
+      </div>
+      {linkedFabrics.length > 0 ? (
+        <div className="mt-3 space-y-2">
+          {linkedFabrics.map(({ fabric, material }) => {
+            const selected = selectedIds.includes(fabric.id);
+            const disabled = !selected && selectedIds.length >= 4;
+            return (
+              <button
+                aria-pressed={selected}
+                className={cn('flex w-full items-center gap-3 rounded-xl border p-3 text-left transition disabled:opacity-35', selected ? 'border-ember/54 bg-ember/9' : 'border-bronze/20 bg-midnight/34 hover:border-bronze/44')}
+                disabled={disabled}
+                key={fabric.id}
+                onClick={() => toggleFabric(fabric.id)}
+                type="button"
+              >
+                <FabricColorOrb className="h-8 w-8" fabric={fabric} />
+                <span className="min-w-0 flex-1"><span className="block truncate text-xs font-semibold">{fabric.name}</span><span className="mt-1 block truncate text-[0.62rem] text-stardust/40">{material.role} · {fabric.composition}</span></span>
+                <span className={selected ? 'text-ember' : 'text-stardust/24'}>{selected ? '✓' : '+'}</span>
+              </button>
+            );
+          })}
+        </div>
+      ) : (
+        <div className="mt-3 rounded-xl border border-dashed border-bronze/22 p-4 text-center text-xs leading-5 text-stardust/38">Link a Fabric Vault record in Project Materials to feature it here.</div>
+      )}
+      {missingIds.length > 0 ? (
+        <div className="mt-2 space-y-2">
+          {missingIds.map((fabricId) => {
+            const fallback = scene.fabricFallbacks?.find((item) => item.fabricId === fabricId);
+            return (
+              <div className="flex items-center gap-3 rounded-xl border border-amber-200/18 bg-amber-200/[0.04] p-3" key={fabricId}>
+                <span className="min-w-0 flex-1"><span className="block truncate text-xs text-stardust/62">{fallback?.name ?? 'Missing fabric record'}</span><span className="mt-1 block text-[0.58rem] uppercase tracking-[0.12em] text-amber-200/52">Source unavailable</span></span>
+                <button className="rounded-lg px-2 py-1 text-xs text-stardust/48 transition hover:text-red-200" onClick={() => toggleFabric(fabricId)} type="button">Remove</button>
+              </div>
+            );
+          })}
+        </div>
+      ) : null}
+    </section>
   );
 }
 

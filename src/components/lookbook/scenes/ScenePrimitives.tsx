@@ -6,7 +6,7 @@ import type {
   EditorialScene,
   EditorialTheme,
 } from '../../../types/editorial';
-import type { ApparelProject, LocalImageAsset } from '../../../types/studio';
+import type { ApparelProject, Fabric, LocalImageAsset } from '../../../types/studio';
 import { EditorialBlockList } from '../blocks/EditorialBlockRenderer';
 import { EditorialCollectionCover } from '../EditorialCollectionCover';
 
@@ -38,14 +38,18 @@ export function EditorialStage({
 
 export function BlockContent({
   blocks,
+  fabrics,
   prominent = false,
+  project,
   theme,
 }: {
   blocks: EditorialBlock[];
+  fabrics?: Fabric[];
   prominent?: boolean;
+  project?: ApparelProject;
   theme: EditorialTheme;
 }) {
-  return <EditorialBlockList blocks={blocks} prominent={prominent} theme={theme} />;
+  return <EditorialBlockList blocks={blocks} fabrics={fabrics} prominent={prominent} project={project} theme={theme} />;
 }
 
 export function SceneLabel({ label }: { label: string }) {

@@ -2,7 +2,7 @@ import { Scissors } from 'lucide-react';
 import { BlockContent, EditorialStage, SceneLabel, SceneNarrative } from './ScenePrimitives';
 import type { EditorialSceneRendererProps } from './types';
 
-export function ConstructionScene({ collection, project, scene, theme }: EditorialSceneRendererProps) {
+export function ConstructionScene({ collection, fabrics, project, scene, theme }: EditorialSceneRendererProps) {
   const tasks = project?.tasks
     .filter((task) => ['Pattern', 'Cutting', 'Sewing', 'Fitting', 'Revision'].includes(task.category))
     .slice(0, 4) ?? [];
@@ -26,7 +26,7 @@ export function ConstructionScene({ collection, project, scene, theme }: Editori
             </div>
           ))}
         </div>
-        {scene.blocks.length > 0 ? <BlockContent blocks={scene.blocks} theme={theme} /> : null}
+        {scene.blocks.length > 0 ? <BlockContent blocks={scene.blocks} fabrics={fabrics} project={project} theme={theme} /> : null}
       </div>
     </EditorialStage>
   );

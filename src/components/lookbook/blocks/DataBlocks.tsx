@@ -1,21 +1,21 @@
-import type { CSSProperties } from 'react';
 import { Ruler, SwatchBook } from 'lucide-react';
+import { getFabricColorHex } from '../../../lib/fabricMetadata';
+import { FabricColorOrb } from '../../fabrics/FabricColorOrb';
 import { contentArray, contentString, isContentRecord } from './blockContent';
 import type { EditorialBlockRendererProps } from './types';
 
-export function FabricSwatchBlock({ block }: EditorialBlockRendererProps) {
-  const name = contentString(block.content, 'name', 'Fabric swatch');
-  const color = contentString(block.content, 'colorHex', '#9a6c3c');
-  const composition = contentString(block.content, 'composition');
-  const notes = contentString(block.content, 'notes');
+export function FabricSwatchBlock({ block, fabrics = [] }: EditorialBlockRendererProps) {
+  const fabricId = contentString(block.content, 'fabricId');
+  const fabric = fabrics.find((item) => item.id === fabricId);
+  const name = fabric?.name ?? contentString(block.content, 'name', 'Fabric swatch');
+  const color = fabric ? getFabricColorHex(fabric) : contentString(block.content, 'colorHex', '#9a6c3c');
+  const composition = fabric?.composition ?? contentString(block.content, 'composition');
+  const notes = fabric?.loreNote || fabric?.notes || contentString(block.content, 'notes');
+  const orbFabric = fabric ?? { colorFamily: name, primaryColor: name, primaryColorHex: color };
+  const unavailable = Boolean(fabricId) && !fabric;
   return (
     <article className="editorial-theme-card flex max-w-xl items-center gap-4 border p-4">
-      <span
-        aria-label={`${name} color`}
-        className="h-16 w-16 shrink-0 rounded-full border border-stardust/28 shadow-[inset_0_1px_2px_rgba(255,255,255,.26),0_0_24px_color-mix(in_srgb,var(--swatch-color)_28%,transparent)]"
-        role="img"
-        style={{ '--swatch-color': color, backgroundColor: color } as CSSProperties}
-      />
+      <FabricColorOrb className="h-16 w-16" fabric={orbFabric} label={`${name} color`} />
       <div className="min-w-0">
         <div className="flex items-center gap-2 text-[var(--editorial-accent)]">
           <SwatchBook size={14} />
@@ -24,6 +24,7 @@ export function FabricSwatchBlock({ block }: EditorialBlockRendererProps) {
         <h4 className="mt-2 truncate text-base font-semibold text-stardust">{name}</h4>
         {composition ? <p className="mt-1 text-xs text-stardust/52">{composition}</p> : null}
         {notes ? <p className="mt-2 text-xs leading-5 text-stardust/42">{notes}</p> : null}
+        {unavailable ? <p className="mt-2 text-[0.58rem] uppercase tracking-[0.14em] text-amber-200/62">Source unavailable</p> : null}
       </div>
     </article>
   );
