@@ -4,7 +4,7 @@ import type { EditorialBlockRendererProps } from './types';
 
 export function UnknownBlock({ block }: EditorialBlockRendererProps) {
   return (
-    <div className="flex max-w-3xl gap-3 rounded-xl border border-dashed border-stardust/16 bg-midnight/30 p-4 text-stardust/48">
+    <div className="editorial-theme-card flex max-w-3xl gap-3 border border-dashed p-4 text-stardust/48">
       <Braces className="mt-0.5 shrink-0 text-[var(--editorial-accent)] opacity-65" size={16} />
       <div className="min-w-0">
         <p className="text-[0.58rem] uppercase tracking-[0.16em]">Unsupported block · {block.type}</p>

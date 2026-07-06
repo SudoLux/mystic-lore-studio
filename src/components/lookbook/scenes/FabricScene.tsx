@@ -23,7 +23,7 @@ export function FabricScene({ collection, project, scene, theme }: EditorialScen
           </div>
           <div className="grid grid-cols-2 gap-2 sm:gap-3">
             {cards.map((material, index) => (
-              <div className="min-h-28 rounded-xl border border-bronze/25 bg-midnight/44 p-4 backdrop-blur-xl sm:min-h-36 sm:p-5" key={material?.id ?? index}>
+              <div className="editorial-theme-card min-h-28 border p-4 sm:min-h-36 sm:p-5" key={material?.id ?? index}>
                 <span className="flex h-8 w-8 items-center justify-center rounded-full border border-[var(--editorial-accent)]/40 bg-midnight/40 text-[var(--editorial-accent)]">
                   <CircleDot size={15} />
                 </span>

@@ -49,12 +49,6 @@ export const editorialTemplateOptions: Array<{
   },
 ];
 
-export const editorialThemeOptions = [
-  { label: 'Midnight Atelier', value: 'midnight-atelier' },
-  { label: 'Celestial Archive', value: 'celestial-archive' },
-  { label: 'Stardust Paper', value: 'stardust-paper' },
-] as const;
-
 export function editorialTemplateLabel(templateType: EditorialTemplateType) {
   return editorialTemplateOptions.find((option) => option.value === normalizeEditorialTemplateType(templateType))?.label
     ?? 'Blank Collection';

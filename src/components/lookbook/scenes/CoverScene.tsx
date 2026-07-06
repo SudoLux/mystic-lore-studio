@@ -10,11 +10,12 @@ export function CoverScene({
 }: EditorialSceneRendererProps) {
   return (
     <section
-      className="relative flex h-full items-end overflow-hidden px-5 pb-28 pt-28 sm:px-9 sm:pb-32 lg:px-[7vw] lg:pb-[14vh]"
+      className="editorial-theme-surface editorial-scene-frame relative flex h-full items-end overflow-hidden"
+      data-editorial-theme={theme.id}
       style={themeStyle(theme)}
     >
       <EditorialCollectionCover className="absolute inset-0" collection={collection} project={project} />
-      <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(5,5,5,.48),transparent_60%),linear-gradient(180deg,rgba(5,5,5,.12),transparent_35%,rgba(5,5,5,.76))]" />
+      <div className="absolute inset-0 bg-[linear-gradient(90deg,color-mix(in_srgb,var(--editorial-background)_48%,transparent),transparent_60%),linear-gradient(180deg,color-mix(in_srgb,var(--editorial-background)_12%,transparent),transparent_35%,color-mix(in_srgb,var(--editorial-background)_76%,transparent))]" />
       <div className="relative z-10 max-w-4xl">
         <p className="text-[0.64rem] font-semibold uppercase tracking-[0.3em] text-[var(--editorial-accent)] sm:text-xs">
           Mystic Lore Editorial Collection

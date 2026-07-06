@@ -10,7 +10,7 @@ export function ImageBlock({ block }: EditorialBlockRendererProps) {
   const alt = contentString(block.content, 'alt', caption || 'Editorial image');
   const fit = contentString(block.content, 'fit') === 'contain' ? 'contain' : 'cover';
   return (
-    <figure className="max-w-5xl overflow-hidden rounded-xl border border-stardust/12 bg-midnight/52">
+    <figure className="editorial-theme-card max-w-5xl overflow-hidden border">
       <SafeImage alt={alt} className="aspect-[4/3] w-full" fit={fit} url={url} />
       {caption ? <figcaption className="border-t border-stardust/10 px-4 py-3 text-xs leading-5 text-stardust/48">{caption}</figcaption> : null}
     </figure>
@@ -40,7 +40,7 @@ export function GalleryBlock({ block }: EditorialBlockRendererProps) {
       )}
     >
       {(images.length > 0 ? images : Array.from({ length: Math.max(columns, 1) }, (_, index) => ({ alt: `Gallery placeholder ${index + 1}`, url: '' }))).map((image, index) => (
-        <figure className={cn('overflow-hidden rounded-lg border border-stardust/12 bg-midnight/48', index === 0 && images.length === 3 ? 'row-span-2 lg:row-span-1' : '')} key={`${image.url}-${index}`}>
+        <figure className={cn('editorial-theme-card overflow-hidden border', index === 0 && images.length === 3 ? 'row-span-2 lg:row-span-1' : '')} key={`${image.url}-${index}`}>
           <SafeImage alt={image.alt} className="aspect-[3/4] w-full lg:aspect-[4/5]" fit="cover" url={image.url} />
           {'caption' in image && typeof image.caption === 'string' && image.caption ? (
             <figcaption className="px-3 py-2 text-xs text-stardust/45">

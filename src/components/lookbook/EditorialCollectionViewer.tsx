@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useMemo, useState, type CSSProperties, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { ArrowLeft, ChevronLeft, ChevronRight, Layers3 } from 'lucide-react';
 import { cn } from '../../lib/classes';
@@ -88,9 +88,10 @@ export function EditorialCollectionViewer({
                 index < activeIndex
                   ? 'bg-stardust/50'
                   : index === activeIndex
-                    ? 'bg-ember shadow-[0_0_12px_rgba(200,155,60,.58)]'
+                    ? 'shadow-[0_0_12px_color-mix(in_srgb,var(--viewer-accent)_58%,transparent)]'
                     : 'bg-stardust/14 group-hover:bg-stardust/28',
               )}
+              style={index === activeIndex ? { backgroundColor: theme.colors.accent, '--viewer-accent': theme.colors.accent } as CSSProperties : undefined}
             />
           </button>
         ))}
@@ -106,11 +107,14 @@ export function EditorialCollectionViewer({
           <div
             className={cn(
               'h-full w-full',
-              direction === 'forward'
-                ? 'editorial-scene-enter-forward'
-                : 'editorial-scene-enter-back',
+              `editorial-scene-transition-${theme.transitionStyle.type}`,
+              `editorial-scene-direction-${direction}`,
             )}
             key={activeScene.id}
+            style={{
+              '--editorial-transition-duration': `${theme.transitionStyle.durationMs}ms`,
+              '--editorial-transition-easing': theme.transitionStyle.easing,
+            } as CSSProperties}
           >
             <EditorialSceneRenderer
               collection={collection}

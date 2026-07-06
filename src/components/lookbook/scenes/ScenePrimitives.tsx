@@ -23,14 +23,15 @@ export function EditorialStage({
 }) {
   return (
     <section
-      className="relative flex h-full items-center overflow-y-auto px-5 pb-28 pt-28 sm:px-9 sm:pb-32 lg:px-[7vw]"
+      className="editorial-theme-surface editorial-scene-frame relative flex h-full items-center overflow-y-auto"
+      data-editorial-theme={theme.id}
       style={themeStyle(theme)}
     >
       <div className="absolute inset-0 opacity-35">
         <EditorialCollectionCover collection={collection} project={project} />
       </div>
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_70%_22%,color-mix(in_srgb,var(--editorial-accent)_18%,transparent),transparent_28%),linear-gradient(120deg,rgba(5,5,5,.78),rgba(5,5,5,.9)_58%,rgba(35,23,15,.82))] backdrop-blur-xl" />
-      <div className="relative z-10 mx-auto w-full">{children}</div>
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_70%_22%,color-mix(in_srgb,var(--editorial-accent)_18%,transparent),transparent_28%),linear-gradient(120deg,color-mix(in_srgb,var(--editorial-background)_78%,transparent),color-mix(in_srgb,var(--editorial-background)_92%,transparent)_58%,color-mix(in_srgb,var(--editorial-surface)_86%,transparent))] backdrop-blur-xl" />
+      <div className="editorial-theme-content relative z-10 mx-auto w-full">{children}</div>
     </section>
   );
 }
@@ -102,6 +103,18 @@ export function themeStyle(theme: EditorialTheme) {
     '--editorial-accent': theme.colors.accent,
     '--editorial-background': theme.colors.background,
     '--editorial-border': theme.colors.border,
+    '--editorial-card-background': theme.cardTreatment.background,
+    '--editorial-card-border': theme.cardTreatment.border,
+    '--editorial-card-blur': theme.cardTreatment.backdropBlur,
+    '--editorial-card-radius': theme.cardTreatment.borderRadius,
+    '--editorial-card-shadow': theme.cardTreatment.shadow,
+    '--editorial-content-gap': theme.sceneSpacing.contentGap,
+    '--editorial-content-max-width': theme.sceneSpacing.maxWidth,
+    '--editorial-display-font': theme.typography.displayFont,
+    '--editorial-body-font': theme.typography.bodyFont,
+    '--editorial-muted-text': theme.colors.mutedText,
+    '--editorial-scene-block': theme.sceneSpacing.block,
+    '--editorial-scene-inline': theme.sceneSpacing.inline,
     '--editorial-surface': theme.colors.surface,
     '--editorial-text': theme.colors.text,
   } as CSSProperties;

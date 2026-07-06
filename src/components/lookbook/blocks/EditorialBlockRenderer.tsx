@@ -32,7 +32,7 @@ export function EditorialBlockRenderer(props: EditorialBlockRendererProps) {
 
 export function EditorialBlockList({
   blocks,
-  className = 'mt-6 space-y-4',
+  className = 'mt-6 flex flex-col gap-[var(--editorial-content-gap)]',
   prominent = false,
   theme,
 }: {

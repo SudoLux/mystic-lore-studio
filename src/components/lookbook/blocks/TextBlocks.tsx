@@ -47,7 +47,7 @@ export function CalloutBlock({ block }: EditorialBlockRendererProps) {
   const Icon = tone === 'warning' ? AlertCircle : Sparkles;
   return (
     <aside className={cn(
-      'max-w-3xl rounded-xl border p-4 backdrop-blur-xl sm:p-5',
+      'editorial-theme-card max-w-3xl border p-4 sm:p-5',
       tone === 'warning'
         ? 'border-red-300/26 bg-red-300/[0.06]'
         : tone === 'highlight'
