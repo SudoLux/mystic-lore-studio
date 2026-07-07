@@ -1,0 +1,465 @@
+import { createElement } from 'react';
+import { flushSync } from 'react-dom';
+import { createRoot } from 'react-dom/client';
+import {
+  EditorialExportSceneCanvas,
+  type EditorialExportRenderContext,
+} from '../components/lookbook/EditorialExportSceneCanvas';
+import type {
+  EditorialExportResult,
+  EditorialExportSceneSnapshot,
+  EditorialExportSnapshot,
+  EditorialExportWarning,
+} from './editorialExport';
+import { resolveEditorialExportImage } from './editorialExportAssets';
+import type {
+  EditorialBlock,
+  EditorialCollection,
+  EditorialScene,
+  EditorialTheme,
+} from '../types/editorial';
+import type {
+  ApparelProject,
+  Fabric,
+  LinkedMaterial,
+  LocalImageAsset,
+  StudioTask,
+} from '../types/studio';
+
+export type EditorialImageExportScale = 1 | 2 | 3;
+export type EditorialImageExportOptions = Readonly<{
+  fileNamePrefix?: string;
+  format: 'png';
+  includeIndex: boolean;
+  scale: EditorialImageExportScale;
+}>;
+
+export type EditorialImageExportProgress = Readonly<{
+  completed: number;
+  message: string;
+  total: number;
+}>;
+
+export type EditorialImageExportFile = Readonly<{
+  blob: Blob;
+  fileName: string;
+  sceneId: string;
+  warnings: readonly EditorialExportWarning[];
+}>;
+
+export type EditorialImageExportInput = Readonly<{
+  onProgress?: (progress: EditorialImageExportProgress) => void;
+  options?: Partial<EditorialImageExportOptions>;
+  snapshot: EditorialExportSnapshot;
+}>;
+
+export type EditorialImageExportBundle = Readonly<{
+  files: readonly EditorialImageExportFile[];
+  index: EditorialImageExportIndex;
+  options: EditorialImageExportOptions;
+}>;
+
+export type EditorialImageExportIndex = Readonly<{
+  collectionId: string;
+  collectionTitle: string;
+  exportedAt: string;
+  format: 'png';
+  resolution: `${EditorialImageExportScale}x`;
+  scenes: readonly Readonly<{
+    fileName: string;
+    order: number;
+    sceneId: string;
+    title: string;
+    warnings: readonly EditorialExportWarning[];
+  }>[];
+  warnings: readonly EditorialExportWarning[];
+}>;
+
+const DEFAULT_OPTIONS: EditorialImageExportOptions = {
+  format: 'png',
+  includeIndex: true,
+  scale: 2,
+};
+const SCENE_WIDTH = 1280;
+const SCENE_HEIGHT = 720;
+
+/** Renders every ordered snapshot scene and downloads a deterministic ZIP package. */
+export async function exportEditorialCollectionImages({
+  onProgress,
+  options,
+  snapshot,
+}: EditorialImageExportInput): Promise<EditorialExportResult> {
+  assertBrowserExportSupport();
+  const bundle = await renderEditorialCollectionImages({ onProgress, options, snapshot });
+  onProgress?.({ completed: bundle.files.length, message: 'Packaging image files...', total: snapshot.scenes.length });
+  const archiveName = `${safeFilePart(bundle.options.fileNamePrefix || snapshot.collection.title, 'Editorial_Collection')}_Images.zip`;
+  const archive = await createEditorialImageArchive(bundle);
+  downloadBlob(archive, archiveName);
+  return {
+    filename: archiveName,
+    format: 'images',
+    message: snapshot.scenes.length > 0
+      ? `${snapshot.scenes.length} scene ${snapshot.scenes.length === 1 ? 'image' : 'images'} exported in ${archiveName}.`
+      : `${archiveName} contains collection metadata; there were no scenes to render.`,
+  };
+}
+
+/** Produces scene image blobs and metadata without downloading or mutating app state. */
+export async function renderEditorialCollectionImages({
+  onProgress,
+  options,
+  snapshot,
+}: EditorialImageExportInput): Promise<EditorialImageExportBundle> {
+  assertBrowserExportSupport();
+  const resolvedOptions = normalizeEditorialImageExportOptions(options);
+  onProgress?.({ completed: 0, message: 'Preparing linked images and fabrics...', total: snapshot.scenes.length });
+  const context = await prepareEditorialExportRenderContext(snapshot);
+  const { getFontEmbedCSS } = await import('html-to-image');
+  context.fontEmbedCss = await getFontEmbedCSS(document.body).catch(() => '');
+  const files: EditorialImageExportFile[] = [];
+
+  try {
+    for (const [index, scene] of snapshot.scenes.entries()) {
+      onProgress?.({
+        completed: index,
+        message: `Rendering scene ${index + 1} of ${snapshot.scenes.length}: ${scene.title}`,
+        total: snapshot.scenes.length,
+      });
+      files.push(await renderEditorialSceneImage({ context, index, options: resolvedOptions, scene }));
+    }
+
+    return {
+      files,
+      index: createEditorialImageExportIndex(snapshot, files, resolvedOptions),
+      options: resolvedOptions,
+    };
+  } finally {
+    context.cleanup();
+  }
+}
+
+export function normalizeEditorialImageExportOptions(
+  options?: Partial<EditorialImageExportOptions>,
+): EditorialImageExportOptions {
+  return {
+    fileNamePrefix: options?.fileNamePrefix?.trim() || undefined,
+    format: 'png',
+    includeIndex: options?.includeIndex ?? DEFAULT_OPTIONS.includeIndex,
+    scale: options?.scale === 1 || options?.scale === 3 ? options.scale : 2,
+  };
+}
+
+async function renderEditorialSceneImage({
+  context,
+  index,
+  options,
+  scene,
+}: {
+  context: PreparedEditorialExportRenderContext;
+  index: number;
+  options: EditorialImageExportOptions;
+  scene: EditorialExportSceneSnapshot;
+}): Promise<EditorialImageExportFile> {
+  const host = document.createElement('div');
+  host.setAttribute('aria-hidden', 'true');
+  Object.assign(host.style, {
+    height: `${SCENE_HEIGHT}px`,
+    left: '-20000px',
+    overflow: 'hidden',
+    pointerEvents: 'none',
+    position: 'fixed',
+    top: '0',
+    width: `${SCENE_WIDTH}px`,
+    zIndex: '-1',
+  });
+  document.body.appendChild(host);
+  const root = createRoot(host);
+
+  try {
+    flushSync(() => root.render(createElement(EditorialExportSceneCanvas, { context, scene })));
+    await waitForSceneAssets(host);
+    const { toBlob } = await import('html-to-image');
+    const blob = await toBlob(host, {
+      backgroundColor: context.theme.colors.background,
+      cacheBust: false,
+      fontEmbedCSS: context.fontEmbedCss,
+      height: SCENE_HEIGHT,
+      pixelRatio: options.scale,
+      skipAutoScale: true,
+      width: SCENE_WIDTH,
+    });
+    if (!blob) throw new Error(`Scene "${scene.title}" could not be rendered.`);
+    return {
+      blob,
+      fileName: editorialSceneFileName(index, context.snapshot.scenes.length, scene.title),
+      sceneId: scene.sceneId,
+      warnings: context.snapshot.warnings.filter((warning) => warning.sceneId === scene.sceneId),
+    };
+  } finally {
+    root.unmount();
+    host.remove();
+  }
+}
+
+async function createEditorialImageArchive(
+  bundle: EditorialImageExportBundle,
+) {
+  const { default: JSZip } = await import('jszip');
+  const zip = new JSZip();
+  bundle.files.forEach((file) => zip.file(file.fileName, file.blob));
+  if (bundle.options.includeIndex) {
+    zip.file('index.json', `${JSON.stringify(bundle.index, null, 2)}\n`);
+  }
+  if (bundle.files.length === 0) {
+    zip.file('No scenes.txt', 'This Editorial Collection had no scenes at export time.\n');
+  }
+  return zip.generateAsync({ compression: 'DEFLATE', compressionOptions: { level: 6 }, type: 'blob' });
+}
+
+function createEditorialImageExportIndex(
+  snapshot: EditorialExportSnapshot,
+  files: readonly EditorialImageExportFile[],
+  options: EditorialImageExportOptions,
+): EditorialImageExportIndex {
+  return {
+    collectionId: snapshot.collection.id,
+    collectionTitle: snapshot.collection.title,
+    exportedAt: snapshot.exportedAt,
+    format: options.format,
+    resolution: `${options.scale}x`,
+    scenes: files.map((file, sceneIndex) => ({
+      fileName: file.fileName,
+      order: sceneIndex + 1,
+      sceneId: file.sceneId,
+      title: snapshot.scenes[sceneIndex]?.title || 'Untitled scene',
+      warnings: file.warnings,
+    })),
+    warnings: snapshot.warnings,
+  };
+}
+
+type PreparedEditorialExportRenderContext = EditorialExportRenderContext & Readonly<{
+  cleanup: () => void;
+}> & { fontEmbedCss: string };
+
+async function prepareEditorialExportRenderContext(
+  snapshot: EditorialExportSnapshot,
+): Promise<PreparedEditorialExportRenderContext> {
+  const imageById = new Map<string, LocalImageAsset>();
+  for (const asset of snapshot.imageAssets) {
+    const resolved = await resolveEditorialExportImage(asset);
+    if (!resolved) continue;
+    imageById.set(asset.assetId, {
+      dataUrl: resolved.dataUrl,
+      height: asset.height,
+      id: asset.assetId,
+      mimeType: resolved.mimeType,
+      name: asset.filename || asset.altText || asset.assetId,
+      size: asset.sizeBytes || 0,
+      updatedAt: snapshot.exportedAt,
+      width: asset.width,
+    });
+  }
+
+  const theme: EditorialTheme = {
+    ...snapshot.theme,
+    createdAt: '',
+    description: snapshot.theme.name,
+    settings: {},
+    updatedAt: '',
+  };
+  const scenes = snapshot.scenes.map((scene): EditorialScene => ({
+    background: { ...scene.background },
+    blocks: scene.blocks.map((block): EditorialBlock => ({
+      content: structuredClone(block.content),
+      id: block.blockId,
+      order: block.order,
+      sceneId: scene.sceneId,
+      settings: structuredClone(block.layout.settings),
+      type: block.blockType,
+    })),
+    collectionId: snapshot.collection.id,
+    createdAt: '',
+    description: scene.description,
+    fabricFallbacks: scene.fabricFallbacks.map((fallback) => ({ ...fallback })),
+    fabricIds: [...scene.fabricReferences],
+    id: scene.sceneId,
+    narrativeRole: scene.narrativeRole,
+    order: scene.order,
+    sceneType: scene.sceneType,
+    subtitle: scene.subtitle,
+    title: scene.title,
+    transition: { ...scene.transition },
+    updatedAt: '',
+  }));
+  const coverImage = snapshot.collection.cover.imageReference
+    ? imageById.get(snapshot.collection.cover.imageReference)
+    : undefined;
+  const orderedProjectImages = snapshot.project?.imageReferences
+    .map((reference) => imageById.get(reference))
+    .filter((image): image is LocalImageAsset => Boolean(image)) ?? [];
+  const collection: EditorialCollection = {
+    createdAt: snapshot.collection.createdAt || '',
+    coverAccentColor: snapshot.collection.cover.accentColor,
+    coverImageFit: snapshot.collection.cover.fit,
+    coverImageId: coverImage && orderedProjectImages.some((image) => image.id === coverImage.id) ? coverImage.id : undefined,
+    coverImageUrl: coverImage?.dataUrl,
+    coverLabel: snapshot.collection.cover.label,
+    description: snapshot.collection.description || '',
+    id: snapshot.collection.id,
+    projectId: snapshot.collection.projectId,
+    scenes,
+    subtitle: snapshot.collection.subtitle || '',
+    templateType: snapshot.collection.templateType,
+    themeId: snapshot.theme.id,
+    title: snapshot.collection.title,
+    updatedAt: snapshot.collection.updatedAt || '',
+    viewerMode: snapshot.collection.viewerMode,
+  };
+  const fabrics = snapshot.fabricAssets.flatMap((fabric): Fabric[] => {
+    if (!fabric.available) return [];
+    const totalYards = fabric.quantity.totalYards ?? fabric.quantity.availableYards ?? 0;
+    return [{
+      archiveStatus: 'Active',
+      bestUses: [],
+      binNumber: '',
+      careNotes: '',
+      category: fabric.category || 'Textile',
+      colorFamily: fabric.color.family || fabric.color.name || 'Neutral',
+      composition: fabric.composition || '',
+      costPerYard: 0,
+      drape: 'Balanced',
+      handFeel: '',
+      id: fabric.fabricId,
+      image: fabric.imageAssetId ? imageById.get(fabric.imageAssetId) : undefined,
+      loreNote: fabric.notes || '',
+      moodTags: [],
+      name: fabric.name,
+      notes: fabric.notes || '',
+      opacity: 'Opaque',
+      primaryColor: fabric.color.name || fabric.color.family || '',
+      primaryColorHex: fabric.color.hex,
+      purchaseDate: '',
+      rarity: 'Core',
+      reservedYards: fabric.quantity.reservedYards || 0,
+      secondaryColors: [],
+      shelf: '',
+      status: 'In Stock',
+      storageLocation: '',
+      storageStatus: 'Filed',
+      stretch: 'None',
+      structure: '',
+      supplier: '',
+      tags: [],
+      texture: '',
+      totalYards,
+      updatedAt: snapshot.exportedAt,
+      usedYards: fabric.quantity.usedYards || 0,
+      weaveOrKnit: '',
+      weight: 'Medium',
+      widthInches: 0,
+    }];
+  });
+  const project = snapshot.project ? snapshotProject(snapshot, orderedProjectImages) : undefined;
+
+  return {
+    cleanup: () => undefined,
+    collection,
+    fabrics,
+    fontEmbedCss: '',
+    project,
+    scenes: new Map(scenes.map((scene) => [scene.id, scene])),
+    snapshot,
+    theme,
+  };
+}
+
+function snapshotProject(snapshot: EditorialExportSnapshot, images: LocalImageAsset[]): ApparelProject {
+  const project = snapshot.project!;
+  const materials: LinkedMaterial[] = project.linkedMaterials.map((material) => ({
+    ...material,
+    projectId: project.id,
+  }));
+  const tasks: StudioTask[] = project.tasks.map((task) => ({
+    ...task,
+    description: '',
+    phase: project.phase,
+    priority: 'Medium',
+    projectId: project.id,
+  }));
+  return {
+    collection: project.collection || '',
+    colorStory: project.colorStory || '',
+    designIntent: project.designIntent || '',
+    difficulty: project.difficulty,
+    galleryImages: images.slice(1),
+    garmentType: project.garmentType,
+    generalNotes: project.generalNotes || '',
+    heroImage: images[0],
+    id: project.id,
+    keyFeatures: [],
+    linkedMaterials: materials,
+    lookbookPages: [],
+    name: project.name,
+    notes: [],
+    phase: project.phase,
+    priority: 'Medium',
+    progress: project.progress,
+    season: project.season || '',
+    silhouette: '',
+    startDate: '',
+    status: 'Active',
+    summary: project.summary || '',
+    tags: [],
+    targetDate: project.targetDate,
+    targetWearer: '',
+    tasks,
+  };
+}
+
+function editorialSceneFileName(index: number, total: number, title: string) {
+  const digits = Math.max(2, String(Math.max(total, 1)).length);
+  return `${String(index + 1).padStart(digits, '0')}_${safeFilePart(title, 'Untitled_Scene')}.png`;
+}
+
+function safeFilePart(value: string, fallback: string) {
+  const normalized = value
+    .normalize('NFKD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9]+/gi, '_')
+    .replace(/^_+|_+$/g, '')
+    .slice(0, 72);
+  return normalized || fallback;
+}
+
+async function waitForSceneAssets(host: HTMLElement) {
+  await document.fonts?.ready;
+  await Promise.all([...host.querySelectorAll('img')].map((image) => {
+    if (image.complete) return Promise.resolve();
+    return new Promise<void>((resolve) => {
+      const finish = () => resolve();
+      image.addEventListener('load', finish, { once: true });
+      image.addEventListener('error', finish, { once: true });
+      window.setTimeout(finish, 2_000);
+    });
+  }));
+  await new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
+}
+
+function assertBrowserExportSupport() {
+  if (typeof document === 'undefined' || typeof URL === 'undefined') {
+    throw new Error('Image export is only available in a browser.');
+  }
+}
+
+function downloadBlob(blob: Blob, filename: string) {
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement('a');
+  anchor.href = url;
+  anchor.download = filename;
+  anchor.style.display = 'none';
+  document.body.appendChild(anchor);
+  anchor.click();
+  anchor.remove();
+  window.setTimeout(() => URL.revokeObjectURL(url), 1_000);
+}

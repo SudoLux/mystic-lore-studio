@@ -27,6 +27,7 @@ import { useStudioData } from '../../hooks/useStudioData';
 import { cn } from '../../lib/classes';
 import { formatStudioDate } from '../../lib/dates';
 import { duplicateEditorialCollection } from '../../lib/editorialCollections';
+import { exportEditorialCollectionImages } from '../../lib/editorialImageExport';
 import { exportEditorialCollectionToPdf } from '../../lib/editorialPdfExport';
 import type { EditorialExportAdapters } from '../../lib/editorialExport';
 import type { EditorialCollection } from '../../types/editorial';
@@ -37,6 +38,16 @@ type CollectionFormState =
   | { collection: EditorialCollection; mode: 'edit' };
 
 const editorialExportAdapters: EditorialExportAdapters = {
+  images: {
+    format: 'images',
+    run: (snapshot, context) => exportEditorialCollectionImages({
+      onProgress: context?.onProgress
+        ? (progress) => context.onProgress?.(progress.message)
+        : undefined,
+      options: context?.imageOptions,
+      snapshot,
+    }),
+  },
   pdf: {
     format: 'pdf',
     run: (snapshot) => exportEditorialCollectionToPdf({ snapshot }),

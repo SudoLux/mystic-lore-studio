@@ -7,7 +7,7 @@ import type {
   EditorialExportSceneSnapshot,
   EditorialExportSnapshot,
 } from './editorialExport';
-import { getImageBlob } from './imageBlobStore';
+import { resolveEditorialExportImage } from './editorialExportAssets';
 import type { EditorialJsonObject, EditorialJsonValue } from '../types/editorial';
 
 export type EditorialPdfExportInput = Readonly<{
@@ -593,32 +593,8 @@ class EditorialPdfComposer {
 }
 
 async function resolveImageData(asset: EditorialExportImageAssetSnapshot) {
-  const source = asset.source.dataUrl || asset.source.remoteUrl || asset.source.externalUrl;
-  if (!source) {
-    const blobKey = asset.source.previewBlobKey || asset.source.blobKey;
-    if (!blobKey) return undefined;
-    try {
-      const blob = await getImageBlob(blobKey);
-      if (!blob) return undefined;
-      const mimeType = blob.type || asset.mimeType || 'image/jpeg';
-      const dataUrl = `data:${mimeType};base64,${encodeBase64(new Uint8Array(await blob.arrayBuffer()))}`;
-      return { dataUrl, format: imageFormat(mimeType) };
-    } catch {
-      return undefined;
-    }
-  }
-  if (source.startsWith('data:')) {
-    return { dataUrl: source, format: imageFormat(asset.mimeType || source.slice(5, source.indexOf(';'))) };
-  }
-  try {
-    const response = await fetch(source);
-    if (!response.ok) return undefined;
-    const mimeType = response.headers.get('content-type') || asset.mimeType || 'image/jpeg';
-    const dataUrl = `data:${mimeType};base64,${encodeBase64(new Uint8Array(await response.arrayBuffer()))}`;
-    return { dataUrl, format: imageFormat(mimeType) };
-  } catch {
-    return undefined;
-  }
+  const resolved = await resolveEditorialExportImage(asset);
+  return resolved ? { dataUrl: resolved.dataUrl, format: imageFormat(resolved.mimeType) } : undefined;
 }
 
 function imageFormat(mimeType: string): 'JPEG' | 'PNG' | 'WEBP' {
@@ -626,21 +602,6 @@ function imageFormat(mimeType: string): 'JPEG' | 'PNG' | 'WEBP' {
   if (normalized.includes('png')) return 'PNG';
   if (normalized.includes('webp')) return 'WEBP';
   return 'JPEG';
-}
-
-function encodeBase64(bytes: Uint8Array) {
-  const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
-  let output = '';
-  for (let index = 0; index < bytes.length; index += 3) {
-    const first = bytes[index];
-    const second = bytes[index + 1];
-    const third = bytes[index + 2];
-    output += alphabet[first >> 2];
-    output += alphabet[((first & 3) << 4) | ((second ?? 0) >> 4)];
-    output += index + 1 < bytes.length ? alphabet[((second & 15) << 2) | ((third ?? 0) >> 6)] : '=';
-    output += index + 2 < bytes.length ? alphabet[third & 63] : '=';
-  }
-  return output;
 }
 
 function downloadPdf(bytes: Uint8Array, filename: string) {
