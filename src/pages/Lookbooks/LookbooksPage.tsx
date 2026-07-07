@@ -27,12 +27,21 @@ import { useStudioData } from '../../hooks/useStudioData';
 import { cn } from '../../lib/classes';
 import { formatStudioDate } from '../../lib/dates';
 import { duplicateEditorialCollection } from '../../lib/editorialCollections';
+import { exportEditorialCollectionToPdf } from '../../lib/editorialPdfExport';
+import type { EditorialExportAdapters } from '../../lib/editorialExport';
 import type { EditorialCollection } from '../../types/editorial';
 import type { ApparelProject } from '../../types/studio';
 
 type CollectionFormState =
   | { collection?: undefined; mode: 'create' }
   | { collection: EditorialCollection; mode: 'edit' };
+
+const editorialExportAdapters: EditorialExportAdapters = {
+  pdf: {
+    format: 'pdf',
+    run: (snapshot) => exportEditorialCollectionToPdf({ snapshot }),
+  },
+};
 
 export function LookbooksPage() {
   const {
@@ -174,6 +183,7 @@ export function LookbooksPage() {
 
       {exportCollection ? (
         <EditorialExportPanel
+          adapters={editorialExportAdapters}
           collection={exportCollection}
           fabrics={fabrics}
           onClose={() => setExportCollection(null)}
