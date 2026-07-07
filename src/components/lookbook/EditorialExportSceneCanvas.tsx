@@ -22,7 +22,7 @@ export function EditorialExportSceneCanvas({
   const renderScene = context.scenes.get(scene.sceneId);
   if (!renderScene) {
     return (
-      <div className="flex h-full w-full items-center justify-center bg-[#0a0a0a] p-16 text-center text-[#ede3cf]">
+      <div className="flex h-full w-full items-center justify-center bg-[#0a0a0a] p-16 text-center text-[#ede3cf]" data-editorial-export-scene>
         <div>
           <p className="text-xs uppercase tracking-[0.2em] text-[#c89b3c]">Editorial Collection</p>
           <h2 className="font-display mt-5 text-5xl">Scene unavailable</h2>
@@ -32,7 +32,7 @@ export function EditorialExportSceneCanvas({
   }
 
   return (
-    <div className="h-full w-full overflow-hidden">
+    <div className="h-full w-full overflow-hidden" data-editorial-export-scene>
       <EditorialSceneRenderer
         collection={context.collection}
         fabrics={context.fabrics}
