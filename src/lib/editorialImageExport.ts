@@ -177,9 +177,13 @@ async function renderEditorialSceneImage({
 
   try {
     flushSync(() => root.render(createElement(EditorialExportSceneCanvas, { context, scene })));
-    await waitForSceneAssets(host);
+    const sceneSurface = host.querySelector<HTMLElement>('[data-editorial-export-scene]');
+    if (!sceneSurface) throw new Error(`Scene "${scene.title}" did not create an export surface.`);
+    await waitForSceneAssets(sceneSurface);
     const { toBlob } = await import('html-to-image');
-    const blob = await toBlob(host, {
+    // Capture the scene surface rather than its off-screen host. Cloning the host
+    // also cloned z-index: -1, placing the scene behind html-to-image's background.
+    const blob = await toBlob(sceneSurface, {
       backgroundColor: context.theme.colors.background,
       cacheBust: false,
       fontEmbedCSS: context.fontEmbedCss,
@@ -189,6 +193,7 @@ async function renderEditorialSceneImage({
       width: SCENE_WIDTH,
     });
     if (!blob) throw new Error(`Scene "${scene.title}" could not be rendered.`);
+    await assertSceneImageHasVisibleContent(blob, scene.title);
     return {
       blob,
       fileName: editorialSceneFileName(index, context.snapshot.scenes.length, scene.title),
@@ -444,6 +449,45 @@ async function waitForSceneAssets(host: HTMLElement) {
     });
   }));
   await new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
+}
+
+async function assertSceneImageHasVisibleContent(
+  blob: Blob,
+  sceneTitle: string,
+) {
+  if (typeof createImageBitmap !== 'function') return;
+  const bitmap = await createImageBitmap(blob);
+  try {
+    const canvas = document.createElement('canvas');
+    canvas.width = 48;
+    canvas.height = 27;
+    const renderingContext = canvas.getContext('2d', { willReadFrequently: true });
+    if (!renderingContext) return;
+    renderingContext.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+    const pixels = renderingContext.getImageData(0, 0, canvas.width, canvas.height).data;
+    const minimum = [255, 255, 255];
+    const maximum = [0, 0, 0];
+    let opaqueSamples = 0;
+
+    for (let index = 0; index < pixels.length; index += 4) {
+      if (pixels[index + 3] < 16) continue;
+      opaqueSamples += 1;
+      for (let channel = 0; channel < 3; channel += 1) {
+        minimum[channel] = Math.min(minimum[channel], pixels[index + channel]);
+        maximum[channel] = Math.max(maximum[channel], pixels[index + channel]);
+      }
+    }
+
+    const colorRange = maximum.reduce(
+      (total, value, channel) => total + value - minimum[channel],
+      0,
+    );
+    if (opaqueSamples === 0 || colorRange < 18) {
+      throw new Error(`Scene "${sceneTitle}" rendered without visible content. Please retry the export.`);
+    }
+  } finally {
+    bitmap.close();
+  }
 }
 
 function assertBrowserExportSupport() {
