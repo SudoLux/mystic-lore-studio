@@ -4,6 +4,7 @@ import {
   CalendarDays,
   ChevronDown,
   Copy,
+  Download,
   Film,
   FolderOpen,
   Layers3,
@@ -14,6 +15,7 @@ import {
   Trash2,
 } from 'lucide-react';
 import { EditorialCollectionFormModal } from '../../components/lookbook/EditorialCollectionFormModal';
+import { EditorialExportPanel } from '../../components/lookbook/EditorialExportPanel';
 import { EditorialPosterArtwork } from '../../components/lookbook/EditorialPosterArtwork';
 import { EditorialSceneBuilder } from '../../components/lookbook/EditorialSceneBuilder';
 import { EditorialCollectionViewer } from '../../components/lookbook/EditorialCollectionViewer';
@@ -46,6 +48,7 @@ export function LookbooksPage() {
   const [openCollection, setOpenCollection] = useState<EditorialCollection | null>(null);
   const [builderCollection, setBuilderCollection] = useState<EditorialCollection | null>(null);
   const [deleteCandidate, setDeleteCandidate] = useState<EditorialCollection | null>(null);
+  const [exportCollection, setExportCollection] = useState<EditorialCollection | null>(null);
 
   useEffect(() => {
     if (projects.some((project) => project.id === selectedProjectId)) return;
@@ -121,6 +124,7 @@ export function LookbooksPage() {
                   )}
                   onEdit={() => setBuilderCollection(collection)}
                   onEditDetails={() => setFormState({ collection, mode: 'edit' })}
+                  onExport={() => setExportCollection(collection)}
                   onOpen={() => setOpenCollection(collection)}
                   project={selectedProject}
                 />
@@ -165,6 +169,16 @@ export function LookbooksPage() {
             setBuilderCollection(collection);
           }}
           project={projects.find((project) => project.id === builderCollection.projectId)}
+        />
+      ) : null}
+
+      {exportCollection ? (
+        <EditorialExportPanel
+          collection={exportCollection}
+          fabrics={fabrics}
+          onClose={() => setExportCollection(null)}
+          onPresent={() => setOpenCollection(exportCollection)}
+          project={projects.find((project) => project.id === exportCollection.projectId)}
         />
       ) : null}
 
@@ -233,6 +247,7 @@ function EditorialPosterCard({
   onDuplicate,
   onEdit,
   onEditDetails,
+  onExport,
   onOpen,
   project,
 }: {
@@ -241,6 +256,7 @@ function EditorialPosterCard({
   onDuplicate: () => void;
   onEdit: () => void;
   onEditDetails: () => void;
+  onExport: () => void;
   onOpen: () => void;
   project: ApparelProject;
 }) {
@@ -272,6 +288,7 @@ function EditorialPosterCard({
         </Button>
         <PosterAction icon={<Pencil size={16} />} label="Edit scenes" onClick={onEdit} />
         <PosterAction icon={<Settings2 size={16} />} label="Edit collection details" onClick={onEditDetails} />
+        <PosterAction icon={<Download size={16} />} label="Export collection" onClick={onExport} />
         <PosterAction icon={<Copy size={16} />} label="Duplicate collection" onClick={onDuplicate} />
         <PosterAction danger icon={<Trash2 size={16} />} label="Delete collection" onClick={onDelete} />
       </div>
