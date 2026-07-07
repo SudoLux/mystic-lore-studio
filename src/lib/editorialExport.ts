@@ -63,6 +63,7 @@ export type EditorialExportImageAssetSnapshot = Readonly<{
 export type EditorialExportFabricAssetSnapshot = Readonly<{
   available: boolean;
   category?: string;
+  composition?: string;
   color: Readonly<{
     family?: string;
     hex?: string;
@@ -166,10 +167,36 @@ export type EditorialExportSnapshot = Readonly<{
   imageAssets: readonly EditorialExportImageAssetSnapshot[];
   project?: Readonly<{
     collection?: string;
+    colorStory?: string;
+    designIntent?: string;
+    difficulty: ApparelProject['difficulty'];
     garmentType: ApparelProject['garmentType'];
+    generalNotes?: string;
     id: string;
+    imageReferences: readonly string[];
+    linkedMaterials: readonly Readonly<{
+      fabricId?: string;
+      id: string;
+      materialName: string;
+      neededYards: number;
+      notes?: string;
+      reservedYards: number;
+      role: ApparelProject['linkedMaterials'][number]['role'];
+      status: ApparelProject['linkedMaterials'][number]['status'];
+      usedYards: number;
+    }>[];
     name: string;
+    phase: ApparelProject['phase'];
+    progress: number;
     season?: string;
+    summary?: string;
+    targetDate?: string;
+    tasks: readonly Readonly<{
+      category: ApparelProject['tasks'][number]['category'];
+      id: string;
+      status: ApparelProject['tasks'][number]['status'];
+      title: string;
+    }>[];
   }>;
   scenes: readonly EditorialExportSceneSnapshot[];
   theme: EditorialExportThemeSnapshot;
@@ -197,9 +224,21 @@ export type EditorialExportResult = Readonly<{
   message?: string;
 }>;
 
+export type EditorialExportAdapterContext = Readonly<{
+  imageOptions?: Readonly<{
+    format: 'png';
+    includeIndex: boolean;
+    scale: 1 | 2 | 3;
+  }>;
+  onProgress?: (message: string) => void;
+}>;
+
 export type EditorialExportAdapter = Readonly<{
   format: Exclude<EditorialExportFormat, 'presentation'>;
-  run: (snapshot: EditorialExportSnapshot) => Promise<EditorialExportResult>;
+  run: (
+    snapshot: EditorialExportSnapshot,
+    context?: EditorialExportAdapterContext,
+  ) => Promise<EditorialExportResult>;
 }>;
 
 export type EditorialExportAdapters = Partial<
@@ -368,6 +407,7 @@ export function prepareEditorialExportSnapshot({
       return {
         available: Boolean(fabric),
         category: fabric?.category,
+        composition: cleanOptional(fabric?.composition || fallback?.composition),
         color: {
           family: fabric?.colorFamily,
           hex: fabric ? getFabricColorHex(fabric) : fallback?.colorHex,
@@ -438,7 +478,34 @@ export function prepareEditorialExportSnapshot({
     exportedAt,
     fabricAssets,
     imageAssets,
-    project: project ? { collection: cleanOptional(project.collection), garmentType: project.garmentType, id: project.id, name: project.name, season: cleanOptional(project.season) } : undefined,
+    project: project ? {
+      collection: cleanOptional(project.collection),
+      colorStory: cleanOptional(project.colorStory),
+      designIntent: cleanOptional(project.designIntent),
+      difficulty: project.difficulty,
+      garmentType: project.garmentType,
+      generalNotes: cleanOptional(project.generalNotes),
+      id: project.id,
+      imageReferences: availableImages.map((image) => image.id),
+      linkedMaterials: project.linkedMaterials.map((material) => ({
+        fabricId: material.fabricId,
+        id: material.id,
+        materialName: material.materialName,
+        neededYards: material.neededYards,
+        notes: cleanOptional(material.notes),
+        reservedYards: material.reservedYards,
+        role: material.role,
+        status: material.status,
+        usedYards: material.usedYards,
+      })),
+      name: project.name,
+      phase: project.phase,
+      progress: project.progress,
+      season: cleanOptional(project.season),
+      summary: cleanOptional(project.summary),
+      targetDate: cleanOptional(project.targetDate),
+      tasks: project.tasks.map((task) => ({ category: task.category, id: task.id, status: task.status, title: task.title })),
+    } : undefined,
     scenes,
     theme: snapshotTheme(resolvedTheme),
     version: 1,
@@ -502,7 +569,7 @@ function snapshotBlock(
     caption: record ? cleanOptional(stringValue(record.caption)) : undefined,
     content,
     fabricReferences: [...fabricIds].sort(compareStrings),
-    imageReferences: [...imageIds].sort(compareStrings),
+    imageReferences: [...imageIds],
     index,
     label: record ? cleanOptional(stringValue(record.label) || stringValue(record.eyebrow) || stringValue(record.attribution) || stringValue(record.title)) : undefined,
     layout: {
