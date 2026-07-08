@@ -11,6 +11,8 @@ import type {
   YardageEntry,
 } from '../types/studio';
 import { normalizeFabricDrape, normalizeWovenKnit } from './fabricMetadata';
+import { normalizePortfolioProfile } from './portfolio';
+import type { PortfolioProfile } from '../types/portfolio';
 import {
   isImageOperation,
   type SyncDeletion,
@@ -116,6 +118,9 @@ export async function checkCloudSyncReadiness(
           client.from(table).select('id').limit(1),
         ),
       ),
+    );
+    await databaseRequest<CloudRow[]>('validate portfolio profile storage', () =>
+      client.from('profiles').select('portfolio_profile').limit(1),
     );
 
     await storageRequest('validate image storage', () =>
@@ -245,12 +250,22 @@ export async function fetchCloudStudioData(userId: string): Promise<CloudSnapsho
   ];
 
   const seed = createSeedStudioData();
+  const profileRow = profileRows[0];
   const data: StudioData = {
     editorialCollections: [],
     fabrics,
     linkedMaterials,
     lookbookPages,
     notes,
+    portfolioProfile: profileRow
+      ? normalizePortfolioProfile({
+          ...asRecord(profileRow.portfolio_profile),
+          updatedAt: asString(
+            asRecord(profileRow.portfolio_profile).updatedAt,
+            asString(profileRow.updated_at),
+          ),
+        })
+      : seed.portfolioProfile,
     projects,
     settings: seed.settings,
     tasks,
@@ -445,6 +460,7 @@ export async function executeSyncOperations(
 }
 
 const RECORD_UPSERT_ORDER: SyncEntity[] = [
+  'profile',
   'project',
   'fabric',
   'material',
@@ -469,6 +485,7 @@ const TABLE_BY_ENTITY: Partial<Record<SyncEntity, string>> = {
   lookbook: 'lookbook_pages',
   material: 'materials',
   note: 'notes',
+  profile: 'profiles',
   project: 'projects',
   project_image: 'project_images',
   task: 'tasks',
@@ -506,6 +523,15 @@ async function upsertOperationBatch(
   const rows = operations.map((operation) =>
     operationPayload(userId, entity, operation.payload, maps),
   );
+  if (entity === 'profile') {
+    await databaseRequest('save portfolio profile', () =>
+      requireSupabase()
+        .from(table)
+        .upsert(rows, { onConflict: 'user_id' }),
+    );
+    return;
+  }
+
   const returned = await databaseRequest<CloudRow[]>(`save ${entity}`, () =>
     requireSupabase()
       .from(table)
@@ -533,6 +559,8 @@ function operationPayload(
   maps: CloudIdMaps,
 ) {
   switch (entity) {
+    case 'profile':
+      return profilePayload(userId, payload as PortfolioProfile & { id: string });
     case 'project':
       return projectPayload(userId, payload as StoredProject);
     case 'fabric':
@@ -566,6 +594,18 @@ function operationPayload(
     default:
       throw new Error(`Unsupported record payload: ${entity}.`);
   }
+}
+
+function profilePayload(
+  userId: string,
+  profile: PortfolioProfile & { id: string },
+) {
+  const { id: _id, ...portfolioProfile } = profile;
+  return {
+    portfolio_profile: portfolioProfile,
+    updated_at: profile.updatedAt || now(),
+    user_id: userId,
+  };
 }
 
 async function upsertImageOperation(
@@ -825,12 +865,17 @@ export function mergeByNewest(
     linkedMaterials: mergeRecords('material', cloud.linkedMaterials, local.linkedMaterials, tombstones, cloudInitialized),
     lookbookPages,
     notes: mergeRecords('note', cloud.notes, local.notes, tombstones, cloudInitialized),
+    portfolioProfile: newerProfile(cloud.portfolioProfile, local.portfolioProfile),
     projects,
     settings: local.settings,
     tasks: mergeRecords('task', cloud.tasks, local.tasks, tombstones, cloudInitialized),
     version: Math.max(cloud.version, local.version),
     yardageEntries: mergeRecords('yardage', cloud.yardageEntries, local.yardageEntries, tombstones, cloudInitialized),
   }, local);
+}
+
+function newerProfile(cloud: PortfolioProfile, local: PortfolioProfile) {
+  return timestamp(cloud) >= timestamp(local) ? cloud : local;
 }
 
 function mergeLocalImageCache(data: StudioData, local: StudioData): StudioData {

@@ -13,7 +13,13 @@ import {
   getDerivedFabricStorageStatus,
 } from './yardage';
 import { normalizeFabricDrape, normalizeWovenKnit } from './fabricMetadata';
-import { normalizePortfolioProjectSettings } from './portfolio';
+import {
+  createDefaultPortfolioProfile,
+  getSafePortfolioSettings,
+  normalizePortfolioProfile,
+  normalizePortfolioProjectSettings,
+  slugifyPortfolioValue,
+} from './portfolio';
 import type {
   ApparelProject,
   Fabric,
@@ -28,8 +34,13 @@ import type {
   YardageEntry,
 } from '../types/studio';
 import type { EditorialCollection } from '../types/editorial';
+import type {
+  PortfolioProfile,
+  PortfolioProjectSettingsPatch,
+  PortfolioVisibleSections,
+} from '../types/portfolio';
 
-export const LOCAL_DATA_VERSION = 5;
+export const LOCAL_DATA_VERSION = 6;
 const STORAGE_KEY = 'mystic-lore-studio:data';
 const USER_STORAGE_PREFIX = `${STORAGE_KEY}:user`;
 
@@ -50,6 +61,7 @@ export type StudioData = {
   linkedMaterials: LinkedMaterial[];
   lookbookPages: LookbookPage[];
   notes: StudioNote[];
+  portfolioProfile: PortfolioProfile;
   projects: StoredProject[];
   settings: AppSettings;
   tasks: StudioTask[];
@@ -84,6 +96,7 @@ export function createSeedStudioData(): StudioData {
     linkedMaterials: demoLinkedMaterials,
     lookbookPages: demoLookbookPages,
     notes: demoNotes,
+    portfolioProfile: createDefaultPortfolioProfile(),
     projects: demoProjects.map(stripProjectRelations).map((project) =>
       normalizeStoredProject(project),
     ),
@@ -280,6 +293,63 @@ export function updateProjectDetailsInData(
       };
     }),
   };
+}
+
+export function updatePortfolioProfileInData(
+  data: StudioData,
+  patch: Partial<PortfolioProfile>,
+): StudioData {
+  return {
+    ...data,
+    portfolioProfile: normalizePortfolioProfile({
+      ...data.portfolioProfile,
+      ...patch,
+      updatedAt: new Date().toISOString(),
+    }),
+  };
+}
+
+export function updateProjectPortfolioSettingsInData(
+  data: StudioData,
+  projectId: string,
+  patch: PortfolioProjectSettingsPatch,
+): StudioData {
+  return {
+    ...data,
+    projects: data.projects.map((project) => {
+      if (project.id !== projectId) return project;
+      const current = getSafePortfolioSettings(project);
+      return {
+        ...project,
+        portfolio: normalizePortfolioProjectSettings(
+          {
+            ...current,
+            ...patch,
+            portfolioSlug: patch.portfolioSlug === undefined
+              ? current.portfolioSlug
+              : slugifyPortfolioValue(patch.portfolioSlug),
+            updatedAt: new Date().toISOString(),
+            visibleSections: {
+              ...current.visibleSections,
+              ...patch.visibleSections,
+            },
+          },
+          project.name,
+          project.updatedAt,
+        ),
+      };
+    }),
+  };
+}
+
+export function updateProjectPortfolioSectionsInData(
+  data: StudioData,
+  projectId: string,
+  patch: Partial<PortfolioVisibleSections>,
+): StudioData {
+  return updateProjectPortfolioSettingsInData(data, projectId, {
+    visibleSections: patch,
+  });
 }
 
 export function deleteProjectInData(
@@ -635,6 +705,7 @@ function normalizeStudioData(data: StudioData): StudioData {
       ? data.editorialCollections
       : [],
     fabrics: data.fabrics.map(normalizeFabricRecord),
+    portfolioProfile: normalizePortfolioProfile(data.portfolioProfile),
     projects: data.projects.map((project) => normalizeStoredProject(project)),
     settings: normalizeAppSettings(data.settings),
     version: typeof data.version === 'number' ? data.version : LOCAL_DATA_VERSION,
