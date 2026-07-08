@@ -4,6 +4,7 @@ import {
   BookOpen,
   Columns3,
   Folder,
+  BriefcaseBusiness,
   LayoutDashboard,
   Settings,
 } from 'lucide-react';
@@ -37,6 +38,13 @@ export const navigationItems: NavItem[] = [
     shortLabel: 'Editorial',
     description: 'Editorial presentation studio',
     icon: BookOpen,
+  },
+  {
+    id: 'portfolio',
+    label: 'Portfolio',
+    shortLabel: 'Portfolio',
+    description: 'Recruiter presentation',
+    icon: BriefcaseBusiness,
   },
   {
     id: 'fabrics',

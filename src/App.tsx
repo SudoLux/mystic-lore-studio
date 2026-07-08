@@ -23,6 +23,7 @@ import { KanbanPage } from './pages/Kanban';
 import { LookbooksPage } from './pages/Lookbooks';
 import { ProjectDetailPage } from './pages/ProjectDetail';
 import { ProjectsPage } from './pages/Projects';
+import { PortfolioPage } from './pages/Portfolio';
 import { SettingsPage } from './pages/Settings';
 import { StatsPage } from './pages/Stats';
 import type { PageId } from './types/navigation';
@@ -65,6 +66,7 @@ function getInitialRoute(): AppRoute {
     section === 'dashboard' ||
     section === 'kanban' ||
     section === 'lookbooks' ||
+    section === 'portfolio' ||
     section === 'stats' ||
     section === 'settings'
   ) {
@@ -240,6 +242,7 @@ function StudioApp() {
       ),
       kanban: <KanbanPage />,
       lookbooks: <LookbooksPage />,
+      portfolio: <PortfolioPage />,
       fabrics: (
         <FabricVaultPage
           fabricId={route.fabricId}
