@@ -21,6 +21,7 @@ export type EditorialExportWarningCode =
   | 'missing-cover-image'
   | 'missing-fabric-asset'
   | 'missing-image-asset'
+  | 'preview-image-fallback'
   | 'unsupported-block-type';
 
 export type EditorialExportOptionDefinition = Readonly<{

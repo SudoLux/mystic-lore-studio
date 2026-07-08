@@ -95,11 +95,15 @@ export async function exportEditorialCollectionImages({
   const archiveName = `${safeFilePart(bundle.options.fileNamePrefix || snapshot.collection.title, 'Editorial_Collection')}_Images.zip`;
   const archive = await createEditorialImageArchive(bundle);
   downloadBlob(archive, archiveName);
+  const previewFallbackCount = bundle.index.warnings.filter((warning) => warning.code === 'preview-image-fallback').length;
+  const qualityNotice = previewFallbackCount > 0
+    ? ` ${previewFallbackCount} ${previewFallbackCount === 1 ? 'image used' : 'images used'} an offline preview because a master was unavailable.`
+    : '';
   return {
     filename: archiveName,
     format: 'images',
     message: snapshot.scenes.length > 0
-      ? `${snapshot.scenes.length} scene ${snapshot.scenes.length === 1 ? 'image' : 'images'} exported in ${archiveName}.`
+      ? `${snapshot.scenes.length} scene ${snapshot.scenes.length === 1 ? 'image' : 'images'} exported in ${archiveName}.${qualityNotice}`
       : `${archiveName} contains collection metadata; there were no scenes to render.`,
   };
 }
@@ -130,7 +134,7 @@ export async function renderEditorialCollectionImages({
 
     return {
       files,
-      index: createEditorialImageExportIndex(snapshot, files, resolvedOptions),
+      index: createEditorialImageExportIndex(snapshot, files, resolvedOptions, context.runtimeWarnings),
       options: resolvedOptions,
     };
   } finally {
@@ -198,7 +202,8 @@ async function renderEditorialSceneImage({
       blob,
       fileName: editorialSceneFileName(index, context.snapshot.scenes.length, scene.title),
       sceneId: scene.sceneId,
-      warnings: context.snapshot.warnings.filter((warning) => warning.sceneId === scene.sceneId),
+      warnings: [...context.snapshot.warnings, ...context.runtimeWarnings]
+        .filter((warning) => warning.sceneId === scene.sceneId),
     };
   } finally {
     root.unmount();
@@ -225,6 +230,7 @@ function createEditorialImageExportIndex(
   snapshot: EditorialExportSnapshot,
   files: readonly EditorialImageExportFile[],
   options: EditorialImageExportOptions,
+  runtimeWarnings: readonly EditorialExportWarning[],
 ): EditorialImageExportIndex {
   return {
     collectionId: snapshot.collection.id,
@@ -239,18 +245,21 @@ function createEditorialImageExportIndex(
       title: snapshot.scenes[sceneIndex]?.title || 'Untitled scene',
       warnings: file.warnings,
     })),
-    warnings: snapshot.warnings,
+    warnings: [...snapshot.warnings, ...runtimeWarnings]
+      .sort((left, right) => left.id.localeCompare(right.id, 'en')),
   };
 }
 
 type PreparedEditorialExportRenderContext = EditorialExportRenderContext & Readonly<{
   cleanup: () => void;
+  runtimeWarnings: readonly EditorialExportWarning[];
 }> & { fontEmbedCss: string };
 
 async function prepareEditorialExportRenderContext(
   snapshot: EditorialExportSnapshot,
 ): Promise<PreparedEditorialExportRenderContext> {
   const imageById = new Map<string, LocalImageAsset>();
+  const runtimeWarnings: EditorialExportWarning[] = [];
   for (const asset of snapshot.imageAssets) {
     const resolved = await resolveEditorialExportImage(asset);
     if (!resolved) continue;
@@ -264,6 +273,17 @@ async function prepareEditorialExportRenderContext(
       updatedAt: snapshot.exportedAt,
       width: asset.width,
     });
+    if (resolved.quality === 'preview') {
+      const usageSceneId = asset.usages.find((usage) => usage.sceneId)?.sceneId;
+      runtimeWarnings.push({
+        assetReference: asset.assetId,
+        code: 'preview-image-fallback',
+        id: `preview-image-fallback:${asset.assetId}`,
+        message: `${asset.filename || asset.altText || 'An editorial image'} used a compact offline preview because its full master was unavailable.`,
+        sceneId: usageSceneId,
+        severity: 'info',
+      });
+    }
   }
 
   const theme: EditorialTheme = {
@@ -297,18 +317,21 @@ async function prepareEditorialExportRenderContext(
     transition: { ...scene.transition },
     updatedAt: '',
   }));
-  const coverImage = snapshot.collection.cover.imageReference
-    ? imageById.get(snapshot.collection.cover.imageReference)
+  const project = snapshot.project ? snapshotProject(snapshot, imageById) : undefined;
+  const coverReference = snapshot.collection.cover.imageReference;
+  const selectedCover = coverReference ? imageById.get(coverReference) : undefined;
+  const selectedProjectCover = selectedCover && snapshot.project?.imageReferences.includes(selectedCover.id)
+    ? selectedCover
     : undefined;
-  const orderedProjectImages = snapshot.project?.imageReferences
-    .map((reference) => imageById.get(reference))
-    .filter((image): image is LocalImageAsset => Boolean(image)) ?? [];
+  const fallbackProjectCover = project?.heroImage ?? project?.galleryImages?.[0];
+  const externalCover = selectedCover && !selectedProjectCover ? selectedCover : undefined;
+  const projectCover = externalCover ? undefined : selectedProjectCover ?? fallbackProjectCover;
   const collection: EditorialCollection = {
     createdAt: snapshot.collection.createdAt || '',
     coverAccentColor: snapshot.collection.cover.accentColor,
     coverImageFit: snapshot.collection.cover.fit,
-    coverImageId: coverImage && orderedProjectImages.some((image) => image.id === coverImage.id) ? coverImage.id : undefined,
-    coverImageUrl: coverImage?.dataUrl,
+    coverImageId: projectCover?.id,
+    coverImageUrl: externalCover?.dataUrl,
     coverLabel: snapshot.collection.cover.label,
     description: snapshot.collection.description || '',
     id: snapshot.collection.id,
@@ -365,22 +388,31 @@ async function prepareEditorialExportRenderContext(
       widthInches: 0,
     }];
   });
-  const project = snapshot.project ? snapshotProject(snapshot, orderedProjectImages) : undefined;
-
   return {
     cleanup: () => undefined,
     collection,
     fabrics,
     fontEmbedCss: '',
     project,
+    runtimeWarnings,
     scenes: new Map(scenes.map((scene) => [scene.id, scene])),
     snapshot,
     theme,
   };
 }
 
-function snapshotProject(snapshot: EditorialExportSnapshot, images: LocalImageAsset[]): ApparelProject {
+function snapshotProject(
+  snapshot: EditorialExportSnapshot,
+  imageById: ReadonlyMap<string, LocalImageAsset>,
+): ApparelProject {
   const project = snapshot.project!;
+  const heroImage = project.imageReferences[0]
+    ? imageById.get(project.imageReferences[0])
+    : undefined;
+  const galleryImages = project.imageReferences
+    .slice(1)
+    .map((reference) => imageById.get(reference))
+    .filter((image): image is LocalImageAsset => Boolean(image));
   const materials: LinkedMaterial[] = project.linkedMaterials.map((material) => ({
     ...material,
     projectId: project.id,
@@ -397,10 +429,10 @@ function snapshotProject(snapshot: EditorialExportSnapshot, images: LocalImageAs
     colorStory: project.colorStory || '',
     designIntent: project.designIntent || '',
     difficulty: project.difficulty,
-    galleryImages: images.slice(1),
+    galleryImages,
     garmentType: project.garmentType,
     generalNotes: project.generalNotes || '',
-    heroImage: images[0],
+    heroImage,
     id: project.id,
     keyFeatures: [],
     linkedMaterials: materials,

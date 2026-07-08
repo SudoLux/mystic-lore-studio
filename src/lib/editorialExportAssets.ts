@@ -1,50 +1,101 @@
 import type { EditorialExportImageAssetSnapshot } from './editorialExport';
 import { getImageBlob } from './imageBlobStore';
+import { refreshSignedImageUrl } from './supabaseStudio';
 
 export type ResolvedEditorialExportImage = Readonly<{
   dataUrl: string;
   mimeType: string;
+  quality: 'external' | 'master' | 'preview';
+  source: 'external' | 'indexed-db' | 'preview-blob' | 'preview-data' | 'remote' | 'refreshed-remote';
 }>;
 
 /** Resolves a snapshot image without consulting editor or viewer state. */
 export async function resolveEditorialExportImage(
   asset: EditorialExportImageAssetSnapshot,
 ): Promise<ResolvedEditorialExportImage | undefined> {
-  const source = asset.source.dataUrl || asset.source.remoteUrl || asset.source.externalUrl;
-  if (source?.startsWith('data:')) {
-    return {
-      dataUrl: source,
-      mimeType: asset.mimeType || source.slice(5, source.indexOf(';')) || 'image/jpeg',
-    };
-  }
+  const remote = await fetchExportImage(asset.source.remoteUrl, asset.mimeType, 'master', 'remote');
+  if (remote) return remote;
 
-  if (source) {
+  if (asset.source.storagePath) {
     try {
-      const response = await fetch(source);
-      if (!response.ok) return undefined;
-      const mimeType = response.headers.get('content-type') || asset.mimeType || 'image/jpeg';
-      return {
-        dataUrl: bytesToDataUrl(new Uint8Array(await response.arrayBuffer()), mimeType),
-        mimeType,
-      };
+      const refreshedUrl = await refreshSignedImageUrl(asset.source.storagePath);
+      const refreshed = await fetchExportImage(refreshedUrl, asset.mimeType, 'master', 'refreshed-remote');
+      if (refreshed) return refreshed;
     } catch {
-      return undefined;
+      // Local masters and previews remain valid when cloud access is unavailable.
     }
   }
 
-  const blobKey = asset.source.previewBlobKey || asset.source.blobKey;
-  if (!blobKey) return undefined;
-  try {
-    const blob = await getImageBlob(blobKey);
-    if (!blob) return undefined;
-    const mimeType = blob.type || asset.mimeType || 'image/jpeg';
+  if (asset.source.blobKey) {
+    try {
+      const blob = await getImageBlob(asset.source.blobKey);
+      if (blob) return blobToResolvedImage(blob, asset.mimeType, 'master', 'indexed-db');
+    } catch {
+      // Continue to external and preview fallbacks.
+    }
+  }
+
+  const external = await fetchExportImage(asset.source.externalUrl, asset.mimeType, 'external', 'external');
+  if (external) return external;
+
+  if (asset.source.dataUrl?.startsWith('data:')) {
+    const mimeType = asset.mimeType
+      || asset.source.dataUrl.slice(5, asset.source.dataUrl.indexOf(';'))
+      || 'image/jpeg';
     return {
-      dataUrl: bytesToDataUrl(new Uint8Array(await blob.arrayBuffer()), mimeType),
+      dataUrl: asset.source.dataUrl,
       mimeType,
+      quality: 'preview',
+      source: 'preview-data',
     };
+  }
+
+  if (!asset.source.previewBlobKey) return undefined;
+  try {
+    const blob = await getImageBlob(asset.source.previewBlobKey);
+    return blob ? blobToResolvedImage(blob, asset.mimeType, 'preview', 'preview-blob') : undefined;
   } catch {
     return undefined;
   }
+}
+
+async function fetchExportImage(
+  source: string | undefined,
+  fallbackMimeType: string | undefined,
+  quality: ResolvedEditorialExportImage['quality'],
+  sourceType: ResolvedEditorialExportImage['source'],
+) {
+  if (!source) return undefined;
+  if (source.startsWith('data:')) {
+    return {
+      dataUrl: source,
+      mimeType: fallbackMimeType || source.slice(5, source.indexOf(';')) || 'image/jpeg',
+      quality,
+      source: sourceType,
+    } satisfies ResolvedEditorialExportImage;
+  }
+  try {
+    const response = await fetch(source);
+    if (!response.ok) return undefined;
+    return blobToResolvedImage(await response.blob(), fallbackMimeType, quality, sourceType);
+  } catch {
+    return undefined;
+  }
+}
+
+async function blobToResolvedImage(
+  blob: Blob,
+  fallbackMimeType: string | undefined,
+  quality: ResolvedEditorialExportImage['quality'],
+  source: ResolvedEditorialExportImage['source'],
+): Promise<ResolvedEditorialExportImage> {
+  const mimeType = blob.type || fallbackMimeType || 'image/jpeg';
+  return {
+    dataUrl: bytesToDataUrl(new Uint8Array(await blob.arrayBuffer()), mimeType),
+    mimeType,
+    quality,
+    source,
+  };
 }
 
 export function bytesToDataUrl(bytes: Uint8Array, mimeType: string) {
