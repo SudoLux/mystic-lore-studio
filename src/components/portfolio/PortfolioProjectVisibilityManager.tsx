@@ -6,7 +6,6 @@ import {
   Eye,
   Image as ImageIcon,
   Pencil,
-  Sparkles,
   X,
 } from 'lucide-react';
 import {
@@ -15,19 +14,25 @@ import {
   getPortfolioProjectDescription,
   getPortfolioProjectTitle,
   getSafePortfolioSettings,
-  slugifyPortfolioValue,
   sortPortfolioProjects,
 } from '../../utils/portfolioUtils';
 import { cn } from '../../lib/classes';
+import type { EditorialCollection } from '../../types/editorial';
 import type { PortfolioProjectSettingsPatch } from '../../types/portfolio';
-import type { ApparelProject, LocalImageAsset } from '../../types/studio';
+import type { ApparelProject, LinkedMaterial } from '../../types/studio';
 import { AdaptiveProjectImage } from '../projects/AdaptiveProjectImage';
 import { Badge } from '../shared/Badge';
 import { Button } from '../shared/Button';
 import { Card } from '../shared/Card';
-import { StoredImage } from '../shared/StoredImage';
+import { ProjectPortfolioSettingsPanel } from './ProjectPortfolioSettingsPanel';
+import {
+  getProjectPortfolioAssets,
+  resolveProjectPortfolioCover,
+} from './portfolioProjectAssets';
 
 type PortfolioProjectVisibilityManagerProps = {
+  editorialCollections: EditorialCollection[];
+  linkedMaterials: LinkedMaterial[];
   onUpdateSettings: (
     projectId: string,
     patch: PortfolioProjectSettingsPatch,
@@ -36,14 +41,9 @@ type PortfolioProjectVisibilityManagerProps = {
   usernameSlug: string;
 };
 
-type SettingsDraft = {
-  coverImageId: string;
-  description: string;
-  slug: string;
-  title: string;
-};
-
 export function PortfolioProjectVisibilityManager({
+  editorialCollections,
+  linkedMaterials,
   onUpdateSettings,
   projects,
   usernameSlug,
@@ -51,7 +51,6 @@ export function PortfolioProjectVisibilityManager({
   const sortedProjects = useMemo(() => sortPortfolioProjects(projects), [projects]);
   const [copiedProjectId, setCopiedProjectId] = useState<string | null>(null);
   const [editingProjectId, setEditingProjectId] = useState<string | null>(null);
-  const [settingsDraft, setSettingsDraft] = useState<SettingsDraft | null>(null);
   const [previewProjectId, setPreviewProjectId] = useState<string | null>(null);
 
   const publicCount = projects.filter(
@@ -62,6 +61,7 @@ export function PortfolioProjectVisibilityManager({
     return settings.isPublic && settings.featured;
   }).length;
   const previewProject = projects.find((project) => project.id === previewProjectId);
+  const editingProject = projects.find((project) => project.id === editingProjectId);
 
   const getUniqueSlug = (project: ApparelProject, requestedSlug?: string) => {
     const existingSlugs = projects
@@ -84,34 +84,6 @@ export function PortfolioProjectVisibilityManager({
         ? { portfolioSlug: getUniqueSlug(project) }
         : {}),
     });
-  };
-
-  const openSettings = (project: ApparelProject) => {
-    if (editingProjectId === project.id) {
-      setEditingProjectId(null);
-      setSettingsDraft(null);
-      return;
-    }
-    const settings = getSafePortfolioSettings(project);
-    setEditingProjectId(project.id);
-    setSettingsDraft({
-      coverImageId: settings.portfolioCoverImageId ?? '',
-      description: settings.customPortfolioDescription ?? '',
-      slug: settings.portfolioSlug === 'untitled' ? '' : settings.portfolioSlug,
-      title: settings.customPortfolioTitle ?? '',
-    });
-  };
-
-  const saveSettings = (project: ApparelProject) => {
-    if (!settingsDraft) return;
-    onUpdateSettings(project.id, {
-      customPortfolioDescription: settingsDraft.description.trim() || undefined,
-      customPortfolioTitle: settingsDraft.title.trim() || undefined,
-      portfolioCoverImageId: settingsDraft.coverImageId || undefined,
-      portfolioSlug: getUniqueSlug(project, settingsDraft.slug),
-    });
-    setEditingProjectId(null);
-    setSettingsDraft(null);
   };
 
   const copyLink = async (project: ApparelProject) => {
@@ -155,8 +127,8 @@ export function PortfolioProjectVisibilityManager({
       <div className="mt-5 grid gap-4 xl:grid-cols-2">
         {sortedProjects.map((project) => {
           const settings = getSafePortfolioSettings(project);
-          const assets = getProjectAssets(project);
-          const cover = resolvePortfolioCover(project, assets);
+          const assets = getProjectPortfolioAssets(project);
+          const cover = resolveProjectPortfolioCover(project, assets);
           const persistedSlug = project.portfolio?.portfolioSlug?.trim();
           const missingSlug = settings.isPublic
             && (!persistedSlug || settings.portfolioSlug === 'untitled');
@@ -164,8 +136,6 @@ export function PortfolioProjectVisibilityManager({
             usernameSlug || 'untitled',
             settings.portfolioSlug,
           );
-          const isEditing = editingProjectId === project.id && settingsDraft;
-
           return (
             <Card
               className="min-w-0 overflow-hidden p-0"
@@ -244,11 +214,11 @@ export function PortfolioProjectVisibilityManager({
                   <Button
                     aria-label={`Edit portfolio settings for ${getPortfolioProjectTitle(project)}`}
                     icon={<Pencil aria-hidden="true" size={15} />}
-                    onClick={() => openSettings(project)}
+                    onClick={() => setEditingProjectId(project.id)}
                     size="sm"
                     variant="secondary"
                   >
-                    {isEditing ? 'Close Settings' : 'Edit Settings'}
+                    Edit Settings
                   </Button>
                   {settings.isPublic ? (
                     <>
@@ -276,19 +246,6 @@ export function PortfolioProjectVisibilityManager({
                     </>
                   ) : null}
                 </div>
-
-                {isEditing ? (
-                  <ProjectPortfolioSettingsEditor
-                    assets={assets}
-                    draft={settingsDraft}
-                    onCancel={() => {
-                      setEditingProjectId(null);
-                      setSettingsDraft(null);
-                    }}
-                    onChange={setSettingsDraft}
-                    onSave={() => saveSettings(project)}
-                  />
-                ) : null}
               </div>
             </Card>
           );
@@ -301,99 +258,23 @@ export function PortfolioProjectVisibilityManager({
           project={previewProject}
         />
       ) : null}
-    </section>
-  );
-}
-
-function ProjectPortfolioSettingsEditor({
-  assets,
-  draft,
-  onCancel,
-  onChange,
-  onSave,
-}: {
-  assets: LocalImageAsset[];
-  draft: SettingsDraft;
-  onCancel: () => void;
-  onChange: (draft: SettingsDraft) => void;
-  onSave: () => void;
-}) {
-  return (
-    <div className="mt-5 border-t border-bronze/18 pt-5">
-      <div className="grid gap-3 sm:grid-cols-2">
-        <SettingsField
-          label="Portfolio title"
-          onChange={(title) => onChange({ ...draft, title })}
-          placeholder="Use the project title"
-          value={draft.title}
+      {editingProject ? (
+        <ProjectPortfolioSettingsPanel
+          editorialCollections={editorialCollections}
+          existingProjectSlugs={projects
+            .filter((project) => project.id !== editingProject.id)
+            .map((project) => getSafePortfolioSettings(project).portfolioSlug)}
+          linkedMaterials={linkedMaterials}
+          onClose={() => setEditingProjectId(null)}
+          onSave={(patch) => {
+            onUpdateSettings(editingProject.id, patch);
+            setEditingProjectId(null);
+          }}
+          project={editingProject}
+          usernameSlug={usernameSlug}
         />
-        <SettingsField
-          label="Portfolio slug"
-          onBlur={() => onChange({
-            ...draft,
-            slug: draft.slug.trim() ? slugifyPortfolioValue(draft.slug) : '',
-          })}
-          onChange={(slug) => onChange({ ...draft, slug })}
-          placeholder="project-name"
-          value={draft.slug}
-        />
-        <SettingsField
-          className="sm:col-span-2"
-          label="Recruiter description"
-          multiline
-          onChange={(description) => onChange({ ...draft, description })}
-          placeholder="A concise public-facing story for this garment."
-          value={draft.description}
-        />
-      </div>
-
-      {assets.length ? (
-        <fieldset className="mt-4">
-          <legend className="text-[0.65rem] font-semibold uppercase tracking-[0.16em] text-stardust/42">
-            Portfolio cover
-          </legend>
-          <div className="mt-2 grid grid-cols-5 gap-2 sm:grid-cols-7">
-            <button
-              aria-label="Choose automatic portfolio cover"
-              aria-pressed={!draft.coverImageId}
-              className={coverChoiceClass(!draft.coverImageId)}
-              onClick={() => onChange({ ...draft, coverImageId: '' })}
-              type="button"
-            >
-              <Sparkles aria-hidden="true" size={18} />
-              {!draft.coverImageId ? <ChoiceMark /> : null}
-            </button>
-            {assets.map((asset) => {
-              const selected = asset.id === draft.coverImageId;
-              return (
-                <button
-                  aria-label={`Choose ${asset.name} as portfolio cover`}
-                  aria-pressed={selected}
-                  className={coverChoiceClass(selected)}
-                  key={asset.id}
-                  onClick={() => onChange({ ...draft, coverImageId: asset.id })}
-                  title={asset.name}
-                  type="button"
-                >
-                  <StoredImage
-                    alt=""
-                    asset={asset}
-                    decorative
-                    displayOverride={{ objectFit: 'cover', zoom: 1 }}
-                  />
-                  {selected ? <ChoiceMark /> : null}
-                </button>
-              );
-            })}
-          </div>
-        </fieldset>
       ) : null}
-
-      <div className="mt-5 flex justify-end gap-2">
-        <Button onClick={onCancel} size="sm" variant="ghost">Cancel</Button>
-        <Button onClick={onSave} size="sm" variant="primary">Save Settings</Button>
-      </div>
-    </div>
+    </section>
   );
 }
 
@@ -405,7 +286,7 @@ function PortfolioProjectPreview({
   project: ApparelProject;
 }) {
   const settings = getSafePortfolioSettings(project);
-  const cover = resolvePortfolioCover(project, getProjectAssets(project));
+  const cover = resolveProjectPortfolioCover(project);
   return (
     <div
       aria-label={`${getPortfolioProjectTitle(project)} portfolio preview`}
@@ -493,49 +374,6 @@ function ToggleControl({
   );
 }
 
-function SettingsField({
-  className,
-  label,
-  multiline = false,
-  onBlur,
-  onChange,
-  placeholder,
-  value,
-}: {
-  className?: string;
-  label: string;
-  multiline?: boolean;
-  onBlur?: () => void;
-  onChange: (value: string) => void;
-  placeholder?: string;
-  value: string;
-}) {
-  const controlClass = 'min-h-[3rem] w-full rounded-xl border border-bronze/26 bg-midnight/42 px-3 text-sm text-stardust outline-none transition placeholder:text-stardust/24 focus:border-ember/56 focus:ring-2 focus:ring-ember/10';
-  return (
-    <label className={className}>
-      <span className="mb-2 block text-[0.65rem] font-semibold uppercase tracking-[0.16em] text-stardust/42">
-        {label}
-      </span>
-      {multiline ? (
-        <textarea
-          className={cn(controlClass, 'min-h-24 resize-none py-3')}
-          onChange={(event) => onChange(event.target.value)}
-          placeholder={placeholder}
-          value={value}
-        />
-      ) : (
-        <input
-          className={controlClass}
-          onBlur={onBlur}
-          onChange={(event) => onChange(event.target.value)}
-          placeholder={placeholder}
-          value={value}
-        />
-      )}
-    </label>
-  );
-}
-
 function WarningBadge({ label }: { label: string }) {
   return (
     <span className="inline-flex items-center gap-1.5 rounded-full border border-ember/38 bg-midnight/72 px-2.5 py-1 text-[0.68rem] text-ember">
@@ -550,36 +388,4 @@ function ProjectImagePlaceholder() {
       <ImageIcon aria-hidden="true" className="text-stardust/24" size={30} />
     </div>
   );
-}
-
-function ChoiceMark() {
-  return (
-    <span className="absolute right-1 top-1 flex h-5 w-5 items-center justify-center rounded-full bg-ember text-midnight">
-      <Check aria-hidden="true" size={12} strokeWidth={2.5} />
-    </span>
-  );
-}
-
-function coverChoiceClass(selected: boolean) {
-  return cn(
-    'relative flex aspect-[3/4] items-center justify-center overflow-hidden rounded-lg border bg-midnight/50 text-stardust/42 transition hover:border-ember/55 hover:text-ember',
-    selected ? 'border-ember/70 ring-2 ring-ember/12' : 'border-bronze/24',
-  );
-}
-
-function getProjectAssets(project: ApparelProject): LocalImageAsset[] {
-  const assets = new Map<string, LocalImageAsset>();
-  if (project.heroImage) assets.set(project.heroImage.id, project.heroImage);
-  project.galleryImages?.forEach((image) => assets.set(image.id, image));
-  return [...assets.values()];
-}
-
-function resolvePortfolioCover(
-  project: ApparelProject,
-  assets: LocalImageAsset[],
-): LocalImageAsset | undefined {
-  const settings = getSafePortfolioSettings(project);
-  return assets.find((asset) => asset.id === settings.portfolioCoverImageId)
-    ?? project.heroImage
-    ?? project.galleryImages?.[0];
 }
