@@ -180,6 +180,27 @@ export function getSafePortfolioSettings(
   );
 }
 
+export function sortPortfolioProjects<T extends PortfolioProjectLike>(
+  projects: readonly T[],
+): T[] {
+  return [...projects].sort((left, right) => {
+    const leftSettings = getSafePortfolioSettings(left);
+    const rightSettings = getSafePortfolioSettings(right);
+    if (leftSettings.isPublic !== rightSettings.isPublic) {
+      return leftSettings.isPublic ? -1 : 1;
+    }
+    if (leftSettings.featured !== rightSettings.featured) {
+      return leftSettings.featured ? -1 : 1;
+    }
+
+    const updatedDifference = portfolioTimestamp(right) - portfolioTimestamp(left);
+    if (updatedDifference) return updatedDifference;
+    return getPortfolioProjectTitle(left).localeCompare(
+      getPortfolioProjectTitle(right),
+    );
+  });
+}
+
 function firstText(...values: Array<string | undefined>) {
   return values.find((value) => value?.trim())?.trim() ?? '';
 }
@@ -198,4 +219,10 @@ function text(value: unknown): string {
 
 function optionalText(value: unknown): string | undefined {
   return text(value) || undefined;
+}
+
+function portfolioTimestamp(project: PortfolioProjectLike): number {
+  const settings = getSafePortfolioSettings(project);
+  const timestamp = Date.parse(settings.updatedAt || project.updatedAt || '');
+  return Number.isFinite(timestamp) ? timestamp : 0;
 }

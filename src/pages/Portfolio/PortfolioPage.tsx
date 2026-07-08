@@ -1,46 +1,38 @@
 import { useMemo, useState, type ReactNode } from 'react';
 import {
   BookOpen,
-  BriefcaseBusiness,
   Check,
   Copy,
-  Eye,
-  EyeOff,
   Link2,
   ShieldCheck,
 } from 'lucide-react';
 import { PortfolioProfileEditor } from '../../components/portfolio/PortfolioProfileEditor';
+import { PortfolioProjectVisibilityManager } from '../../components/portfolio/PortfolioProjectVisibilityManager';
 import { Badge } from '../../components/shared/Badge';
 import { Card } from '../../components/shared/Card';
 import { MobilePageHeader } from '../../components/shared/MobilePageHeader';
 import { PageHeader } from '../../components/shared/PageHeader';
 import { useStudioData } from '../../hooks/useStudioData';
-import { cn } from '../../lib/classes';
 import {
   buildPublicPortfolioUrl,
-  getPortfolioProjectDescription,
   getPortfolioProjectTitle,
   getSafePortfolioSettings,
+  sortPortfolioProjects,
 } from '../../lib/portfolio';
 import type { ApparelProject, LocalImageAsset } from '../../types/studio';
 
 export function PortfolioPage() {
   const {
     data: { editorialCollections, portfolioProfile, projects },
-    toggleProjectPublic,
     updatePortfolioProfile,
+    updateProjectPortfolioSettings,
   } = useStudioData();
   const [copiedPath, setCopiedPath] = useState<string | null>(null);
 
   const publicProjects = useMemo(
-    () => projects
-      .filter((project) => getSafePortfolioSettings(project).isPublic)
-      .sort((left, right) => {
-        const leftSettings = getSafePortfolioSettings(left);
-        const rightSettings = getSafePortfolioSettings(right);
-        return (leftSettings.sortOrder ?? Number.MAX_SAFE_INTEGER) -
-          (rightSettings.sortOrder ?? Number.MAX_SAFE_INTEGER);
-      }),
+    () => sortPortfolioProjects(projects).filter(
+      (project) => getSafePortfolioSettings(project).isPublic,
+    ),
     [projects],
   );
   const attachedEditorialIds = new Set(
@@ -92,47 +84,11 @@ export function PortfolioPage() {
             projects={publicProjects}
           />
 
-          <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_minmax(20rem,0.58fr)]">
-            <Card className="min-w-0">
-              <SectionHeading
-                icon={<Eye aria-hidden="true" size={19} />}
-                kicker="Project Visibility"
-                title="Choose what earns the spotlight"
-              />
-              <div className="mt-5 divide-y divide-bronze/16">
-                {projects.map((project) => (
-                  <ProjectVisibilityRow
-                    key={project.id}
-                    onToggle={(isPublic) => toggleProjectPublic(project.id, isPublic)}
-                    project={project}
-                  />
-                ))}
-              </div>
-            </Card>
-
-            <Card className="min-w-0">
-              <SectionHeading
-                icon={<BriefcaseBusiness aria-hidden="true" size={19} />}
-                kicker="Published Projects"
-                title={`${publicProjects.length} selected`}
-              />
-              <div className="mt-5 space-y-3">
-                {publicProjects.length ? publicProjects.slice(0, 5).map((project, index) => (
-                  <div className="flex items-center gap-3 rounded-2xl border border-bronze/18 bg-midnight/30 p-3" key={project.id}>
-                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-ember/28 bg-ember/10 text-xs font-semibold text-ember">
-                      {String(index + 1).padStart(2, '0')}
-                    </span>
-                    <div className="min-w-0">
-                      <p className="truncate text-sm font-medium text-stardust">{getPortfolioProjectTitle(project)}</p>
-                      <p className="truncate text-xs text-stardust/42">{project.garmentType} · {project.phase}</p>
-                    </div>
-                  </div>
-                )) : (
-                  <QuietEmpty text="Mark a project public to begin the recruiter sequence." />
-                )}
-              </div>
-            </Card>
-          </div>
+          <PortfolioProjectVisibilityManager
+            onUpdateSettings={updateProjectPortfolioSettings}
+            projects={projects}
+            usernameSlug={portfolioProfile.usernameSlug}
+          />
 
           <div className="grid gap-5 lg:grid-cols-2">
             <Card className="min-w-0">
@@ -206,30 +162,6 @@ function SectionHeading({ icon, kicker, title }: { icon: ReactNode; kicker: stri
   );
 }
 
-function ProjectVisibilityRow({ onToggle, project }: { onToggle: (isPublic: boolean) => void; project: ApparelProject }) {
-  const settings = getSafePortfolioSettings(project);
-  return (
-    <div className="flex items-center gap-3 py-4 first:pt-0 last:pb-0">
-      <span className={cn('flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border', settings.isPublic ? 'border-teal/36 bg-teal/10 text-teal' : 'border-bronze/22 bg-midnight/30 text-stardust/38')}>
-        {settings.isPublic ? <Eye aria-hidden="true" size={18} /> : <EyeOff aria-hidden="true" size={18} />}
-      </span>
-      <div className="min-w-0 flex-1">
-        <p className="truncate text-sm font-medium text-stardust">{getPortfolioProjectTitle(project)}</p>
-        <p className="mt-1 truncate text-xs text-stardust/42">{getPortfolioProjectDescription(project) || `${project.garmentType} · ${project.phase}`}</p>
-      </div>
-      <button
-        aria-label={`${settings.isPublic ? 'Hide' : 'Show'} ${project.name} in portfolio`}
-        aria-pressed={settings.isPublic}
-        className={cn('relative h-7 w-12 shrink-0 rounded-full border transition', settings.isPublic ? 'border-teal/55 bg-teal/24' : 'border-bronze/32 bg-midnight/55')}
-        onClick={() => onToggle(!settings.isPublic)}
-        type="button"
-      >
-        <span className={cn('absolute top-1 h-[1.1rem] w-[1.1rem] rounded-full shadow transition', settings.isPublic ? 'left-[1.65rem] bg-teal' : 'left-1 bg-stardust/40')} />
-      </button>
-    </div>
-  );
-}
-
 function SharePath({ copied, label, onCopy, path }: { copied: boolean; label: string; onCopy: () => void; path: string }) {
   return (
     <div className="flex min-w-0 items-center gap-3 rounded-2xl border border-bronze/18 bg-midnight/30 p-3">
@@ -244,17 +176,13 @@ function SharePath({ copied, label, onCopy, path }: { copied: boolean; label: st
   );
 }
 
-function QuietEmpty({ text }: { text: string }) {
-  return <p className="rounded-2xl border border-dashed border-bronze/24 bg-midnight/24 p-4 text-sm leading-6 text-stardust/48">{text}</p>;
-}
-
 function EmptyPortfolio() {
   return (
     <Card className="relative overflow-hidden py-14 text-center sm:py-20" elevated>
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_50%_15%,rgba(45,92,107,0.24),transparent_32%),radial-gradient(circle_at_50%_100%,rgba(154,108,60,0.2),transparent_38%)]" />
       <div className="relative mx-auto max-w-xl">
         <span className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl border border-ember/40 bg-ember/10 text-ember shadow-[0_18px_50px_rgba(200,155,60,0.12)]">
-          <BriefcaseBusiness aria-hidden="true" size={27} strokeWidth={1.7} />
+          <Link2 aria-hidden="true" size={27} strokeWidth={1.7} />
         </span>
         <h2 className="font-display mt-6 text-2xl leading-tight text-stardust sm:text-3xl">Your portfolio is waiting for its first legend.</h2>
         <p className="mx-auto mt-4 max-w-lg text-sm leading-7 text-stardust/58 sm:text-base">Create projects in Mystic Lore Studio, then choose which ones are ready to share.</p>
