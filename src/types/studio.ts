@@ -1,3 +1,5 @@
+import type { PortfolioProjectSettings } from './portfolio';
+
 export const projectPhases = [
   'Concept',
   'Research',
@@ -329,6 +331,7 @@ export type ApparelProject = {
   tasks: StudioTask[];
   notes: StudioNote[];
   lookbookPages: LookbookPage[];
+  portfolio?: PortfolioProjectSettings;
 };
 
 export type ProjectDetailsInput = Omit<

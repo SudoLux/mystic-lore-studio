@@ -13,6 +13,7 @@ import {
   getDerivedFabricStorageStatus,
 } from './yardage';
 import { normalizeFabricDrape, normalizeWovenKnit } from './fabricMetadata';
+import { normalizePortfolioProjectSettings } from './portfolio';
 import type {
   ApparelProject,
   Fabric,
@@ -83,7 +84,9 @@ export function createSeedStudioData(): StudioData {
     linkedMaterials: demoLinkedMaterials,
     lookbookPages: demoLookbookPages,
     notes: demoNotes,
-    projects: demoProjects.map(stripProjectRelations),
+    projects: demoProjects.map(stripProjectRelations).map((project) =>
+      normalizeStoredProject(project),
+    ),
     settings: createDefaultAppSettings(),
     tasks: demoTasks,
     version: LOCAL_DATA_VERSION,
@@ -556,6 +559,11 @@ function normalizeStoredProject(
       partialProject.generalNotes ?? seedProject?.generalNotes ?? '',
     keyFeatures:
       partialProject.keyFeatures ?? seedProject?.keyFeatures ?? project.tags,
+    portfolio: normalizePortfolioProjectSettings(
+      partialProject.portfolio,
+      project.name,
+      project.updatedAt,
+    ),
     silhouette: partialProject.silhouette ?? seedProject?.silhouette ?? '',
     targetWearer:
       partialProject.targetWearer ?? seedProject?.targetWearer ?? '',
@@ -627,6 +635,7 @@ function normalizeStudioData(data: StudioData): StudioData {
       ? data.editorialCollections
       : [],
     fabrics: data.fabrics.map(normalizeFabricRecord),
+    projects: data.projects.map((project) => normalizeStoredProject(project)),
     settings: normalizeAppSettings(data.settings),
     version: typeof data.version === 'number' ? data.version : LOCAL_DATA_VERSION,
     yardageEntries: Array.isArray(data.yardageEntries)
