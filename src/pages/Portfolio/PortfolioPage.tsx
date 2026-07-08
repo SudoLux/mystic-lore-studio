@@ -23,7 +23,7 @@ import type { ApparelProject, LocalImageAsset } from '../../types/studio';
 
 export function PortfolioPage() {
   const {
-    data: { editorialCollections, portfolioProfile, projects },
+    data: { editorialCollections, linkedMaterials, portfolioProfile, projects },
     updatePortfolioProfile,
     updateProjectPortfolioSettings,
   } = useStudioData();
@@ -85,6 +85,8 @@ export function PortfolioPage() {
           />
 
           <PortfolioProjectVisibilityManager
+            editorialCollections={editorialCollections}
+            linkedMaterials={linkedMaterials}
             onUpdateSettings={updateProjectPortfolioSettings}
             projects={projects}
             usernameSlug={portfolioProfile.usernameSlug}
