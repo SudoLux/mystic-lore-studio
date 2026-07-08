@@ -33,9 +33,12 @@ import {
   updateFabricInData,
   updateLinkedMaterialInData,
   updateNoteInData,
+  updatePortfolioProfileInData,
   updateProjectInData,
   updateProjectDetailsInData,
   updateProjectPhaseInData,
+  updateProjectPortfolioSectionsInData,
+  updateProjectPortfolioSettingsInData,
   updateTaskInData,
   updateTaskStatusInData,
   upsertLookbookPageInData,
@@ -89,6 +92,12 @@ import type {
   YardageEntry,
 } from '../types/studio';
 import type { EditorialCollection } from '../types/editorial';
+import type {
+  PortfolioProfile,
+  PortfolioProjectSettingsPatch,
+  PortfolioVisibleSections,
+} from '../types/portfolio';
+import { getSafePortfolioSettings } from '../lib/portfolio';
 
 export type SyncProgress = {
   completed: number;
@@ -137,6 +146,7 @@ type StudioDataContextValue = {
   updateFabricDetails: (fabricId: string, details: FabricDetailsInput) => void;
   updateLinkedMaterial: (linkedMaterial: LinkedMaterial) => void;
   updateNote: (note: StudioNote) => void;
+  updatePortfolioProfile: (profilePatch: Partial<PortfolioProfile>) => void;
   updateProject: (project: StoredProject) => void;
   updateProjectDetails: (
     projectId: string,
@@ -144,6 +154,24 @@ type StudioDataContextValue = {
     heroImageIntent?: ProjectHeroImageIntent,
   ) => void;
   updateProjectPhase: (projectId: string, phase: ProjectPhase) => void;
+  updateProjectPortfolioSections: (
+    projectId: string,
+    visibleSectionsPatch: Partial<PortfolioVisibleSections>,
+  ) => void;
+  updateProjectPortfolioSettings: (
+    projectId: string,
+    settingsPatch: PortfolioProjectSettingsPatch,
+  ) => void;
+  updateProjectPortfolioSlug: (projectId: string, slug: string) => void;
+  toggleProjectPublic: (projectId: string, isPublic: boolean) => void;
+  attachEditorialToPortfolioProject: (
+    projectId: string,
+    editorialCollectionId: string,
+  ) => void;
+  detachEditorialFromPortfolioProject: (
+    projectId: string,
+    editorialCollectionId: string,
+  ) => void;
   updateTask: (task: StudioTask) => void;
   updateTaskStatus: (taskId: string, status: TaskStatus) => void;
 };
@@ -746,7 +774,74 @@ export function StudioDataProvider({
   const updateLinkedMaterial = useCallback((material: LinkedMaterial) => mutate((data) => updateLinkedMaterialInData(data, material)), [mutate]);
   const updateTask = useCallback((task: StudioTask) => mutate((data) => updateTaskInData(data, task)), [mutate]);
   const updateNote = useCallback((note: StudioNote) => mutate((data) => updateNoteInData(data, note)), [mutate]);
+  const updatePortfolioProfile = useCallback(
+    (profilePatch: Partial<PortfolioProfile>) =>
+      mutate((data) => updatePortfolioProfileInData(data, profilePatch)),
+    [mutate],
+  );
   const updateProjectPhase = useCallback((projectId: string, phase: ProjectPhase) => mutate((data) => updateProjectPhaseInData(data, projectId, phase)), [mutate]);
+  const updateProjectPortfolioSettings = useCallback(
+    (projectId: string, settingsPatch: PortfolioProjectSettingsPatch) =>
+      mutate((data) =>
+        updateProjectPortfolioSettingsInData(data, projectId, settingsPatch),
+      ),
+    [mutate],
+  );
+  const toggleProjectPublic = useCallback(
+    (projectId: string, isPublic: boolean) =>
+      updateProjectPortfolioSettings(projectId, { isPublic }),
+    [updateProjectPortfolioSettings],
+  );
+  const updateProjectPortfolioSlug = useCallback(
+    (projectId: string, slug: string) =>
+      updateProjectPortfolioSettings(projectId, { portfolioSlug: slug }),
+    [updateProjectPortfolioSettings],
+  );
+  const updateProjectPortfolioSections = useCallback(
+    (
+      projectId: string,
+      visibleSectionsPatch: Partial<PortfolioVisibleSections>,
+    ) => mutate((data) =>
+      updateProjectPortfolioSectionsInData(
+        data,
+        projectId,
+        visibleSectionsPatch,
+      ),
+    ),
+    [mutate],
+  );
+  const attachEditorialToPortfolioProject = useCallback(
+    (projectId: string, editorialCollectionId: string) =>
+      mutate((data) => {
+        const project = data.projects.find((item) => item.id === projectId);
+        if (!project || !editorialCollectionId.trim()) return data;
+        const settings = getSafePortfolioSettings(project);
+        return updateProjectPortfolioSettingsInData(data, projectId, {
+          attachedEditorialCollectionIds: [
+            ...new Set([
+              ...settings.attachedEditorialCollectionIds,
+              editorialCollectionId.trim(),
+            ]),
+          ],
+        });
+      }),
+    [mutate],
+  );
+  const detachEditorialFromPortfolioProject = useCallback(
+    (projectId: string, editorialCollectionId: string) =>
+      mutate((data) => {
+        const project = data.projects.find((item) => item.id === projectId);
+        if (!project) return data;
+        const settings = getSafePortfolioSettings(project);
+        return updateProjectPortfolioSettingsInData(data, projectId, {
+          attachedEditorialCollectionIds:
+            settings.attachedEditorialCollectionIds.filter(
+              (id) => id !== editorialCollectionId,
+            ),
+        });
+      }),
+    [mutate],
+  );
   const updateTaskStatus = useCallback((taskId: string, status: TaskStatus) => mutate((data) => updateTaskStatusInData(data, taskId, status)), [mutate]);
   const saveLookbookPage = useCallback((page: LookbookPage) => mutate((data) => upsertLookbookPageInData(data, page)), [mutate]);
 
@@ -771,6 +866,7 @@ export function StudioDataProvider({
 
   const value = useMemo<StudioDataContextValue>(() => ({
     acceptCloudMigration,
+    attachEditorialToPortfolioProject,
     cancelSync,
     createEditorialCollection,
     createFabric,
@@ -785,6 +881,7 @@ export function StudioDataProvider({
     deleteNote,
     deleteProject,
     deleteTask,
+    detachEditorialFromPortfolioProject,
     dismissCloudMigration,
     exportData,
     failedOperationCount,
@@ -811,12 +908,17 @@ export function StudioDataProvider({
     updateFabricDetails,
     updateLinkedMaterial,
     updateNote,
+    updatePortfolioProfile,
     updateProject,
     updateProjectDetails,
     updateProjectPhase,
+    updateProjectPortfolioSections,
+    updateProjectPortfolioSettings,
+    updateProjectPortfolioSlug,
     updateTask,
     updateTaskStatus,
-  }), [acceptCloudMigration, cancelSync, createEditorialCollection, createFabric, createLinkedMaterial, createNote, createProject, createTask, deleteEditorialCollection, deleteFabric, deleteLinkedMaterial, deleteNote, deleteProject, deleteTask, dismissCloudMigration, exportData, failedOperationCount, importData, lastSyncedAt, localCacheWarning, migrationAvailable, migrationInProgress, pendingCount, previewImportData, rawData, reopenCloudMigration, resetData, retrySync, saveData, saveLookbookPage, syncError, syncNotice, syncPhase, syncProgress, syncStatus, updateEditorialCollection, updateFabric, updateFabricDetails, updateLinkedMaterial, updateNote, updateProject, updateProjectDetails, updateProjectPhase, updateTask, updateTaskStatus]);
+    toggleProjectPublic,
+  }), [acceptCloudMigration, attachEditorialToPortfolioProject, cancelSync, createEditorialCollection, createFabric, createLinkedMaterial, createNote, createProject, createTask, deleteEditorialCollection, deleteFabric, deleteLinkedMaterial, deleteNote, deleteProject, deleteTask, detachEditorialFromPortfolioProject, dismissCloudMigration, exportData, failedOperationCount, importData, lastSyncedAt, localCacheWarning, migrationAvailable, migrationInProgress, pendingCount, previewImportData, rawData, reopenCloudMigration, resetData, retrySync, saveData, saveLookbookPage, syncError, syncNotice, syncPhase, syncProgress, syncStatus, toggleProjectPublic, updateEditorialCollection, updateFabric, updateFabricDetails, updateLinkedMaterial, updateNote, updatePortfolioProfile, updateProject, updateProjectDetails, updateProjectPhase, updateProjectPortfolioSections, updateProjectPortfolioSettings, updateProjectPortfolioSlug, updateTask, updateTaskStatus]);
 
   return <StudioDataContext.Provider value={value}>{children}</StudioDataContext.Provider>;
 }

@@ -34,3 +34,10 @@ export interface PortfolioProjectSettings {
   sortOrder?: number;
   updatedAt: string;
 }
+
+export type PortfolioProjectSettingsPatch = Omit<
+  Partial<PortfolioProjectSettings>,
+  'visibleSections'
+> & {
+  visibleSections?: Partial<PortfolioVisibleSections>;
+};

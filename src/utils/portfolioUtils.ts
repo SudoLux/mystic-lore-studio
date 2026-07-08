@@ -79,6 +79,26 @@ export function createDefaultPortfolioProfile(
   };
 }
 
+export function normalizePortfolioProfile(
+  profile: Partial<PortfolioProfile> | undefined,
+): PortfolioProfile {
+  const defaults = createDefaultPortfolioProfile();
+
+  return {
+    avatarImageId: optionalText(profile?.avatarImageId),
+    bio: text(profile?.bio),
+    displayName: text(profile?.displayName),
+    email: optionalText(profile?.email),
+    headline: text(profile?.headline),
+    location: optionalText(profile?.location),
+    resumeUrl: optionalText(profile?.resumeUrl),
+    updatedAt: text(profile?.updatedAt) || defaults.updatedAt,
+    usernameSlug: profile?.usernameSlug?.trim()
+      ? slugifyPortfolioValue(profile.usernameSlug)
+      : defaults.usernameSlug,
+  };
+}
+
 export function createDefaultPortfolioVisibleSections(): PortfolioVisibleSections {
   return {
     downloads: false,
@@ -170,4 +190,12 @@ function stringArray(value: unknown): string[] {
     .filter((item): item is string => typeof item === 'string')
     .map((item) => item.trim())
     .filter(Boolean))];
+}
+
+function text(value: unknown): string {
+  return typeof value === 'string' ? value.trim() : '';
+}
+
+function optionalText(value: unknown): string | undefined {
+  return text(value) || undefined;
 }

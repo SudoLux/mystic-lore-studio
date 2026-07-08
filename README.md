@@ -74,7 +74,8 @@ complete file contents, and run the files in this order:
    `supabase/migrations/20260617010000_create_mystic_lore_schema.sql`
 2. **Run the cloud and Storage migrations:** first
    `supabase/migrations/20260621010000_add_cloud_sync_and_storage.sql`, then
-   `supabase/migrations/20260628010000_add_sync_tombstones.sql`.
+   `supabase/migrations/20260628010000_add_sync_tombstones.sql`, then
+   `supabase/migrations/20260707010000_add_portfolio_profile.sql`.
 3. **Verify tables:** open **Table Editor** and confirm `profiles`, `projects`,
    `fabrics`, `materials`, `tasks`, `notes`, `project_images`,
    `yardage_entries`, `lookbook_pages`, and `sync_tombstones` exist.
@@ -99,7 +100,7 @@ authenticated users can only read or change rows where `auth.uid() = user_id`.
 - **Bucket already exists:** rerun the Storage migration. It keeps
   `project-images` private, refreshes its limits, and safely recreates the
   owner-path policies.
-- **Cloud sync needs attention:** confirm all three migration files completed,
+- **Cloud sync needs attention:** confirm all four migration files completed,
   both Supabase environment variables point to the same project, and the
   `project-images` bucket is private. Then sign in again and choose **Retry
   Sync**.
