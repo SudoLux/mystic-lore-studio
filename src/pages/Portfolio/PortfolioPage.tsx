@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useMemo, useState, type ReactNode } from 'react';
 import {
   BookOpen,
   BriefcaseBusiness,
@@ -6,14 +6,11 @@ import {
   Copy,
   Eye,
   EyeOff,
-  Globe2,
   Link2,
   ShieldCheck,
-  Sparkles,
-  UserRound,
 } from 'lucide-react';
+import { PortfolioProfileEditor } from '../../components/portfolio/PortfolioProfileEditor';
 import { Badge } from '../../components/shared/Badge';
-import { Button } from '../../components/shared/Button';
 import { Card } from '../../components/shared/Card';
 import { MobilePageHeader } from '../../components/shared/MobilePageHeader';
 import { PageHeader } from '../../components/shared/PageHeader';
@@ -25,8 +22,7 @@ import {
   getPortfolioProjectTitle,
   getSafePortfolioSettings,
 } from '../../lib/portfolio';
-import type { PortfolioProfile } from '../../types/portfolio';
-import type { ApparelProject } from '../../types/studio';
+import type { ApparelProject, LocalImageAsset } from '../../types/studio';
 
 export function PortfolioPage() {
   const {
@@ -34,10 +30,7 @@ export function PortfolioPage() {
     toggleProjectPublic,
     updatePortfolioProfile,
   } = useStudioData();
-  const [profileDraft, setProfileDraft] = useState(portfolioProfile);
   const [copiedPath, setCopiedPath] = useState<string | null>(null);
-
-  useEffect(() => setProfileDraft(portfolioProfile), [portfolioProfile]);
 
   const publicProjects = useMemo(
     () => projects
@@ -58,10 +51,8 @@ export function PortfolioPage() {
   const attachedEditorials = editorialCollections.filter((collection) =>
     attachedEditorialIds.has(collection.id),
   );
-  const profileDirty = JSON.stringify(profileDraft) !== JSON.stringify(portfolioProfile);
-  const profilePath = buildPublicPortfolioUrl(profileDraft.usernameSlug || 'untitled');
-
-  const saveProfile = () => updatePortfolioProfile(profileDraft);
+  const profileImages = useMemo(() => getPortfolioImageAssets(projects), [projects]);
+  const profilePath = buildPublicPortfolioUrl(portfolioProfile.usernameSlug || 'untitled');
   const copyPath = async (path: string) => {
     try {
       await navigator.clipboard.writeText(`${window.location.origin}${path}`);
@@ -94,67 +85,12 @@ export function PortfolioPage() {
         <EmptyPortfolio />
       ) : (
         <>
-          <div className="grid gap-5 xl:grid-cols-[minmax(0,1.05fr)_minmax(22rem,0.7fr)]">
-            <Card className="min-w-0" elevated>
-              <SectionHeading
-                icon={<UserRound aria-hidden="true" size={19} />}
-                kicker="Portfolio Profile"
-                title="The person behind the work"
-              />
-              <div className="mt-6 grid gap-4 sm:grid-cols-2">
-                <ProfileField
-                  label="Display name"
-                  onChange={(value) => setProfileDraft((current) => ({ ...current, displayName: value }))}
-                  value={profileDraft.displayName}
-                />
-                <ProfileField
-                  label="Portfolio handle"
-                  onChange={(value) => setProfileDraft((current) => ({ ...current, usernameSlug: value }))}
-                  prefix="/portfolio/"
-                  value={profileDraft.usernameSlug}
-                />
-                <ProfileField
-                  className="sm:col-span-2"
-                  label="Headline"
-                  onChange={(value) => setProfileDraft((current) => ({ ...current, headline: value }))}
-                  value={profileDraft.headline}
-                />
-                <ProfileField
-                  label="Location"
-                  onChange={(value) => setProfileDraft((current) => ({ ...current, location: value || undefined }))}
-                  value={profileDraft.location ?? ''}
-                />
-                <ProfileField
-                  label="Recruiter email"
-                  onChange={(value) => setProfileDraft((current) => ({ ...current, email: value || undefined }))}
-                  type="email"
-                  value={profileDraft.email ?? ''}
-                />
-                <ProfileField
-                  className="sm:col-span-2"
-                  label="Bio"
-                  multiline
-                  onChange={(value) => setProfileDraft((current) => ({ ...current, bio: value }))}
-                  value={profileDraft.bio}
-                />
-              </div>
-              <div className="mt-5 flex flex-wrap items-center justify-between gap-3 border-t border-bronze/18 pt-5">
-                <p className="text-xs leading-5 text-stardust/45">
-                  Saved privately to your synced studio profile.
-                </p>
-                <Button disabled={!profileDirty} onClick={saveProfile} variant="primary">
-                  Save Profile
-                </Button>
-              </div>
-            </Card>
-
-            <Card className="min-w-0 overflow-hidden p-0">
-              <RecruiterPreview
-                profile={profileDraft}
-                projects={publicProjects}
-              />
-            </Card>
-          </div>
+          <PortfolioProfileEditor
+            imageAssets={profileImages}
+            onSave={updatePortfolioProfile}
+            profile={portfolioProfile}
+            projects={publicProjects}
+          />
 
           <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_minmax(20rem,0.58fr)]">
             <Card className="min-w-0">
@@ -236,7 +172,7 @@ export function PortfolioPage() {
                 />
                 {publicProjects.slice(0, 2).map((project) => {
                   const path = buildPublicPortfolioUrl(
-                    profileDraft.usernameSlug || 'untitled',
+                    portfolioProfile.usernameSlug || 'untitled',
                     getSafePortfolioSettings(project).portfolioSlug,
                   );
                   return (
@@ -270,31 +206,6 @@ function SectionHeading({ icon, kicker, title }: { icon: ReactNode; kicker: stri
   );
 }
 
-function ProfileField({ className, label, multiline = false, onChange, prefix, type = 'text', value }: {
-  className?: string;
-  label: string;
-  multiline?: boolean;
-  onChange: (value: string) => void;
-  prefix?: string;
-  type?: string;
-  value: string;
-}) {
-  const controlClass = 'min-h-[3.25rem] w-full rounded-xl border border-bronze/26 bg-midnight/42 px-3.5 text-sm text-stardust outline-none transition placeholder:text-stardust/26 focus:border-ember/56 focus:ring-2 focus:ring-ember/10';
-  return (
-    <label className={className}>
-      <span className="mb-2 block text-[0.68rem] font-semibold uppercase tracking-[0.16em] text-stardust/46">{label}</span>
-      <div className="relative">
-        {prefix ? <span className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-xs text-stardust/32">{prefix}</span> : null}
-        {multiline ? (
-          <textarea className={cn(controlClass, 'min-h-24 resize-none py-3')} onChange={(event) => onChange(event.target.value)} value={value} />
-        ) : (
-          <input className={cn(controlClass, prefix && 'pl-[5.7rem]')} onChange={(event) => onChange(event.target.value)} type={type} value={value} />
-        )}
-      </div>
-    </label>
-  );
-}
-
 function ProjectVisibilityRow({ onToggle, project }: { onToggle: (isPublic: boolean) => void; project: ApparelProject }) {
   const settings = getSafePortfolioSettings(project);
   return (
@@ -315,29 +226,6 @@ function ProjectVisibilityRow({ onToggle, project }: { onToggle: (isPublic: bool
       >
         <span className={cn('absolute top-1 h-[1.1rem] w-[1.1rem] rounded-full shadow transition', settings.isPublic ? 'left-[1.65rem] bg-teal' : 'left-1 bg-stardust/40')} />
       </button>
-    </div>
-  );
-}
-
-function RecruiterPreview({ profile, projects }: { profile: PortfolioProfile; projects: ApparelProject[] }) {
-  return (
-    <div className="relative flex min-h-[28rem] flex-col overflow-hidden bg-[radial-gradient(circle_at_75%_18%,rgba(45,92,107,0.28),transparent_28%),linear-gradient(145deg,#11151a,#0a0a0a_52%,#241a14)] p-6 sm:p-7">
-      <div className="absolute inset-0 opacity-30 [background-image:linear-gradient(rgba(200,155,60,0.06)_1px,transparent_1px),linear-gradient(90deg,rgba(200,155,60,0.06)_1px,transparent_1px)] [background-size:36px_36px]" />
-      <div className="relative flex items-center justify-between">
-        <Badge variant="ember">Recruiter Preview</Badge>
-        <Globe2 aria-hidden="true" className="text-stardust/34" size={19} />
-      </div>
-      <div className="relative mt-auto">
-        <Sparkles aria-hidden="true" className="mb-4 text-ember" size={22} />
-        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-ember">Independent garment studio</p>
-        <h2 className="font-display mt-3 text-3xl leading-tight text-stardust sm:text-4xl">{profile.displayName || 'Your name'}</h2>
-        <p className="mt-3 max-w-md text-base leading-7 text-stardust/68">{profile.headline || 'Designer, maker, and visual storyteller.'}</p>
-        <div className="mt-6 flex items-center gap-3 border-t border-bronze/22 pt-4 text-xs text-stardust/46">
-          <span>{projects.length} selected project{projects.length === 1 ? '' : 's'}</span>
-          <span aria-hidden="true">·</span>
-          <span>{profile.location || 'Location open'}</span>
-        </div>
-      </div>
     </div>
   );
 }
@@ -373,4 +261,13 @@ function EmptyPortfolio() {
       </div>
     </Card>
   );
+}
+
+function getPortfolioImageAssets(projects: ApparelProject[]): LocalImageAsset[] {
+  const assets = new Map<string, LocalImageAsset>();
+  projects.forEach((project) => {
+    if (project.heroImage) assets.set(project.heroImage.id, project.heroImage);
+    project.galleryImages?.forEach((image) => assets.set(image.id, image));
+  });
+  return [...assets.values()];
 }
