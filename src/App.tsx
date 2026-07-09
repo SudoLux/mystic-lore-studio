@@ -24,8 +24,11 @@ import { LookbooksPage } from './pages/Lookbooks';
 import { ProjectDetailPage } from './pages/ProjectDetail';
 import { ProjectsPage } from './pages/Projects';
 import { PortfolioPage } from './pages/Portfolio';
+import { PublicPortfolioPage } from './pages/PublicPortfolio';
 import { SettingsPage } from './pages/Settings';
 import { StatsPage } from './pages/Stats';
+import { preparePortfolioHomepageSnapshot } from './utils/portfolioSnapshot';
+import { slugifyPortfolioValue } from './utils/portfolioUtils';
 import type { PageId } from './types/navigation';
 import type { ApparelProject, Fabric } from './types/studio';
 
@@ -33,6 +36,11 @@ type AppRoute = {
   fabricId?: string;
   page: PageId;
   projectId?: string;
+};
+
+type PublicPortfolioRoute = {
+  projectSlug?: string;
+  usernameSlug: string;
 };
 
 type ProjectFormState =
@@ -76,6 +84,19 @@ function getInitialRoute(): AppRoute {
   return { page: 'dashboard' };
 }
 
+function getPublicPortfolioRoute(): PublicPortfolioRoute | null {
+  const [section, usernameSlug, projectSlug] = window.location.pathname
+    .split('/')
+    .filter(Boolean);
+
+  if (section !== 'portfolio' || !usernameSlug) return null;
+
+  return {
+    projectSlug: projectSlug ? slugifyPortfolioValue(projectSlug) : undefined,
+    usernameSlug: slugifyPortfolioValue(usernameSlug),
+  };
+}
+
 function App() {
   const { isLoading, session } = useAuth();
 
@@ -96,7 +117,7 @@ function StudioApp() {
     cancelSync,
     createFabric,
     createProject,
-    data: { fabrics, projects },
+    data: { editorialCollections, fabrics, portfolioProfile, projects },
     deleteFabric,
     deleteProject,
     dismissCloudMigration,
@@ -127,6 +148,25 @@ function StudioApp() {
     useState<Fabric | null>(null);
   const [deleteProjectCandidate, setDeleteProjectCandidate] =
     useState<ApparelProject | null>(null);
+  const publicPortfolioRoute = getPublicPortfolioRoute();
+  const publicPortfolioAssets = useMemo(() => {
+    const assets = new Map<string, NonNullable<ApparelProject['heroImage']>>();
+    projects.forEach((project) => {
+      if (project.heroImage) assets.set(project.heroImage.id, project.heroImage);
+      project.galleryImages?.forEach((image) => assets.set(image.id, image));
+    });
+    return [...assets.values()];
+  }, [projects]);
+  const publicPortfolioSnapshot = useMemo(
+    () => preparePortfolioHomepageSnapshot({
+      assets: publicPortfolioAssets,
+      editorialCollections,
+      fabrics,
+      portfolioProfile,
+      projects,
+    }),
+    [editorialCollections, fabrics, portfolioProfile, projects, publicPortfolioAssets],
+  );
 
   useEffect(() => {
     const handleHashChange = () => setRoute(getInitialRoute());
@@ -259,6 +299,19 @@ function StudioApp() {
 
     return pages[route.page];
   }, [route, projects]);
+
+  if (publicPortfolioRoute) {
+    return (
+      <PublicPortfolioPage
+        isPublished={
+          publicPortfolioRoute.usernameSlug
+          === publicPortfolioSnapshot.profile.usernameSlug
+        }
+        projectSlug={publicPortfolioRoute.projectSlug}
+        snapshot={publicPortfolioSnapshot}
+      />
+    );
+  }
 
   return (
     <>
