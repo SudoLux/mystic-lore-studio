@@ -39,6 +39,7 @@ type AppRoute = {
 };
 
 type PublicPortfolioRoute = {
+  editorialSlug?: string;
   projectSlug?: string;
   usernameSlug: string;
 };
@@ -85,14 +86,21 @@ function getInitialRoute(): AppRoute {
 }
 
 function getPublicPortfolioRoute(): PublicPortfolioRoute | null {
-  const [section, usernameSlug, projectSlug] = window.location.pathname
+  const [section, usernameSlug, contentType, contentSlug] = window.location.pathname
     .split('/')
     .filter(Boolean);
 
   if (section !== 'portfolio' || !usernameSlug) return null;
 
+  if (contentType === 'editorials') {
+    return {
+      editorialSlug: contentSlug ? slugifyPortfolioValue(contentSlug) : undefined,
+      usernameSlug: slugifyPortfolioValue(usernameSlug),
+    };
+  }
+
   return {
-    projectSlug: projectSlug ? slugifyPortfolioValue(projectSlug) : undefined,
+    projectSlug: contentType ? slugifyPortfolioValue(contentType) : undefined,
     usernameSlug: slugifyPortfolioValue(usernameSlug),
   };
 }
@@ -303,6 +311,7 @@ function StudioApp() {
   if (publicPortfolioRoute) {
     return (
       <PublicPortfolioPage
+        editorialSlug={publicPortfolioRoute.editorialSlug}
         isPublished={
           publicPortfolioRoute.usernameSlug
           === publicPortfolioSnapshot.profile.usernameSlug
