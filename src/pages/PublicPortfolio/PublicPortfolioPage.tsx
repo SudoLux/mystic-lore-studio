@@ -48,6 +48,9 @@ export function PublicPortfolioPage({
   }, [selectedProject, snapshot.profile.displayName]);
 
   if (!isPublished || !snapshot.projects.length) {
+    if (projectSlug) {
+      return <MissingProject profileSlug={snapshot.profile.usernameSlug || publicProfileSlugFallback(snapshot)} />;
+    }
     return <UnpublishedPortfolio displayName={isPublished ? snapshot.profile.displayName : undefined} />;
   }
 
@@ -56,7 +59,11 @@ export function PublicPortfolioPage({
   }
 
   return selectedProject ? (
-    <PublicProjectPage profile={snapshot.profile} project={selectedProject} />
+    <PublicProjectPage
+      profile={snapshot.profile}
+      project={selectedProject}
+      projects={snapshot.projects}
+    />
   ) : (
     <PortfolioHomepage snapshot={snapshot} />
   );
@@ -243,12 +250,27 @@ function EditorialCard({ editorial, href }: { editorial: PortfolioEditorialSnaps
 function PublicProjectPage({
   profile,
   project,
+  projects,
 }: {
   profile: PortfolioHomepageSnapshot['profile'];
   project: PortfolioProjectSnapshot;
+  projects: readonly PortfolioProjectSnapshot[];
 }) {
   const homeHref = buildPublicPortfolioUrl(profile.usernameSlug);
-  const gallery = uniqueImages([project.coverImage, ...project.featuredImages]);
+  const projectIndex = projects.findIndex((candidate) => candidate.slug === project.slug);
+  const previousProject = projectIndex > 0 ? projects[projectIndex - 1] : undefined;
+  const nextProject = projectIndex >= 0 && projectIndex < projects.length - 1
+    ? projects[projectIndex + 1]
+    : undefined;
+  const gallery = project.visibleSections.gallery ? uniqueImages([...project.featuredImages]) : [];
+  const hasOverviewDetails = Boolean(
+    project.overview?.collection
+      || project.overview?.season
+      || project.overview?.silhouette
+      || project.overview?.targetWearer
+      || project.overview?.designIntent
+      || project.description,
+  );
 
   return (
     <PublicPortfolioFrame>
@@ -263,7 +285,12 @@ function PublicProjectPage({
               {project.overview?.garmentType ? <p className="text-xs font-semibold uppercase tracking-[0.2em] text-ember">{project.overview.garmentType}</p> : null}
               <h1 className="font-display mt-4 text-[clamp(2.7rem,7vw,5.8rem)] leading-[0.98] text-stardust">{project.title}</h1>
               {project.description ? <p className="mt-6 text-lg leading-8 text-stardust/62">{project.description}</p> : null}
-              {project.skills.length ? <div className="mt-7"><SkillList skills={project.skills} /></div> : null}
+              {project.skills.length ? (
+                <div className="mt-7 rounded-xl border border-bronze/18 bg-[rgba(17,17,17,0.58)] p-4">
+                  <p className="mb-3 text-[0.65rem] font-semibold uppercase tracking-[0.18em] text-stardust/42">Role / Skills / Tools</p>
+                  <SkillList skills={project.skills} />
+                </div>
+              ) : null}
             </div>
             <div className="aspect-[4/5] max-h-[760px] overflow-hidden rounded-2xl border border-bronze/28 bg-charcoal shadow-[0_30px_90px_rgba(0,0,0,0.38)]">
               <PortfolioImage image={project.coverImage} />
@@ -271,19 +298,22 @@ function PublicProjectPage({
           </div>
         </section>
 
-        {project.overview ? (
+        {project.visibleSections.overview && hasOverviewDetails ? (
           <ProjectSection eyebrow="Overview" title="Design Direction">
             <div className="grid gap-px overflow-hidden rounded-xl border border-bronze/20 bg-bronze/20 sm:grid-cols-2 lg:grid-cols-4">
-              <ProjectFact label="Collection" value={project.overview.collection} />
-              <ProjectFact label="Season" value={project.overview.season} />
-              <ProjectFact label="Silhouette" value={project.overview.silhouette} />
-              <ProjectFact label="For" value={project.overview.targetWearer} />
+              <ProjectFact label="Collection" value={project.overview?.collection ?? ''} />
+              <ProjectFact label="Season" value={project.overview?.season ?? ''} />
+              <ProjectFact label="Silhouette" value={project.overview?.silhouette ?? ''} />
+              <ProjectFact label="For" value={project.overview?.targetWearer ?? ''} />
             </div>
-            {project.overview.designIntent ? <p className="mt-8 max-w-4xl text-lg leading-9 text-stardust/65">{project.overview.designIntent}</p> : null}
+            {project.description ? (
+              <p className="mt-8 max-w-4xl text-lg leading-9 text-stardust/70">{project.description}</p>
+            ) : null}
+            {project.overview?.designIntent ? <p className="mt-8 max-w-4xl text-lg leading-9 text-stardust/65">{project.overview.designIntent}</p> : null}
           </ProjectSection>
         ) : null}
 
-        {gallery.length ? (
+        {project.visibleSections.gallery && gallery.length ? (
           <ProjectSection eyebrow="Selected imagery" title="Gallery">
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {gallery.map((image, index) => (
@@ -295,7 +325,7 @@ function PublicProjectPage({
           </ProjectSection>
         ) : null}
 
-        {project.materials.length ? (
+        {project.visibleSections.materials && project.materials.length ? (
           <ProjectSection eyebrow="Material language" title="Materials">
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {project.materials.map((material, index) => (
@@ -306,6 +336,14 @@ function PublicProjectPage({
                       <p className="text-xs uppercase tracking-[0.17em] text-ember">{material.role || material.category || 'Material'}</p>
                       <h3 className="mt-2 text-lg font-semibold text-stardust">{material.name}</h3>
                       {material.composition ? <p className="mt-2 text-sm leading-6 text-stardust/52">{material.composition}</p> : null}
+                      {typeof material.neededYards === 'number' && material.neededYards > 0 ? (
+                        <p className="mt-3 text-xs uppercase tracking-[0.14em] text-stardust/40">
+                          {formatYards(material.neededYards)} yd planned
+                          {typeof material.usedYards === 'number' && material.usedYards > 0
+                            ? ` · ${formatYards(material.usedYards)} yd used`
+                            : ''}
+                        </p>
+                      ) : null}
                     </div>
                   </div>
                 </article>
@@ -314,7 +352,7 @@ function PublicProjectPage({
           </ProjectSection>
         ) : null}
 
-        {project.process ? (
+        {project.visibleSections.process && project.process ? (
           <ProjectSection eyebrow="Development" title="Process">
             <div className="max-w-3xl rounded-xl border border-bronze/22 bg-[rgba(17,17,17,0.76)] p-6">
               <div className="flex items-center justify-between gap-4 text-sm"><span className="text-stardust/60">{project.process.phase}</span><span className="font-semibold text-ember">{project.process.progress}%</span></div>
@@ -323,7 +361,7 @@ function PublicProjectPage({
           </ProjectSection>
         ) : null}
 
-        {project.notes.length ? (
+        {project.visibleSections.notes && project.notes.length ? (
           <ProjectSection eyebrow="Published notes" title="Reflections">
             <div className="grid gap-4 md:grid-cols-2">
               {project.notes.map((note, index) => <article className="rounded-xl border border-bronze/20 bg-[rgba(17,17,17,0.76)] p-6" key={`${note.title}-${index}`}><p className="text-xs uppercase tracking-[0.17em] text-ember">{note.category}</p><h3 className="mt-3 text-xl font-semibold text-stardust">{note.title}</h3><p className="mt-4 text-sm leading-7 text-stardust/58">{note.body}</p></article>)}
@@ -331,10 +369,29 @@ function PublicProjectPage({
           </ProjectSection>
         ) : null}
 
-        {project.editorials.length ? (
-          <ProjectSection eyebrow="Presentation stories" title="Editorial Collections">
+        {project.visibleSections.editorials && project.editorials.length ? (
+          <ProjectSection eyebrow="Presentation stories" title="Editorial Collections" id="editorials">
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {project.editorials.map((editorial) => <EditorialCard editorial={editorial} key={editorial.key} />)}
+              {project.editorials.map((editorial) => (
+                <EditorialCard
+                  editorial={editorial}
+                  href={`${buildPublicPortfolioUrl(profile.usernameSlug, project.slug)}#${editorial.key}`}
+                  key={editorial.key}
+                />
+              ))}
+            </div>
+          </ProjectSection>
+        ) : null}
+
+        {previousProject || nextProject ? (
+          <ProjectSection eyebrow="More work" title="Continue Exploring">
+            <div className="grid gap-4 md:grid-cols-2">
+              {previousProject ? (
+                <ProjectNavCard direction="Previous" profileSlug={profile.usernameSlug} project={previousProject} />
+              ) : <div />}
+              {nextProject ? (
+                <ProjectNavCard direction="Next" profileSlug={profile.usernameSlug} project={nextProject} />
+              ) : null}
             </div>
           </ProjectSection>
         ) : null}
@@ -375,15 +432,44 @@ function PortfolioBand({ children, eyebrow, title }: { children: ReactNode; eyeb
   );
 }
 
-function ProjectSection({ children, eyebrow, title }: { children: ReactNode; eyebrow: string; title: string }) {
+function ProjectSection({ children, eyebrow, id, title }: { children: ReactNode; eyebrow: string; id?: string; title: string }) {
   return (
-    <section className="border-t border-bronze/14 py-14 sm:py-20">
+    <section className="border-t border-bronze/14 py-14 sm:py-20" id={id}>
       <div className="mx-auto max-w-7xl px-5 sm:px-8 lg:px-12">
         <p className="text-xs font-semibold uppercase tracking-[0.2em] text-ember">{eyebrow}</p>
         <h2 className="font-display mb-8 mt-3 text-3xl text-stardust sm:text-4xl">{title}</h2>
         {children}
       </div>
     </section>
+  );
+}
+
+function ProjectNavCard({
+  direction,
+  profileSlug,
+  project,
+}: {
+  direction: 'Next' | 'Previous';
+  profileSlug: string;
+  project: PortfolioProjectSnapshot;
+}) {
+  return (
+    <a
+      className="group flex min-h-32 items-center justify-between gap-5 rounded-xl border border-bronze/22 bg-[rgba(17,17,17,0.76)] p-5 transition hover:border-ember/45"
+      href={buildPublicPortfolioUrl(profileSlug, project.slug)}
+    >
+      <div>
+        <p className="text-[0.65rem] uppercase tracking-[0.18em] text-ember">{direction} project</p>
+        <h3 className="font-display mt-2 text-2xl leading-tight text-stardust">{project.title}</h3>
+        {project.description ? (
+          <p className="mt-3 line-clamp-2 text-sm leading-6 text-stardust/50">{project.description}</p>
+        ) : null}
+      </div>
+      <ArrowRight
+        className={`shrink-0 text-ember transition group-hover:translate-x-1 ${direction === 'Previous' ? 'rotate-180 group-hover:-translate-x-1' : ''}`}
+        size={22}
+      />
+    </a>
   );
 }
 
@@ -446,7 +532,7 @@ function MissingProject({ profileSlug }: { profileSlug: string }) {
       <main className="flex min-h-dvh items-center justify-center px-5 py-16">
         <section className="max-w-lg text-center">
           <h1 className="font-display text-4xl text-stardust">Project unavailable.</h1>
-          <p className="mt-4 text-sm leading-7 text-stardust/54">This case study is private, missing, or no longer part of the published portfolio.</p>
+          <p className="mt-4 text-sm leading-7 text-stardust/54">This case study is not available or no longer part of the published portfolio.</p>
           <a className="mt-7 inline-flex min-h-11 items-center gap-2 rounded-md border border-bronze/34 px-4 text-sm text-stardust transition hover:border-ember/50 hover:text-ember" href={buildPublicPortfolioUrl(profileSlug)}><ArrowLeft size={17} /> Back to portfolio</a>
         </section>
       </main>
@@ -461,4 +547,12 @@ function uniqueImages(images: Array<PortfolioImageSnapshot | undefined>): Portfo
     seen.add(image.reference);
     return true;
   });
+}
+
+function publicProfileSlugFallback(snapshot: PortfolioHomepageSnapshot) {
+  return snapshot.profile.usernameSlug || 'portfolio';
+}
+
+function formatYards(value: number): string {
+  return Number.isInteger(value) ? String(value) : value.toFixed(1).replace(/\.0$/, '');
 }
