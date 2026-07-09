@@ -41,7 +41,9 @@ export type PortfolioMaterialSnapshot = Readonly<{
   composition?: string;
   image?: PortfolioImageSnapshot;
   name: string;
+  neededYards?: number;
   role?: string;
+  usedYards?: number;
 }>;
 
 export type PortfolioNoteSnapshot = Readonly<{
@@ -412,7 +414,9 @@ function snapshotProjectMaterials(
         ? snapshotImage(fabric.image, [`material:${material.role}`])
         : undefined,
       name: fabric?.name || material.materialName,
+      neededYards: material.neededYards,
       role: material.role,
+      usedYards: material.usedYards,
     };
   });
 }

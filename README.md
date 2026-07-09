@@ -1,41 +1,138 @@
 # Mystic Lore Studio
 
-Mystic Lore Studio is a responsive apparel project management and lookbook app for an independent fashion brand. It helps organize garment projects, manage garment-specific workflows, track fabrics and materials, and create professional project displays.
+Mystic Lore Studio is a private apparel studio workspace for building garments,
+editorials, notes, fabrics, images, and project development. It combines project
+management, fabric inventory, cloud image sync, editorial presentation tools, and
+a recruiter-facing portfolio layer into one cohesive fashion-product workflow.
+
+This repository is public for portfolio and hiring-review purposes. The code is
+not open source; see [LICENSE.md](LICENSE.md) for the portfolio-review license.
+
+## Why I Built It
+
+I built Mystic Lore Studio to solve a real studio problem: apparel projects are
+visual, material-heavy, and process-heavy, but most task tools flatten that work
+into generic lists. Mystic Lore Studio treats each garment like a living dossier:
+design intent, construction phases, fabric decisions, images, notes, editorials,
+and public presentation all stay connected.
+
+The project also became a practical way to demonstrate product thinking,
+frontend architecture, responsive UI craft, offline-first data handling, Supabase
+integration, and AI-assisted development workflow on a real, evolving product.
+
+## Product Highlights
+
+- **Studio dashboard:** active project signals, featured garment hero, progress,
+  phase summaries, and quick navigation across the studio.
+- **Project dossiers:** garment profiles with adaptive image presentation,
+  gallery carousel, materials, tasks, notes, status, progress, and responsive
+  editing flows.
+- **Fabric Vault:** inventory records with yardage tracking, textile specs,
+  fabric image handling, color systems, and a GSM/OZ weight guide.
+- **Editorial Collections:** scene-based presentation builder with templates,
+  themes, block editing, cinematic viewer, book mode, PDF export, and scene image
+  export.
+- **Cloud sync foundation:** Supabase Auth, RLS-protected tables, private Storage
+  images, local fallback cache, IndexedDB image previews, and offline mutation
+  recovery.
+- **Portfolio mode:** private controls for selecting public projects and
+  recruiter-facing case study pages generated from sanitized snapshots.
+
+## Screenshots / Demo
+
+The screenshots below are captured from the working app and are intended to show
+product scope, interaction density, and visual polish.
+
+There is no production demo link included in this repo. Hiring reviewers can run
+the local demo with the setup steps below using `.env.example` as the safe
+environment template.
+
+![Mystic Lore Studio dashboard with featured garment hero](docs/screenshots/dashboard.png)
+
+*Dashboard: a studio control center with project signals, featured garment
+presentation, and progress context.*
+
+![Project dossier with garment image and gallery](docs/screenshots/project-detail.png)
+
+*Project dossier: responsive garment profile, adaptive imagery, metadata, and
+supporting project photography.*
+
+![Fabric Vault inventory and textile cards](docs/screenshots/fabric-vault.png)
+
+*Fabric Vault: material archive, yardage planning, textile metadata, search, and
+inventory-focused cards.*
+
+![Editorial Collections library and export workflow](docs/screenshots/editorial-collections.png)
+
+*Editorial Collections: presentation tooling for building lookbooks, campaign
+stories, and exportable collection narratives.*
+
+![Public recruiter-facing portfolio page](docs/screenshots/portfolio.png)
+
+*Portfolio: public-facing recruiter view generated from selected studio content
+without exposing private project data.*
 
 ## Tech Stack
 
-- React
-- Vite
+- React 19
 - TypeScript
+- Vite
 - Tailwind CSS
-- Supabase cloud sync foundation
-- Local browser persistence
-- PWA support
+- Supabase Auth, Postgres, RLS, and private Storage
+- LocalStorage and IndexedDB for offline/cache behavior
+- PWA service worker
+- jsPDF, JSZip, and html-to-image for export workflows
+- Lucide React icons
 
-## Core Modules
+## AI-Assisted Development Workflow
 
-- Dashboard
-- Project Library
-- Global Project Kanban
-- Project Detail Pages
-- Project Task Board
-- Fabric Vault
-- Fabric Detail Pages
-- Fabric-to-project linking
-- Yardage tracking
-- Lookbook Builder
-- Stats
-- Settings
-- Export/import backups
-- PWA support
+This project was built through an iterative AI-assisted engineering workflow. I
+used AI as a product, design, and coding collaborator while retaining human
+direction over feature scope, UX decisions, data safety, testing priorities, and
+final implementation choices.
 
-## Development Commands
+The workflow included:
+
+- writing feature plans and acceptance criteria before implementation;
+- using AI to explore the codebase, draft implementation approaches, and
+  identify edge cases;
+- manually reviewing and refining generated code;
+- running builds, browser QA, responsive checks, and sync troubleshooting;
+- evolving the product through real usage feedback across desktop, iPad, and
+  mobile.
+
+## Local Setup
+
+Copy the placeholder environment file and add your own Supabase values locally:
+
+```bash
+cp .env.example .env.local
+```
+
+`.env.local` is ignored by Git and should contain real local credentials. Do not
+commit real keys.
 
 ```bash
 npm install
 npm run dev
 npm run build
 ```
+
+The app can run with local browser persistence even before Supabase is
+configured. Cloud sync requires the Supabase migrations below and the two Vite
+environment variables in `.env.local`.
+
+## Environment Variables
+
+Use `.env.example` as the safe template:
+
+```bash
+VITE_SUPABASE_URL=https://your-project-ref.supabase.co
+VITE_SUPABASE_ANON_KEY=your-supabase-anon-key
+```
+
+The actual `.env.local` file is intentionally ignored. The repo should never
+contain service-role keys, private database URLs, or real API secrets.
 
 ## Supabase Configuration
 
