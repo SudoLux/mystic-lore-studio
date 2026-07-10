@@ -1,24 +1,32 @@
 import { useMemo, useState, type ReactNode } from 'react';
 import {
+  AlertTriangle,
   BookOpen,
   Check,
+  CheckCircle2,
   Copy,
+  ExternalLink,
   Link2,
+  ListChecks,
   ShieldCheck,
+  Sparkles,
 } from 'lucide-react';
 import { PortfolioProfileEditor } from '../../components/portfolio/PortfolioProfileEditor';
 import { PortfolioProjectVisibilityManager } from '../../components/portfolio/PortfolioProjectVisibilityManager';
 import { Badge } from '../../components/shared/Badge';
+import { Button } from '../../components/shared/Button';
 import { Card } from '../../components/shared/Card';
 import { MobilePageHeader } from '../../components/shared/MobilePageHeader';
 import { PageHeader } from '../../components/shared/PageHeader';
 import { useStudioData } from '../../hooks/useStudioData';
 import {
   buildPublicPortfolioUrl,
+  getPortfolioReadinessReport,
   getPortfolioProjectTitle,
   getSafePortfolioSettings,
   sortPortfolioProjects,
 } from '../../lib/portfolio';
+import { cn } from '../../lib/classes';
 import type { ApparelProject, LocalImageAsset } from '../../types/studio';
 
 export function PortfolioPage() {
@@ -45,6 +53,10 @@ export function PortfolioPage() {
   );
   const profileImages = useMemo(() => getPortfolioImageAssets(projects), [projects]);
   const profilePath = buildPublicPortfolioUrl(portfolioProfile.usernameSlug || 'untitled');
+  const readinessReport = useMemo(
+    () => getPortfolioReadinessReport(portfolioProfile, projects),
+    [portfolioProfile, projects],
+  );
   const copyPath = async (path: string) => {
     try {
       await navigator.clipboard.writeText(`${window.location.origin}${path}`);
@@ -53,6 +65,9 @@ export function PortfolioPage() {
     } catch {
       setCopiedPath(null);
     }
+  };
+  const openPreview = (path: string) => {
+    window.open(path, '_blank', 'noopener,noreferrer');
   };
 
   return (
@@ -64,14 +79,24 @@ export function PortfolioPage() {
       />
       <PageHeader
         badge="Private workspace"
-        description="Shape the recruiter-facing story drawn from your strongest garments and editorial collections. Nothing here is publicly published yet."
+        description="Shape the recruiter-facing story drawn from your strongest garments and editorial collections, then preview the public route before sharing."
         title="Portfolio Studio"
       >
-        <div className="flex items-center gap-2 rounded-2xl border border-teal/28 bg-teal/10 px-4 py-3 text-sm text-stardust/72">
-          <ShieldCheck aria-hidden="true" className="text-teal" size={18} />
-          Private preview
-        </div>
+        <Button
+          aria-label="Open recruiter portfolio preview in a new tab"
+          icon={<ExternalLink aria-hidden="true" size={17} />}
+          onClick={() => openPreview(profilePath)}
+          variant="primary"
+        >
+          Recruiter Preview
+        </Button>
       </PageHeader>
+
+      <PortfolioReadinessCard
+        onPreview={() => openPreview(profilePath)}
+        previewPath={profilePath}
+        report={readinessReport}
+      />
 
       {projects.length === 0 ? (
         <EmptyPortfolio />
@@ -149,6 +174,110 @@ export function PortfolioPage() {
         </>
       )}
     </section>
+  );
+}
+
+function PortfolioReadinessCard({
+  onPreview,
+  previewPath,
+  report,
+}: {
+  onPreview: () => void;
+  previewPath: string;
+  report: ReturnType<typeof getPortfolioReadinessReport>;
+}) {
+  const isReady = report.status === 'ready';
+
+  return (
+    <Card className="overflow-hidden p-0" elevated>
+      <div className="grid gap-0 lg:grid-cols-[minmax(0,0.9fr)_minmax(18rem,0.55fr)]">
+        <div className="p-5 sm:p-6">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+            <SectionHeading
+              icon={<ListChecks aria-hidden="true" size={19} />}
+              kicker="Recruiter Preview"
+              title={isReady ? 'Portfolio is ready to preview' : 'Portfolio needs attention'}
+            />
+            <Badge className="self-start" variant={isReady ? 'teal' : 'ember'}>
+              {isReady ? 'Ready' : 'Needs attention'}
+            </Badge>
+          </div>
+
+          <div className="mt-5 grid gap-2 sm:grid-cols-2">
+            {report.checks.map((check) => (
+              <div
+                className={cn(
+                  'flex items-start gap-2.5 rounded-xl border px-3 py-2.5 text-sm',
+                  check.passed
+                    ? 'border-teal/20 bg-teal/[0.055] text-stardust/72'
+                    : 'border-ember/24 bg-ember/[0.07] text-stardust/72',
+                )}
+                key={check.label}
+              >
+                {check.passed ? (
+                  <CheckCircle2 aria-hidden="true" className="mt-0.5 shrink-0 text-teal" size={16} />
+                ) : (
+                  <AlertTriangle aria-hidden="true" className="mt-0.5 shrink-0 text-ember" size={16} />
+                )}
+                <span>{check.label}</span>
+              </div>
+            ))}
+          </div>
+
+          {report.warnings.length ? (
+            <div className="mt-5 rounded-2xl border border-ember/24 bg-ember/[0.065] p-4">
+              <p className="text-[0.68rem] font-semibold uppercase tracking-[0.18em] text-ember">
+                Warnings
+              </p>
+              <ul className="mt-3 space-y-2 text-sm leading-6 text-stardust/64">
+                {report.warnings.map((warning, index) => (
+                  <li className="flex gap-2" key={`${warning}-${index}`}>
+                    <AlertTriangle aria-hidden="true" className="mt-1 shrink-0 text-ember" size={14} />
+                    <span>{warning}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
+        </div>
+
+        <div className="border-t border-bronze/18 bg-[radial-gradient(circle_at_20%_18%,rgba(45,92,107,0.22),transparent_36%),linear-gradient(145deg,rgba(7,9,10,0.82),rgba(32,21,15,0.78))] p-5 sm:p-6 lg:border-l lg:border-t-0">
+          <div className="flex h-full flex-col justify-between gap-5">
+            <div>
+              <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-ember/32 bg-ember/10 text-ember shadow-[0_18px_44px_rgba(200,155,60,0.1)]">
+                {isReady ? <ShieldCheck aria-hidden="true" size={22} /> : <Sparkles aria-hidden="true" size={22} />}
+              </div>
+              <p className="mt-5 text-sm leading-6 text-stardust/58">
+                Preview the exact public homepage recruiters will see. This opens the sanitized public portfolio route outside the private studio shell.
+              </p>
+              <p className="mt-3 break-all text-xs leading-5 text-stardust/42">
+                {previewPath}
+              </p>
+            </div>
+            {report.suggestions.length ? (
+              <div className="rounded-2xl border border-bronze/18 bg-midnight/28 p-4">
+                <p className="text-[0.68rem] font-semibold uppercase tracking-[0.18em] text-stardust/42">
+                  Suggestions
+                </p>
+                <ul className="mt-3 space-y-2 text-xs leading-5 text-stardust/54">
+                  {report.suggestions.map((suggestion, index) => (
+                    <li key={`${suggestion}-${index}`}>{suggestion}</li>
+                  ))}
+                </ul>
+              </div>
+            ) : null}
+            <Button
+              className="w-full"
+              icon={<ExternalLink aria-hidden="true" size={17} />}
+              onClick={onPreview}
+              variant="secondary"
+            >
+              Open Recruiter Preview
+            </Button>
+          </div>
+        </div>
+      </div>
+    </Card>
   );
 }
 
