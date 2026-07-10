@@ -24,9 +24,11 @@ import {
   getPortfolioReadinessReport,
   getPortfolioProjectTitle,
   getSafePortfolioSettings,
+  slugifyPortfolioValue,
   sortPortfolioProjects,
 } from '../../lib/portfolio';
 import { cn } from '../../lib/classes';
+import type { EditorialCollection } from '../../types/editorial';
 import type { ApparelProject, LocalImageAsset } from '../../types/studio';
 
 export function PortfolioPage() {
@@ -53,14 +55,15 @@ export function PortfolioPage() {
   );
   const profileImages = useMemo(() => getPortfolioImageAssets(projects), [projects]);
   const profilePath = buildPublicPortfolioUrl(portfolioProfile.usernameSlug || 'untitled');
+  const profileShareUrl = buildShareUrl(profilePath);
   const readinessReport = useMemo(
     () => getPortfolioReadinessReport(portfolioProfile, projects),
     [portfolioProfile, projects],
   );
-  const copyPath = async (path: string) => {
+  const copyLink = async (link: string) => {
     try {
-      await navigator.clipboard.writeText(`${window.location.origin}${path}`);
-      setCopiedPath(path);
+      await navigator.clipboard.writeText(link);
+      setCopiedPath(link);
       window.setTimeout(() => setCopiedPath(null), 1800);
     } catch {
       setCopiedPath(null);
@@ -144,31 +147,16 @@ export function PortfolioPage() {
                 title="Private route preparation"
               />
               <p className="mt-4 text-sm leading-6 text-stardust/56">
-                These paths prepare the future public portfolio. Copying them does not publish the workspace.
+                Here’s a link to my selected apparel design and development work.
               </p>
-              <div className="mt-5 space-y-2.5">
-                <SharePath
-                  copied={copiedPath === profilePath}
-                  label="Portfolio home"
-                  onCopy={() => void copyPath(profilePath)}
-                  path={profilePath}
-                />
-                {publicProjects.slice(0, 2).map((project) => {
-                  const path = buildPublicPortfolioUrl(
-                    portfolioProfile.usernameSlug || 'untitled',
-                    getSafePortfolioSettings(project).portfolioSlug,
-                  );
-                  return (
-                    <SharePath
-                      copied={copiedPath === path}
-                      key={project.id}
-                      label={getPortfolioProjectTitle(project)}
-                      onCopy={() => void copyPath(path)}
-                      path={path}
-                    />
-                  );
-                })}
-              </div>
+              <ShareLinksList
+                copiedLink={copiedPath}
+                editorials={attachedEditorials}
+                onCopy={copyLink}
+                portfolioLink={profileShareUrl}
+                projects={publicProjects}
+                usernameSlug={portfolioProfile.usernameSlug || 'untitled'}
+              />
             </Card>
           </div>
         </>
@@ -293,6 +281,103 @@ function SectionHeading({ icon, kicker, title }: { icon: ReactNode; kicker: stri
   );
 }
 
+function ShareLinksList({
+  copiedLink,
+  editorials,
+  onCopy,
+  portfolioLink,
+  projects,
+  usernameSlug,
+}: {
+  copiedLink: string | null;
+  editorials: EditorialCollection[];
+  onCopy: (link: string) => void;
+  portfolioLink: string;
+  projects: ApparelProject[];
+  usernameSlug: string;
+}) {
+  return (
+    <div className="mt-5 space-y-5">
+      <ShareLinkGroup title="Main portfolio link">
+        <SharePath
+          copied={copiedLink === portfolioLink}
+          label="Portfolio home"
+          onCopy={() => onCopy(portfolioLink)}
+          path={portfolioLink}
+        />
+      </ShareLinkGroup>
+
+      <ShareLinkGroup
+        emptyCopy="No public projects yet. Toggle a project public to create recruiter-ready case study links."
+        title="Public project links"
+      >
+        {projects.map((project) => {
+          const path = buildPublicPortfolioUrl(
+            usernameSlug,
+            getSafePortfolioSettings(project).portfolioSlug,
+          );
+          const link = buildShareUrl(path);
+          return (
+            <SharePath
+              copied={copiedLink === link}
+              key={project.id}
+              label={getPortfolioProjectTitle(project)}
+              onCopy={() => onCopy(link)}
+              path={link}
+            />
+          );
+        })}
+      </ShareLinkGroup>
+
+      <ShareLinkGroup
+        emptyCopy="No public editorial links yet. Attach an editorial collection to a public project to share it."
+        title="Public editorial links"
+      >
+        {editorials.map((collection) => {
+          const path = buildPublicEditorialUrl(usernameSlug, collection.title);
+          const link = buildShareUrl(path);
+          return (
+            <SharePath
+              copied={copiedLink === link}
+              key={collection.id}
+              label={collection.title}
+              onCopy={() => onCopy(link)}
+              path={link}
+            />
+          );
+        })}
+      </ShareLinkGroup>
+    </div>
+  );
+}
+
+function ShareLinkGroup({
+  children,
+  emptyCopy,
+  title,
+}: {
+  children: ReactNode;
+  emptyCopy?: string;
+  title: string;
+}) {
+  const hasLinks = Array.isArray(children) ? children.length > 0 : Boolean(children);
+
+  return (
+    <div>
+      <p className="mb-2 text-[0.68rem] font-semibold uppercase tracking-[0.18em] text-stardust/38">
+        {title}
+      </p>
+      <div className="space-y-2.5">
+        {hasLinks ? children : (
+          <div className="rounded-2xl border border-bronze/16 bg-midnight/22 p-3 text-sm leading-6 text-stardust/45">
+            {emptyCopy}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 function SharePath({ copied, label, onCopy, path }: { copied: boolean; label: string; onCopy: () => void; path: string }) {
   return (
     <div className="flex min-w-0 items-center gap-3 rounded-2xl border border-bronze/18 bg-midnight/30 p-3">
@@ -303,6 +388,11 @@ function SharePath({ copied, label, onCopy, path }: { copied: boolean; label: st
       <button aria-label={`Copy ${label} path`} className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-bronze/28 text-stardust/58 transition hover:border-ember/45 hover:text-ember" onClick={onCopy} type="button">
         {copied ? <Check aria-hidden="true" size={17} /> : <Copy aria-hidden="true" size={17} />}
       </button>
+      {copied ? (
+        <span className="hidden rounded-full border border-teal/24 bg-teal/10 px-2.5 py-1 text-[0.68rem] font-semibold uppercase tracking-[0.12em] text-teal sm:inline-flex">
+          Copied
+        </span>
+      ) : null}
     </div>
   );
 }
@@ -329,4 +419,13 @@ function getPortfolioImageAssets(projects: ApparelProject[]): LocalImageAsset[] 
     project.galleryImages?.forEach((image) => assets.set(image.id, image));
   });
   return [...assets.values()];
+}
+
+function buildPublicEditorialUrl(usernameSlug: string, editorialTitle: string) {
+  return `/portfolio/${slugifyPortfolioValue(usernameSlug)}/editorials/${slugifyPortfolioValue(editorialTitle)}`;
+}
+
+function buildShareUrl(path: string) {
+  const publicBaseUrl = import.meta.env.VITE_PUBLIC_APP_URL?.trim().replace(/\/+$/, '');
+  return publicBaseUrl ? `${publicBaseUrl}${path}` : path;
 }
