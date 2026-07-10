@@ -10,6 +10,7 @@ import {
 import {
   buildPublicPortfolioUrl,
   ensureUniquePortfolioSlug,
+  getPortfolioProjectDescription,
   getPortfolioProjectTitle,
   getSafePortfolioSettings,
   sortPortfolioProjects,
@@ -124,7 +125,19 @@ export function PortfolioProjectVisibilityManager({
         </div>
       </div>
 
-      <div className="mt-5 grid gap-4 xl:grid-cols-2">
+      {!publicCount ? (
+        <div className="mt-5 flex items-start gap-3 rounded-2xl border border-dashed border-bronze/28 bg-midnight/22 p-4">
+          <Eye aria-hidden="true" className="mt-0.5 shrink-0 text-ember" size={20} />
+          <div>
+            <p className="text-sm font-medium text-stardust/78">No projects are public yet</p>
+            <p className="mt-1 text-xs leading-5 text-stardust/44">
+              Publish a finished project when it is ready to become part of your recruiter-facing story.
+            </p>
+          </div>
+        </div>
+      ) : null}
+
+      <div className="mt-5 grid gap-4 md:grid-cols-2 2xl:grid-cols-3">
         {sortedProjects.map((project) => {
           const settings = getSafePortfolioSettings(project);
           const assets = getProjectPortfolioAssets(project);
@@ -136,19 +149,35 @@ export function PortfolioProjectVisibilityManager({
             usernameSlug || 'untitled',
             settings.portfolioSlug,
           );
+          const description = getPortfolioProjectDescription(project);
+          const warnings = [
+            ...(missingSlug ? ['Missing slug'] : []),
+            ...(!cover ? ['Missing cover'] : []),
+            ...(!description.trim() ? ['Missing description'] : []),
+          ];
           return (
             <Card
-              className="min-w-0 overflow-hidden p-0"
+              className={cn(
+                'group min-w-0 overflow-hidden p-0 transition duration-300',
+                settings.isPublic
+                  ? 'border-teal/30 shadow-[0_24px_70px_rgba(0,0,0,0.26),0_0_0_1px_rgba(45,92,107,0.04)]'
+                  : 'border-bronze/18 bg-[linear-gradient(145deg,rgba(237,227,207,0.04),rgba(237,227,207,0.018))]',
+              )}
               data-portfolio-project-id={project.id}
               key={project.id}
             >
-              <div className="relative h-44 overflow-hidden border-b border-bronze/22 bg-midnight sm:h-48">
+              <div className={cn(
+                'relative h-36 overflow-hidden border-b bg-midnight sm:h-40',
+                settings.isPublic ? 'border-teal/22' : 'border-bronze/16',
+              )}>
                 {cover ? (
-                  <AdaptiveProjectImage
-                    asset={cover}
-                    className="h-full w-full"
-                    mode="compact"
-                  />
+                  <div className={cn('h-full w-full transition duration-500 group-hover:scale-[1.015]', !settings.isPublic && 'opacity-55 saturate-[0.65]')}>
+                    <AdaptiveProjectImage
+                      asset={cover}
+                      className="h-full w-full"
+                      mode="compact"
+                    />
+                  </div>
                 ) : (
                   <ProjectImagePlaceholder />
                 )}
@@ -158,8 +187,6 @@ export function PortfolioProjectVisibilityManager({
                     {settings.isPublic ? 'Public' : 'Private'}
                   </Badge>
                   {settings.featured ? <Badge variant="ember">Featured</Badge> : null}
-                  {missingSlug ? <WarningBadge label="Missing slug" /> : null}
-                  {!cover ? <WarningBadge label="Missing cover image" /> : null}
                 </div>
                 <div className="absolute bottom-4 left-4 right-4 min-w-0">
                   <p className="text-xs uppercase tracking-[0.16em] text-stardust/54">
@@ -171,16 +198,23 @@ export function PortfolioProjectVisibilityManager({
                 </div>
               </div>
 
-              <div className="p-4 sm:p-5">
-                <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                  <div className="min-w-0">
-                    <p className="text-[0.65rem] font-semibold uppercase tracking-[0.16em] text-stardust/38">
-                      Portfolio slug
-                    </p>
-                    <p className="mt-1 truncate text-sm text-stardust/70">
-                      {settings.portfolioSlug || 'Missing slug'}
-                    </p>
+              <div className={cn('p-4 sm:p-5', !settings.isPublic && 'text-stardust/72')}>
+                <p className="line-clamp-2 min-h-10 text-sm leading-5 text-stardust/54">
+                  {description || 'Add a concise case study summary to introduce this project to recruiters.'}
+                </p>
+
+                {warnings.length ? (
+                  <div className="mt-3 flex flex-wrap gap-1.5">
+                    {warnings.map((warning) => <WarningBadge key={warning} label={warning} />)}
                   </div>
+                ) : (
+                  <div className="mt-3 inline-flex items-center gap-1.5 text-[0.68rem] font-semibold uppercase tracking-[0.13em] text-teal">
+                    <Check aria-hidden="true" size={13} />
+                    {settings.isPublic ? 'Recruiter ready' : 'Details complete'}
+                  </div>
+                )}
+
+                <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-bronze/14 pt-4">
                   <div className="flex items-center gap-3">
                     <ToggleControl
                       ariaLabel={`Mark ${getPortfolioProjectTitle(project)} featured`}
@@ -197,28 +231,23 @@ export function PortfolioProjectVisibilityManager({
                       onChange={(isPublic) => togglePublic(project, isPublic)}
                     />
                   </div>
+                  {settings.isPublic ? (
+                    <p className="max-w-full truncate text-xs text-stardust/38" title={path}>
+                      {missingSlug ? 'Link unavailable' : path}
+                    </p>
+                  ) : null}
                 </div>
 
-                {settings.isPublic ? (
-                  <div className="mt-4 rounded-xl border border-teal/22 bg-teal/[0.065] px-3 py-2.5">
-                    <p className="text-[0.62rem] font-semibold uppercase tracking-[0.16em] text-teal">
-                      Public URL
-                    </p>
-                    <p className="mt-1 break-all text-xs leading-5 text-stardust/58">
-                      {missingSlug ? 'Save a portfolio slug to activate this link.' : path}
-                    </p>
-                  </div>
-                ) : null}
-
-                <div className="mt-4 flex flex-wrap gap-2 border-t border-bronze/16 pt-4">
+                <div className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-3">
                   <Button
                     aria-label={`Edit portfolio settings for ${getPortfolioProjectTitle(project)}`}
                     icon={<Pencil aria-hidden="true" size={15} />}
                     onClick={() => setEditingProjectId(project.id)}
                     size="sm"
+                    className={settings.isPublic ? '' : 'sm:col-span-3'}
                     variant="secondary"
                   >
-                    Edit Settings
+                    Settings
                   </Button>
                   {settings.isPublic ? (
                     <>
@@ -230,7 +259,7 @@ export function PortfolioProjectVisibilityManager({
                           : <Copy aria-hidden="true" size={15} />}
                         onClick={() => void copyLink(project)}
                         size="sm"
-                        variant="ghost"
+                        variant="secondary"
                       >
                         {copiedProjectId === project.id ? 'Copied' : 'Copy Link'}
                       </Button>
@@ -242,7 +271,7 @@ export function PortfolioProjectVisibilityManager({
                         size="sm"
                         variant="ghost"
                       >
-                        Preview Project
+                        Preview
                       </Button>
                     </>
                   ) : null}
@@ -315,8 +344,8 @@ function ToggleControl({
 
 function WarningBadge({ label }: { label: string }) {
   return (
-    <span className="inline-flex items-center gap-1.5 rounded-full border border-ember/38 bg-midnight/72 px-2.5 py-1 text-[0.68rem] text-ember">
-      <AlertTriangle aria-hidden="true" size={12} /> {label}
+    <span className="inline-flex items-center gap-1 rounded-full border border-ember/30 bg-ember/[0.07] px-2 py-0.5 text-[0.62rem] font-medium text-ember">
+      <AlertTriangle aria-hidden="true" size={11} /> {label}
     </span>
   );
 }

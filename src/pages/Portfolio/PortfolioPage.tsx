@@ -2,10 +2,12 @@ import { useMemo, useState, type ReactNode } from 'react';
 import {
   AlertTriangle,
   BookOpen,
+  BriefcaseBusiness,
   Check,
   CheckCircle2,
   Copy,
   ExternalLink,
+  Globe2,
   Link2,
   ListChecks,
   ShieldCheck,
@@ -74,16 +76,16 @@ export function PortfolioPage() {
   };
 
   return (
-    <section className="space-y-5">
+    <section className="space-y-7">
       <MobilePageHeader
         badge="Portfolio"
         kicker={`${publicProjects.length} published project${publicProjects.length === 1 ? '' : 's'}`}
-        title="Recruiter Portfolio"
+        title="Portfolio"
       />
       <PageHeader
-        badge="Private workspace"
-        description="Shape the recruiter-facing story drawn from your strongest garments and editorial collections, then preview the public route before sharing."
-        title="Portfolio Studio"
+        badge="Public story studio"
+        description="Curate a public-facing body of work from your Mystic Lore Studio projects."
+        title="Portfolio"
       >
         <Button
           aria-label="Open recruiter portfolio preview in a new tab"
@@ -91,9 +93,16 @@ export function PortfolioPage() {
           onClick={() => openPreview(profilePath)}
           variant="primary"
         >
-          Recruiter Preview
+          Preview Portfolio
         </Button>
       </PageHeader>
+
+      <PortfolioOverviewStrip
+        editorialCount={attachedEditorials.length}
+        profileName={portfolioProfile.displayName}
+        projectCount={projects.length}
+        publicCount={publicProjects.length}
+      />
 
       <PortfolioReadinessCard
         onPreview={() => openPreview(profilePath)}
@@ -120,31 +129,51 @@ export function PortfolioPage() {
             usernameSlug={portfolioProfile.usernameSlug}
           />
 
-          <div className="grid gap-5 lg:grid-cols-2">
-            <Card className="min-w-0">
+          <div className="grid gap-5 xl:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
+            <Card className="min-w-0 overflow-hidden">
               <SectionHeading
                 icon={<BookOpen aria-hidden="true" size={19} />}
-                kicker="Editorial Collections"
-                title="Presentation stories"
+                kicker="Published Editorial Collections"
+                title="Stories connected to public work"
               />
               <p className="mt-4 text-sm leading-6 text-stardust/56">
                 {attachedEditorials.length
                   ? `${attachedEditorials.length} editorial collection${attachedEditorials.length === 1 ? ' is' : 's are'} attached to visible portfolio projects.`
                   : 'Attach editorial collections from individual project portfolio settings when a deeper campaign story is ready.'}
               </p>
-              <div className="mt-5 flex flex-wrap gap-2">
-                {attachedEditorials.slice(0, 6).map((collection) => (
-                  <Badge key={collection.id} variant="ember">{collection.title}</Badge>
-                ))}
-                {!attachedEditorials.length ? <Badge>None attached</Badge> : null}
-              </div>
+              {attachedEditorials.length ? (
+                <div className="mt-5 grid gap-2 sm:grid-cols-2">
+                  {attachedEditorials.slice(0, 6).map((collection) => (
+                    <div
+                      className="flex min-w-0 items-center gap-3 rounded-2xl border border-bronze/18 bg-midnight/28 p-3"
+                      key={collection.id}
+                    >
+                      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-ember/26 bg-ember/[0.08] text-ember">
+                        <BookOpen aria-hidden="true" size={17} />
+                      </span>
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-medium text-stardust/84">{collection.title}</p>
+                        <p className="mt-0.5 text-xs text-stardust/40">
+                          {collection.scenes.length} scene{collection.scenes.length === 1 ? '' : 's'}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <PortfolioSectionEmpty
+                  icon={<BookOpen aria-hidden="true" size={20} />}
+                  message="Attach an editorial from a public project’s settings when its campaign story is ready to share."
+                  title="No published editorials yet"
+                />
+              )}
             </Card>
 
             <Card className="min-w-0">
               <SectionHeading
                 icon={<Link2 aria-hidden="true" size={19} />}
                 kicker="Share Links"
-                title="Private route preparation"
+                title="Recruiter-ready links"
               />
               <p className="mt-4 text-sm leading-6 text-stardust/56">
                 Here’s a link to my selected apparel design and development work.
@@ -165,6 +194,48 @@ export function PortfolioPage() {
   );
 }
 
+function PortfolioOverviewStrip({
+  editorialCount,
+  profileName,
+  projectCount,
+  publicCount,
+}: {
+  editorialCount: number;
+  profileName: string;
+  projectCount: number;
+  publicCount: number;
+}) {
+  const items = [
+    { icon: <BriefcaseBusiness aria-hidden="true" size={16} />, label: 'Studio projects', value: projectCount },
+    { icon: <Globe2 aria-hidden="true" size={16} />, label: 'Published', value: publicCount },
+    { icon: <BookOpen aria-hidden="true" size={16} />, label: 'Editorials', value: editorialCount },
+  ];
+
+  return (
+    <div className="grid gap-3 border-y border-bronze/18 py-4 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
+      <div className="min-w-0">
+        <p className="text-[0.68rem] font-semibold uppercase tracking-[0.18em] text-ember">
+          Portfolio workspace
+        </p>
+        <p className="mt-1 truncate text-sm text-stardust/58">
+          {profileName ? `Curating ${profileName}’s public body of work.` : 'Build a focused public narrative from private studio work.'}
+        </p>
+      </div>
+      <div className="grid grid-cols-3 gap-2">
+        {items.map((item) => (
+          <div className="flex min-w-[5.5rem] items-center gap-2 rounded-xl border border-bronze/18 bg-stardust/[0.035] px-3 py-2" key={item.label}>
+            <span className="text-ember">{item.icon}</span>
+            <div>
+              <p className="text-sm font-semibold text-stardust">{item.value}</p>
+              <p className="hidden text-[0.61rem] uppercase tracking-[0.12em] text-stardust/36 lg:block">{item.label}</p>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function PortfolioReadinessCard({
   onPreview,
   previewPath,
@@ -178,24 +249,24 @@ function PortfolioReadinessCard({
 
   return (
     <Card className="overflow-hidden p-0" elevated>
-      <div className="grid gap-0 lg:grid-cols-[minmax(0,0.9fr)_minmax(18rem,0.55fr)]">
+      <div className="grid gap-0 xl:grid-cols-[minmax(0,1fr)_minmax(19rem,0.36fr)]">
         <div className="p-5 sm:p-6">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <SectionHeading
               icon={<ListChecks aria-hidden="true" size={19} />}
-              kicker="Recruiter Preview"
-              title={isReady ? 'Portfolio is ready to preview' : 'Portfolio needs attention'}
+              kicker="Portfolio Readiness"
+              title={isReady ? 'Ready for recruiter review' : 'A few details need attention'}
             />
             <Badge className="self-start" variant={isReady ? 'teal' : 'ember'}>
               {isReady ? 'Ready' : 'Needs attention'}
             </Badge>
           </div>
 
-          <div className="mt-5 grid gap-2 sm:grid-cols-2">
+          <div className="mt-5 grid gap-2 sm:grid-cols-2 2xl:grid-cols-3">
             {report.checks.map((check) => (
               <div
                 className={cn(
-                  'flex items-start gap-2.5 rounded-xl border px-3 py-2.5 text-sm',
+                  'flex items-start gap-2 rounded-xl border px-2.5 py-2 text-[0.7rem] leading-4 sm:items-center sm:gap-2.5 sm:px-3 sm:py-2.5 sm:text-sm',
                   check.passed
                     ? 'border-teal/20 bg-teal/[0.055] text-stardust/72'
                     : 'border-ember/24 bg-ember/[0.07] text-stardust/72',
@@ -213,11 +284,11 @@ function PortfolioReadinessCard({
           </div>
 
           {report.warnings.length ? (
-            <div className="mt-5 rounded-2xl border border-ember/24 bg-ember/[0.065] p-4">
-              <p className="text-[0.68rem] font-semibold uppercase tracking-[0.18em] text-ember">
-                Warnings
+            <div className="mt-4 flex flex-col gap-3 rounded-2xl border border-ember/24 bg-ember/[0.065] p-4 sm:flex-row sm:items-start">
+              <p className="shrink-0 text-[0.68rem] font-semibold uppercase tracking-[0.18em] text-ember">
+                Needs review
               </p>
-              <ul className="mt-3 space-y-2 text-sm leading-6 text-stardust/64">
+              <ul className="space-y-1.5 text-sm leading-5 text-stardust/64">
                 {report.warnings.map((warning, index) => (
                   <li className="flex gap-2" key={`${warning}-${index}`}>
                     <AlertTriangle aria-hidden="true" className="mt-1 shrink-0 text-ember" size={14} />
@@ -229,30 +300,23 @@ function PortfolioReadinessCard({
           ) : null}
         </div>
 
-        <div className="border-t border-bronze/18 bg-[radial-gradient(circle_at_20%_18%,rgba(45,92,107,0.22),transparent_36%),linear-gradient(145deg,rgba(7,9,10,0.82),rgba(32,21,15,0.78))] p-5 sm:p-6 lg:border-l lg:border-t-0">
-          <div className="flex h-full flex-col justify-between gap-5">
+        <div className="border-t border-bronze/18 bg-[radial-gradient(circle_at_20%_18%,rgba(45,92,107,0.22),transparent_36%),linear-gradient(145deg,rgba(7,9,10,0.82),rgba(32,21,15,0.78))] p-5 sm:p-6 xl:border-l xl:border-t-0">
+          <div className="flex h-full flex-col justify-between gap-4">
             <div>
-              <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-ember/32 bg-ember/10 text-ember shadow-[0_18px_44px_rgba(200,155,60,0.1)]">
+              <div className="flex h-11 w-11 items-center justify-center rounded-xl border border-ember/32 bg-ember/10 text-ember shadow-[0_18px_44px_rgba(200,155,60,0.1)]">
                 {isReady ? <ShieldCheck aria-hidden="true" size={22} /> : <Sparkles aria-hidden="true" size={22} />}
               </div>
-              <p className="mt-5 text-sm leading-6 text-stardust/58">
-                Preview the exact public homepage recruiters will see. This opens the sanitized public portfolio route outside the private studio shell.
+              <p className="mt-4 text-sm leading-6 text-stardust/58">
+                Open the sanitized public portfolio exactly as a recruiter will see it.
               </p>
               <p className="mt-3 break-all text-xs leading-5 text-stardust/42">
                 {previewPath}
               </p>
             </div>
             {report.suggestions.length ? (
-              <div className="rounded-2xl border border-bronze/18 bg-midnight/28 p-4">
-                <p className="text-[0.68rem] font-semibold uppercase tracking-[0.18em] text-stardust/42">
-                  Suggestions
-                </p>
-                <ul className="mt-3 space-y-2 text-xs leading-5 text-stardust/54">
-                  {report.suggestions.map((suggestion, index) => (
-                    <li key={`${suggestion}-${index}`}>{suggestion}</li>
-                  ))}
-                </ul>
-              </div>
+              <p className="border-l border-ember/40 pl-3 text-xs leading-5 text-stardust/46">
+                {report.suggestions[0]}
+              </p>
             ) : null}
             <Button
               className="w-full"
@@ -260,12 +324,32 @@ function PortfolioReadinessCard({
               onClick={onPreview}
               variant="secondary"
             >
-              Open Recruiter Preview
+              Preview Portfolio
             </Button>
           </div>
         </div>
       </div>
     </Card>
+  );
+}
+
+function PortfolioSectionEmpty({
+  icon,
+  message,
+  title,
+}: {
+  icon: ReactNode;
+  message: string;
+  title: string;
+}) {
+  return (
+    <div className="mt-5 flex items-start gap-3 rounded-2xl border border-dashed border-bronze/24 bg-midnight/20 p-4">
+      <span className="mt-0.5 text-stardust/30">{icon}</span>
+      <div>
+        <p className="text-sm font-medium text-stardust/74">{title}</p>
+        <p className="mt-1 text-xs leading-5 text-stardust/42">{message}</p>
+      </div>
+    </div>
   );
 }
 

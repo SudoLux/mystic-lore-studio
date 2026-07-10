@@ -179,7 +179,7 @@ export function PortfolioProfileEditor({
         </div>
       </Card>
 
-      <Card className="min-w-0 overflow-hidden p-0">
+      <Card className="min-w-0 overflow-hidden p-0 xl:sticky xl:top-5 xl:self-start">
         <PortfolioProfilePreview
           avatar={selectedAvatar}
           profile={draft}
@@ -201,19 +201,19 @@ function AvatarSelector({
   selectedId?: string;
 }) {
   return (
-    <fieldset className="mt-5 border-t border-bronze/18 pt-5">
+    <fieldset className="mt-5 min-w-0 max-w-full border-t border-bronze/18 pt-5">
       <legend className="text-[0.68rem] font-semibold uppercase tracking-[0.16em] text-stardust/46">
         Avatar Image
       </legend>
       <p className="mt-2 text-xs leading-5 text-stardust/42">
         Choose from imagery already stored with your projects.
       </p>
-      <div className="mt-3 grid max-h-48 grid-cols-4 gap-2 overflow-y-auto pr-1 sm:grid-cols-6">
+      <div className="mt-3 flex w-full max-w-full gap-2 overflow-x-auto pb-2 pr-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         <button
           aria-label="Use initials instead of an avatar image"
           aria-pressed={!selectedId}
           className={cn(
-            'relative aspect-[3/4] overflow-hidden rounded-xl border bg-midnight/42 text-stardust/42 transition hover:border-ember/45 hover:text-ember',
+            'relative aspect-[3/4] w-14 shrink-0 overflow-hidden rounded-xl border bg-midnight/42 text-stardust/42 transition hover:border-ember/45 hover:text-ember sm:w-16',
             !selectedId && 'border-ember/65 ring-2 ring-ember/12',
           )}
           onClick={() => onSelect(undefined)}
@@ -229,7 +229,7 @@ function AvatarSelector({
               aria-label={`Use ${asset.name} as portfolio avatar`}
               aria-pressed={selected}
               className={cn(
-                'relative aspect-[3/4] overflow-hidden rounded-xl border border-bronze/24 bg-midnight/42 transition hover:border-ember/45',
+                'relative aspect-[3/4] w-14 shrink-0 overflow-hidden rounded-xl border border-bronze/24 bg-midnight/42 transition hover:border-ember/45 sm:w-16',
                 selected && 'border-ember/65 ring-2 ring-ember/12',
               )}
               key={asset.id}
@@ -274,7 +274,7 @@ function PortfolioProfilePreview({
 }) {
   const initials = getInitials(profile.displayName);
   return (
-    <div className="relative flex min-h-[34rem] flex-col overflow-hidden bg-[radial-gradient(circle_at_75%_18%,rgba(45,92,107,0.28),transparent_28%),linear-gradient(145deg,#11151a,#0a0a0a_52%,#241a14)] p-6 sm:p-7">
+    <div className="relative flex min-h-[28rem] flex-col overflow-hidden bg-[radial-gradient(circle_at_75%_18%,rgba(45,92,107,0.28),transparent_28%),linear-gradient(145deg,#11151a,#0a0a0a_52%,#241a14)] p-6 sm:min-h-[30rem] sm:p-7">
       <div className="absolute inset-0 opacity-30 [background-image:linear-gradient(rgba(200,155,60,0.06)_1px,transparent_1px),linear-gradient(90deg,rgba(200,155,60,0.06)_1px,transparent_1px)] [background-size:36px_36px]" />
       <div className="relative flex items-center justify-between">
         <Badge variant="ember">Live Recruiter Preview</Badge>
