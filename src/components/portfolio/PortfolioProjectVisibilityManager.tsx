@@ -6,7 +6,6 @@ import {
   Eye,
   Image as ImageIcon,
   Pencil,
-  X,
 } from 'lucide-react';
 import {
   buildPublicPortfolioUrl,
@@ -15,11 +14,6 @@ import {
   getSafePortfolioSettings,
   sortPortfolioProjects,
 } from '../../utils/portfolioUtils';
-import {
-  preparePortfolioProjectSnapshot,
-  type PortfolioImageSnapshot,
-  type PortfolioProjectSnapshot,
-} from '../../utils/portfolioSnapshot';
 import { cn } from '../../lib/classes';
 import type { EditorialCollection } from '../../types/editorial';
 import type { PortfolioProjectSettingsPatch } from '../../types/portfolio';
@@ -55,7 +49,6 @@ export function PortfolioProjectVisibilityManager({
   const sortedProjects = useMemo(() => sortPortfolioProjects(projects), [projects]);
   const [copiedProjectId, setCopiedProjectId] = useState<string | null>(null);
   const [editingProjectId, setEditingProjectId] = useState<string | null>(null);
-  const [previewProjectId, setPreviewProjectId] = useState<string | null>(null);
 
   const publicCount = projects.filter(
     (project) => getSafePortfolioSettings(project).isPublic,
@@ -64,19 +57,7 @@ export function PortfolioProjectVisibilityManager({
     const settings = getSafePortfolioSettings(project);
     return settings.isPublic && settings.featured;
   }).length;
-  const previewProject = projects.find((project) => project.id === previewProjectId);
   const editingProject = projects.find((project) => project.id === editingProjectId);
-  const previewSnapshot = previewProject
-    ? preparePortfolioProjectSnapshot({
-        assets: getProjectPortfolioAssets(previewProject),
-        editorialCollections,
-        fabrics: [],
-        generatedAt: previewProject.updatedAt
-          ?? getSafePortfolioSettings(previewProject).updatedAt
-          ?? '',
-        project: previewProject,
-      })
-    : null;
 
   const getUniqueSlug = (project: ApparelProject, requestedSlug?: string) => {
     const existingSlugs = projects
@@ -114,6 +95,10 @@ export function PortfolioProjectVisibilityManager({
     } catch {
       setCopiedProjectId(null);
     }
+  };
+
+  const openProjectPreview = (path: string) => {
+    window.open(path, '_blank', 'noopener,noreferrer');
   };
 
   return (
@@ -251,12 +236,13 @@ export function PortfolioProjectVisibilityManager({
                       </Button>
                       <Button
                         aria-label={`Preview ${getPortfolioProjectTitle(project)} portfolio project`}
+                        disabled={missingSlug}
                         icon={<Eye aria-hidden="true" size={15} />}
-                        onClick={() => setPreviewProjectId(project.id)}
+                        onClick={() => openProjectPreview(path)}
                         size="sm"
                         variant="ghost"
                       >
-                        Preview
+                        Preview Project
                       </Button>
                     </>
                   ) : null}
@@ -267,12 +253,6 @@ export function PortfolioProjectVisibilityManager({
         })}
       </div>
 
-      {previewSnapshot ? (
-        <PortfolioProjectPreview
-          onClose={() => setPreviewProjectId(null)}
-          snapshot={previewSnapshot}
-        />
-      ) : null}
       {editingProject ? (
         <ProjectPortfolioSettingsPanel
           editorialCollections={editorialCollections}
@@ -290,87 +270,6 @@ export function PortfolioProjectVisibilityManager({
         />
       ) : null}
     </section>
-  );
-}
-
-function PortfolioProjectPreview({
-  onClose,
-  snapshot,
-}: {
-  onClose: () => void;
-  snapshot: PortfolioProjectSnapshot;
-}) {
-  return (
-    <div
-      aria-label={`${snapshot.title} portfolio preview`}
-      aria-modal="true"
-      className="fixed inset-0 z-[90] flex items-end bg-midnight/86 p-0 backdrop-blur-sm sm:items-center sm:justify-center sm:p-5"
-      role="dialog"
-    >
-      <div className="relative flex max-h-[100dvh] w-full max-w-5xl flex-col overflow-y-auto border border-bronze/38 bg-[#0d0f11] shadow-2xl sm:max-h-[90dvh] sm:rounded-2xl lg:grid lg:grid-cols-[minmax(0,0.9fr)_minmax(20rem,0.62fr)] lg:overflow-hidden">
-        <button
-          aria-label="Close project preview"
-          className="absolute right-4 top-4 z-20 flex h-11 w-11 items-center justify-center rounded-xl border border-bronze/38 bg-midnight/78 text-stardust transition hover:border-ember/55 hover:text-ember"
-          onClick={onClose}
-          type="button"
-        >
-          <X aria-hidden="true" size={19} />
-        </button>
-        <div className="relative min-h-[20rem] overflow-hidden bg-midnight sm:min-h-[28rem]">
-          {snapshot.coverImage ? (
-            <PortfolioSnapshotImage image={snapshot.coverImage} />
-          ) : (
-            <ProjectImagePlaceholder />
-          )}
-          <div className="absolute inset-0 bg-gradient-to-t from-midnight via-midnight/10 to-midnight/30" />
-        </div>
-        <div className="flex flex-col justify-end p-6 sm:p-8">
-          <Badge className="self-start" variant="teal">Recruiter Preview</Badge>
-          {snapshot.overview ? (
-            <p className="mt-6 text-xs uppercase tracking-[0.18em] text-ember">
-              {snapshot.overview.garmentType} / {snapshot.overview.collection}
-            </p>
-          ) : null}
-          <h2 className="font-display mt-3 text-3xl leading-tight text-stardust sm:text-4xl">
-            {snapshot.title}
-          </h2>
-          <p className="mt-5 text-sm leading-7 text-stardust/62 sm:text-base">
-            {snapshot.description || 'A garment study from the Mystic Lore Studio portfolio.'}
-          </p>
-          <div className="mt-7 flex flex-wrap gap-2">
-            {snapshot.process ? (
-              <>
-                <Badge variant="bronze">{snapshot.process.phase}</Badge>
-                <Badge variant="blue">{snapshot.process.progress}% complete</Badge>
-              </>
-            ) : null}
-            {snapshot.featured ? <Badge variant="ember">Featured project</Badge> : null}
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function PortfolioSnapshotImage({ image }: { image: PortfolioImageSnapshot }) {
-  return (
-    <>
-      <ProjectImagePlaceholder />
-      {image.src ? (
-        <img
-          alt={image.alt}
-          className="absolute inset-0 h-full w-full"
-          onError={(event) => { event.currentTarget.hidden = true; }}
-          src={image.src}
-          style={{
-            objectFit: image.fit,
-            objectPosition: `${image.positionX}% ${image.positionY}%`,
-            transform: `scale(${image.zoom})`,
-            transformOrigin: `${image.positionX}% ${image.positionY}%`,
-          }}
-        />
-      ) : null}
-    </>
   );
 }
 
