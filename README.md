@@ -129,10 +129,15 @@ Use `.env.example` as the safe template:
 ```bash
 VITE_SUPABASE_URL=https://your-project-ref.supabase.co
 VITE_SUPABASE_ANON_KEY=your-supabase-anon-key
+# Optional: set this after deployment to copy absolute public portfolio links.
+# VITE_PUBLIC_APP_URL=https://your-deployed-app.example
 ```
 
 The actual `.env.local` file is intentionally ignored. The repo should never
 contain service-role keys, private database URLs, or real API secrets.
+
+If `VITE_PUBLIC_APP_URL` is not set, the Portfolio share tools copy relative
+paths such as `/portfolio/your-name`.
 
 ## Supabase Configuration
 
