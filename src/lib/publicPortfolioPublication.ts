@@ -8,7 +8,9 @@ import {
   preparePortfolioProjectSnapshot,
 } from '../utils/portfolioSnapshot';
 import type {
+  PortfolioEditorialSnapshot,
   PortfolioHomepageSnapshot,
+  PortfolioProfileSnapshot,
   PortfolioProjectSnapshot,
 } from '../utils/portfolioSnapshot';
 import type { EditorialCollection } from '../types/editorial';
@@ -17,10 +19,15 @@ import type { ApparelProject, Fabric, LocalImageAsset } from '../types/studio';
 import { getSafePortfolioSettings, slugifyPortfolioValue } from '../utils/portfolioUtils';
 
 const PUBLICATION_TABLE = 'portfolio_publications';
+const PORTFOLIO_PROFILE_TABLE = 'portfolio_profiles';
+const PUBLISHED_EDITORIALS_TABLE = 'published_editorials';
+const PUBLISHED_PROJECTS_TABLE = 'published_portfolio_projects';
 const PORTFOLIO_IMAGE_BUCKET = 'portfolio-images';
 
 type PublishPublicPortfolioInput = {
   assets: readonly LocalImageAsset[];
+  sourceEditorialCollections?: readonly EditorialCollection[];
+  sourceProjects?: readonly ApparelProject[];
   snapshot: PortfolioHomepageSnapshot;
   userId: string;
 };
@@ -49,6 +56,8 @@ export type PortfolioProjectPublicationResult = {
 
 export async function publishPublicPortfolio({
   assets,
+  sourceEditorialCollections,
+  sourceProjects,
   snapshot,
   userId,
 }: PublishPublicPortfolioInput) {
@@ -69,6 +78,12 @@ export async function publishPublicPortfolio({
   }, { onConflict: 'user_id' });
 
   if (error) throw new Error(`Unable to publish portfolio: ${error.message}`);
+  await writePublishedPortfolioSnapshots(
+    publishedSnapshot,
+    userId,
+    sourceProjects,
+    sourceEditorialCollections,
+  );
   savePublicPortfolioSnapshot(publishedSnapshot);
   return publishedSnapshot;
 }
@@ -96,6 +111,8 @@ export async function publishPortfolioProfile(
 
   return publishPublicPortfolio({
     assets: source.assets,
+    sourceEditorialCollections: source.editorialCollections,
+    sourceProjects: source.projects,
     snapshot,
     userId: source.userId,
   });
@@ -146,6 +163,8 @@ export async function publishPortfolioProject({
   });
   const publishedSnapshot = await publishPublicPortfolio({
     assets: source.assets,
+    sourceEditorialCollections: source.editorialCollections,
+    sourceProjects: source.projects,
     snapshot,
     userId: source.userId,
   });
@@ -203,6 +222,8 @@ export async function unpublishPortfolioProject({
 
   const publishedSnapshot = await publishPublicPortfolio({
     assets: source.assets,
+    sourceEditorialCollections: source.editorialCollections,
+    sourceProjects: source.projects,
     snapshot,
     userId: source.userId,
   });
@@ -217,6 +238,12 @@ export async function unpublishPortfolioProject({
 
 export async function fetchPublicPortfolio(usernameSlug: string) {
   if (!supabase) return null;
+  const publishedSnapshot = await fetchPublishedPortfolioHomepage(usernameSlug);
+  if (publishedSnapshot) return publishedSnapshot;
+
+  // Compatibility fallback for an already-published profile while the new
+  // snapshot-table migration is being rolled out. New writes use the tables
+  // above; anonymous routes never query private Studio data in either case.
   const { data, error } = await supabase
     .from(PUBLICATION_TABLE)
     .select('snapshot')
@@ -227,18 +254,215 @@ export async function fetchPublicPortfolio(usernameSlug: string) {
   return isPortfolioSnapshot(data?.snapshot) ? data.snapshot : null;
 }
 
+/** Fetches the public homepage from only the anonymous-safe snapshot tables. */
+export async function fetchPublishedPortfolioHomepage(usernameSlug: string) {
+  const profile = await fetchPublishedPortfolioProfile(usernameSlug);
+  if (!profile) return null;
+
+  const [projects, editorials] = await Promise.all([
+    fetchPublishedPortfolioProjects(usernameSlug),
+    fetchPublishedEditorials(usernameSlug),
+  ]);
+  return createPublishedHomepageSnapshot(profile, projects, editorials);
+}
+
+/** Fetches exactly one public project snapshot for a case-study route. */
+export async function fetchPublishedPortfolioProject(
+  usernameSlug: string,
+  projectSlug: string,
+) {
+  if (!supabase) return null;
+  const profile = await fetchPublishedPortfolioProfile(usernameSlug);
+  if (!profile) return null;
+
+  const { data, error } = await supabase
+    .from(PUBLISHED_PROJECTS_TABLE)
+    .select('snapshot')
+    .eq('username_slug', usernameSlug)
+    .eq('project_slug', projectSlug)
+    .eq('is_public', true)
+    .maybeSingle();
+  if (error) throw new Error(`Unable to load public project: ${error.message}`);
+  if (!isPortfolioProjectSnapshot(data?.snapshot)) return null;
+
+  const project = data.snapshot;
+  return createPublishedHomepageSnapshot(profile, [project], project.editorials);
+}
+
+/** Fetches exactly one public editorial snapshot for an editorial route. */
+export async function fetchPublishedEditorial(
+  usernameSlug: string,
+  editorialSlug: string,
+) {
+  if (!supabase) return null;
+  const profile = await fetchPublishedPortfolioProfile(usernameSlug);
+  if (!profile) return null;
+
+  const { data, error } = await supabase
+    .from(PUBLISHED_EDITORIALS_TABLE)
+    .select('snapshot')
+    .eq('username_slug', usernameSlug)
+    .eq('editorial_slug', editorialSlug)
+    .eq('is_public', true)
+    .maybeSingle();
+  if (error) throw new Error(`Unable to load public editorial: ${error.message}`);
+  if (!isPortfolioEditorialSnapshot(data?.snapshot)) return null;
+
+  return createPublishedHomepageSnapshot(profile, [], [data.snapshot]);
+}
+
 async function removePublicPortfolioPublication(userId: string, usernameSlug: string) {
   if (!supabase) {
     clearPublicPortfolioSnapshot(usernameSlug);
     return;
   }
 
-  const { error } = await supabase
-    .from(PUBLICATION_TABLE)
-    .delete()
-    .eq('user_id', userId);
-  if (error) throw new Error(`Unable to unpublish portfolio: ${error.message}`);
+  const results = await Promise.all([
+    supabase.from(PUBLICATION_TABLE).delete().eq('user_id', userId),
+    supabase.from(PORTFOLIO_PROFILE_TABLE).delete().eq('user_id', userId),
+    supabase.from(PUBLISHED_PROJECTS_TABLE).delete().eq('user_id', userId),
+    supabase.from(PUBLISHED_EDITORIALS_TABLE).delete().eq('user_id', userId),
+  ]);
+  const failed = results.find(({ error }) => error);
+  if (failed?.error) throw new Error(`Unable to unpublish portfolio: ${failed.error.message}`);
   clearPublicPortfolioSnapshot(usernameSlug);
+}
+
+/**
+ * Mirrors a sanitized aggregate snapshot into the normalized public tables.
+ * No private Studio row is copied here: only data already produced by the
+ * portfolio snapshot helpers is written to anonymous-readable tables.
+ */
+async function writePublishedPortfolioSnapshots(
+  snapshot: PortfolioHomepageSnapshot,
+  userId: string,
+  sourceProjects: readonly ApparelProject[] = [],
+  sourceEditorialCollections: readonly EditorialCollection[] = [],
+) {
+  if (!supabase) return;
+
+  const timestamp = new Date().toISOString();
+  const profile = snapshot.profile;
+  const profileRow = {
+    avatar_image_url: profile.avatar?.src ?? null,
+    bio: profile.bio || null,
+    display_name: profile.displayName || 'Mystic Lore Portfolio',
+    email: profile.email ?? null,
+    headline: profile.headline || null,
+    is_public: true,
+    location: profile.location ?? null,
+    resume_url: profile.resumeUrl ?? null,
+    snapshot: profile,
+    updated_at: timestamp,
+    user_id: userId,
+    username_slug: profile.usernameSlug,
+  };
+  const projectRows = snapshot.projects.map((project) => ({
+    cover_image_url: project.coverImage?.src ?? null,
+    description: project.description || null,
+    is_public: true,
+    project_id: sourceProjects.find(
+      (candidate) => getSafePortfolioSettings(candidate).portfolioSlug === project.slug,
+    )?.id ?? `portfolio:${project.slug}`,
+    project_slug: project.slug,
+    snapshot: project,
+    title: project.title,
+    updated_at: timestamp,
+    user_id: userId,
+    username_slug: profile.usernameSlug,
+  }));
+  const editorialRows = snapshot.editorials.map((editorial) => ({
+    editorial_id: sourceEditorialCollections.find(
+      (candidate) => slugifyPortfolioValue(candidate.title) === editorial.slug,
+    )?.id ?? editorial.key,
+    editorial_slug: editorial.slug,
+    is_public: true,
+    snapshot: editorial,
+    title: editorial.title,
+    updated_at: timestamp,
+    user_id: userId,
+    username_slug: profile.usernameSlug,
+  }));
+
+  // Replace the owner's generated rows together. This removes snapshots for
+  // projects/editorials that have just been made private instead of leaving a
+  // stale public URL behind.
+  const deletions = await Promise.all([
+    supabase.from(PORTFOLIO_PROFILE_TABLE).delete().eq('user_id', userId),
+    supabase.from(PUBLISHED_PROJECTS_TABLE).delete().eq('user_id', userId),
+    supabase.from(PUBLISHED_EDITORIALS_TABLE).delete().eq('user_id', userId),
+  ]);
+  const deletionFailure = deletions.find(({ error }) => error);
+  if (deletionFailure?.error) {
+    throw new Error(`Unable to prepare public portfolio snapshots: ${deletionFailure.error.message}`);
+  }
+
+  const writes = await Promise.all([
+    supabase.from(PORTFOLIO_PROFILE_TABLE).insert(profileRow),
+    projectRows.length
+      ? supabase.from(PUBLISHED_PROJECTS_TABLE).insert(projectRows)
+      : Promise.resolve({ error: null }),
+    editorialRows.length
+      ? supabase.from(PUBLISHED_EDITORIALS_TABLE).insert(editorialRows)
+      : Promise.resolve({ error: null }),
+  ]);
+  const writeFailure = writes.find(({ error }) => error);
+  if (writeFailure?.error) {
+    throw new Error(`Unable to publish public portfolio snapshots: ${writeFailure.error.message}`);
+  }
+}
+
+async function fetchPublishedPortfolioProfile(usernameSlug: string) {
+  if (!supabase) return null;
+  const { data, error } = await supabase
+    .from(PORTFOLIO_PROFILE_TABLE)
+    .select('snapshot')
+    .eq('username_slug', usernameSlug)
+    .eq('is_public', true)
+    .maybeSingle();
+  if (error) throw new Error(`Unable to load public portfolio profile: ${error.message}`);
+  return isPortfolioProfileSnapshot(data?.snapshot) ? data.snapshot : null;
+}
+
+async function fetchPublishedPortfolioProjects(usernameSlug: string) {
+  if (!supabase) return [];
+  const { data, error } = await supabase
+    .from(PUBLISHED_PROJECTS_TABLE)
+    .select('snapshot')
+    .eq('username_slug', usernameSlug)
+    .eq('is_public', true)
+    .order('updated_at', { ascending: false });
+  if (error) throw new Error(`Unable to load public projects: ${error.message}`);
+  return (data ?? [])
+    .map(({ snapshot }) => snapshot)
+    .filter(isPortfolioProjectSnapshot);
+}
+
+async function fetchPublishedEditorials(usernameSlug: string) {
+  if (!supabase) return [];
+  const { data, error } = await supabase
+    .from(PUBLISHED_EDITORIALS_TABLE)
+    .select('snapshot')
+    .eq('username_slug', usernameSlug)
+    .eq('is_public', true)
+    .order('updated_at', { ascending: false });
+  if (error) throw new Error(`Unable to load public editorials: ${error.message}`);
+  return (data ?? [])
+    .map(({ snapshot }) => snapshot)
+    .filter(isPortfolioEditorialSnapshot);
+}
+
+function createPublishedHomepageSnapshot(
+  profile: PortfolioHomepageSnapshot['profile'],
+  projects: readonly PortfolioProjectSnapshot[],
+  editorials: readonly PortfolioEditorialSnapshot[],
+): PortfolioHomepageSnapshot {
+  return {
+    editorials,
+    generatedAt: new Date().toISOString(),
+    profile,
+    projects,
+  };
 }
 
 async function publishReferencedImages(
@@ -346,10 +570,39 @@ function extensionFor(mimeType: string) {
 
 function isPortfolioSnapshot(value: unknown): value is PortfolioHomepageSnapshot {
   return isRecord(value)
-    && isRecord(value.profile)
-    && typeof value.profile.usernameSlug === 'string'
+    && isPortfolioProfileSnapshot(value.profile)
     && Array.isArray(value.projects)
-    && Array.isArray(value.editorials);
+    && value.projects.every(isPortfolioProjectSnapshot)
+    && Array.isArray(value.editorials)
+    && value.editorials.every(isPortfolioEditorialSnapshot);
+}
+
+function isPortfolioProfileSnapshot(value: unknown): value is PortfolioProfileSnapshot {
+  return isRecord(value)
+    && typeof value.usernameSlug === 'string'
+    && typeof value.displayName === 'string'
+    && typeof value.headline === 'string'
+    && typeof value.bio === 'string';
+}
+
+function isPortfolioProjectSnapshot(value: unknown): value is PortfolioProjectSnapshot {
+  return isRecord(value)
+    && typeof value.slug === 'string'
+    && typeof value.title === 'string'
+    && typeof value.description === 'string'
+    && Array.isArray(value.featuredImages)
+    && Array.isArray(value.editorials)
+    && isRecord(value.visibleSections);
+}
+
+function isPortfolioEditorialSnapshot(value: unknown): value is PortfolioEditorialSnapshot {
+  return isRecord(value)
+    && typeof value.key === 'string'
+    && typeof value.slug === 'string'
+    && typeof value.title === 'string'
+    && isRecord(value.cover)
+    && Array.isArray(value.scenes)
+    && Array.isArray(value.images);
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
