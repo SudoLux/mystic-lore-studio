@@ -17,6 +17,8 @@ import { useStudioData } from './hooks/useStudioData';
 import { StudioDataProvider } from './hooks/useStudioData';
 import { supabaseConfigStatus } from './lib/supabase';
 import {
+  fetchPublishedEditorial,
+  fetchPublishedPortfolioProject,
   fetchPublicPortfolio,
   publishPortfolioProfile,
   unpublishPortfolioProfile,
@@ -48,6 +50,7 @@ type AppRoute = {
 };
 
 type PublicPortfolioRoute = {
+  editorialProjectSlug?: string;
   editorialSlug?: string;
   projectSlug?: string;
   usernameSlug: string;
@@ -102,7 +105,11 @@ function getPublicPortfolioRoute(): PublicPortfolioRoute | null {
   if (section !== 'portfolio' || !usernameSlug) return null;
 
   if (contentType === 'editorials') {
+    const editorialProjectSlug = new URLSearchParams(window.location.search).get('project');
     return {
+      editorialProjectSlug: editorialProjectSlug
+        ? slugifyPortfolioValue(editorialProjectSlug)
+        : undefined,
       editorialSlug: contentSlug ? slugifyPortfolioValue(contentSlug) : undefined,
       usernameSlug: slugifyPortfolioValue(usernameSlug),
     };
@@ -118,7 +125,10 @@ function App() {
   const { isLoading, session } = useAuth();
   const publicPortfolioRoute = getPublicPortfolioRoute();
 
-  if (publicPortfolioRoute && !session) {
+  // Public URLs always use the public snapshot loader, even when the Studio
+  // owner happens to be signed in in the same browser. They must never render
+  // directly from authenticated in-memory project data.
+  if (publicPortfolioRoute) {
     return <CachedPublicPortfolio route={publicPortfolioRoute} />;
   }
 
@@ -138,19 +148,36 @@ function CachedPublicPortfolio({ route }: { route: PublicPortfolioRoute }) {
     () => loadPublicPortfolioSnapshot(route.usernameSlug),
   );
   const [isLoadingPublication, setIsLoadingPublication] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   useEffect(() => {
     let active = true;
     setSnapshot(loadPublicPortfolioSnapshot(route.usernameSlug));
     setIsLoadingPublication(true);
+    setLoadError(null);
 
-    void fetchPublicPortfolio(route.usernameSlug)
+    const loadPublication = route.projectSlug
+      ? fetchPublishedPortfolioProject(route.usernameSlug, route.projectSlug)
+      : route.editorialSlug
+        ? fetchPublishedEditorial(route.usernameSlug, route.editorialSlug)
+        : fetchPublicPortfolio(route.usernameSlug);
+
+    void loadPublication
       .then((publishedSnapshot) => {
-        if (!active || !publishedSnapshot) return;
+        if (!active) return;
+        if (!publishedSnapshot) {
+          // A configured cloud read is authoritative for public links. Keep a
+          // local snapshot only in local/no-Supabase development mode.
+          if (supabaseConfigStatus.isConfigured) setSnapshot(null);
+          return;
+        }
         savePublicPortfolioSnapshot(publishedSnapshot);
         setSnapshot(publishedSnapshot);
       })
-      .catch(() => undefined)
+      .catch((error: unknown) => {
+        if (!active) return;
+        setLoadError(error instanceof Error ? error.message : 'The public portfolio could not be reached.');
+      })
       .finally(() => {
         if (active) setIsLoadingPublication(false);
       });
@@ -172,8 +199,12 @@ function CachedPublicPortfolio({ route }: { route: PublicPortfolioRoute }) {
   }
 
   if (!snapshot) {
+    if (loadError) {
+      return <PublicPortfolioLoadError profileSlug={route.usernameSlug} />;
+    }
     return (
       <PublicPortfolioPage
+        editorialProjectSlug={route.editorialProjectSlug}
         editorialSlug={route.editorialSlug}
         isPublished={false}
         projectSlug={route.projectSlug}
@@ -194,11 +225,28 @@ function CachedPublicPortfolio({ route }: { route: PublicPortfolioRoute }) {
 
   return (
     <PublicPortfolioPage
+      editorialProjectSlug={route.editorialProjectSlug}
       editorialSlug={route.editorialSlug}
       isPublished={snapshot.profile.usernameSlug === route.usernameSlug}
       projectSlug={route.projectSlug}
       snapshot={snapshot}
     />
+  );
+}
+
+function PublicPortfolioLoadError({ profileSlug }: { profileSlug: string }) {
+  return (
+    <div className="flex min-h-dvh items-center justify-center bg-[#080909] px-5 text-stardust">
+      <section className="max-w-lg text-center">
+        <span className="mx-auto flex h-14 w-14 items-center justify-center rounded-full border border-bronze/30 bg-charcoal text-ember">
+          <CloudOff aria-hidden="true" size={23} />
+        </span>
+        <p className="mt-6 text-xs font-semibold uppercase tracking-[0.2em] text-ember">Portfolio temporarily unavailable</p>
+        <h1 className="font-display mt-4 text-4xl leading-tight">This portfolio could not be loaded.</h1>
+        <p className="mx-auto mt-4 max-w-md text-sm leading-7 text-stardust/54">Please check your connection and try again. No private Studio information is shown when a public snapshot cannot be reached.</p>
+        <a className="mt-7 inline-flex min-h-11 items-center rounded-md border border-bronze/34 px-4 text-sm text-stardust transition hover:border-ember/50 hover:text-ember" href={`/portfolio/${profileSlug}`}>Return to portfolio</a>
+      </section>
+    </div>
   );
 }
 
@@ -239,7 +287,6 @@ function StudioApp() {
     useState<Fabric | null>(null);
   const [deleteProjectCandidate, setDeleteProjectCandidate] =
     useState<ApparelProject | null>(null);
-  const publicPortfolioRoute = getPublicPortfolioRoute();
   const publicPortfolioAssets = useMemo(() => {
     const assets = new Map<string, NonNullable<ApparelProject['heroImage']>>();
     projects.forEach((project) => {
@@ -421,20 +468,6 @@ function StudioApp() {
 
     return pages[route.page];
   }, [route, projects]);
-
-  if (publicPortfolioRoute) {
-    return (
-      <PublicPortfolioPage
-        editorialSlug={publicPortfolioRoute.editorialSlug}
-        isPublished={
-          publicPortfolioRoute.usernameSlug
-          === publicPortfolioSnapshot.profile.usernameSlug
-        }
-        projectSlug={publicPortfolioRoute.projectSlug}
-        snapshot={publicPortfolioSnapshot}
-      />
-    );
-  }
 
   return (
     <>

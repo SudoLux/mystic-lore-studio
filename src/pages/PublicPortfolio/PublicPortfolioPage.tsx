@@ -22,6 +22,7 @@ import type {
 import { buildPublicPortfolioUrl } from '../../utils/portfolioUtils';
 
 type PublicPortfolioPageProps = {
+  editorialProjectSlug?: string;
   editorialSlug?: string;
   isPublished: boolean;
   projectSlug?: string;
@@ -29,6 +30,7 @@ type PublicPortfolioPageProps = {
 };
 
 export function PublicPortfolioPage({
+  editorialProjectSlug,
   editorialSlug,
   isPublished,
   projectSlug,
@@ -70,36 +72,38 @@ export function PublicPortfolioPage({
     };
   }, [selectedEditorial, selectedProject, snapshot.profile.bio, snapshot.profile.displayName]);
 
-  if (!isPublished || !snapshot.projects.length) {
-    if (projectSlug || editorialSlug) {
-      return <MissingProject profileSlug={snapshot.profile.usernameSlug || publicProfileSlugFallback(snapshot)} />;
-    }
-    return <UnpublishedPortfolio displayName={isPublished ? snapshot.profile.displayName : undefined} />;
+  if (!isPublished) {
+    if (editorialSlug) return <MissingEditorial profileSlug={snapshot.profile.usernameSlug || publicProfileSlugFallback(snapshot)} />;
+    if (projectSlug) return <MissingProject profileSlug={snapshot.profile.usernameSlug || publicProfileSlugFallback(snapshot)} />;
+    return <UnpublishedPortfolio />;
   }
 
-  if (editorialSlug && !selectedEditorial) {
-    return <MissingEditorial profileSlug={snapshot.profile.usernameSlug} />;
+  if (editorialSlug) {
+    return selectedEditorial ? (
+      <PublicEditorialPage
+        backProjectSlug={editorialProjectSlug}
+        editorial={selectedEditorial}
+        ownerProject={selectedEditorialProject}
+        profile={snapshot.profile}
+      />
+    ) : <MissingEditorial profileSlug={snapshot.profile.usernameSlug} />;
   }
 
-  if (projectSlug && !selectedProject) {
-    return <MissingProject profileSlug={snapshot.profile.usernameSlug} />;
+  if (projectSlug) {
+    return selectedProject ? (
+      <PublicProjectPage
+        profile={snapshot.profile}
+        project={selectedProject}
+        projects={snapshot.projects}
+      />
+    ) : <MissingProject profileSlug={snapshot.profile.usernameSlug} />;
   }
 
-  return selectedEditorial ? (
-    <PublicEditorialPage
-      editorial={selectedEditorial}
-      ownerProject={selectedEditorialProject}
-      profile={snapshot.profile}
-    />
-  ) : selectedProject ? (
-    <PublicProjectPage
-      profile={snapshot.profile}
-      project={selectedProject}
-      projects={snapshot.projects}
-    />
-  ) : (
-    <PortfolioHomepage snapshot={snapshot} />
-  );
+  if (!snapshot.projects.length) {
+    return <UnpublishedPortfolio displayName={snapshot.profile.displayName} />;
+  }
+
+  return <PortfolioHomepage snapshot={snapshot} />;
 }
 
 function PortfolioHomepage({ snapshot }: { snapshot: PortfolioHomepageSnapshot }) {
@@ -475,7 +479,7 @@ function PublicProjectPage({
               {project.editorials.map((editorial) => (
                 <EditorialCard
                   editorial={editorial}
-                  href={buildPublicEditorialUrl(profile.usernameSlug, editorial.slug)}
+                  href={`${buildPublicEditorialUrl(profile.usernameSlug, editorial.slug)}?project=${encodeURIComponent(project.slug)}`}
                   key={editorial.key}
                 />
               ))}
@@ -531,10 +535,12 @@ function ProjectQuickNav({ project }: { project: PortfolioProjectSnapshot }) {
 }
 
 function PublicEditorialPage({
+  backProjectSlug,
   editorial,
   ownerProject,
   profile,
 }: {
+  backProjectSlug?: string;
   editorial: PortfolioEditorialSnapshot;
   ownerProject?: PortfolioProjectSnapshot;
   profile: PortfolioHomepageSnapshot['profile'];
@@ -545,7 +551,9 @@ function PublicEditorialPage({
   const homeHref = buildPublicPortfolioUrl(profile.usernameSlug);
   const projectHref = ownerProject
     ? buildPublicPortfolioUrl(profile.usernameSlug, ownerProject.slug)
-    : homeHref;
+    : backProjectSlug
+      ? buildPublicPortfolioUrl(profile.usernameSlug, backProjectSlug)
+      : homeHref;
 
   const previousScene = () => setActiveIndex((current) => Math.max(0, current - 1));
   const nextScene = () => setActiveIndex((current) => Math.min(scenes.length - 1, current + 1));
@@ -574,7 +582,7 @@ function PublicEditorialPage({
           <div className="relative mx-auto flex min-h-[92dvh] max-w-7xl flex-col justify-end px-5 pb-14 pt-24 sm:px-8 lg:px-12">
             <div className="mb-auto flex flex-wrap gap-3">
               <a className="inline-flex min-h-11 items-center gap-2 rounded-md border border-bronze/30 bg-midnight/48 px-4 text-sm text-stardust/64 backdrop-blur transition hover:border-ember/50 hover:text-ember" href={projectHref}>
-                <ArrowLeft size={17} /> {ownerProject ? 'Back to project' : 'Back to portfolio'}
+                <ArrowLeft size={17} /> {ownerProject || backProjectSlug ? 'Back to project' : 'Back to portfolio'}
               </a>
               <a className="inline-flex min-h-11 items-center gap-2 rounded-md border border-bronze/20 bg-midnight/34 px-4 text-sm text-stardust/50 backdrop-blur transition hover:border-ember/40 hover:text-ember" href={homeHref}>
                 Portfolio home

@@ -178,7 +178,8 @@ complete file contents, and run the files in this order:
    `supabase/migrations/20260621010000_add_cloud_sync_and_storage.sql`, then
    `supabase/migrations/20260628010000_add_sync_tombstones.sql`, then
    `supabase/migrations/20260707010000_add_portfolio_profile.sql`, then
-   `supabase/migrations/20260710010000_add_public_portfolio_publications.sql`.
+   `supabase/migrations/20260710010000_add_public_portfolio_publications.sql`, then
+   `supabase/migrations/20260711010000_create_public_portfolio_snapshots.sql`.
 3. **Verify tables:** open **Table Editor** and confirm `profiles`, `projects`,
    `fabrics`, `materials`, `tasks`, `notes`, `project_images`,
    `yardage_entries`, `lookbook_pages`, and `sync_tombstones` exist.
