@@ -30,6 +30,18 @@ export function loadPublicPortfolioSnapshot(usernameSlug: string) {
   }
 }
 
+/** Removes only the sanitized public-preview cache for a portfolio slug. */
+export function clearPublicPortfolioSnapshot(usernameSlug: string) {
+  if (!canUseLocalStorage()) return;
+
+  try {
+    window.localStorage.removeItem(cacheKey(slugifyPortfolioValue(usernameSlug)));
+  } catch {
+    // Local public previews are optional. A storage failure must never block
+    // the authenticated Studio workspace or a cloud unpublish operation.
+  }
+}
+
 function cacheKey(usernameSlug: string) {
   return `${PUBLIC_PORTFOLIO_CACHE_PREFIX}:${usernameSlug}`;
 }

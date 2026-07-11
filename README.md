@@ -194,6 +194,16 @@ The Storage policies restrict every object to the authenticated owner's path:
 `users/{userId}/...`. The database tables have Row Level Security enabled and
 authenticated users can only read or change rows where `auth.uid() = user_id`.
 
+### Public Portfolio Privacy Model
+
+Recruiter-facing routes never read Studio projects, tasks, notes, or editorial
+records directly. When a signed-in owner publishes, Mystic Lore Studio builds a
+sanitized `PortfolioHomepageSnapshot` and stores it in the separate
+`portfolio_publications` table. That table is the only anonymous-readable
+portfolio data source. Owners can publish a profile, publish an individual
+project, or remove a project from the published snapshot through the typed
+publication helpers; private Studio tables remain owner-only behind RLS.
+
 #### Setup Troubleshooting
 
 - **`relation ... already exists`:** use the current migration files from this

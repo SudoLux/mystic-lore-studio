@@ -18,7 +18,8 @@ import { StudioDataProvider } from './hooks/useStudioData';
 import { supabaseConfigStatus } from './lib/supabase';
 import {
   fetchPublicPortfolio,
-  publishPublicPortfolio,
+  publishPortfolioProfile,
+  unpublishPortfolioProfile,
 } from './lib/publicPortfolioPublication';
 import { AuthScreen } from './pages/Auth/AuthScreen';
 import { DashboardPage } from './pages/Dashboard';
@@ -262,14 +263,24 @@ function StudioApp() {
   );
 
   useEffect(() => {
-    if (!publicPortfolioSnapshot.profile.usernameSlug) return;
+    if (!publicPortfolioSnapshot.profile.usernameSlug) {
+      if (user?.id) {
+        void unpublishPortfolioProfile({ userId: user.id }).catch((error) => {
+          console.warn('Public portfolio withdrawal is not available yet.', error);
+        });
+      }
+      return;
+    }
     savePublicPortfolioSnapshot(publicPortfolioSnapshot);
     if (!user?.id) return;
 
     const publishTimer = window.setTimeout(() => {
-      void publishPublicPortfolio({
+      void publishPortfolioProfile({
         assets: publicPortfolioAssets,
-        snapshot: publicPortfolioSnapshot,
+        editorialCollections,
+        fabrics,
+        portfolioProfile,
+        projects,
         userId: user.id,
       }).catch((error) => {
         console.warn('Public portfolio publishing is not available yet.', error);
@@ -277,7 +288,7 @@ function StudioApp() {
     }, 800);
 
     return () => window.clearTimeout(publishTimer);
-  }, [publicPortfolioAssets, publicPortfolioSnapshot, user?.id]);
+  }, [editorialCollections, fabrics, portfolioProfile, projects, publicPortfolioAssets, publicPortfolioSnapshot, user?.id]);
 
   useEffect(() => {
     const handleHashChange = () => setRoute(getInitialRoute());

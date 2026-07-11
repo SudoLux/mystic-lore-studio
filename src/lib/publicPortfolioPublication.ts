@@ -1,7 +1,20 @@
 import { supabase } from './supabase';
-import { savePublicPortfolioSnapshot } from '../utils/publicPortfolioCache';
-import type { PortfolioHomepageSnapshot } from '../utils/portfolioSnapshot';
-import type { LocalImageAsset } from '../types/studio';
+import {
+  clearPublicPortfolioSnapshot,
+  savePublicPortfolioSnapshot,
+} from '../utils/publicPortfolioCache';
+import {
+  preparePortfolioHomepageSnapshot,
+  preparePortfolioProjectSnapshot,
+} from '../utils/portfolioSnapshot';
+import type {
+  PortfolioHomepageSnapshot,
+  PortfolioProjectSnapshot,
+} from '../utils/portfolioSnapshot';
+import type { EditorialCollection } from '../types/editorial';
+import type { PortfolioProfile } from '../types/portfolio';
+import type { ApparelProject, Fabric, LocalImageAsset } from '../types/studio';
+import { getSafePortfolioSettings, slugifyPortfolioValue } from '../utils/portfolioUtils';
 
 const PUBLICATION_TABLE = 'portfolio_publications';
 const PORTFOLIO_IMAGE_BUCKET = 'portfolio-images';
@@ -10,6 +23,28 @@ type PublishPublicPortfolioInput = {
   assets: readonly LocalImageAsset[];
   snapshot: PortfolioHomepageSnapshot;
   userId: string;
+};
+
+/**
+ * The publishing source is intentionally private and only exists while the
+ * signed-in Studio app prepares a public snapshot. Anonymous routes never
+ * receive this structure or query the underlying Studio tables directly.
+ */
+export type PortfolioPublicationSource = {
+  assets: readonly LocalImageAsset[];
+  editorialCollections: readonly EditorialCollection[];
+  fabrics: readonly Fabric[];
+  portfolioProfile: PortfolioProfile;
+  projects: readonly ApparelProject[];
+  userId: string;
+};
+
+export type PortfolioProjectPublicationResult = {
+  generatedAt: string;
+  project: PortfolioProjectSnapshot | null;
+  projectSlug: string;
+  snapshot: PortfolioHomepageSnapshot;
+  usernameSlug: string;
 };
 
 export async function publishPublicPortfolio({
@@ -38,6 +73,148 @@ export async function publishPublicPortfolio({
   return publishedSnapshot;
 }
 
+/**
+ * Publishes the current public-safe profile and every currently public project
+ * as one immutable recruiter-facing snapshot. This is the durable cloud
+ * counterpart to the local preview cache.
+ */
+export async function publishPortfolioProfile(
+  source: PortfolioPublicationSource,
+): Promise<PortfolioHomepageSnapshot> {
+  const snapshot = preparePortfolioHomepageSnapshot({
+    assets: source.assets,
+    editorialCollections: source.editorialCollections,
+    fabrics: source.fabrics,
+    portfolioProfile: source.portfolioProfile,
+    projects: source.projects,
+  });
+
+  if (!snapshot.projects.length) {
+    await removePublicPortfolioPublication(source.userId, snapshot.profile.usernameSlug);
+    return snapshot;
+  }
+
+  return publishPublicPortfolio({
+    assets: source.assets,
+    snapshot,
+    userId: source.userId,
+  });
+}
+
+/** Withdraws the authenticated owner's entire recruiter-facing publication. */
+export async function unpublishPortfolioProfile({
+  userId,
+  usernameSlug = '',
+}: {
+  userId: string;
+  usernameSlug?: string;
+}) {
+  await removePublicPortfolioPublication(userId, usernameSlug);
+}
+
+/**
+ * Rebuilds the complete public snapshot around a single Studio project. The
+ * returned project contains no private task, Kanban, or raw Studio state.
+ */
+export async function publishPortfolioProject({
+  projectId,
+  ...source
+}: PortfolioPublicationSource & { projectId: string }): Promise<PortfolioProjectPublicationResult> {
+  const project = source.projects.find((candidate) => candidate.id === projectId);
+  if (!project) throw new Error('Portfolio project could not be found.');
+
+  const projectSnapshot = preparePortfolioProjectSnapshot({
+    assets: source.assets,
+    editorialCollections: source.editorialCollections,
+    fabrics: source.fabrics,
+    project,
+  });
+  const projectSlug = getSafePortfolioSettings(project).portfolioSlug;
+  const usernameSlug = slugifyPortfolioValue(source.portfolioProfile.usernameSlug);
+
+  if (!projectSnapshot) {
+    return unpublishPortfolioProject({ projectId, ...source });
+  }
+
+  const snapshot = preparePortfolioHomepageSnapshot({
+    assets: source.assets,
+    editorialCollections: source.editorialCollections,
+    fabrics: source.fabrics,
+    portfolioProfile: source.portfolioProfile,
+    projects: source.projects,
+    generatedAt: projectSnapshot.generatedAt,
+  });
+  const publishedSnapshot = await publishPublicPortfolio({
+    assets: source.assets,
+    snapshot,
+    userId: source.userId,
+  });
+
+  return {
+    generatedAt: projectSnapshot.generatedAt,
+    project: projectSnapshot,
+    projectSlug,
+    snapshot: publishedSnapshot,
+    usernameSlug,
+  };
+}
+
+/**
+ * Removes one project from the public snapshot without mutating the private
+ * Studio record. When no public projects remain, the public snapshot row and
+ * its local preview are removed entirely.
+ */
+export async function unpublishPortfolioProject({
+  projectId,
+  ...source
+}: PortfolioPublicationSource & { projectId: string }): Promise<PortfolioProjectPublicationResult> {
+  const project = source.projects.find((candidate) => candidate.id === projectId);
+  if (!project) throw new Error('Portfolio project could not be found.');
+
+  const sanitizedProjects = source.projects.map((candidate) => candidate.id === projectId
+    ? {
+        ...candidate,
+        portfolio: {
+          ...getSafePortfolioSettings(candidate),
+          isPublic: false,
+        },
+      }
+    : candidate);
+  const snapshot = preparePortfolioHomepageSnapshot({
+    assets: source.assets,
+    editorialCollections: source.editorialCollections,
+    fabrics: source.fabrics,
+    portfolioProfile: source.portfolioProfile,
+    projects: sanitizedProjects,
+  });
+  const projectSlug = getSafePortfolioSettings(project).portfolioSlug;
+  const usernameSlug = slugifyPortfolioValue(source.portfolioProfile.usernameSlug);
+
+  if (!snapshot.projects.length) {
+    await removePublicPortfolioPublication(source.userId, snapshot.profile.usernameSlug);
+    return {
+      generatedAt: snapshot.generatedAt,
+      project: null,
+      projectSlug,
+      snapshot,
+      usernameSlug,
+    };
+  }
+
+  const publishedSnapshot = await publishPublicPortfolio({
+    assets: source.assets,
+    snapshot,
+    userId: source.userId,
+  });
+  return {
+    generatedAt: publishedSnapshot.generatedAt,
+    project: null,
+    projectSlug,
+    snapshot: publishedSnapshot,
+    usernameSlug,
+  };
+}
+
 export async function fetchPublicPortfolio(usernameSlug: string) {
   if (!supabase) return null;
   const { data, error } = await supabase
@@ -48,6 +225,20 @@ export async function fetchPublicPortfolio(usernameSlug: string) {
 
   if (error) throw new Error(`Unable to load public portfolio: ${error.message}`);
   return isPortfolioSnapshot(data?.snapshot) ? data.snapshot : null;
+}
+
+async function removePublicPortfolioPublication(userId: string, usernameSlug: string) {
+  if (!supabase) {
+    clearPublicPortfolioSnapshot(usernameSlug);
+    return;
+  }
+
+  const { error } = await supabase
+    .from(PUBLICATION_TABLE)
+    .delete()
+    .eq('user_id', userId);
+  if (error) throw new Error(`Unable to unpublish portfolio: ${error.message}`);
+  clearPublicPortfolioSnapshot(usernameSlug);
 }
 
 async function publishReferencedImages(
