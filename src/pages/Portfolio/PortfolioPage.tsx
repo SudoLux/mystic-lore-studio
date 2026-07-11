@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import { PortfolioProfileEditor } from '../../components/portfolio/PortfolioProfileEditor';
 import { PortfolioProjectVisibilityManager } from '../../components/portfolio/PortfolioProjectVisibilityManager';
+import { PortfolioShareCard } from '../../components/portfolio/PortfolioShareCard';
 import { Badge } from '../../components/shared/Badge';
 import { Button } from '../../components/shared/Button';
 import { Card } from '../../components/shared/Card';
@@ -334,6 +335,15 @@ export function PortfolioPage() {
               />
             </Card>
           </div>
+
+          <PortfolioShareCard
+            copiedValue={copiedPath}
+            displayName={portfolioProfile.displayName}
+            headline={portfolioProfile.headline}
+            isPublished={Boolean(portfolioProfile.publishedAt)}
+            onCopy={copyLink}
+            portfolioUrl={profileShareUrl}
+          />
         </>
       )}
     </section>
