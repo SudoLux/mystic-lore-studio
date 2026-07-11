@@ -295,6 +295,7 @@ export function PortfolioProjectVisibilityManager({
             setEditingProjectId(null);
           }}
           project={editingProject}
+          projects={projects}
           usernameSlug={usernameSlug}
         />
       ) : null}

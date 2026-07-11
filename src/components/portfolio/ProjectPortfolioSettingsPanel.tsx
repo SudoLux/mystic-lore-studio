@@ -31,6 +31,7 @@ import { AdaptiveProjectImage } from '../projects/AdaptiveProjectImage';
 import { Button } from '../shared/Button';
 import { StoredImage } from '../shared/StoredImage';
 import { getProjectPortfolioAssets } from './portfolioProjectAssets';
+import { formatStudioDate } from '../../lib/dates';
 
 type ProjectPortfolioSettingsPanelProps = {
   editorialCollections: EditorialCollection[];
@@ -39,6 +40,7 @@ type ProjectPortfolioSettingsPanelProps = {
   onClose: () => void;
   onSave: (patch: PortfolioProjectSettingsPatch) => void;
   project: ApparelProject;
+  projects: ApparelProject[];
   usernameSlug: string;
 };
 
@@ -75,13 +77,24 @@ export function ProjectPortfolioSettingsPanel({
   onClose,
   onSave,
   project,
+  projects,
   usernameSlug,
 }: ProjectPortfolioSettingsPanelProps) {
   const settings = getSafePortfolioSettings(project);
   const assets = useMemo(() => getProjectPortfolioAssets(project), [project]);
-  const projectEditorials = useMemo(
-    () => editorialCollections.filter((collection) => collection.projectId === project.id),
-    [editorialCollections, project.id],
+  const editorialOptions = useMemo(
+    () => editorialCollections
+      .map((collection) => ({
+        collection,
+        sourceProject: projects.find((candidate) => candidate.id === collection.projectId),
+      }))
+      .sort((left, right) => {
+        const leftOwnsCollection = left.collection.projectId === project.id;
+        const rightOwnsCollection = right.collection.projectId === project.id;
+        if (leftOwnsCollection !== rightOwnsCollection) return leftOwnsCollection ? -1 : 1;
+        return Date.parse(right.collection.updatedAt || '') - Date.parse(left.collection.updatedAt || '');
+      }),
+    [editorialCollections, project.id, projects],
   );
   const [draft, setDraft] = useState<ProjectPortfolioDraft>(() => ({
     attachedEditorialCollectionIds: [...settings.attachedEditorialCollectionIds],
@@ -107,10 +120,10 @@ export function ProjectPortfolioSettingsPanel({
     (id) => assets.some((asset) => asset.id === id),
   ).length;
   const availableAttachedEditorialCount = draft.attachedEditorialCollectionIds.filter(
-    (id) => projectEditorials.some((collection) => collection.id === id),
+    (id) => editorialOptions.some(({ collection }) => collection.id === id),
   ).length;
   const staleEditorialCount = draft.attachedEditorialCollectionIds.filter(
-    (id) => !projectEditorials.some((collection) => collection.id === id),
+    (id) => !editorialOptions.some(({ collection }) => collection.id === id),
   ).length;
   const warnings = getSectionWarnings({
     attachedEditorialCount: availableAttachedEditorialCount,
@@ -361,9 +374,12 @@ export function ProjectPortfolioSettingsPanel({
               </PanelSection>
 
               <PanelSection kicker="Editorials" title="Attached collections">
-                {projectEditorials.length ? (
+                <p className="text-xs leading-5 text-stardust/42">
+                  Attach any existing studio collection. It becomes visible only through this public project; nothing is published from its source project automatically.
+                </p>
+                {editorialOptions.length ? (
                   <div className="grid gap-3 sm:grid-cols-2">
-                    {projectEditorials.map((collection) => {
+                    {editorialOptions.map(({ collection, sourceProject }) => {
                       const selected = draft.attachedEditorialCollectionIds.includes(collection.id);
                       return (
                         <button
@@ -385,19 +401,26 @@ export function ProjectPortfolioSettingsPanel({
                           type="button"
                         >
                           <div className="relative aspect-[16/8] overflow-hidden border-b border-bronze/18">
-                            <EditorialCollectionCover className="absolute inset-0" collection={collection} project={project} />
+                            <EditorialCollectionCover className="absolute inset-0" collection={collection} project={sourceProject} />
                             {selected ? <ChoiceMark order={undefined} /> : null}
                           </div>
                           <div className="p-3">
                             <p className="line-clamp-1 text-sm font-medium text-stardust">{collection.title}</p>
-                            <p className="mt-1 text-xs text-stardust/40">{collection.scenes.length} scenes</p>
+                            <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-stardust/40">
+                              <span>{collection.scenes.length} scene{collection.scenes.length === 1 ? '' : 's'}</span>
+                              <span aria-hidden="true" className="text-bronze/45">/</span>
+                              <span>Updated {formatStudioDate(collection.updatedAt, { day: 'numeric', month: 'short', year: 'numeric' })}</span>
+                            </div>
+                            <p className="mt-2 line-clamp-1 text-[0.68rem] text-stardust/32">
+                              {sourceProject ? `From ${sourceProject.name}` : 'Source project unavailable'}
+                            </p>
                           </div>
                         </button>
                       );
                     })}
                   </div>
                 ) : (
-                  <InlineWarning text="No Editorial Collections exist for this project yet." />
+                  <InlineWarning text="No Editorial Collections exist in the studio yet. Create one in Editorial Collections, then attach it here." />
                 )}
                 {staleEditorialCount ? (
                   <InlineWarning text={`${staleEditorialCount} unavailable editorial reference${staleEditorialCount === 1 ? ' is' : 's are'} retained for safe reconnection.`} />
