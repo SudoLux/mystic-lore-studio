@@ -5,6 +5,7 @@ import {
   BriefcaseBusiness,
   Check,
   CheckCircle2,
+  Code2,
   Copy,
   ExternalLink,
   Globe2,
@@ -30,12 +31,13 @@ import {
   sortPortfolioProjects,
 } from '../../lib/portfolio';
 import { cn } from '../../lib/classes';
+import { preparePortfolioProjectSnapshot } from '../../utils/portfolioSnapshot';
 import type { EditorialCollection } from '../../types/editorial';
-import type { ApparelProject, LocalImageAsset } from '../../types/studio';
+import type { ApparelProject, Fabric, LocalImageAsset } from '../../types/studio';
 
 export function PortfolioPage() {
   const {
-    data: { editorialCollections, linkedMaterials, portfolioProfile, projects },
+    data: { editorialCollections, fabrics, linkedMaterials, portfolioProfile, projects },
     updatePortfolioProfile,
     updateProjectPortfolioSettings,
   } = useStudioData();
@@ -114,6 +116,15 @@ export function PortfolioPage() {
         previewPath={profilePath}
         report={readinessReport}
       />
+
+      {import.meta.env.DEV ? (
+        <PortfolioSnapshotDebugPanel
+          assets={profileImages}
+          editorialCollections={editorialCollections}
+          fabrics={fabrics}
+          projects={publicProjects}
+        />
+      ) : null}
 
       {projects.length === 0 ? (
         <EmptyPortfolio />
@@ -364,6 +375,130 @@ function PortfolioReadinessCard({
               Preview Portfolio
             </Button>
           </div>
+        </div>
+      </div>
+    </Card>
+  );
+}
+
+function PortfolioSnapshotDebugPanel({
+  assets,
+  editorialCollections,
+  fabrics,
+  projects,
+}: {
+  assets: LocalImageAsset[];
+  editorialCollections: EditorialCollection[];
+  fabrics: Fabric[];
+  projects: ApparelProject[];
+}) {
+  const [selectedProjectId, setSelectedProjectId] = useState<string>('');
+  const selectedProject = projects.find((project) => project.id === selectedProjectId)
+    ?? projects[0];
+  const snapshot = useMemo(
+    () => selectedProject
+      ? preparePortfolioProjectSnapshot({
+          assets,
+          editorialCollections,
+          fabrics,
+          project: selectedProject,
+        })
+      : null,
+    [assets, editorialCollections, fabrics, selectedProject],
+  );
+
+  if (!projects.length || !snapshot) {
+    return (
+      <Card className="border-dashed border-teal/34 bg-teal/[0.045]" data-testid="portfolio-snapshot-debug">
+        <div className="flex items-start gap-3">
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-teal/30 bg-teal/10 text-teal">
+            <Code2 aria-hidden="true" size={19} />
+          </span>
+          <div>
+            <p className="text-[0.68rem] font-semibold uppercase tracking-[0.18em] text-teal">Development only</p>
+            <h2 className="mt-1 text-lg font-semibold text-stardust">Portfolio snapshot inspector</h2>
+            <p className="mt-2 text-sm leading-6 text-stardust/52">Publish a project to inspect the exact sanitized snapshot that public pages receive.</p>
+          </div>
+        </div>
+      </Card>
+    );
+  }
+
+  const includedFields = Object.keys(snapshot).filter((field) => field !== 'generatedAt');
+  const excludedFields = [
+    'Tasks and Kanban workflow data',
+    'Private draft comments and full app state',
+    'Raw project notes unless Notes is enabled',
+    'Private project imagery that was not selected',
+    'Internal-only project metadata and sync state',
+  ];
+
+  return (
+    <Card className="overflow-hidden border-teal/32 bg-[linear-gradient(145deg,rgba(45,92,107,0.1),rgba(9,12,13,0.74))] p-0" data-testid="portfolio-snapshot-debug">
+      <div className="flex flex-col gap-4 border-b border-teal/20 px-5 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6">
+        <div className="flex items-start gap-3">
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-teal/30 bg-teal/10 text-teal">
+            <Code2 aria-hidden="true" size={19} />
+          </span>
+          <div>
+            <p className="text-[0.68rem] font-semibold uppercase tracking-[0.18em] text-teal">Development only</p>
+            <h2 className="mt-1 text-lg font-semibold text-stardust">Public snapshot inspector</h2>
+            <p className="mt-1 text-xs leading-5 text-stardust/44">This is the read-only data boundary used by recruiter-facing project pages.</p>
+          </div>
+        </div>
+        <label className="flex min-w-0 flex-col gap-1 text-[0.62rem] font-semibold uppercase tracking-[0.14em] text-stardust/42 sm:w-64">
+          Inspect public project
+          <select
+            className="h-10 min-w-0 rounded-lg border border-teal/28 bg-midnight/62 px-3 text-sm font-normal normal-case tracking-normal text-stardust outline-none transition focus:border-teal/60"
+            onChange={(event) => setSelectedProjectId(event.target.value)}
+            value={selectedProject.id}
+          >
+            {projects.map((project) => <option key={project.id} value={project.id}>{getPortfolioProjectTitle(project)}</option>)}
+          </select>
+        </label>
+      </div>
+
+      <div className="grid gap-5 p-5 lg:grid-cols-[minmax(0,0.78fr)_minmax(0,1.22fr)] sm:p-6">
+        <div className="space-y-5">
+          <div className="rounded-xl border border-teal/18 bg-teal/[0.045] p-4">
+            <p className="text-[0.64rem] font-semibold uppercase tracking-[0.17em] text-teal">Generated at</p>
+            <p className="mt-2 break-all text-sm text-stardust/72">{snapshot.generatedAt}</p>
+          </div>
+          <div>
+            <p className="text-[0.64rem] font-semibold uppercase tracking-[0.17em] text-stardust/42">Included public fields</p>
+            <div className="mt-2 flex flex-wrap gap-1.5">
+              {includedFields.map((field) => <span className="rounded-full border border-teal/20 bg-teal/[0.055] px-2.5 py-1 text-[0.68rem] text-teal" key={field}>{field}</span>)}
+            </div>
+          </div>
+          <div>
+            <p className="text-[0.64rem] font-semibold uppercase tracking-[0.17em] text-stardust/42">Visible sections</p>
+            <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-2">
+              {Object.entries(snapshot.visibleSections).map(([section, isVisible]) => (
+                <span className={cn(
+                  'rounded-lg border px-2.5 py-2 text-xs capitalize',
+                  isVisible ? 'border-teal/20 bg-teal/[0.055] text-stardust/72' : 'border-bronze/18 bg-midnight/30 text-stardust/34',
+                )} key={section}>
+                  {section}: {isVisible ? 'public' : 'hidden'}
+                </span>
+              ))}
+            </div>
+          </div>
+          <div className="rounded-xl border border-ember/22 bg-ember/[0.055] p-4">
+            <p className="flex items-center gap-2 text-[0.64rem] font-semibold uppercase tracking-[0.17em] text-ember"><AlertTriangle aria-hidden="true" size={14} /> Explicitly excluded</p>
+            <ul className="mt-3 space-y-2 text-xs leading-5 text-stardust/58">
+              {excludedFields.map((field) => <li key={field}>{field}</li>)}
+            </ul>
+            {snapshot.visibleSections.notes ? <p className="mt-3 border-t border-ember/18 pt-3 text-xs leading-5 text-ember/90">Notes are included because this public project explicitly enables them. Review the JSON before sharing.</p> : null}
+          </div>
+        </div>
+
+        <div className="min-w-0 overflow-hidden rounded-xl border border-bronze/22 bg-[#07090a]">
+          <div className="flex items-center gap-2 border-b border-bronze/18 px-4 py-3 text-[0.64rem] font-semibold uppercase tracking-[0.16em] text-stardust/42">
+            Sanitized JSON output
+          </div>
+          <pre className="max-h-[34rem] overflow-auto p-4 font-mono text-[0.7rem] leading-5 text-teal/82 [scrollbar-color:rgba(74,156,170,0.4)_transparent]">
+            {JSON.stringify(snapshot, null, 2)}
+          </pre>
         </div>
       </div>
     </Card>
