@@ -179,6 +179,14 @@ export function normalizePortfolioProjectSettings(
       settings?.featuredPortfolioImageIds,
     ),
     isPublic: settings?.isPublic === true,
+    portfolioChallenge: optionalText(settings?.portfolioChallenge),
+    portfolioOutcome: optionalText(settings?.portfolioOutcome),
+    portfolioOverview: optionalText(settings?.portfolioOverview),
+    portfolioProcessSummary: optionalText(settings?.portfolioProcessSummary),
+    portfolioRole: optionalText(settings?.portfolioRole),
+    portfolioSkills: stringArray(settings?.portfolioSkills),
+    portfolioSolution: optionalText(settings?.portfolioSolution),
+    portfolioTools: stringArray(settings?.portfolioTools),
     portfolioSlug:
       typeof settings?.portfolioSlug === 'string'
         ? slugifyPortfolioValue(settings.portfolioSlug)
