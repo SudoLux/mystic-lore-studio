@@ -1,6 +1,7 @@
 import { supabase } from './supabase';
 import {
   clearPublicPortfolioSnapshot,
+  loadPublicPortfolioSnapshot,
   savePublicPortfolioSnapshot,
 } from '../utils/publicPortfolioCache';
 import {
@@ -96,23 +97,21 @@ export async function publishPublicPortfolio({
 export async function publishPortfolioProfile(
   source: PortfolioPublicationSource,
 ): Promise<PortfolioHomepageSnapshot> {
-  const snapshot = preparePortfolioHomepageSnapshot({
+  const profileSnapshot = preparePortfolioHomepageSnapshot({
     assets: source.assets,
     editorialCollections: source.editorialCollections,
     fabrics: source.fabrics,
     portfolioProfile: source.portfolioProfile,
-    projects: source.projects,
+    projects: [],
   });
-
-  if (!snapshot.projects.length) {
-    await removePublicPortfolioPublication(source.userId, snapshot.profile.usernameSlug);
-    return snapshot;
-  }
+  const snapshot = supabase
+    ? profileSnapshot
+    : mergeLocalPublication(profileSnapshot, source.portfolioProfile.usernameSlug);
 
   return publishPublicPortfolio({
     assets: source.assets,
     sourceEditorialCollections: source.editorialCollections,
-    sourceProjects: source.projects,
+    sourceProjects: [],
     snapshot,
     userId: source.userId,
   });
@@ -153,14 +152,17 @@ export async function publishPortfolioProject({
     return unpublishPortfolioProject({ projectId, ...source });
   }
 
-  const snapshot = preparePortfolioHomepageSnapshot({
+  const projectOnlySnapshot = preparePortfolioHomepageSnapshot({
     assets: source.assets,
     editorialCollections: source.editorialCollections,
     fabrics: source.fabrics,
     portfolioProfile: source.portfolioProfile,
-    projects: source.projects,
+    projects: [project],
     generatedAt: projectSnapshot.generatedAt,
   });
+  const snapshot = supabase
+    ? projectOnlySnapshot
+    : mergeLocalPublication(projectOnlySnapshot, source.portfolioProfile.usernameSlug);
   const publishedSnapshot = await publishPublicPortfolio({
     assets: source.assets,
     sourceEditorialCollections: source.editorialCollections,
@@ -190,48 +192,65 @@ export async function unpublishPortfolioProject({
   const project = source.projects.find((candidate) => candidate.id === projectId);
   if (!project) throw new Error('Portfolio project could not be found.');
 
-  const sanitizedProjects = source.projects.map((candidate) => candidate.id === projectId
-    ? {
-        ...candidate,
-        portfolio: {
-          ...getSafePortfolioSettings(candidate),
-          isPublic: false,
-        },
-      }
-    : candidate);
   const snapshot = preparePortfolioHomepageSnapshot({
     assets: source.assets,
     editorialCollections: source.editorialCollections,
     fabrics: source.fabrics,
     portfolioProfile: source.portfolioProfile,
-    projects: sanitizedProjects,
+    projects: [],
   });
   const projectSlug = getSafePortfolioSettings(project).portfolioSlug;
   const usernameSlug = slugifyPortfolioValue(source.portfolioProfile.usernameSlug);
 
-  if (!snapshot.projects.length) {
-    await removePublicPortfolioPublication(source.userId, snapshot.profile.usernameSlug);
-    return {
-      generatedAt: snapshot.generatedAt,
-      project: null,
-      projectSlug,
-      snapshot,
-      usernameSlug,
-    };
+  if (supabase) {
+    const cloud = supabase;
+    const hiddenProject = await cloud
+      .from(PUBLISHED_PROJECTS_TABLE)
+      .update({ is_public: false, updated_at: snapshot.generatedAt })
+      .eq('user_id', source.userId)
+      .eq('project_id', project.id);
+    if (hiddenProject.error) throw new Error(`Unable to unpublish project: ${hiddenProject.error.message}`);
+    const attachedEditorialIds = new Set(getSafePortfolioSettings(project).attachedEditorialCollectionIds);
+    const attachedEditorials = source.editorialCollections.filter((collection) => (
+      attachedEditorialIds.has(collection.id)
+      && !source.projects.some((candidate) => {
+        if (candidate.id === project.id) return false;
+        const candidateSettings = getSafePortfolioSettings(candidate);
+        return candidateSettings.isPublic
+          && Boolean(candidateSettings.publishedAt)
+          && candidateSettings.attachedEditorialCollectionIds.includes(collection.id);
+      })
+    ));
+    const editorialWrites = await Promise.all(attachedEditorials.map((collection) => cloud
+      .from(PUBLISHED_EDITORIALS_TABLE)
+      .update({ is_public: false, updated_at: snapshot.generatedAt })
+      .eq('user_id', source.userId)
+      .eq('editorial_id', collection.id)));
+    const editorialFailure = editorialWrites.find(({ error }) => error);
+    if (editorialFailure?.error) {
+      throw new Error(`Unable to unpublish attached editorial: ${editorialFailure.error.message}`);
+    }
+  } else {
+    const published = loadPublicPortfolioSnapshot(usernameSlug);
+    if (published) {
+      savePublicPortfolioSnapshot({
+        ...published,
+        editorials: uniqueEditorialSnapshots(
+          published.projects
+            .filter((candidate) => candidate.slug !== projectSlug)
+            .flatMap((candidate) => candidate.editorials),
+        ),
+        generatedAt: snapshot.generatedAt,
+        projects: published.projects.filter((candidate) => candidate.slug !== projectSlug),
+      });
+    }
   }
-
-  const publishedSnapshot = await publishPublicPortfolio({
-    assets: source.assets,
-    sourceEditorialCollections: source.editorialCollections,
-    sourceProjects: source.projects,
-    snapshot,
-    userId: source.userId,
-  });
+  if (supabase) clearPublicPortfolioSnapshot(snapshot.profile.usernameSlug);
   return {
-    generatedAt: publishedSnapshot.generatedAt,
+    generatedAt: snapshot.generatedAt,
     project: null,
     projectSlug,
-    snapshot: publishedSnapshot,
+    snapshot,
     usernameSlug,
   };
 }
@@ -384,32 +403,52 @@ async function writePublishedPortfolioSnapshots(
     username_slug: profile.usernameSlug,
   }));
 
-  // Replace the owner's generated rows together. This removes snapshots for
-  // projects/editorials that have just been made private instead of leaving a
-  // stale public URL behind.
-  const deletions = await Promise.all([
-    supabase.from(PORTFOLIO_PROFILE_TABLE).delete().eq('user_id', userId),
-    supabase.from(PUBLISHED_PROJECTS_TABLE).delete().eq('user_id', userId),
-    supabase.from(PUBLISHED_EDITORIALS_TABLE).delete().eq('user_id', userId),
-  ]);
-  const deletionFailure = deletions.find(({ error }) => error);
-  if (deletionFailure?.error) {
-    throw new Error(`Unable to prepare public portfolio snapshots: ${deletionFailure.error.message}`);
-  }
-
   const writes = await Promise.all([
-    supabase.from(PORTFOLIO_PROFILE_TABLE).insert(profileRow),
+    supabase.from(PORTFOLIO_PROFILE_TABLE).upsert(profileRow, { onConflict: 'username_slug' }),
     projectRows.length
-      ? supabase.from(PUBLISHED_PROJECTS_TABLE).insert(projectRows)
+      ? supabase.from(PUBLISHED_PROJECTS_TABLE).upsert(projectRows, { onConflict: 'username_slug,project_slug' })
       : Promise.resolve({ error: null }),
     editorialRows.length
-      ? supabase.from(PUBLISHED_EDITORIALS_TABLE).insert(editorialRows)
+      ? supabase.from(PUBLISHED_EDITORIALS_TABLE).upsert(editorialRows, { onConflict: 'username_slug,editorial_slug' })
       : Promise.resolve({ error: null }),
   ]);
   const writeFailure = writes.find(({ error }) => error);
   if (writeFailure?.error) {
     throw new Error(`Unable to publish public portfolio snapshots: ${writeFailure.error.message}`);
   }
+}
+
+/**
+ * Local development keeps the same explicit-publish contract as Supabase.
+ * It merges a just-published profile or project into the last public cache
+ * instead of rebuilding it from private Studio state.
+ */
+function mergeLocalPublication(
+  incoming: PortfolioHomepageSnapshot,
+  usernameSlug: string,
+): PortfolioHomepageSnapshot {
+  const existing = loadPublicPortfolioSnapshot(usernameSlug);
+  if (!existing) return incoming;
+
+  const projectsBySlug = new Map(existing.projects.map((project) => [project.slug, project]));
+  incoming.projects.forEach((project) => projectsBySlug.set(project.slug, project));
+  const projects = [...projectsBySlug.values()];
+
+  return {
+    editorials: uniqueEditorialSnapshots(projects.flatMap((project) => project.editorials)),
+    generatedAt: incoming.generatedAt,
+    profile: incoming.profile,
+    projects,
+  };
+}
+
+function uniqueEditorialSnapshots(editorials: readonly PortfolioEditorialSnapshot[]) {
+  const seen = new Set<string>();
+  return editorials.filter((editorial) => {
+    if (seen.has(editorial.slug)) return false;
+    seen.add(editorial.slug);
+    return true;
+  });
 }
 
 async function fetchPublishedPortfolioProfile(usernameSlug: string) {

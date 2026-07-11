@@ -20,8 +20,6 @@ import {
   fetchPublishedEditorial,
   fetchPublishedPortfolioProject,
   fetchPublicPortfolio,
-  publishPortfolioProfile,
-  unpublishPortfolioProfile,
 } from './lib/publicPortfolioPublication';
 import { AuthScreen } from './pages/Auth/AuthScreen';
 import { DashboardPage } from './pages/Dashboard';
@@ -34,7 +32,6 @@ import { PortfolioPage } from './pages/Portfolio';
 import { PublicPortfolioPage } from './pages/PublicPortfolio';
 import { SettingsPage } from './pages/Settings';
 import { StatsPage } from './pages/Stats';
-import { preparePortfolioHomepageSnapshot } from './utils/portfolioSnapshot';
 import {
   loadPublicPortfolioSnapshot,
   savePublicPortfolioSnapshot,
@@ -256,7 +253,7 @@ function StudioApp() {
     cancelSync,
     createFabric,
     createProject,
-    data: { editorialCollections, fabrics, portfolioProfile, projects },
+    data: { fabrics, projects },
     deleteFabric,
     deleteProject,
     dismissCloudMigration,
@@ -287,56 +284,6 @@ function StudioApp() {
     useState<Fabric | null>(null);
   const [deleteProjectCandidate, setDeleteProjectCandidate] =
     useState<ApparelProject | null>(null);
-  const publicPortfolioAssets = useMemo(() => {
-    const assets = new Map<string, NonNullable<ApparelProject['heroImage']>>();
-    projects.forEach((project) => {
-      if (project.heroImage) assets.set(project.heroImage.id, project.heroImage);
-      project.galleryImages?.forEach((image) => assets.set(image.id, image));
-    });
-    fabrics.forEach((fabric) => {
-      if (fabric.image) assets.set(fabric.image.id, fabric.image);
-    });
-    return [...assets.values()];
-  }, [fabrics, projects]);
-  const publicPortfolioSnapshot = useMemo(
-    () => preparePortfolioHomepageSnapshot({
-      assets: publicPortfolioAssets,
-      editorialCollections,
-      fabrics,
-      portfolioProfile,
-      projects,
-    }),
-    [editorialCollections, fabrics, portfolioProfile, projects, publicPortfolioAssets],
-  );
-
-  useEffect(() => {
-    if (!publicPortfolioSnapshot.profile.usernameSlug) {
-      if (user?.id) {
-        void unpublishPortfolioProfile({ userId: user.id }).catch((error) => {
-          console.warn('Public portfolio withdrawal is not available yet.', error);
-        });
-      }
-      return;
-    }
-    savePublicPortfolioSnapshot(publicPortfolioSnapshot);
-    if (!user?.id) return;
-
-    const publishTimer = window.setTimeout(() => {
-      void publishPortfolioProfile({
-        assets: publicPortfolioAssets,
-        editorialCollections,
-        fabrics,
-        portfolioProfile,
-        projects,
-        userId: user.id,
-      }).catch((error) => {
-        console.warn('Public portfolio publishing is not available yet.', error);
-      });
-    }, 800);
-
-    return () => window.clearTimeout(publishTimer);
-  }, [editorialCollections, fabrics, portfolioProfile, projects, publicPortfolioAssets, publicPortfolioSnapshot, user?.id]);
-
   useEffect(() => {
     const handleHashChange = () => setRoute(getInitialRoute());
 
