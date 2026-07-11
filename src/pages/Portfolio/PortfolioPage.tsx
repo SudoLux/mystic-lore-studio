@@ -59,8 +59,13 @@ export function PortfolioPage() {
   const profilePath = buildPublicPortfolioUrl(portfolioProfile.usernameSlug || 'untitled');
   const profileShareUrl = buildShareUrl(profilePath);
   const readinessReport = useMemo(
-    () => getPortfolioReadinessReport(portfolioProfile, projects),
-    [portfolioProfile, projects],
+    () => getPortfolioReadinessReport({
+      assets: profileImages,
+      editorialCollections,
+      portfolioProfile,
+      projects,
+    }),
+    [editorialCollections, portfolioProfile, profileImages, projects],
   );
   const copyLink = async (link: string) => {
     try {
@@ -267,18 +272,35 @@ function PortfolioReadinessCard({
               <div
                 className={cn(
                   'flex items-start gap-2 rounded-xl border px-2.5 py-2 text-[0.7rem] leading-4 sm:items-center sm:gap-2.5 sm:px-3 sm:py-2.5 sm:text-sm',
-                  check.passed
-                    ? 'border-teal/20 bg-teal/[0.055] text-stardust/72'
-                    : 'border-ember/24 bg-ember/[0.07] text-stardust/72',
+                  check.state === 'ready' && 'border-teal/20 bg-teal/[0.055] text-stardust/72',
+                  check.state === 'needs_attention' && 'border-ember/24 bg-ember/[0.07] text-stardust/72',
+                  check.state === 'warning' && 'border-amber-400/28 bg-amber-400/[0.07] text-stardust/72',
                 )}
                 key={check.label}
               >
-                {check.passed ? (
+                {check.state === 'ready' ? (
                   <CheckCircle2 aria-hidden="true" className="mt-0.5 shrink-0 text-teal" size={16} />
                 ) : (
-                  <AlertTriangle aria-hidden="true" className="mt-0.5 shrink-0 text-ember" size={16} />
+                  <AlertTriangle
+                    aria-hidden="true"
+                    className={cn(
+                      'mt-0.5 shrink-0',
+                      check.state === 'warning' ? 'text-amber-300' : 'text-ember',
+                    )}
+                    size={16}
+                  />
                 )}
-                <span>{check.label}</span>
+                <span className="min-w-0 flex-1">{check.label}</span>
+                <span
+                  className={cn(
+                    'hidden shrink-0 text-[0.58rem] font-semibold uppercase tracking-[0.12em] sm:inline',
+                    check.state === 'ready' && 'text-teal/80',
+                    check.state === 'needs_attention' && 'text-ember/90',
+                    check.state === 'warning' && 'text-amber-300/90',
+                  )}
+                >
+                  {check.state === 'ready' ? 'Ready' : check.state === 'warning' ? 'Warning' : 'Needs attention'}
+                </span>
               </div>
             ))}
           </div>
@@ -303,11 +325,26 @@ function PortfolioReadinessCard({
         <div className="border-t border-bronze/18 bg-[radial-gradient(circle_at_20%_18%,rgba(45,92,107,0.22),transparent_36%),linear-gradient(145deg,rgba(7,9,10,0.82),rgba(32,21,15,0.78))] p-5 sm:p-6 xl:border-l xl:border-t-0">
           <div className="flex h-full flex-col justify-between gap-4">
             <div>
-              <div className="flex h-11 w-11 items-center justify-center rounded-xl border border-ember/32 bg-ember/10 text-ember shadow-[0_18px_44px_rgba(200,155,60,0.1)]">
-                {isReady ? <ShieldCheck aria-hidden="true" size={22} /> : <Sparkles aria-hidden="true" size={22} />}
+              <div className="flex items-center gap-3">
+                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-ember/32 bg-ember/10 text-ember shadow-[0_18px_44px_rgba(200,155,60,0.1)]">
+                  {isReady ? <ShieldCheck aria-hidden="true" size={22} /> : <Sparkles aria-hidden="true" size={22} />}
+                </div>
+                <div>
+                  <p className="text-[0.65rem] font-semibold uppercase tracking-[0.18em] text-stardust/42">Share readiness</p>
+                  <p className="mt-0.5 text-2xl font-semibold text-stardust">{report.score}<span className="text-sm text-stardust/42">/100</span></p>
+                </div>
+              </div>
+              <div aria-hidden="true" className="mt-4 h-1.5 overflow-hidden rounded-full bg-stardust/10">
+                <div
+                  className={cn(
+                    'h-full rounded-full transition-[width] duration-500',
+                    isReady ? 'bg-teal' : 'bg-ember',
+                  )}
+                  style={{ width: `${report.score}%` }}
+                />
               </div>
               <p className="mt-4 text-sm leading-6 text-stardust/58">
-                Open the sanitized public portfolio exactly as a recruiter will see it.
+                {report.checks.filter((check) => check.passed).length} of {report.checks.length} public-sharing checks are complete. Open the sanitized portfolio exactly as a recruiter will see it.
               </p>
               <p className="mt-3 break-all text-xs leading-5 text-stardust/42">
                 {previewPath}
