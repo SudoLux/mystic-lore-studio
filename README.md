@@ -177,12 +177,15 @@ complete file contents, and run the files in this order:
 2. **Run the cloud and Storage migrations:** first
    `supabase/migrations/20260621010000_add_cloud_sync_and_storage.sql`, then
    `supabase/migrations/20260628010000_add_sync_tombstones.sql`, then
-   `supabase/migrations/20260707010000_add_portfolio_profile.sql`.
+   `supabase/migrations/20260707010000_add_portfolio_profile.sql`, then
+   `supabase/migrations/20260710010000_add_public_portfolio_publications.sql`.
 3. **Verify tables:** open **Table Editor** and confirm `profiles`, `projects`,
    `fabrics`, `materials`, `tasks`, `notes`, `project_images`,
    `yardage_entries`, `lookbook_pages`, and `sync_tombstones` exist.
 4. **Verify image Storage:** open **Storage** and confirm the private
-   `project-images` bucket exists. Do not make this bucket public.
+   `project-images` bucket exists and remains private. The public Portfolio
+   migration also creates the intentionally public `portfolio-images` bucket,
+   which contains only imagery selected for recruiter-facing portfolio pages.
 5. **Retry the app:** return to Mystic Lore Studio, open the sync status panel,
    and choose **Retry Sync**. Refresh or refocus other signed-in devices after
    the first successful sync.
@@ -202,7 +205,7 @@ authenticated users can only read or change rows where `auth.uid() = user_id`.
 - **Bucket already exists:** rerun the Storage migration. It keeps
   `project-images` private, refreshes its limits, and safely recreates the
   owner-path policies.
-- **Cloud sync needs attention:** confirm all four migration files completed,
+- **Cloud sync needs attention:** confirm all five migration files completed,
   both Supabase environment variables point to the same project, and the
   `project-images` bucket is private. Then sign in again and choose **Retry
   Sync**.

@@ -3,7 +3,6 @@ import {
   ArrowLeft,
   ArrowRight,
   BookOpen,
-  BriefcaseBusiness,
   Download,
   ImageOff,
   Layers3,
@@ -53,15 +52,23 @@ export function PublicPortfolioPage({
 
   useEffect(() => {
     const previousTitle = document.title;
+    const description = selectedProject?.description
+      || selectedEditorial?.description
+      || snapshot.profile.bio
+      || `${snapshot.profile.displayName || 'Designer'} portfolio`;
+    const descriptionMeta = ensureMetaDescription();
+    const previousDescription = descriptionMeta.content;
     document.title = selectedProject
       ? `${selectedProject.title} | ${snapshot.profile.displayName || 'Portfolio'}`
       : selectedEditorial
         ? `${selectedEditorial.title} | ${snapshot.profile.displayName || 'Portfolio'}`
-      : `${snapshot.profile.displayName || 'Portfolio'} | Mystic Lore Studio`;
+        : `${snapshot.profile.displayName || 'Portfolio'} | Mystic Lore Studio`;
+    descriptionMeta.content = description.slice(0, 160);
     return () => {
       document.title = previousTitle;
+      descriptionMeta.content = previousDescription;
     };
-  }, [selectedEditorial, selectedProject, snapshot.profile.displayName]);
+  }, [selectedEditorial, selectedProject, snapshot.profile.bio, snapshot.profile.displayName]);
 
   if (!isPublished || !snapshot.projects.length) {
     if (projectSlug || editorialSlug) {
@@ -97,17 +104,20 @@ export function PublicPortfolioPage({
 
 function PortfolioHomepage({ snapshot }: { snapshot: PortfolioHomepageSnapshot }) {
   const featuredProjects = snapshot.projects.filter((project) => project.featured);
+  const selectedProjects = featuredProjects.length
+    ? featuredProjects
+    : snapshot.projects.slice(0, 2);
 
   return (
     <PublicPortfolioFrame>
-      <PublicHeader profileName={snapshot.profile.displayName} />
+      <PublicHeader profileName={snapshot.profile.displayName} profileSlug={snapshot.profile.usernameSlug} />
       <main>
         <PortfolioHero snapshot={snapshot} />
 
-        {featuredProjects.length ? (
+        {selectedProjects.length ? (
           <PortfolioBand eyebrow="Selected work" title="Featured Projects">
             <div className="grid gap-5 lg:grid-cols-2">
-              {featuredProjects.map((project, index) => (
+              {selectedProjects.map((project, index) => (
                 <FeaturedProjectCard
                   index={index}
                   key={project.slug}
@@ -144,6 +154,8 @@ function PortfolioHomepage({ snapshot }: { snapshot: PortfolioHomepageSnapshot }
             </div>
           </PortfolioBand>
         ) : null}
+
+        <PortfolioContactBand profile={snapshot.profile} />
       </main>
       <PublicFooter profile={snapshot.profile} />
     </PublicPortfolioFrame>
@@ -153,9 +165,9 @@ function PortfolioHomepage({ snapshot }: { snapshot: PortfolioHomepageSnapshot }
 function PortfolioHero({ snapshot }: { snapshot: PortfolioHomepageSnapshot }) {
   const { profile } = snapshot;
   return (
-    <section className="relative mx-auto grid max-w-7xl content-center gap-8 px-5 pb-10 pt-20 sm:gap-10 sm:px-8 sm:pb-14 sm:pt-24 lg:min-h-[760px] lg:grid-cols-[minmax(0,1fr)_minmax(300px,0.55fr)] lg:px-12">
-      <div className="max-w-4xl">
-        <p className="text-xs font-semibold uppercase tracking-[0.22em] text-ember">Independent garment portfolio</p>
+    <section className="relative mx-auto grid max-w-7xl content-center gap-10 px-5 pb-14 pt-24 sm:px-8 sm:pb-20 sm:pt-28 lg:min-h-[820px] lg:grid-cols-[minmax(0,1fr)_minmax(340px,0.62fr)] lg:gap-16 lg:px-12">
+      <div className="relative z-10 max-w-4xl">
+        <p className="max-w-[18rem] text-[0.66rem] font-semibold uppercase leading-5 tracking-[0.2em] text-ember sm:max-w-none sm:text-xs sm:tracking-[0.22em]">Independent garment portfolio</p>
         <h1 className="font-display mt-5 max-w-4xl text-[clamp(2.8rem,8vw,6.8rem)] leading-[0.98] text-stardust">
           {profile.displayName || 'Mystic Lore Portfolio'}
         </h1>
@@ -164,12 +176,12 @@ function PortfolioHero({ snapshot }: { snapshot: PortfolioHomepageSnapshot }) {
             {profile.headline}
           </p>
         ) : null}
-        {profile.bio ? (
-          <p className="mt-5 max-w-2xl text-base leading-8 text-stardust/56 sm:text-lg">
-            {profile.bio}
+        <div className="mt-6 max-w-2xl border-l border-ember/45 pl-5 sm:pl-6">
+          <p className="text-base leading-8 text-stardust/58 sm:text-lg">
+            {profile.bio || 'A selected body of garment design, material exploration, and visual storytelling.'}
           </p>
-        ) : null}
-        <div className="mt-8 flex flex-wrap items-center gap-3">
+        </div>
+        <div className="mt-8 flex flex-col items-start gap-3 sm:flex-row sm:flex-wrap sm:items-center">
           {profile.email ? (
             <PublicAction href={`mailto:${profile.email}`} icon={<Mail size={17} />} label="Contact" primary />
           ) : null}
@@ -183,19 +195,70 @@ function PortfolioHero({ snapshot }: { snapshot: PortfolioHomepageSnapshot }) {
             </span>
           ) : null}
         </div>
+        <div className="mt-10 flex items-center gap-5 border-t border-bronze/18 pt-5 text-xs uppercase tracking-[0.16em] text-stardust/38">
+          <span>{snapshot.projects.length} case {snapshot.projects.length === 1 ? 'study' : 'studies'}</span>
+          {snapshot.editorials.length ? <span>{snapshot.editorials.length} editorial {snapshot.editorials.length === 1 ? 'story' : 'stories'}</span> : null}
+        </div>
       </div>
       <div className="flex items-center justify-center lg:justify-end">
-        {profile.avatar?.src ? (
-          <div className="aspect-[4/5] w-60 overflow-hidden rounded-[2rem] border border-bronze/28 bg-charcoal shadow-[0_35px_90px_rgba(0,0,0,0.42)] sm:w-72 lg:w-full lg:max-w-[320px]">
-            <PortfolioImage image={profile.avatar} />
-          </div>
-        ) : (
-          <div className="flex aspect-square w-44 items-center justify-center rounded-full border border-bronze/30 bg-[linear-gradient(145deg,rgba(45,92,107,0.22),rgba(10,10,10,0.94),rgba(154,108,60,0.2))] text-ember shadow-[0_28px_80px_rgba(0,0,0,0.38)] sm:w-56">
-            <BriefcaseBusiness aria-hidden="true" size={44} strokeWidth={1.35} />
-          </div>
-        )}
+        <PortfolioHeroVisual
+          fallbackImage={snapshot.projects[0]?.coverImage}
+          image={profile.avatar}
+          name={profile.displayName}
+          year={new Date(snapshot.generatedAt).getFullYear()}
+        />
       </div>
     </section>
+  );
+}
+
+function PortfolioHeroVisual({
+  fallbackImage,
+  image,
+  name,
+  year,
+}: {
+  fallbackImage?: PortfolioImageSnapshot;
+  image?: PortfolioImageSnapshot;
+  name: string;
+  year: number;
+}) {
+  const [sourceIndex, setSourceIndex] = useState(0);
+  const candidates = [image, fallbackImage].filter(
+    (candidate, index, items): candidate is PortfolioImageSnapshot =>
+      Boolean(candidate?.src) && items.findIndex((item) => item?.src === candidate?.src) === index,
+  );
+  const activeImage = candidates[sourceIndex];
+
+  useEffect(() => {
+    setSourceIndex(0);
+  }, [image?.src, fallbackImage?.src]);
+
+  return (
+    <div className="relative aspect-[4/5] w-full max-w-[320px] overflow-hidden rounded-[1.25rem] border border-bronze/28 bg-charcoal shadow-[0_40px_110px_rgba(0,0,0,0.48)] sm:max-w-[380px] lg:max-w-[410px]">
+      {activeImage?.src ? (
+        <img
+          alt={activeImage.alt || `${name || 'Portfolio'} portrait`}
+          className="h-full w-full"
+          onError={() => setSourceIndex((current) => current + 1)}
+          src={activeImage.src}
+          style={{
+            objectFit: activeImage.fit,
+            objectPosition: `${activeImage.positionX}% ${activeImage.positionY}%`,
+            transform: `scale(${activeImage.zoom})`,
+          }}
+        />
+      ) : (
+        <div className="flex h-full w-full items-center justify-center bg-[radial-gradient(circle_at_50%_34%,rgba(45,92,107,0.34),transparent_28%),linear-gradient(145deg,#10191c,#080909_52%,#21170f)]">
+          <span className="font-display text-5xl text-ember/78">{portfolioInitials(name)}</span>
+        </div>
+      )}
+      <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-midnight/52 via-transparent to-transparent" />
+      <div className="pointer-events-none absolute bottom-5 left-5 right-5 flex items-center justify-between border-t border-stardust/22 pt-3 text-[0.62rem] uppercase tracking-[0.18em] text-stardust/58">
+        <span>Selected works</span>
+        <span>{year}</span>
+      </div>
+    </div>
   );
 }
 
@@ -250,19 +313,20 @@ function ProjectCard({ profileSlug, project }: { profileSlug: string; project: P
 
 function EditorialCard({ editorial, href }: { editorial: PortfolioEditorialSnapshot; href?: string }) {
   const content = (
-    <>
-      <div className="aspect-[3/4] overflow-hidden bg-midnight">
+    <div className="relative aspect-[3/4] overflow-hidden bg-midnight">
+      <div className="absolute inset-0 transition duration-700 group-hover:scale-[1.025]">
         <PortfolioImage image={editorial.cover.image} />
       </div>
-      <div className="p-5">
+      <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(5,5,5,0.06),rgba(5,5,5,0.22)_40%,rgba(5,5,5,0.95))]" />
+      <div className="absolute inset-x-0 bottom-0 p-5 sm:p-6">
         <p className="text-[0.65rem] font-semibold uppercase tracking-[0.18em] text-ember">{editorial.cover.label || editorial.templateType}</p>
-        <h3 className="font-display mt-2 text-xl leading-tight text-stardust">{editorial.title}</h3>
-        {editorial.subtitle ? <p className="mt-2 text-sm text-stardust/52">{editorial.subtitle}</p> : null}
-        <p className="mt-4 inline-flex items-center gap-2 text-xs text-stardust/44"><BookOpen size={14} /> {editorial.scenes.length} scenes</p>
+        <h3 className="font-display mt-2 text-2xl leading-tight text-stardust">{editorial.title}</h3>
+        {editorial.subtitle ? <p className="mt-2 line-clamp-2 text-sm leading-6 text-stardust/58">{editorial.subtitle}</p> : null}
+        <p className="mt-4 inline-flex items-center gap-2 text-xs text-stardust/48"><BookOpen size={14} /> {editorial.scenes.length} scenes</p>
       </div>
-    </>
+    </div>
   );
-  const className = "group min-w-[260px] snap-start overflow-hidden rounded-xl border border-bronze/22 bg-[rgba(17,17,17,0.84)] transition hover:border-ember/45 sm:min-w-0";
+  const className = "group min-w-[260px] snap-start overflow-hidden rounded-xl border border-bronze/22 bg-[rgba(17,17,17,0.84)] shadow-[0_24px_60px_rgba(0,0,0,0.24)] transition hover:-translate-y-1 hover:border-ember/45 sm:min-w-0";
   return href ? <a className={className} href={href}>{content}</a> : <article className={className}>{content}</article>;
 }
 
@@ -293,32 +357,32 @@ function PublicProjectPage({
 
   return (
     <PublicPortfolioFrame>
-      <PublicHeader profileName={profile.displayName} />
+      <PublicHeader profileName={profile.displayName} profileSlug={profile.usernameSlug} />
       <main>
-        <section className="mx-auto max-w-7xl px-5 pb-14 pt-24 sm:px-8 lg:px-12">
-          <a className="inline-flex min-h-11 items-center gap-2 text-sm text-stardust/58 transition hover:text-ember" href={homeHref}>
-            <ArrowLeft size={17} /> Portfolio
-          </a>
-          <div className="mt-8 grid gap-8 lg:grid-cols-[minmax(0,0.8fr)_minmax(360px,1.2fr)] lg:items-center">
-            <div className="max-w-2xl">
-              {project.overview?.garmentType ? <p className="text-xs font-semibold uppercase tracking-[0.2em] text-ember">{project.overview.garmentType}</p> : null}
-              <h1 className="font-display mt-4 text-[clamp(2.7rem,7vw,5.8rem)] leading-[0.98] text-stardust">{project.title}</h1>
-              {project.description ? <p className="mt-6 text-lg leading-8 text-stardust/62">{project.description}</p> : null}
-              {project.skills.length ? (
-                <div className="mt-7 rounded-xl border border-bronze/18 bg-[rgba(17,17,17,0.58)] p-4">
-                  <p className="mb-3 text-[0.65rem] font-semibold uppercase tracking-[0.18em] text-stardust/42">Role / Skills / Tools</p>
-                  <SkillList skills={project.skills} />
-                </div>
-              ) : null}
-            </div>
-            <div className="aspect-[4/5] max-h-[760px] overflow-hidden rounded-2xl border border-bronze/28 bg-charcoal shadow-[0_30px_90px_rgba(0,0,0,0.38)]">
-              <PortfolioImage image={project.coverImage} />
+        <section className="relative flex min-h-[88dvh] overflow-hidden border-b border-bronze/16 bg-midnight">
+          <div className="absolute inset-0">
+            <PortfolioImage image={project.coverImage} />
+            <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(5,5,5,0.94),rgba(5,5,5,0.62)_48%,rgba(5,5,5,0.14)),linear-gradient(180deg,rgba(5,5,5,0.1),rgba(5,5,5,0.28)_48%,rgba(5,5,5,0.92))]" />
+          </div>
+          <div className="relative mx-auto flex w-full max-w-7xl flex-col justify-between px-5 pb-12 pt-24 sm:px-8 sm:pb-16 lg:px-12">
+            <a className="inline-flex min-h-11 w-fit items-center gap-2 rounded-full border border-stardust/16 bg-midnight/38 px-4 text-sm text-stardust/68 backdrop-blur-md transition hover:border-ember/45 hover:text-ember" href={homeHref}>
+              <ArrowLeft size={17} /> Back to portfolio
+            </a>
+            <div className="max-w-4xl">
+              {project.overview?.garmentType ? <p className="text-xs font-semibold uppercase tracking-[0.22em] text-ember">{project.overview.garmentType} case study</p> : null}
+              <h1 className="font-display mt-4 text-[clamp(3rem,8vw,7rem)] leading-[0.94] text-stardust [text-shadow:0_8px_40px_rgba(0,0,0,0.5)]">{project.title}</h1>
+              <p className="mt-6 max-w-3xl text-lg leading-8 text-stardust/72 sm:text-xl sm:leading-9">
+                {project.description || 'A focused garment study in silhouette, material, and construction.'}
+              </p>
+              {project.skills.length ? <div className="mt-7"><SkillList skills={project.skills.slice(0, 5)} /></div> : null}
             </div>
           </div>
         </section>
 
+        <ProjectQuickNav project={project} />
+
         {project.visibleSections.overview && hasOverviewDetails ? (
-          <ProjectSection eyebrow="Overview" title="Design Direction">
+          <ProjectSection eyebrow="Overview" id="overview" title="Design Direction">
             <div className="grid gap-px overflow-hidden rounded-xl border border-bronze/20 bg-bronze/20 sm:grid-cols-2 lg:grid-cols-4">
               <ProjectFact label="Collection" value={project.overview?.collection ?? ''} />
               <ProjectFact label="Season" value={project.overview?.season ?? ''} />
@@ -333,23 +397,32 @@ function PublicProjectPage({
         ) : null}
 
         {project.visibleSections.gallery && gallery.length ? (
-          <ProjectSection eyebrow="Selected imagery" title="Gallery">
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <ProjectSection eyebrow="Selected imagery" id="gallery" title="Gallery">
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-12">
               {gallery.map((image, index) => (
-                <div className={`${index === 0 ? 'sm:col-span-2 lg:row-span-2' : ''} aspect-[4/5] overflow-hidden rounded-xl border border-bronze/22 bg-charcoal`} key={image.reference}>
+                <figure
+                  className={`${index === 0 ? 'sm:col-span-2 lg:col-span-8 lg:row-span-2' : 'lg:col-span-4'} ${index === 0 ? 'aspect-[5/4] lg:aspect-auto lg:min-h-[760px]' : 'aspect-[4/5]'} group relative overflow-hidden rounded-xl border border-bronze/22 bg-charcoal`}
+                  key={image.reference}
+                >
                   <PortfolioImage image={image} />
-                </div>
+                  {image.caption ? <figcaption className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-midnight/92 to-transparent px-5 pb-4 pt-12 text-xs text-stardust/58">{image.caption}</figcaption> : null}
+                </figure>
               ))}
             </div>
           </ProjectSection>
         ) : null}
 
         {project.visibleSections.materials && project.materials.length ? (
-          <ProjectSection eyebrow="Material language" title="Materials">
+          <ProjectSection eyebrow="Material language" id="materials" title="Materials">
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {project.materials.map((material, index) => (
-                <article className="rounded-xl border border-bronze/20 bg-[rgba(17,17,17,0.76)] p-5" key={`${material.name}-${index}`}>
-                  <div className="flex items-start gap-4">
+                <article className="overflow-hidden rounded-xl border border-bronze/20 bg-[rgba(17,17,17,0.76)]" key={`${material.name}-${index}`}>
+                  {material.image ? (
+                    <div className="aspect-[16/9] overflow-hidden border-b border-bronze/16 bg-charcoal">
+                      <PortfolioImage image={material.image} />
+                    </div>
+                  ) : null}
+                  <div className="flex items-start gap-4 p-5">
                     <span className="mt-1 h-8 w-8 shrink-0 rounded-full border border-white/20 shadow-[inset_0_1px_0_rgba(255,255,255,0.32)]" style={{ backgroundColor: material.colorHex || material.color || '#9a6c3c' }} />
                     <div>
                       <p className="text-xs uppercase tracking-[0.17em] text-ember">{material.role || material.category || 'Material'}</p>
@@ -372,10 +445,18 @@ function PublicProjectPage({
         ) : null}
 
         {project.visibleSections.process && project.process ? (
-          <ProjectSection eyebrow="Development" title="Process">
-            <div className="max-w-3xl rounded-xl border border-bronze/22 bg-[rgba(17,17,17,0.76)] p-6">
-              <div className="flex items-center justify-between gap-4 text-sm"><span className="text-stardust/60">{project.process.phase}</span><span className="font-semibold text-ember">{project.process.progress}%</span></div>
-              <div className="mt-4 h-1.5 overflow-hidden rounded-full bg-midnight"><div className="h-full rounded-full bg-[linear-gradient(90deg,#c89b3c,#4f8990,#ede3cf)]" style={{ width: `${project.process.progress}%` }} /></div>
+          <ProjectSection eyebrow="Development" id="process" title="Process">
+            <div className="grid gap-4 lg:grid-cols-[minmax(0,0.7fr)_minmax(0,1.3fr)]">
+              <div className="rounded-xl border border-bronze/22 bg-[rgba(17,17,17,0.76)] p-6">
+                <p className="text-[0.65rem] uppercase tracking-[0.18em] text-stardust/38">Current phase</p>
+                <p className="font-display mt-3 text-3xl text-stardust">{project.process.phase}</p>
+                <p className="mt-6 text-5xl font-semibold text-ember">{project.process.progress}%</p>
+              </div>
+              <div className="flex flex-col justify-center rounded-xl border border-bronze/22 bg-[linear-gradient(145deg,rgba(45,92,107,0.12),rgba(17,17,17,0.78),rgba(154,108,60,0.1))] p-6 sm:p-8">
+                <div className="flex items-center justify-between gap-4 text-sm"><span className="text-stardust/60">Development arc</span><span className="font-semibold text-ember">{project.process.progress}% complete</span></div>
+                <div className="mt-5 h-2 overflow-hidden rounded-full bg-midnight"><div className="h-full rounded-full bg-[linear-gradient(90deg,#c89b3c,#4f8990,#ede3cf)]" style={{ width: `${project.process.progress}%` }} /></div>
+                <p className="mt-6 max-w-2xl text-sm leading-7 text-stardust/52">The public process view summarizes the project’s development without exposing internal tasks or private working notes.</p>
+              </div>
             </div>
           </ProjectSection>
         ) : null}
@@ -420,6 +501,35 @@ function PublicProjectPage({
   );
 }
 
+function ProjectQuickNav({ project }: { project: PortfolioProjectSnapshot }) {
+  const links = [
+    project.visibleSections.overview ? { href: '#overview', label: 'Overview' } : null,
+    project.visibleSections.gallery && project.featuredImages.length ? { href: '#gallery', label: 'Gallery' } : null,
+    project.visibleSections.materials && project.materials.length ? { href: '#materials', label: 'Materials' } : null,
+    project.visibleSections.process && project.process ? { href: '#process', label: 'Process' } : null,
+    project.visibleSections.editorials && project.editorials.length ? { href: '#editorials', label: 'Editorials' } : null,
+  ].filter((link): link is { href: string; label: string } => Boolean(link));
+
+  if (links.length < 2) return null;
+
+  return (
+    <nav aria-label="Case study sections" className="sticky top-0 z-20 border-b border-bronze/16 bg-[#080909]/88 backdrop-blur-xl">
+      <div className="mx-auto flex max-w-7xl gap-1 overflow-x-auto px-5 py-3 [scrollbar-width:none] sm:px-8 lg:px-12 [&::-webkit-scrollbar]:hidden">
+        {links.map((link, index) => (
+          <a
+            className="inline-flex min-h-9 shrink-0 items-center rounded-full px-3 text-xs font-semibold uppercase tracking-[0.14em] text-stardust/48 transition hover:bg-stardust/[0.06] hover:text-ember"
+            href={link.href}
+            key={link.href}
+          >
+            <span className="mr-2 text-ember/70">{String(index + 1).padStart(2, '0')}</span>
+            {link.label}
+          </a>
+        ))}
+      </div>
+    </nav>
+  );
+}
+
 function PublicEditorialPage({
   editorial,
   ownerProject,
@@ -454,7 +564,7 @@ function PublicEditorialPage({
 
   return (
     <PublicPortfolioFrame>
-      <PublicHeader profileName={profile.displayName} />
+      <PublicHeader profileName={profile.displayName} profileSlug={profile.usernameSlug} />
       <main>
         <section className="relative min-h-[92dvh] overflow-hidden border-b border-bronze/14">
           <div className="absolute inset-0">
@@ -798,11 +908,33 @@ function PublicPortfolioFrame({ children }: { children: ReactNode }) {
   );
 }
 
-function PublicHeader({ profileName }: { profileName: string }) {
+function PortfolioContactBand({ profile }: { profile: PortfolioHomepageSnapshot['profile'] }) {
+  if (!profile.email && !profile.resumeUrl) return null;
+
+  return (
+    <section className="border-t border-bronze/14 py-16 sm:py-24">
+      <div className="mx-auto max-w-7xl px-5 sm:px-8 lg:px-12">
+        <div className="relative overflow-hidden rounded-2xl border border-bronze/24 bg-[radial-gradient(circle_at_82%_18%,rgba(45,92,107,0.25),transparent_30%),linear-gradient(135deg,rgba(17,17,17,0.96),rgba(29,20,15,0.9))] px-6 py-10 sm:px-10 sm:py-14 lg:flex lg:items-end lg:justify-between lg:gap-10">
+          <div className="max-w-3xl">
+            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-ember">Start a conversation</p>
+            <h2 className="font-display mt-4 text-3xl leading-tight text-stardust sm:text-5xl">Interested in the work behind the garments?</h2>
+            <p className="mt-5 max-w-2xl text-sm leading-7 text-stardust/56 sm:text-base">Reach out for roles, collaborations, or a closer look at the development process.</p>
+          </div>
+          <div className="mt-8 flex shrink-0 flex-wrap gap-3 lg:mt-0">
+            {profile.email ? <PublicAction href={`mailto:${profile.email}`} icon={<Mail size={17} />} label="Contact" primary /> : null}
+            {profile.resumeUrl ? <PublicAction href={profile.resumeUrl} icon={<Download size={17} />} label="View Resume" /> : null}
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function PublicHeader({ profileName, profileSlug }: { profileName: string; profileSlug: string }) {
   return (
     <header className="absolute inset-x-0 top-0 z-20">
       <div className="mx-auto flex max-w-7xl items-center justify-between px-5 py-5 sm:px-8 lg:px-12">
-        <a className="font-display text-sm text-stardust sm:text-base" href="/">{profileName || 'Mystic Lore'}</a>
+        <a className="font-display text-sm text-stardust sm:text-base" href={buildPublicPortfolioUrl(profileSlug)}>{profileName || 'Mystic Lore'}</a>
         <span className="text-[0.62rem] font-semibold uppercase tracking-[0.2em] text-stardust/38">Portfolio</span>
       </div>
     </header>
@@ -823,7 +955,7 @@ function PortfolioBand({ children, eyebrow, title }: { children: ReactNode; eyeb
 
 function ProjectSection({ children, eyebrow, id, title }: { children: ReactNode; eyebrow: string; id?: string; title: string }) {
   return (
-    <section className="border-t border-bronze/14 py-14 sm:py-20" id={id}>
+    <section className="scroll-mt-16 border-t border-bronze/14 py-14 sm:py-20" id={id}>
       <div className="mx-auto max-w-7xl px-5 sm:px-8 lg:px-12">
         <p className="text-xs font-semibold uppercase tracking-[0.2em] text-ember">{eyebrow}</p>
         <h2 className="font-display mb-8 mt-3 text-3xl text-stardust sm:text-4xl">{title}</h2>
@@ -961,8 +1093,28 @@ function formatYards(value: number): string {
   return Number.isInteger(value) ? String(value) : value.toFixed(1).replace(/\.0$/, '');
 }
 
+function portfolioInitials(value: string) {
+  const initials = value
+    .trim()
+    .split(/\s+/)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase())
+    .join('');
+  return initials || 'ML';
+}
+
 function buildPublicEditorialUrl(usernameSlug: string, editorialSlug: string) {
   return `/portfolio/${usernameSlug}/editorials/${editorialSlug}`;
+}
+
+function ensureMetaDescription() {
+  const existing = document.querySelector<HTMLMetaElement>('meta[name="description"]');
+  if (existing) return existing;
+
+  const meta = document.createElement('meta');
+  meta.name = 'description';
+  document.head.appendChild(meta);
+  return meta;
 }
 
 function contentString(content: unknown, key: string, fallback = ''): string {

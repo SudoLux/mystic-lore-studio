@@ -16,6 +16,10 @@ import { useAuth } from './hooks/useAuth';
 import { useStudioData } from './hooks/useStudioData';
 import { StudioDataProvider } from './hooks/useStudioData';
 import { supabaseConfigStatus } from './lib/supabase';
+import {
+  fetchPublicPortfolio,
+  publishPublicPortfolio,
+} from './lib/publicPortfolioPublication';
 import { AuthScreen } from './pages/Auth/AuthScreen';
 import { DashboardPage } from './pages/Dashboard';
 import { FabricVaultPage } from './pages/FabricVault';
@@ -28,6 +32,10 @@ import { PublicPortfolioPage } from './pages/PublicPortfolio';
 import { SettingsPage } from './pages/Settings';
 import { StatsPage } from './pages/Stats';
 import { preparePortfolioHomepageSnapshot } from './utils/portfolioSnapshot';
+import {
+  loadPublicPortfolioSnapshot,
+  savePublicPortfolioSnapshot,
+} from './utils/publicPortfolioCache';
 import { slugifyPortfolioValue } from './utils/portfolioUtils';
 import type { PageId } from './types/navigation';
 import type { ApparelProject, Fabric } from './types/studio';
@@ -107,6 +115,11 @@ function getPublicPortfolioRoute(): PublicPortfolioRoute | null {
 
 function App() {
   const { isLoading, session } = useAuth();
+  const publicPortfolioRoute = getPublicPortfolioRoute();
+
+  if (publicPortfolioRoute && !session) {
+    return <CachedPublicPortfolio route={publicPortfolioRoute} />;
+  }
 
   if (isLoading || !session) {
     return <AuthScreen />;
@@ -116,6 +129,75 @@ function App() {
     <StudioDataProvider userId={session.user.id}>
       <StudioApp />
     </StudioDataProvider>
+  );
+}
+
+function CachedPublicPortfolio({ route }: { route: PublicPortfolioRoute }) {
+  const [snapshot, setSnapshot] = useState(
+    () => loadPublicPortfolioSnapshot(route.usernameSlug),
+  );
+  const [isLoadingPublication, setIsLoadingPublication] = useState(true);
+
+  useEffect(() => {
+    let active = true;
+    setSnapshot(loadPublicPortfolioSnapshot(route.usernameSlug));
+    setIsLoadingPublication(true);
+
+    void fetchPublicPortfolio(route.usernameSlug)
+      .then((publishedSnapshot) => {
+        if (!active || !publishedSnapshot) return;
+        savePublicPortfolioSnapshot(publishedSnapshot);
+        setSnapshot(publishedSnapshot);
+      })
+      .catch(() => undefined)
+      .finally(() => {
+        if (active) setIsLoadingPublication(false);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [route.usernameSlug]);
+
+  if (!snapshot && isLoadingPublication) {
+    return (
+      <div className="flex min-h-dvh items-center justify-center bg-[#080909] px-5 text-stardust">
+        <div className="text-center">
+          <div className="mx-auto h-8 w-8 animate-spin rounded-full border border-ember/25 border-t-ember" />
+          <p className="mt-4 text-xs uppercase tracking-[0.18em] text-stardust/42">Opening portfolio</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!snapshot) {
+    return (
+      <PublicPortfolioPage
+        editorialSlug={route.editorialSlug}
+        isPublished={false}
+        projectSlug={route.projectSlug}
+        snapshot={{
+          editorials: [],
+          generatedAt: new Date(0).toISOString(),
+          profile: {
+            bio: '',
+            displayName: '',
+            headline: '',
+            usernameSlug: route.usernameSlug,
+          },
+          projects: [],
+        }}
+      />
+    );
+  }
+
+  return (
+    <PublicPortfolioPage
+      editorialSlug={route.editorialSlug}
+      isPublished={snapshot.profile.usernameSlug === route.usernameSlug}
+      projectSlug={route.projectSlug}
+      snapshot={snapshot}
+    />
   );
 }
 
@@ -163,8 +245,11 @@ function StudioApp() {
       if (project.heroImage) assets.set(project.heroImage.id, project.heroImage);
       project.galleryImages?.forEach((image) => assets.set(image.id, image));
     });
+    fabrics.forEach((fabric) => {
+      if (fabric.image) assets.set(fabric.image.id, fabric.image);
+    });
     return [...assets.values()];
-  }, [projects]);
+  }, [fabrics, projects]);
   const publicPortfolioSnapshot = useMemo(
     () => preparePortfolioHomepageSnapshot({
       assets: publicPortfolioAssets,
@@ -175,6 +260,24 @@ function StudioApp() {
     }),
     [editorialCollections, fabrics, portfolioProfile, projects, publicPortfolioAssets],
   );
+
+  useEffect(() => {
+    if (!publicPortfolioSnapshot.profile.usernameSlug) return;
+    savePublicPortfolioSnapshot(publicPortfolioSnapshot);
+    if (!user?.id) return;
+
+    const publishTimer = window.setTimeout(() => {
+      void publishPublicPortfolio({
+        assets: publicPortfolioAssets,
+        snapshot: publicPortfolioSnapshot,
+        userId: user.id,
+      }).catch((error) => {
+        console.warn('Public portfolio publishing is not available yet.', error);
+      });
+    }, 800);
+
+    return () => window.clearTimeout(publishTimer);
+  }, [publicPortfolioAssets, publicPortfolioSnapshot, user?.id]);
 
   useEffect(() => {
     const handleHashChange = () => setRoute(getInitialRoute());
