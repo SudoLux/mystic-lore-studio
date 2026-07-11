@@ -349,6 +349,18 @@ function PublicProjectPage({
   const nextProject = projectIndex >= 0 && projectIndex < projects.length - 1
     ? projects[projectIndex + 1]
     : undefined;
+  const caseStudy = project.caseStudy;
+  const recruiterSkills = caseStudy?.skills.length ? caseStudy.skills : project.skills;
+  const recruiterTools = caseStudy?.tools ?? [];
+  const overviewCopy = caseStudy?.overview || project.description;
+  const hasPublicProcess = Boolean(caseStudy?.processSummary || project.process);
+  const hasSkillsAndTools = Boolean(recruiterSkills.length || recruiterTools.length);
+  const hasOverviewFacts = Boolean(
+    project.overview?.collection
+      || project.overview?.season
+      || project.overview?.silhouette
+      || project.overview?.targetWearer,
+  );
   const gallery = project.visibleSections.gallery ? uniqueImages([...project.featuredImages]) : [];
   const hasOverviewDetails = Boolean(
     project.overview?.collection
@@ -356,7 +368,10 @@ function PublicProjectPage({
       || project.overview?.silhouette
       || project.overview?.targetWearer
       || project.overview?.designIntent
-      || project.description,
+      || overviewCopy
+      || caseStudy?.challenge
+      || caseStudy?.solution
+      || caseStudy?.outcome,
   );
 
   return (
@@ -373,12 +388,15 @@ function PublicProjectPage({
               <ArrowLeft size={17} /> Back to portfolio
             </a>
             <div className="max-w-4xl">
-              {project.overview?.garmentType ? <p className="text-xs font-semibold uppercase tracking-[0.22em] text-ember">{project.overview.garmentType} case study</p> : null}
+              <div className="flex flex-wrap items-center gap-3 text-xs font-semibold uppercase tracking-[0.22em] text-ember">
+                {project.overview?.garmentType ? <span>{project.overview.garmentType} case study</span> : null}
+                {caseStudy?.role ? <span className="border-l border-ember/35 pl-3 text-stardust/62">{caseStudy.role}</span> : null}
+              </div>
               <h1 className="font-display mt-4 text-[clamp(3rem,8vw,7rem)] leading-[0.94] text-stardust [text-shadow:0_8px_40px_rgba(0,0,0,0.5)]">{project.title}</h1>
               <p className="mt-6 max-w-3xl text-lg leading-8 text-stardust/72 sm:text-xl sm:leading-9">
-                {project.description || 'A focused garment study in silhouette, material, and construction.'}
+                {overviewCopy || 'A focused garment study in silhouette, material, and construction.'}
               </p>
-              {project.skills.length ? <div className="mt-7"><SkillList skills={project.skills.slice(0, 5)} /></div> : null}
+              {recruiterSkills.length ? <div className="mt-7"><SkillList skills={recruiterSkills.slice(0, 5)} /></div> : null}
             </div>
           </div>
         </section>
@@ -387,16 +405,25 @@ function PublicProjectPage({
 
         {project.visibleSections.overview && hasOverviewDetails ? (
           <ProjectSection eyebrow="Overview" id="overview" title="Design Direction">
-            <div className="grid gap-px overflow-hidden rounded-xl border border-bronze/20 bg-bronze/20 sm:grid-cols-2 lg:grid-cols-4">
-              <ProjectFact label="Collection" value={project.overview?.collection ?? ''} />
-              <ProjectFact label="Season" value={project.overview?.season ?? ''} />
-              <ProjectFact label="Silhouette" value={project.overview?.silhouette ?? ''} />
-              <ProjectFact label="For" value={project.overview?.targetWearer ?? ''} />
-            </div>
-            {project.description ? (
-              <p className="mt-8 max-w-4xl text-lg leading-9 text-stardust/70">{project.description}</p>
+            {hasOverviewFacts ? (
+              <div className="grid gap-px overflow-hidden rounded-xl border border-bronze/20 bg-bronze/20 sm:grid-cols-2 lg:grid-cols-4">
+                <ProjectFact label="Collection" value={project.overview?.collection ?? ''} />
+                <ProjectFact label="Season" value={project.overview?.season ?? ''} />
+                <ProjectFact label="Silhouette" value={project.overview?.silhouette ?? ''} />
+                <ProjectFact label="For" value={project.overview?.targetWearer ?? ''} />
+              </div>
             ) : null}
-            {project.overview?.designIntent ? <p className="mt-8 max-w-4xl text-lg leading-9 text-stardust/65">{project.overview.designIntent}</p> : null}
+            {overviewCopy ? (
+              <p className="mt-8 max-w-4xl text-lg leading-9 text-stardust/70">{overviewCopy}</p>
+            ) : null}
+            {!caseStudy?.overview && project.overview?.designIntent ? <p className="mt-8 max-w-4xl text-lg leading-9 text-stardust/65">{project.overview.designIntent}</p> : null}
+            {caseStudy?.challenge || caseStudy?.solution || caseStudy?.outcome ? (
+              <div className="mt-8 grid gap-4 lg:grid-cols-3">
+                {caseStudy.challenge ? <CaseStudyCopyCard label="Challenge" value={caseStudy.challenge} /> : null}
+                {caseStudy.solution ? <CaseStudyCopyCard label="Solution" value={caseStudy.solution} /> : null}
+                {caseStudy.outcome ? <CaseStudyCopyCard label="Outcome" value={caseStudy.outcome} /> : null}
+              </div>
+            ) : null}
           </ProjectSection>
         ) : null}
 
@@ -448,18 +475,28 @@ function PublicProjectPage({
           </ProjectSection>
         ) : null}
 
-        {project.visibleSections.process && project.process ? (
+        {project.visibleSections.skills && hasSkillsAndTools ? (
+          <ProjectSection eyebrow="Capability" id="skills" title="Skills & Tools">
+            <div className="grid gap-4 lg:grid-cols-2">
+              {recruiterSkills.length ? <CaseStudyTagCard label="Skills" values={recruiterSkills} /> : null}
+              {recruiterTools.length ? <CaseStudyTagCard label="Tools" values={recruiterTools} /> : null}
+            </div>
+          </ProjectSection>
+        ) : null}
+
+        {project.visibleSections.process && hasPublicProcess ? (
           <ProjectSection eyebrow="Development" id="process" title="Process">
             <div className="grid gap-4 lg:grid-cols-[minmax(0,0.7fr)_minmax(0,1.3fr)]">
-              <div className="rounded-xl border border-bronze/22 bg-[rgba(17,17,17,0.76)] p-6">
-                <p className="text-[0.65rem] uppercase tracking-[0.18em] text-stardust/38">Current phase</p>
-                <p className="font-display mt-3 text-3xl text-stardust">{project.process.phase}</p>
-                <p className="mt-6 text-5xl font-semibold text-ember">{project.process.progress}%</p>
-              </div>
+              {project.process ? (
+                <div className="rounded-xl border border-bronze/22 bg-[rgba(17,17,17,0.76)] p-6">
+                  <p className="text-[0.65rem] uppercase tracking-[0.18em] text-stardust/38">Current phase</p>
+                  <p className="font-display mt-3 text-3xl text-stardust">{project.process.phase}</p>
+                  <p className="mt-6 text-5xl font-semibold text-ember">{project.process.progress}%</p>
+                </div>
+              ) : <CaseStudyCopyCard label="Process summary" value={caseStudy?.processSummary || ''} />}
               <div className="flex flex-col justify-center rounded-xl border border-bronze/22 bg-[linear-gradient(145deg,rgba(45,92,107,0.12),rgba(17,17,17,0.78),rgba(154,108,60,0.1))] p-6 sm:p-8">
-                <div className="flex items-center justify-between gap-4 text-sm"><span className="text-stardust/60">Development arc</span><span className="font-semibold text-ember">{project.process.progress}% complete</span></div>
-                <div className="mt-5 h-2 overflow-hidden rounded-full bg-midnight"><div className="h-full rounded-full bg-[linear-gradient(90deg,#c89b3c,#4f8990,#ede3cf)]" style={{ width: `${project.process.progress}%` }} /></div>
-                <p className="mt-6 max-w-2xl text-sm leading-7 text-stardust/52">The public process view summarizes the project’s development without exposing internal tasks or private working notes.</p>
+                {project.process ? <><div className="flex items-center justify-between gap-4 text-sm"><span className="text-stardust/60">Development arc</span><span className="font-semibold text-ember">{project.process.progress}% complete</span></div><div className="mt-5 h-2 overflow-hidden rounded-full bg-midnight"><div className="h-full rounded-full bg-[linear-gradient(90deg,#c89b3c,#4f8990,#ede3cf)]" style={{ width: `${project.process.progress}%` }} /></div></> : null}
+                <p className="mt-6 max-w-2xl text-sm leading-7 text-stardust/52">{caseStudy?.processSummary || 'The public process view summarizes the project’s development without exposing internal tasks or private working notes.'}</p>
               </div>
             </div>
           </ProjectSection>
@@ -510,7 +547,8 @@ function ProjectQuickNav({ project }: { project: PortfolioProjectSnapshot }) {
     project.visibleSections.overview ? { href: '#overview', label: 'Overview' } : null,
     project.visibleSections.gallery && project.featuredImages.length ? { href: '#gallery', label: 'Gallery' } : null,
     project.visibleSections.materials && project.materials.length ? { href: '#materials', label: 'Materials' } : null,
-    project.visibleSections.process && project.process ? { href: '#process', label: 'Process' } : null,
+    project.visibleSections.skills && (project.caseStudy?.skills.length || project.caseStudy?.tools.length || project.skills.length) ? { href: '#skills', label: 'Skills' } : null,
+    project.visibleSections.process && (project.caseStudy?.processSummary || project.process) ? { href: '#process', label: 'Process' } : null,
     project.visibleSections.editorials && project.editorials.length ? { href: '#editorials', label: 'Editorials' } : null,
   ].filter((link): link is { href: string; label: string } => Boolean(link));
 
@@ -1004,6 +1042,24 @@ function ProjectNavCard({
 
 function ProjectFact({ label, value }: { label: string; value: string }) {
   return <div className="bg-[#0d0f0f] p-5"><p className="text-[0.65rem] uppercase tracking-[0.17em] text-stardust/38">{label}</p><p className="mt-2 text-sm font-semibold text-stardust">{value || 'Not specified'}</p></div>;
+}
+
+function CaseStudyCopyCard({ label, value }: { label: string; value: string }) {
+  return (
+    <article className="rounded-xl border border-bronze/20 bg-[linear-gradient(145deg,rgba(45,92,107,0.08),rgba(17,17,17,0.78),rgba(154,108,60,0.06))] p-5 sm:p-6">
+      <p className="text-[0.65rem] font-semibold uppercase tracking-[0.18em] text-ember">{label}</p>
+      <p className="mt-4 text-sm leading-7 text-stardust/66">{value}</p>
+    </article>
+  );
+}
+
+function CaseStudyTagCard({ label, values }: { label: string; values: readonly string[] }) {
+  return (
+    <article className="rounded-xl border border-bronze/20 bg-[rgba(17,17,17,0.76)] p-5 sm:p-6">
+      <p className="text-[0.65rem] font-semibold uppercase tracking-[0.18em] text-ember">{label}</p>
+      <div className="mt-4"><SkillList skills={values} /></div>
+    </article>
+  );
 }
 
 function PublicAction({ href, icon, label, primary = false }: { href: string; icon: ReactNode; label: string; primary?: boolean }) {

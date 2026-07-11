@@ -104,6 +104,16 @@ export type PortfolioEditorialSnapshot = Readonly<{
 }>;
 
 export type PortfolioProjectSnapshot = Readonly<{
+  caseStudy?: Readonly<{
+    challenge?: string;
+    outcome?: string;
+    overview: string;
+    processSummary?: string;
+    role?: string;
+    skills: readonly string[];
+    solution?: string;
+    tools: readonly string[];
+  }>;
   coverImage?: PortfolioImageSnapshot;
   description: string;
   editorials: readonly PortfolioEditorialSnapshot[];
@@ -198,6 +208,18 @@ export function preparePortfolioProjectSnapshot({
     : [];
 
   const snapshot: PortfolioProjectSnapshot = {
+    caseStudy: {
+      challenge: settings.portfolioChallenge,
+      outcome: settings.portfolioOutcome,
+      overview: settings.portfolioOverview || getPortfolioProjectDescription(project),
+      processSummary: settings.portfolioProcessSummary,
+      role: settings.portfolioRole,
+      skills: settings.portfolioSkills?.length
+        ? [...settings.portfolioSkills]
+        : settings.visibleSections.skills ? [...project.keyFeatures] : [],
+      solution: settings.portfolioSolution,
+      tools: [...(settings.portfolioTools ?? [])],
+    },
     coverImage,
     description: getPortfolioProjectDescription(project),
     editorials: attachedEditorials,
@@ -229,7 +251,11 @@ export function preparePortfolioProjectSnapshot({
     process: settings.visibleSections.process
       ? { phase: project.phase, progress: project.progress }
       : undefined,
-    skills: settings.visibleSections.skills ? [...project.keyFeatures] : [],
+    skills: settings.visibleSections.skills
+      ? settings.portfolioSkills?.length
+        ? [...settings.portfolioSkills]
+        : [...project.keyFeatures]
+      : [],
     slug: settings.portfolioSlug,
     sortOrder: settings.sortOrder,
     title: getPortfolioProjectTitle(project),

@@ -28,6 +28,15 @@ export interface PortfolioProjectSettings {
   portfolioSlug: string;
   customPortfolioTitle?: string;
   customPortfolioDescription?: string;
+  /** Optional polished copy for the public recruiter-facing case study. */
+  portfolioOverview?: string;
+  portfolioProcessSummary?: string;
+  portfolioChallenge?: string;
+  portfolioSolution?: string;
+  portfolioOutcome?: string;
+  portfolioRole?: string;
+  portfolioSkills?: string[];
+  portfolioTools?: string[];
   portfolioCoverImageId?: string;
   featuredPortfolioImageIds: string[];
   attachedEditorialCollectionIds: string[];

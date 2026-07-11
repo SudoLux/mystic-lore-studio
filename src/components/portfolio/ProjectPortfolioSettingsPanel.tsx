@@ -46,12 +46,20 @@ type ProjectPortfolioSettingsPanelProps = {
 
 type ProjectPortfolioDraft = {
   attachedEditorialCollectionIds: string[];
+  portfolioChallenge: string;
   customPortfolioDescription: string;
   customPortfolioTitle: string;
   featuredPortfolioImageIds: string[];
   isPublic: boolean;
   portfolioCoverImageId: string;
+  portfolioOutcome: string;
+  portfolioOverview: string;
+  portfolioProcessSummary: string;
+  portfolioRole: string;
+  portfolioSkills: string[];
   portfolioSlug: string;
+  portfolioSolution: string;
+  portfolioTools: string[];
   visibleSections: PortfolioVisibleSections;
 };
 
@@ -98,12 +106,20 @@ export function ProjectPortfolioSettingsPanel({
   );
   const [draft, setDraft] = useState<ProjectPortfolioDraft>(() => ({
     attachedEditorialCollectionIds: [...settings.attachedEditorialCollectionIds],
+    portfolioChallenge: settings.portfolioChallenge ?? '',
     customPortfolioDescription: settings.customPortfolioDescription ?? '',
     customPortfolioTitle: settings.customPortfolioTitle ?? '',
     featuredPortfolioImageIds: [...settings.featuredPortfolioImageIds],
     isPublic: settings.isPublic,
     portfolioCoverImageId: settings.portfolioCoverImageId ?? '',
+    portfolioOutcome: settings.portfolioOutcome ?? '',
+    portfolioOverview: settings.portfolioOverview ?? '',
+    portfolioProcessSummary: settings.portfolioProcessSummary ?? '',
+    portfolioRole: settings.portfolioRole ?? '',
+    portfolioSkills: [...(settings.portfolioSkills ?? [])],
     portfolioSlug: settings.portfolioSlug === 'untitled' ? '' : settings.portfolioSlug,
+    portfolioSolution: settings.portfolioSolution ?? '',
+    portfolioTools: [...(settings.portfolioTools ?? [])],
     visibleSections: { ...settings.visibleSections },
   }));
 
@@ -148,12 +164,20 @@ export function ProjectPortfolioSettingsPanel({
   const save = () => {
     onSave({
       attachedEditorialCollectionIds: draft.attachedEditorialCollectionIds,
+      portfolioChallenge: optionalPortfolioCopy(draft.portfolioChallenge),
       customPortfolioDescription: draft.customPortfolioDescription.trim() || undefined,
       customPortfolioTitle: draft.customPortfolioTitle.trim() || undefined,
       featuredPortfolioImageIds: draft.featuredPortfolioImageIds,
       isPublic: draft.isPublic,
       portfolioCoverImageId: draft.portfolioCoverImageId || undefined,
+      portfolioOutcome: optionalPortfolioCopy(draft.portfolioOutcome),
+      portfolioOverview: optionalPortfolioCopy(draft.portfolioOverview),
+      portfolioProcessSummary: optionalPortfolioCopy(draft.portfolioProcessSummary),
+      portfolioRole: optionalPortfolioCopy(draft.portfolioRole),
+      portfolioSkills: cleanPortfolioTokens(draft.portfolioSkills),
       portfolioSlug: ensureUniquePortfolioSlug(cleanedSlug, existingProjectSlugs),
+      portfolioSolution: optionalPortfolioCopy(draft.portfolioSolution),
+      portfolioTools: cleanPortfolioTokens(draft.portfolioTools),
       visibleSections: draft.visibleSections,
     });
   };
@@ -266,6 +290,68 @@ export function ProjectPortfolioSettingsPanel({
                     <Link2 aria-hidden="true" size={13} /> Public URL preview
                   </p>
                   <p className="mt-1.5 break-all text-xs leading-5 text-stardust/62">{previewPath}</p>
+                </div>
+              </PanelSection>
+
+              <PanelSection kicker="Case Study" title="The story recruiters should remember">
+                <div className="grid gap-4">
+                  <PanelField
+                    hint="Optional. Describe your contribution to this work."
+                    label="Role"
+                    onChange={(portfolioRole) => setDraft((current) => ({ ...current, portfolioRole }))}
+                    placeholder="e.g. Technical Designer, Apparel Designer, Product Developer"
+                    value={draft.portfolioRole}
+                  />
+                  <PortfolioTokenField
+                    hint="Add a skill with Enter or a comma."
+                    label="Skills"
+                    onChange={(portfolioSkills) => setDraft((current) => ({ ...current, portfolioSkills }))}
+                    placeholder="e.g. Fit development"
+                    values={draft.portfolioSkills}
+                  />
+                  <PortfolioTokenField
+                    hint="Add the tools, methods, or systems that made the work possible."
+                    label="Tools"
+                    onChange={(portfolioTools) => setDraft((current) => ({ ...current, portfolioTools }))}
+                    placeholder="e.g. CLO 3D, Illustrator"
+                    values={draft.portfolioTools}
+                  />
+                  <PanelField
+                    hint="If left empty, the portfolio description is used."
+                    label="Overview"
+                    multiline
+                    onChange={(portfolioOverview) => setDraft((current) => ({ ...current, portfolioOverview }))}
+                    placeholder="Describe what this project is, who it was designed for, and what it demonstrates."
+                    value={draft.portfolioOverview}
+                  />
+                  <PanelField
+                    label="Process Summary"
+                    multiline
+                    onChange={(portfolioProcessSummary) => setDraft((current) => ({ ...current, portfolioProcessSummary }))}
+                    placeholder="Summarize the development arc, key decisions, and how the work moved from concept to garment."
+                    value={draft.portfolioProcessSummary}
+                  />
+                  <PanelField
+                    label="Challenge"
+                    multiline
+                    onChange={(portfolioChallenge) => setDraft((current) => ({ ...current, portfolioChallenge }))}
+                    placeholder="What design, fit, construction, or material problem did you solve?"
+                    value={draft.portfolioChallenge}
+                  />
+                  <PanelField
+                    label="Solution"
+                    multiline
+                    onChange={(portfolioSolution) => setDraft((current) => ({ ...current, portfolioSolution }))}
+                    placeholder="Explain the decisions, tests, or refinements that shaped the solution."
+                    value={draft.portfolioSolution}
+                  />
+                  <PanelField
+                    label="Outcome"
+                    multiline
+                    onChange={(portfolioOutcome) => setDraft((current) => ({ ...current, portfolioOutcome }))}
+                    placeholder="What did the final piece prove or improve?"
+                    value={draft.portfolioOutcome}
+                  />
                 </div>
               </PanelSection>
 
@@ -543,6 +629,67 @@ function PanelField({
   );
 }
 
+function PortfolioTokenField({
+  hint,
+  label,
+  onChange,
+  placeholder,
+  values,
+}: {
+  hint: string;
+  label: string;
+  onChange: (values: string[]) => void;
+  placeholder: string;
+  values: string[];
+}) {
+  const [draftValue, setDraftValue] = useState('');
+  const addValues = (value: string) => {
+    const nextValues = cleanPortfolioTokens([...values, ...value.split(',')]);
+    if (nextValues.length !== values.length || !value.trim()) onChange(nextValues);
+    setDraftValue('');
+  };
+
+  return (
+    <label>
+      <span className="mb-2 block text-[0.66rem] font-semibold uppercase tracking-[0.16em] text-stardust/44">{label}</span>
+      <div className="flex min-h-[3.25rem] flex-wrap items-center gap-2 rounded-xl border border-bronze/26 bg-midnight/42 px-3 py-2 transition focus-within:border-ember/56 focus-within:ring-2 focus-within:ring-ember/10">
+        {values.map((value) => (
+          <span className="inline-flex min-h-7 items-center gap-1.5 rounded-lg border border-teal/25 bg-teal/[0.08] py-1 pl-2 pr-1 text-xs text-stardust/78" key={value}>
+            {value}
+            <button
+              aria-label={`Remove ${value}`}
+              className="flex h-5 w-5 items-center justify-center rounded text-stardust/50 transition hover:bg-stardust/10 hover:text-ember"
+              onClick={() => onChange(values.filter((item) => item !== value))}
+              type="button"
+            >
+              <X aria-hidden="true" size={12} />
+            </button>
+          </span>
+        ))}
+        <input
+          className="min-w-[9rem] flex-1 bg-transparent py-1 text-sm text-stardust outline-none placeholder:text-stardust/24"
+          onChange={(event) => setDraftValue(event.target.value)}
+          onKeyDown={(event) => {
+            if (event.key === 'Enter' || event.key === ',') {
+              event.preventDefault();
+              addValues(draftValue);
+            }
+            if (event.key === 'Backspace' && !draftValue && values.length) {
+              onChange(values.slice(0, -1));
+            }
+          }}
+          onBlur={() => {
+            if (draftValue.trim()) addValues(draftValue);
+          }}
+          placeholder={placeholder}
+          value={draftValue}
+        />
+      </div>
+      <span className="mt-2 block text-xs leading-5 text-stardust/38">{hint}</span>
+    </label>
+  );
+}
+
 function PanelToggle({
   ariaLabel,
   checked,
@@ -687,4 +834,14 @@ function getSectionWarnings({
     warnings.push('Only enable notes if they are polished and safe for public viewing.');
   }
   return warnings;
+}
+
+function cleanPortfolioTokens(values: string[]) {
+  return [...new Set(values
+    .map((value) => value.trim())
+    .filter(Boolean))];
+}
+
+function optionalPortfolioCopy(value: string) {
+  return value.trim() || undefined;
 }
