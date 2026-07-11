@@ -304,7 +304,7 @@ export function updatePortfolioProfileInData(
     portfolioProfile: normalizePortfolioProfile({
       ...data.portfolioProfile,
       ...patch,
-      updatedAt: new Date().toISOString(),
+      updatedAt: patch.updatedAt ?? new Date().toISOString(),
     }),
   };
 }
@@ -328,7 +328,7 @@ export function updateProjectPortfolioSettingsInData(
             portfolioSlug: patch.portfolioSlug === undefined
               ? current.portfolioSlug
               : slugifyPortfolioValue(patch.portfolioSlug),
-            updatedAt: new Date().toISOString(),
+            updatedAt: patch.updatedAt ?? new Date().toISOString(),
             visibleSections: {
               ...current.visibleSections,
               ...patch.visibleSections,

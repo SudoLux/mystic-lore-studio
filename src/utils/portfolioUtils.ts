@@ -120,6 +120,7 @@ export function normalizePortfolioProfile(
     email: optionalText(profile?.email),
     headline: text(profile?.headline),
     location: optionalText(profile?.location),
+    publishedAt: optionalText(profile?.publishedAt),
     resumeUrl: optionalText(profile?.resumeUrl),
     updatedAt: text(profile?.updatedAt) || defaults.updatedAt,
     usernameSlug: profile?.usernameSlug?.trim()

@@ -2,6 +2,8 @@ import { useMemo, useState } from 'react';
 import {
   AlertTriangle,
   Check,
+  CloudOff,
+  CloudUpload,
   Copy,
   Eye,
   Image as ImageIcon,
@@ -32,28 +34,37 @@ import {
 type PortfolioProjectVisibilityManagerProps = {
   editorialCollections: EditorialCollection[];
   linkedMaterials: LinkedMaterial[];
+  onPublishProject: (projectId: string) => Promise<void>;
+  onUnpublishProject: (projectId: string) => Promise<void>;
   onUpdateSettings: (
     projectId: string,
     patch: PortfolioProjectSettingsPatch,
   ) => void;
   projects: ApparelProject[];
+  publishingProjectId: string | null;
   usernameSlug: string;
 };
 
 export function PortfolioProjectVisibilityManager({
   editorialCollections,
   linkedMaterials,
+  onPublishProject,
+  onUnpublishProject,
   onUpdateSettings,
   projects,
+  publishingProjectId,
   usernameSlug,
 }: PortfolioProjectVisibilityManagerProps) {
   const sortedProjects = useMemo(() => sortPortfolioProjects(projects), [projects]);
   const [copiedProjectId, setCopiedProjectId] = useState<string | null>(null);
   const [editingProjectId, setEditingProjectId] = useState<string | null>(null);
 
-  const publicCount = projects.filter(
+  const preparedCount = projects.filter(
     (project) => getSafePortfolioSettings(project).isPublic,
   ).length;
+  const liveCount = projects.filter((project) => Boolean(
+    getSafePortfolioSettings(project).publishedAt,
+  )).length;
   const featuredCount = projects.filter((project) => {
     const settings = getSafePortfolioSettings(project);
     return settings.isPublic && settings.featured;
@@ -71,8 +82,13 @@ export function PortfolioProjectVisibilityManager({
     );
   };
 
-  const togglePublic = (project: ApparelProject, isPublic: boolean) => {
+  const togglePublic = async (project: ApparelProject, isPublic: boolean) => {
     const settings = getSafePortfolioSettings(project);
+    // A private toggle is a privacy action, not a draft action. Withdraw the
+    // immutable public snapshot before changing the Studio visibility state.
+    if (!isPublic && settings.publishedAt) {
+      await onUnpublishProject(project.id);
+    }
     const needsSlug = !project.portfolio?.portfolioSlug?.trim()
       || settings.portfolioSlug === 'untitled';
     onUpdateSettings(project.id, {
@@ -116,22 +132,23 @@ export function PortfolioProjectVisibilityManager({
             Choose what earns the spotlight
           </h2>
           <p className="mt-2 max-w-2xl text-sm leading-6 text-stardust/48">
-            Public projects become recruiter-ready portfolio stories. Private studio work stays private.
+            Prepare a project here, then publish a frozen recruiter-facing snapshot when its story is ready. Private studio changes never go live on their own.
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
-          <Badge variant="teal">{publicCount} public</Badge>
+          <Badge variant="teal">{liveCount} live</Badge>
+          <Badge variant="bronze">{preparedCount} prepared</Badge>
           <Badge variant="bronze">{featuredCount} featured</Badge>
         </div>
       </div>
 
-      {!publicCount ? (
+      {!preparedCount ? (
         <div className="mt-5 flex items-start gap-3 rounded-2xl border border-dashed border-bronze/28 bg-midnight/22 p-4">
           <Eye aria-hidden="true" className="mt-0.5 shrink-0 text-ember" size={20} />
           <div>
             <p className="text-sm font-medium text-stardust/78">No projects are public yet</p>
             <p className="mt-1 text-xs leading-5 text-stardust/44">
-              Publish a finished project when it is ready to become part of your recruiter-facing story.
+              Mark a finished project as ready, tune its public settings, then publish it when you are ready to share.
             </p>
           </div>
         </div>
@@ -140,6 +157,10 @@ export function PortfolioProjectVisibilityManager({
       <div className="mt-5 grid gap-4 md:grid-cols-2 2xl:grid-cols-3">
         {sortedProjects.map((project) => {
           const settings = getSafePortfolioSettings(project);
+          const publication = getPublicationState(project);
+          const isLive = Boolean(settings.publishedAt);
+          const needsPublish = publication.kind === 'unpublished' || publication.kind === 'changes_pending';
+          const isPublishing = publishingProjectId === project.id;
           const assets = getProjectPortfolioAssets(project);
           const cover = resolveProjectPortfolioCover(project, assets);
           const persistedSlug = project.portfolio?.portfolioSlug?.trim();
@@ -184,7 +205,7 @@ export function PortfolioProjectVisibilityManager({
                 <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-midnight/90 via-transparent to-midnight/35" />
                 <div className="absolute left-4 top-4 flex max-w-[calc(100%-2rem)] flex-wrap gap-2">
                   <Badge variant={settings.isPublic ? 'teal' : 'bronze'}>
-                    {settings.isPublic ? 'Public' : 'Private'}
+                    {publication.label}
                   </Badge>
                   {settings.featured ? <Badge variant="ember">Featured</Badge> : null}
                 </div>
@@ -228,32 +249,73 @@ export function PortfolioProjectVisibilityManager({
                         : `Make ${getPortfolioProjectTitle(project)} public`}
                       checked={settings.isPublic}
                       label={settings.isPublic ? 'Public' : 'Private'}
-                      onChange={(isPublic) => togglePublic(project, isPublic)}
+                      onChange={(isPublic) => {
+                        void togglePublic(project, isPublic).catch(() => undefined);
+                      }}
                     />
                   </div>
                   {settings.isPublic ? (
                     <p className="max-w-full truncate text-xs text-stardust/38" title={path}>
-                      {missingSlug ? 'Link unavailable' : path}
+                      {missingSlug ? 'Link unavailable' : isLive ? path : 'Prepared changes are not live yet'}
                     </p>
                   ) : null}
                 </div>
 
-                <div className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-3">
+                <div className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-2">
                   <Button
                     aria-label={`Edit portfolio settings for ${getPortfolioProjectTitle(project)}`}
                     icon={<Pencil aria-hidden="true" size={15} />}
                     onClick={() => setEditingProjectId(project.id)}
                     size="sm"
-                    className={settings.isPublic ? '' : 'sm:col-span-3'}
                     variant="secondary"
                   >
                     Settings
                   </Button>
                   {settings.isPublic ? (
                     <>
+                      {needsPublish ? (
+                        <Button
+                          aria-label={`Publish ${getPortfolioProjectTitle(project)}`}
+                          disabled={isPublishing || missingSlug}
+                          icon={isPublishing
+                            ? <span aria-hidden="true" className="h-3.5 w-3.5 animate-spin rounded-full border border-current border-t-transparent" />
+                            : <CloudUpload aria-hidden="true" size={15} />}
+                          onClick={() => void onPublishProject(project.id)}
+                          size="sm"
+                          variant="primary"
+                        >
+                          {isPublishing ? 'Publishing…' : publication.kind === 'changes_pending' ? 'Publish Update' : 'Publish'}
+                        </Button>
+                      ) : null}
+                      {isLive ? (
+                        <Button
+                          aria-label={`Unpublish ${getPortfolioProjectTitle(project)}`}
+                          disabled={isPublishing}
+                          icon={<CloudOff aria-hidden="true" size={15} />}
+                          onClick={() => void onUnpublishProject(project.id).catch(() => undefined)}
+                          size="sm"
+                          variant="secondary"
+                        >
+                          Unpublish
+                        </Button>
+                      ) : null}
+                      <Button
+                        aria-label={isLive
+                          ? `View live ${getPortfolioProjectTitle(project)} portfolio project`
+                          : `Publish ${getPortfolioProjectTitle(project)} before viewing the live case study`}
+                        disabled={missingSlug || !isLive}
+                        icon={isLive ? <Eye aria-hidden="true" size={15} /> : <Copy aria-hidden="true" size={15} />}
+                        onClick={() => {
+                          if (isLive) openProjectPreview(path);
+                        }}
+                        size="sm"
+                        variant="ghost"
+                      >
+                        View Live
+                      </Button>
                       <Button
                         aria-label={`Copy portfolio link for ${getPortfolioProjectTitle(project)}`}
-                        disabled={missingSlug}
+                        disabled={missingSlug || !isLive}
                         icon={copiedProjectId === project.id
                           ? <Check aria-hidden="true" size={15} />
                           : <Copy aria-hidden="true" size={15} />}
@@ -262,16 +324,6 @@ export function PortfolioProjectVisibilityManager({
                         variant="secondary"
                       >
                         {copiedProjectId === project.id ? 'Copied' : 'Copy Link'}
-                      </Button>
-                      <Button
-                        aria-label={`Preview ${getPortfolioProjectTitle(project)} portfolio project`}
-                        disabled={missingSlug}
-                        icon={<Eye aria-hidden="true" size={15} />}
-                        onClick={() => openProjectPreview(path)}
-                        size="sm"
-                        variant="ghost"
-                      >
-                        Preview
                       </Button>
                     </>
                   ) : null}
@@ -349,6 +401,29 @@ function WarningBadge({ label }: { label: string }) {
       <AlertTriangle aria-hidden="true" size={11} /> {label}
     </span>
   );
+}
+
+type PublicationState = {
+  kind: 'changes_pending' | 'draft' | 'published' | 'unpublished';
+  label: 'Draft only' | 'Published' | 'Published with unpublished changes' | 'Unpublished';
+};
+
+function getPublicationState(project: ApparelProject): PublicationState {
+  const settings = getSafePortfolioSettings(project);
+  if (!settings.isPublic) return { kind: 'draft', label: 'Draft only' };
+  if (!settings.publishedAt) return { kind: 'unpublished', label: 'Unpublished' };
+
+  const publishedSourceAt = Date.parse(
+    settings.publishedSourceUpdatedAt || settings.publishedAt,
+  );
+  const latestPrivateChange = Math.max(
+    Date.parse(project.updatedAt || '') || 0,
+    Date.parse(settings.updatedAt || '') || 0,
+  );
+  if (latestPrivateChange > publishedSourceAt) {
+    return { kind: 'changes_pending', label: 'Published with unpublished changes' };
+  }
+  return { kind: 'published', label: 'Published' };
 }
 
 function ProjectImagePlaceholder() {

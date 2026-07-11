@@ -7,6 +7,8 @@ export interface PortfolioProfile {
   resumeUrl?: string;
   avatarImageId?: string;
   usernameSlug: string;
+  /** Timestamp of the last explicitly published public profile snapshot. */
+  publishedAt?: string;
   updatedAt: string;
 }
 
@@ -31,6 +33,10 @@ export interface PortfolioProjectSettings {
   attachedEditorialCollectionIds: string[];
   visibleSections: PortfolioVisibleSections;
   featured: boolean;
+  /** Timestamp of the last explicitly published public project snapshot. */
+  publishedAt?: string;
+  /** Private source version represented by the last public snapshot. */
+  publishedSourceUpdatedAt?: string;
   sortOrder?: number;
   updatedAt: string;
 }

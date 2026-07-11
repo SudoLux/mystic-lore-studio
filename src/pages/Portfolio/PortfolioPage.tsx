@@ -7,6 +7,7 @@ import {
   CheckCircle2,
   Code2,
   Copy,
+  CloudUpload,
   ExternalLink,
   Globe2,
   Link2,
@@ -22,6 +23,12 @@ import { Card } from '../../components/shared/Card';
 import { MobilePageHeader } from '../../components/shared/MobilePageHeader';
 import { PageHeader } from '../../components/shared/PageHeader';
 import { useStudioData } from '../../hooks/useStudioData';
+import { useAuth } from '../../hooks/useAuth';
+import {
+  publishPortfolioProfile,
+  publishPortfolioProject,
+  unpublishPortfolioProject,
+} from '../../lib/publicPortfolioPublication';
 import {
   buildPublicPortfolioUrl,
   getPortfolioReadinessReport,
@@ -41,23 +48,35 @@ export function PortfolioPage() {
     updatePortfolioProfile,
     updateProjectPortfolioSettings,
   } = useStudioData();
+  const { user } = useAuth();
   const [copiedPath, setCopiedPath] = useState<string | null>(null);
+  const [publicationError, setPublicationError] = useState<string | null>(null);
+  const [publicationMessage, setPublicationMessage] = useState<string | null>(null);
+  const [publishingProfile, setPublishingProfile] = useState(false);
+  const [publishingProjectId, setPublishingProjectId] = useState<string | null>(null);
 
-  const publicProjects = useMemo(
+  const preparedProjects = useMemo(
     () => sortPortfolioProjects(projects).filter(
       (project) => getSafePortfolioSettings(project).isPublic,
     ),
     [projects],
   );
+  const publishedProjects = useMemo(
+    () => preparedProjects.filter((project) => Boolean(getSafePortfolioSettings(project).publishedAt)),
+    [preparedProjects],
+  );
   const attachedEditorialIds = new Set(
-    publicProjects.flatMap(
+    publishedProjects.flatMap(
       (project) => getSafePortfolioSettings(project).attachedEditorialCollectionIds,
     ),
   );
   const attachedEditorials = editorialCollections.filter((collection) =>
     attachedEditorialIds.has(collection.id),
   );
-  const profileImages = useMemo(() => getPortfolioImageAssets(projects), [projects]);
+  const profileImages = useMemo(
+    () => getPortfolioImageAssets(projects, fabrics),
+    [fabrics, projects],
+  );
   const profilePath = buildPublicPortfolioUrl(portfolioProfile.usernameSlug || 'untitled');
   const profileShareUrl = buildShareUrl(profilePath);
   const readinessReport = useMemo(
@@ -81,12 +100,96 @@ export function PortfolioPage() {
   const openPreview = (path: string) => {
     window.open(path, '_blank', 'noopener,noreferrer');
   };
+  const publishProfile = async () => {
+    if (!user?.id) return;
+    setPublicationError(null);
+    setPublicationMessage(null);
+    setPublishingProfile(true);
+    try {
+      const snapshot = await publishPortfolioProfile({
+        assets: profileImages,
+        editorialCollections,
+        fabrics,
+        portfolioProfile,
+        projects,
+        userId: user.id,
+      });
+      updatePortfolioProfile({
+        publishedAt: snapshot.generatedAt,
+        updatedAt: snapshot.generatedAt,
+      });
+      setPublicationMessage('Profile published. Recruiters now receive the saved public profile snapshot.');
+    } catch (error) {
+      setPublicationError(error instanceof Error ? error.message : 'Unable to publish the portfolio profile.');
+    } finally {
+      setPublishingProfile(false);
+    }
+  };
+  const publishProject = async (projectId: string) => {
+    if (!user?.id) return;
+    setPublicationError(null);
+    setPublicationMessage(null);
+    setPublishingProjectId(projectId);
+    try {
+      const result = await publishPortfolioProject({
+        assets: profileImages,
+        editorialCollections,
+        fabrics,
+        portfolioProfile,
+        projectId,
+        projects,
+        userId: user.id,
+      });
+      updateProjectPortfolioSettings(projectId, {
+        publishedAt: result.generatedAt,
+        publishedSourceUpdatedAt: result.generatedAt,
+        updatedAt: result.generatedAt,
+      });
+      updatePortfolioProfile({
+        publishedAt: result.generatedAt,
+        updatedAt: result.generatedAt,
+      });
+      setPublicationMessage(`${result.project?.title || 'Project'} is now live at ${buildPublicPortfolioUrl(result.usernameSlug, result.projectSlug)}.`);
+    } catch (error) {
+      setPublicationError(error instanceof Error ? error.message : 'Unable to publish this project.');
+    } finally {
+      setPublishingProjectId(null);
+    }
+  };
+  const unpublishProject = async (projectId: string) => {
+    if (!user?.id) return;
+    setPublicationError(null);
+    setPublicationMessage(null);
+    setPublishingProjectId(projectId);
+    try {
+      const result = await unpublishPortfolioProject({
+        assets: profileImages,
+        editorialCollections,
+        fabrics,
+        portfolioProfile,
+        projectId,
+        projects,
+        userId: user.id,
+      });
+      updateProjectPortfolioSettings(projectId, {
+        publishedAt: undefined,
+        publishedSourceUpdatedAt: undefined,
+        updatedAt: result.generatedAt,
+      });
+      setPublicationMessage('Project withdrawn. Its public case study is no longer available.');
+    } catch (error) {
+      setPublicationError(error instanceof Error ? error.message : 'Unable to unpublish this project.');
+      throw error;
+    } finally {
+      setPublishingProjectId(null);
+    }
+  };
 
   return (
     <section className="space-y-7">
       <MobilePageHeader
         badge="Portfolio"
-        kicker={`${publicProjects.length} published project${publicProjects.length === 1 ? '' : 's'}`}
+        kicker={`${publishedProjects.length} live project${publishedProjects.length === 1 ? '' : 's'}`}
         title="Portfolio"
       />
       <PageHeader
@@ -94,21 +197,33 @@ export function PortfolioPage() {
         description="Curate a public-facing body of work from your Mystic Lore Studio projects."
         title="Portfolio"
       >
-        <Button
-          aria-label="Open recruiter portfolio preview in a new tab"
-          icon={<ExternalLink aria-hidden="true" size={17} />}
-          onClick={() => openPreview(profilePath)}
-          variant="primary"
-        >
-          Preview Portfolio
-        </Button>
+        <div className="flex flex-wrap gap-2">
+          <Button
+            aria-label="Publish the public portfolio profile"
+            disabled={publishingProfile || !portfolioProfile.usernameSlug}
+            icon={<CloudUpload aria-hidden="true" size={17} />}
+            onClick={() => void publishProfile()}
+            variant="primary"
+          >
+            {publishingProfile ? 'Publishing…' : portfolioProfile.publishedAt ? 'Publish Profile Update' : 'Publish Profile'}
+          </Button>
+          <Button
+            aria-label="Open the live recruiter portfolio in a new tab"
+            disabled={!portfolioProfile.publishedAt}
+            icon={<ExternalLink aria-hidden="true" size={17} />}
+            onClick={() => openPreview(profilePath)}
+            variant="secondary"
+          >
+            View Live
+          </Button>
+        </div>
       </PageHeader>
 
       <PortfolioOverviewStrip
         editorialCount={attachedEditorials.length}
         profileName={portfolioProfile.displayName}
         projectCount={projects.length}
-        publicCount={publicProjects.length}
+        publicCount={publishedProjects.length}
       />
 
       <PortfolioReadinessCard
@@ -117,12 +232,24 @@ export function PortfolioPage() {
         report={readinessReport}
       />
 
+      {publicationError || publicationMessage ? (
+        <div className={cn(
+          'flex items-start gap-3 rounded-2xl border px-4 py-3 text-sm leading-6',
+          publicationError
+            ? 'border-ember/35 bg-ember/[0.08] text-stardust/78'
+            : 'border-teal/30 bg-teal/[0.07] text-stardust/78',
+        )}>
+          {publicationError ? <AlertTriangle aria-hidden="true" className="mt-0.5 shrink-0 text-ember" size={17} /> : <CheckCircle2 aria-hidden="true" className="mt-0.5 shrink-0 text-teal" size={17} />}
+          <p>{publicationError || publicationMessage}</p>
+        </div>
+      ) : null}
+
       {import.meta.env.DEV ? (
         <PortfolioSnapshotDebugPanel
           assets={profileImages}
           editorialCollections={editorialCollections}
           fabrics={fabrics}
-          projects={publicProjects}
+          projects={preparedProjects}
         />
       ) : null}
 
@@ -134,13 +261,16 @@ export function PortfolioPage() {
             imageAssets={profileImages}
             onSave={updatePortfolioProfile}
             profile={portfolioProfile}
-            projects={publicProjects}
+            projects={preparedProjects}
           />
 
           <PortfolioProjectVisibilityManager
             editorialCollections={editorialCollections}
             linkedMaterials={linkedMaterials}
             onUpdateSettings={updateProjectPortfolioSettings}
+            onPublishProject={publishProject}
+            onUnpublishProject={unpublishProject}
+            publishingProjectId={publishingProjectId}
             projects={projects}
             usernameSlug={portfolioProfile.usernameSlug}
           />
@@ -199,7 +329,7 @@ export function PortfolioPage() {
                 editorials={attachedEditorials}
                 onCopy={copyLink}
                 portfolioLink={profileShareUrl}
-                projects={publicProjects}
+                projects={publishedProjects}
                 usernameSlug={portfolioProfile.usernameSlug || 'untitled'}
               />
             </Card>
@@ -564,7 +694,7 @@ function ShareLinksList({
       </ShareLinkGroup>
 
       <ShareLinkGroup
-        emptyCopy="No public projects yet. Toggle a project public to create recruiter-ready case study links."
+        emptyCopy="No live projects yet. Prepare a project, then publish its recruiter-facing snapshot to create a shareable case study link."
         title="Public project links"
       >
         {projects.map((project) => {
@@ -668,11 +798,17 @@ function EmptyPortfolio() {
   );
 }
 
-function getPortfolioImageAssets(projects: ApparelProject[]): LocalImageAsset[] {
+function getPortfolioImageAssets(
+  projects: ApparelProject[],
+  fabrics: Fabric[] = [],
+): LocalImageAsset[] {
   const assets = new Map<string, LocalImageAsset>();
   projects.forEach((project) => {
     if (project.heroImage) assets.set(project.heroImage.id, project.heroImage);
     project.galleryImages?.forEach((image) => assets.set(image.id, image));
+  });
+  fabrics.forEach((fabric) => {
+    if (fabric.image) assets.set(fabric.image.id, fabric.image);
   });
   return [...assets.values()];
 }
