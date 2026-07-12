@@ -5,6 +5,7 @@ export type PageId =
   | 'projects'
   | 'kanban'
   | 'lookbooks'
+  | 'portfolio'
   | 'fabrics'
   | 'stats'
   | 'settings';

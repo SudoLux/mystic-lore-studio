@@ -20,6 +20,7 @@ import type {
   StudioTask,
   YardageEntry,
 } from '../types/studio';
+import type { PortfolioProfile } from '../types/portfolio';
 
 const QUEUE_VERSION = 3;
 const PREFIX = 'mystic-lore-studio:sync';
@@ -35,6 +36,7 @@ export type SyncPhase =
   | 'saving-records'
   | 'verifying';
 export type SyncEntity =
+  | 'profile'
   | 'project'
   | 'fabric'
   | 'task'
@@ -248,6 +250,7 @@ export function failedSyncOperationCount(queue: StudioSyncQueue | null) {
 
 export function buildMigrationOperations(data: StudioData) {
   return [
+    upsertOperation('profile', profileSyncRecord(data.portfolioProfile)),
     ...data.projects.map((project) =>
       upsertOperation('project', stripProjectImages(project)!),
     ),
@@ -271,6 +274,11 @@ export function buildDataSyncOperations(
   deletions: SyncDeletion[] = [],
 ) {
   return [
+    ...changedRecords(
+      'profile',
+      [profileSyncRecord(current.portfolioProfile)],
+      [profileSyncRecord(next.portfolioProfile)],
+    ),
     ...changedRecords('project', current.projects, next.projects, stripProjectImages),
     ...changedRecords('fabric', current.fabrics, next.fabrics, stripFabricImage),
     ...changedRecords('material', current.linkedMaterials, next.linkedMaterials),
@@ -561,6 +569,10 @@ function upsertOperation(entity: SyncEntity, record: { id: string }) {
   );
 }
 
+function profileSyncRecord(profile: PortfolioProfile) {
+  return { ...profile, id: 'portfolio-profile' };
+}
+
 function deletionOperation(deletion: SyncDeletion) {
   return createOperation(
     deletion.entity,
@@ -748,6 +760,7 @@ function toComparableData(data: StudioData) {
     linkedMaterials: data.linkedMaterials,
     lookbookPages: data.lookbookPages,
     notes: data.notes,
+    portfolioProfile: data.portfolioProfile,
     projects: data.projects,
     tasks: data.tasks,
     yardageEntries: data.yardageEntries,

@@ -28,7 +28,7 @@ export function MobileNav({ activePage, navItems, onNavigate }: MobileNavProps) 
   );
   const overflowNavItems = useMemo(
     () =>
-      ['kanban', 'stats', 'settings']
+      ['kanban', 'portfolio', 'stats', 'settings']
         .map((pageId) => navItems.find((item) => item.id === pageId))
         .filter((item): item is NavItem => Boolean(item)),
     [navItems],
@@ -73,15 +73,16 @@ export function MobileNav({ activePage, navItems, onNavigate }: MobileNavProps) 
 
       {isMenuOpen ? (
         <div className="pointer-events-none absolute left-1/2 bottom-[5.9rem] flex -translate-x-1/2 translate-y-0 items-end justify-center opacity-100 transition duration-300">
-          <div className="relative h-24 w-64">
+          <div className="relative h-28 w-72">
             <div className="absolute inset-x-8 bottom-0 h-24 rounded-t-full border border-b-0 border-bronze/22 bg-[radial-gradient(circle_at_50%_100%,rgba(200,155,60,0.16),rgba(10,10,10,0.78)_58%,transparent_72%)] shadow-[0_-20px_55px_rgba(0,0,0,0.36)] backdrop-blur-xl" />
             {overflowNavItems.map((item, index) => {
               const Icon = item.icon;
               const isActive = activePage === item.id;
               const positions = [
-                'left-4 bottom-2',
-                'left-1/2 bottom-10 -translate-x-1/2',
-                'right-4 bottom-2',
+                'left-0 bottom-1',
+                'left-[27%] bottom-12 -translate-x-1/2',
+                'right-[27%] bottom-12 translate-x-1/2',
+                'right-0 bottom-1',
               ];
 
               return (
