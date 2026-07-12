@@ -14,6 +14,7 @@ export const defaultImageDisplay = {
 };
 
 export const MAX_PROJECT_GALLERY_IMAGES = 5;
+export const MAX_PROJECT_EDITORIAL_IMAGES = 30;
 
 export const PROJECT_HERO_RESPONSIVE_ASPECT_CLASS =
   'aspect-[4/5] sm:aspect-[4/3] lg:aspect-[3/4]';

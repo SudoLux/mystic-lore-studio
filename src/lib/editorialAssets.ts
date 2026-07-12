@@ -9,7 +9,11 @@ export type LinkedEditorialFabric = {
 
 export function projectEditorialImages(project?: ApparelProject) {
   if (!project) return [];
-  return [project.heroImage, ...(project.galleryImages ?? [])]
+  return [
+    project.heroImage,
+    ...(project.galleryImages ?? []),
+    ...(project.editorialImages ?? []),
+  ]
     .filter((image): image is LocalImageAsset => Boolean(image))
     .filter((image, index, images) => images.findIndex((item) => item.id === image.id) === index);
 }

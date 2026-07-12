@@ -13,7 +13,7 @@ type FabricCardRecord = {
   material?: LinkedMaterial;
 };
 
-export function FabricScene({ collection, fabrics = [], project, scene, theme }: EditorialSceneRendererProps) {
+export function FabricScene({ authoring, collection, fabrics = [], project, scene, theme }: EditorialSceneRendererProps) {
   const linkedFabrics = projectLinkedEditorialFabrics(project, fabrics);
   const cards: Array<FabricCardRecord | undefined> = scene.fabricIds?.length
     ? scene.fabricIds.slice(0, 4).map((fabricId) => {
@@ -26,7 +26,7 @@ export function FabricScene({ collection, fabrics = [], project, scene, theme }:
   const visibleCards = cards.length > 0 ? cards : Array.from({ length: 4 }, () => undefined);
 
   return (
-    <EditorialStage collection={collection} project={project} theme={theme}>
+    <EditorialStage collection={collection} project={project} scene={scene} theme={theme}>
       <div className="w-full max-w-6xl">
         <SceneLabel label="Fabric Story" />
         <div className="mt-4 grid gap-7 lg:grid-cols-[.8fr_1.2fr] lg:items-end">
@@ -44,7 +44,7 @@ export function FabricScene({ collection, fabrics = [], project, scene, theme }:
           </div>
         </div>
         {scene.blocks.length > 0 ? (
-          <BlockContent blocks={scene.blocks} fabrics={fabrics} project={project} theme={theme} />
+          <BlockContent authoring={authoring} blocks={scene.blocks} fabrics={fabrics} project={project} theme={theme} />
         ) : (
           <ScenePlaceholder label="Material imagery and textile notes can be added in the editor." />
         )}

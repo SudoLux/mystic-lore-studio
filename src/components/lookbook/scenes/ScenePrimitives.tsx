@@ -7,6 +7,8 @@ import type {
   EditorialTheme,
 } from '../../../types/editorial';
 import type { ApparelProject, Fabric, LocalImageAsset } from '../../../types/studio';
+import { resolveProjectEditorialImage } from '../../../lib/editorialAssets';
+import { AdaptiveProjectImage } from '../../projects/AdaptiveProjectImage';
 import { EditorialBlockList } from '../blocks/EditorialBlockRenderer';
 import { EditorialCollectionCover } from '../EditorialCollectionCover';
 
@@ -14,13 +16,16 @@ export function EditorialStage({
   children,
   collection,
   project,
+  scene,
   theme,
 }: {
   children: ReactNode;
   collection: EditorialCollection;
   project?: ApparelProject;
+  scene?: EditorialScene;
   theme: EditorialTheme;
 }) {
+  const sceneImage = resolveProjectEditorialImage(project, scene?.background.imageId);
   return (
     <section
       className="editorial-theme-surface editorial-scene-frame relative flex h-full items-center overflow-y-auto"
@@ -28,7 +33,7 @@ export function EditorialStage({
       style={themeStyle(theme)}
     >
       <div className="absolute inset-0 opacity-35">
-        <EditorialCollectionCover collection={collection} project={project} />
+        {sceneImage ? <AdaptiveProjectImage asset={sceneImage} className="absolute inset-0" mode="primary" /> : <EditorialCollectionCover collection={collection} project={project} />}
       </div>
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_70%_22%,color-mix(in_srgb,var(--editorial-accent)_18%,transparent),transparent_28%),linear-gradient(120deg,color-mix(in_srgb,var(--editorial-background)_78%,transparent),color-mix(in_srgb,var(--editorial-background)_92%,transparent)_58%,color-mix(in_srgb,var(--editorial-surface)_86%,transparent))] backdrop-blur-xl" />
       <div className="editorial-theme-content relative z-10 mx-auto w-full">{children}</div>
@@ -37,19 +42,24 @@ export function EditorialStage({
 }
 
 export function BlockContent({
+  authoring,
   blocks,
   fabrics,
   prominent = false,
   project,
   theme,
 }: {
+  authoring?: {
+    onSelectBlock: (blockId: string) => void;
+    selectedBlockId?: string;
+  };
   blocks: EditorialBlock[];
   fabrics?: Fabric[];
   prominent?: boolean;
   project?: ApparelProject;
   theme: EditorialTheme;
 }) {
-  return <EditorialBlockList blocks={blocks} fabrics={fabrics} prominent={prominent} project={project} theme={theme} />;
+  return <EditorialBlockList authoring={authoring} blocks={blocks} fabrics={fabrics} prominent={prominent} project={project} theme={theme} />;
 }
 
 export function SceneLabel({ label }: { label: string }) {
@@ -90,7 +100,7 @@ export function projectImages(
   collection: EditorialCollection,
 ) {
   if (!project) return [];
-  const images = [project.heroImage, ...(project.galleryImages ?? [])]
+  const images = [project.heroImage, ...(project.galleryImages ?? []), ...(project.editorialImages ?? [])]
     .filter((image): image is LocalImageAsset => Boolean(image));
   const unique = images.filter(
     (image, index) => images.findIndex((candidate) => candidate.id === image.id) === index,

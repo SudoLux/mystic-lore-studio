@@ -338,6 +338,9 @@ export async function migrateStudioImagePayloads(
   const projects = await Promise.all(
     data.projects.map(async (project) => ({
       ...project,
+      editorialImages: await Promise.all(
+        (project.editorialImages ?? []).map(migrate),
+      ),
       galleryImages: await Promise.all(
         (project.galleryImages ?? []).map(migrate),
       ),
@@ -489,6 +492,11 @@ function imageOperations(data: StudioData) {
     project.galleryImages?.forEach((image, index) => {
       operations.push(
         imageOperation(image, 'project', project.id, `gallery:${index}`, index),
+      );
+    });
+    project.editorialImages?.forEach((image, index) => {
+      operations.push(
+        imageOperation(image, 'project', project.id, `editorial:${index}`, index),
       );
     });
   });
@@ -692,7 +700,7 @@ function enqueueDurableWrite(
 
 function stripProjectImages(project: StoredProject | undefined) {
   if (!project) return project;
-  const { galleryImages: _gallery, heroImage: _hero, ...record } = project;
+  const { editorialImages: _editorial, galleryImages: _gallery, heroImage: _hero, ...record } = project;
   return record;
 }
 

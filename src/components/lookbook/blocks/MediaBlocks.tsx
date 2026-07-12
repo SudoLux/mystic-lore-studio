@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react';
 import { ImageOff } from 'lucide-react';
 import { cn } from '../../../lib/classes';
 import { resolveProjectEditorialImage } from '../../../lib/editorialAssets';
+import { editorialFrameAspectClass, editorialImageDisplay, galleryLayoutForCount } from '../../../lib/editorialMedia';
+import type { EditorialImageContent, EditorialJsonObject } from '../../../types/editorial';
 import type { LocalImageAsset } from '../../../types/studio';
 import { AdaptiveProjectImage } from '../../projects/AdaptiveProjectImage';
 import { contentArray, contentNumber, contentString, isContentRecord } from './blockContent';
@@ -14,13 +16,16 @@ export function ImageBlock({ block, project }: EditorialBlockRendererProps) {
   const url = contentString(block.content, 'url', typeof block.content === 'string' ? block.content : '');
   const caption = contentString(block.content, 'caption');
   const alt = contentString(block.content, 'alt', caption || assetName || 'Editorial image');
-  const fit = contentString(block.content, 'fit') === 'contain' ? 'contain' : 'cover';
+  const content = (isContentRecord(block.content) ? block.content : {}) as EditorialJsonObject;
+  const fit = contentString(block.content, 'fitMode', contentString(block.content, 'fit')) === 'contain' ? 'contain' : contentString(block.content, 'fitMode', contentString(block.content, 'fit')) === 'cover' ? 'cover' : undefined;
+  const presentationAsset = asset ? editorialImageDisplay(asset, content as EditorialImageContent) : undefined;
+  const compositionId = contentString(block.content, 'compositionId');
   return (
-    <figure className="editorial-theme-card max-w-5xl overflow-hidden border">
+    <figure className={cn('editorial-theme-card overflow-hidden border', compositionId === 'full-bleed' ? 'w-full max-w-none' : 'max-w-5xl')}>
       <EditorialMedia
         alt={alt}
-        asset={asset}
-        className="aspect-[4/3] w-full"
+        asset={presentationAsset}
+        className={cn('w-full', editorialFrameAspectClass(contentString(block.content, 'frame') as EditorialImageContent['frame'], asset))}
         fit={fit}
         missingLabel={assetId ? `${assetName} is no longer available` : undefined}
         url={url}
@@ -32,7 +37,7 @@ export function ImageBlock({ block, project }: EditorialBlockRendererProps) {
 
 export function GalleryBlock({ block, project }: EditorialBlockRendererProps) {
   const rawImages = contentArray(block.content, 'images');
-  const images = rawImages.flatMap((item, index) => {
+  const images: ResolvedGalleryImage[] = rawImages.flatMap<ResolvedGalleryImage>((item, index) => {
     if (typeof item === 'string') return [{ alt: `Editorial image ${index + 1}`, asset: undefined, assetId: '', assetName: '', caption: '', url: item }];
     if (!isContentRecord(item)) return [];
     const assetId = typeof item.assetId === 'string' ? item.assetId : '';
@@ -44,24 +49,27 @@ export function GalleryBlock({ block, project }: EditorialBlockRendererProps) {
       assetId,
       assetName,
       caption: typeof item.caption === 'string' ? item.caption : '',
+      presentation: item,
       url,
     }];
   });
   const requestedColumns = contentNumber(block.content, 'columns', 0);
   const columns = requestedColumns || Math.min(Math.max(images.length, 1), 3);
-  const visibleImages = images.length > 0
+  const layout = galleryLayoutForCount(contentString(block.content, 'layout', 'auto'), images.length);
+  const compositionId = contentString(block.content, 'compositionId');
+  const visibleImages: ResolvedGalleryImage[] = images.length > 0
     ? images
     : Array.from({ length: Math.max(columns, 1) }, (_, index) => ({ alt: `Gallery placeholder ${index + 1}`, asset: undefined, assetId: '', assetName: '', caption: '', url: '' }));
 
   return (
-    <div className={cn('grid max-w-6xl gap-2 sm:gap-3', columns === 1 ? 'grid-cols-1' : columns === 2 ? 'grid-cols-2' : 'grid-cols-2 lg:grid-cols-3')}>
+    <div className={cn('grid w-full gap-2 sm:gap-3', compositionId === 'full-bleed' ? 'max-w-none' : 'max-w-6xl', galleryLayoutClass(layout, columns, compositionId))}>
       {visibleImages.map((image, index) => (
-        <figure className={cn('editorial-theme-card overflow-hidden border', index === 0 && images.length === 3 ? 'row-span-2 lg:row-span-1' : '')} key={`${image.assetId || image.url || 'empty'}-${index}`}>
+        <figure className={cn('editorial-theme-card overflow-hidden border', layout === 'feature' && index > 0 ? 'hidden' : '', layout === 'mosaic' && index === 0 ? 'col-span-2 row-span-2' : '')} key={`${image.assetId || image.url || 'empty'}-${index}`}>
           <EditorialMedia
             alt={image.alt}
-            asset={image.asset}
-            className="aspect-[3/4] w-full lg:aspect-[4/5]"
-            fit="cover"
+            asset={image.asset && image.presentation ? editorialImageDisplay(image.asset, image.presentation as EditorialImageContent) : image.asset}
+            className={cn('w-full', editorialFrameAspectClass(image.presentation ? contentString(image.presentation, 'frame') as EditorialImageContent['frame'] : undefined, image.asset))}
+            fit={isContentRecord(image.presentation) ? contentString(image.presentation, 'fitMode', contentString(image.presentation, 'fit')) === 'contain' ? 'contain' : 'cover' : 'cover'}
             missingLabel={image.assetId ? `${image.assetName} is no longer available` : undefined}
             url={image.url}
           />
@@ -71,6 +79,16 @@ export function GalleryBlock({ block, project }: EditorialBlockRendererProps) {
     </div>
   );
 }
+
+type ResolvedGalleryImage = {
+  alt: string;
+  asset?: LocalImageAsset;
+  assetId: string;
+  assetName: string;
+  caption: string;
+  presentation?: EditorialJsonObject;
+  url: string;
+};
 
 function EditorialMedia({
   alt,
@@ -83,7 +101,7 @@ function EditorialMedia({
   alt: string;
   asset?: LocalImageAsset;
   className: string;
-  fit: 'contain' | 'cover';
+  fit?: 'contain' | 'cover';
   missingLabel?: string;
   url: string;
 }) {
@@ -93,7 +111,7 @@ function EditorialMedia({
   return <SafeImage alt={alt} className={className} fit={fit} missingLabel={missingLabel} url={url} />;
 }
 
-function SafeImage({ alt, className, fit, missingLabel, url }: { alt: string; className: string; fit: 'contain' | 'cover'; missingLabel?: string; url: string }) {
+function SafeImage({ alt, className, fit = 'cover', missingLabel, url }: { alt: string; className: string; fit?: 'contain' | 'cover'; missingLabel?: string; url: string }) {
   const [failed, setFailed] = useState(false);
   useEffect(() => setFailed(false), [url]);
   if (!url || failed) {
@@ -105,4 +123,16 @@ function SafeImage({ alt, className, fit, missingLabel, url }: { alt: string; cl
     );
   }
   return <img alt={alt} className={cn(className, fit === 'contain' ? 'object-contain' : 'object-cover')} onError={() => setFailed(true)} src={url} />;
+}
+
+function galleryLayoutClass(layout: string, columns: number, compositionId: string) {
+  if (compositionId === 'stacked-pair') return 'grid-cols-1';
+  if (compositionId === 'lead-detail') return 'grid-cols-2 [&>figure:first-child]:row-span-2';
+  if (compositionId === 'editorial-feature-grid') return 'grid-cols-2 md:grid-cols-3 [&>figure:first-child]:col-span-2 [&>figure:first-child]:row-span-2';
+  if (compositionId === 'contact-sheet') return 'grid-cols-2 lg:grid-cols-3';
+  if (compositionId === 'hero-sequence') return 'grid-cols-2 md:grid-cols-3 [&>figure:first-child]:col-span-2';
+  if (layout === 'feature') return 'grid-cols-1';
+  if (layout === 'diptych') return 'grid-cols-1 sm:grid-cols-2';
+  if (layout === 'mosaic') return 'grid-cols-2 md:grid-cols-3';
+  return columns === 1 ? 'grid-cols-1' : columns === 2 ? 'grid-cols-2' : 'grid-cols-2 lg:grid-cols-3';
 }

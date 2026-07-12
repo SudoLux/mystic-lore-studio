@@ -31,6 +31,7 @@ export function EditorialBlockRenderer(props: EditorialBlockRendererProps) {
 }
 
 export function EditorialBlockList({
+  authoring,
   blocks,
   className = 'mt-6 flex flex-col gap-[var(--editorial-content-gap)]',
   fabrics,
@@ -38,6 +39,7 @@ export function EditorialBlockList({
   project,
   theme,
 }: {
+  authoring?: EditorialBlockRendererProps['authoring'];
   blocks: EditorialBlockRendererProps['block'][];
   className?: string;
   fabrics?: EditorialBlockRendererProps['fabrics'];
@@ -51,14 +53,21 @@ export function EditorialBlockList({
       {[...blocks]
         .sort((a, b) => a.order - b.order)
         .map((block) => (
-          <EditorialBlockRenderer
-            block={block}
-            fabrics={fabrics}
+          <div
+            className={authoring ? `group/editorial-block relative cursor-pointer rounded-lg outline-offset-4 transition ${authoring.selectedBlockId === block.id ? 'outline outline-2 outline-ember/80' : 'hover:outline hover:outline-1 hover:outline-ember/40'}` : undefined}
             key={block.id}
-            prominent={prominent}
-            project={project}
-            theme={theme}
-          />
+            onClick={authoring ? (event) => { event.stopPropagation(); authoring.onSelectBlock(block.id); } : undefined}
+          >
+            <EditorialBlockRenderer
+              authoring={authoring}
+              block={block}
+              fabrics={fabrics}
+              prominent={prominent}
+              project={project}
+              theme={theme}
+            />
+            {authoring ? <span className="pointer-events-none absolute right-2 top-2 rounded-full border border-ember/28 bg-midnight/86 px-2 py-1 text-[0.5rem] uppercase tracking-[0.12em] text-ember opacity-0 shadow-lg transition group-hover/editorial-block:opacity-100">Edit</span> : null}
+          </div>
         ))}
     </div>
   );

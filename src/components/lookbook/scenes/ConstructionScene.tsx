@@ -2,14 +2,14 @@ import { Scissors } from 'lucide-react';
 import { BlockContent, EditorialStage, SceneLabel, SceneNarrative } from './ScenePrimitives';
 import type { EditorialSceneRendererProps } from './types';
 
-export function ConstructionScene({ collection, fabrics, project, scene, theme }: EditorialSceneRendererProps) {
+export function ConstructionScene({ authoring, collection, fabrics, project, scene, theme }: EditorialSceneRendererProps) {
   const tasks = project?.tasks
     .filter((task) => ['Pattern', 'Cutting', 'Sewing', 'Fitting', 'Revision'].includes(task.category))
     .slice(0, 4) ?? [];
   const cards = tasks.length > 0 ? tasks : ['Pattern', 'Cutting', 'Assembly', 'Fitting'];
 
   return (
-    <EditorialStage collection={collection} project={project} theme={theme}>
+    <EditorialStage collection={collection} project={project} scene={scene} theme={theme}>
       <div className="w-full max-w-6xl">
         <SceneLabel label="Construction" />
         <h2 className="font-display mt-4 text-[clamp(2.4rem,5vw,5rem)] leading-none">{scene.title}</h2>
@@ -26,7 +26,7 @@ export function ConstructionScene({ collection, fabrics, project, scene, theme }
             </div>
           ))}
         </div>
-        {scene.blocks.length > 0 ? <BlockContent blocks={scene.blocks} fabrics={fabrics} project={project} theme={theme} /> : null}
+        {scene.blocks.length > 0 ? <BlockContent authoring={authoring} blocks={scene.blocks} fabrics={fabrics} project={project} theme={theme} /> : null}
       </div>
     </EditorialStage>
   );

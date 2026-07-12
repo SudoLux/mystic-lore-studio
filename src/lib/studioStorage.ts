@@ -271,6 +271,7 @@ export function updateProjectDetailsInData(
       return {
         ...project,
         ...details,
+        editorialImages: project.editorialImages,
         galleryImages: project.galleryImages,
         heroImage,
         id: project.id,
@@ -556,6 +557,9 @@ function normalizeStoredProject(
       partialProject.generalNotes ?? seedProject?.generalNotes ?? '',
     keyFeatures:
       partialProject.keyFeatures ?? seedProject?.keyFeatures ?? project.tags,
+    editorialImages: Array.isArray(partialProject.editorialImages)
+      ? partialProject.editorialImages
+      : [],
     silhouette: partialProject.silhouette ?? seedProject?.silhouette ?? '',
     targetWearer:
       partialProject.targetWearer ?? seedProject?.targetWearer ?? '',
@@ -752,6 +756,7 @@ function stripEphemeralImageUrls(data: StudioData): StudioData {
     })),
     projects: data.projects.map((project) => ({
       ...project,
+      editorialImages: project.editorialImages?.map((image) => cleanImage(image)!),
       galleryImages: project.galleryImages?.map((image) => cleanImage(image)!),
       heroImage: cleanImage(project.heroImage),
     })),

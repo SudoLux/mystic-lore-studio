@@ -91,7 +91,12 @@ export type EditorialImageContent = {
   assetName?: string;
   caption?: string;
   fit?: 'cover' | 'contain';
+  fitMode?: 'smart' | 'cover' | 'contain';
+  frame?: 'auto' | 'portrait' | 'square' | 'landscape' | 'full-bleed';
+  objectPositionX?: number;
+  objectPositionY?: number;
   url?: string;
+  zoom?: number;
 };
 
 export type EditorialGalleryImage = EditorialImageContent & {
@@ -101,6 +106,7 @@ export type EditorialGalleryImage = EditorialImageContent & {
 export type EditorialGalleryContent = {
   columns?: 1 | 2 | 3;
   images: EditorialGalleryImage[];
+  layout?: 'auto' | 'feature' | 'diptych' | 'grid' | 'mosaic';
 };
 
 export type EditorialDividerContent = {
@@ -175,6 +181,14 @@ export type EditorialSceneDurationMs = 5000 | 8000 | 12000;
 
 export type EditorialViewerMode = 'editorial' | 'book';
 
+export type EditorialPreviewSurface = 'presentation' | 'book' | 'phone';
+
+export type EditorialSceneLayout = {
+  compositionId?: string;
+  density?: 'airy' | 'balanced' | 'compact';
+  mediaPlacement?: 'background' | 'feature' | 'split' | 'stack';
+};
+
 export type EditorialPlaybackSettings = {
   autoPlay: boolean;
   sceneDurationMs: EditorialSceneDurationMs;
@@ -220,6 +234,7 @@ export interface EditorialScene {
   background: EditorialBackground;
   fabricFallbacks?: EditorialFabricFallback[];
   fabricIds?: string[];
+  layout?: EditorialSceneLayout;
   createdAt: string;
   updatedAt: string;
 }
