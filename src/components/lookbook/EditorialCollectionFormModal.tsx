@@ -1,4 +1,4 @@
-import { useEffect, useState, type FormEvent, type ReactNode } from 'react';
+import { useEffect, useMemo, useRef, useState, type FormEvent, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { BookOpen, Check, Clock3, Image as ImageIcon, Layers3, PanelsTopLeft, RotateCcw, Sparkles, X } from 'lucide-react';
 import { cn } from '../../lib/classes';
@@ -15,18 +15,20 @@ import {
 } from '../../lib/editorialThemes';
 import { editorialSceneDurations, normalizeEditorialPlayback } from '../../lib/editorialPlayback';
 import { normalizeEditorialViewerMode } from '../../lib/editorialViewerMode';
+import { discardLocalImageAsset } from '../../lib/localImages';
 import type { EditorialCollection, EditorialSceneDurationMs, EditorialTemplateType, EditorialViewerMode } from '../../types/editorial';
 import type { ApparelProject, LocalImageAsset } from '../../types/studio';
 import { AdaptiveProjectImage } from '../projects/AdaptiveProjectImage';
 import { Badge } from '../shared/Badge';
 import { Button } from '../shared/Button';
 import { EditorialPosterArtwork } from './EditorialPosterArtwork';
+import { EditorialMediaPicker } from './EditorialMediaPicker';
 
 type EditorialCollectionFormModalProps = {
   collection?: EditorialCollection;
   mode: 'create' | 'edit';
   onClose: () => void;
-  onSubmit: (collection: EditorialCollection) => void;
+  onSubmit: (collection: EditorialCollection, editorialImages?: LocalImageAsset[]) => void;
   project: ApparelProject;
 };
 
@@ -53,9 +55,16 @@ export function EditorialCollectionFormModal({
   const [autoPlay, setAutoPlay] = useState(initialPlayback.autoPlay);
   const [sceneDurationMs, setSceneDurationMs] = useState<EditorialSceneDurationMs>(initialPlayback.sceneDurationMs);
   const [viewerMode, setViewerMode] = useState<EditorialViewerMode>(normalizeEditorialViewerMode(collection));
+  const [draftEditorialImages, setDraftEditorialImages] = useState<LocalImageAsset[]>(() => project.editorialImages ?? []);
+  const draftAssetsRef = useRef(draftEditorialImages);
+  const stagedAssetIdsRef = useRef(new Set<string>());
   const projectImages = [project.heroImage, ...(project.galleryImages ?? [])]
     .filter((image): image is LocalImageAsset => Boolean(image))
     .filter((image, index, images) => images.findIndex((item) => item.id === image.id) === index);
+  const previewProject = useMemo(
+    () => ({ ...project, editorialImages: draftEditorialImages }),
+    [draftEditorialImages, project],
+  );
   const [selectedProjectImageId, setSelectedProjectImageId] = useState<string | undefined>(
     collection?.coverImageUrl ? undefined : collection?.coverImageId ?? project.heroImage?.id,
   );
@@ -64,12 +73,32 @@ export function EditorialCollectionFormModal({
   const colorPickerValue = accentIsValid && coverAccentColor.trim() ? coverAccentColor.trim() : theme.colors.accent;
 
   useEffect(() => {
+    draftAssetsRef.current = draftEditorialImages;
+  }, [draftEditorialImages]);
+
+  const discardStagedAssets = () => {
+    const stagedIds = stagedAssetIdsRef.current;
+    const stagedAssets = draftAssetsRef.current.filter((image) => stagedIds.has(image.id));
+    stagedAssetIdsRef.current.clear();
+    void Promise.all(stagedAssets.map((image) => discardLocalImageAsset(image).catch(() => undefined)));
+  };
+
+  const requestClose = () => {
+    discardStagedAssets();
+    onClose();
+  };
+
+  useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') onClose();
+      if (event.key === 'Escape') requestClose();
     };
     document.addEventListener('keydown', onKeyDown);
     return () => document.removeEventListener('keydown', onKeyDown);
-  }, [onClose]);
+  }, [requestClose]);
+
+  useEffect(() => () => {
+    discardStagedAssets();
+  }, []);
 
   const previewCollection: EditorialCollection = {
     autoPlay,
@@ -117,7 +146,8 @@ export function EditorialCollectionFormModal({
       title: title.trim(),
       updatedAt: timestamp,
       viewerMode,
-    });
+    }, draftEditorialImages);
+    stagedAssetIdsRef.current.clear();
   };
 
   return createPortal(
@@ -136,7 +166,7 @@ export function EditorialCollectionFormModal({
             </h2>
             <p className="mt-1 text-sm text-stardust/54">For {project.name}</p>
           </div>
-          <button aria-label="Close collection editor" className="flex h-11 w-11 items-center justify-center rounded-xl border border-bronze/28 bg-midnight/44 text-stardust/64 transition hover:border-ember/45 hover:text-stardust" onClick={onClose} type="button">
+          <button aria-label="Close collection editor" className="flex h-11 w-11 items-center justify-center rounded-xl border border-bronze/28 bg-midnight/44 text-stardust/64 transition hover:border-ember/45 hover:text-stardust" onClick={requestClose} type="button">
             <X aria-hidden="true" size={19} />
           </button>
         </header>
@@ -149,7 +179,7 @@ export function EditorialCollectionFormModal({
         <form className="flex min-h-0 flex-1 flex-col lg:grid lg:grid-cols-[minmax(0,1fr)_22rem] lg:grid-rows-[minmax(0,1fr)_auto]" onSubmit={handleSubmit}>
           <div className="studio-scrollbar min-h-0 flex-1 space-y-7 overflow-y-auto px-4 py-5 sm:px-6">
             <div className="mx-auto mb-7 aspect-[3/4] w-full max-w-[18rem] overflow-hidden rounded-xl border border-bronze/35 shadow-[0_22px_55px_rgba(0,0,0,.46)] lg:hidden">
-              <EditorialPosterArtwork collection={previewCollection} project={project} variant="preview" />
+              <EditorialPosterArtwork collection={previewCollection} project={previewProject} variant="preview" />
             </div>
 
             {activeTab === 'poster' ? (
@@ -208,13 +238,26 @@ export function EditorialCollectionFormModal({
                       <Sparkles className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-ember" size={19} />
                       <span className="absolute inset-x-1 bottom-2 text-[0.58rem] uppercase tracking-[0.12em] text-stardust/62">Theme</span>
                     </button>
-                    {projectImages.map((image, index) => (
+                    {[...projectImages, ...draftEditorialImages].map((image, index) => (
                       <button aria-label={`Use project image ${index + 1} as cover`} className={cn('relative aspect-[3/4] overflow-hidden rounded-xl border bg-midnight transition', selectedProjectImageId === image.id ? 'border-ember/70 shadow-[0_0_24px_rgba(200,155,60,.16)]' : 'border-bronze/24 hover:border-bronze/52')} key={image.id} onClick={() => { setSelectedProjectImageId(image.id); setCoverImageUrl(''); }} type="button">
                         <AdaptiveProjectImage asset={image} className="absolute inset-0" mode="thumbnail" />
-                        <span className="absolute inset-x-0 bottom-0 bg-midnight/76 px-1 py-1.5 text-[0.56rem] uppercase tracking-[0.1em] text-stardust/78 backdrop-blur-md">{image.id === project.heroImage?.id ? 'Hero' : `Gallery ${index + 1}`}</span>
+                        <span className="absolute inset-x-0 bottom-0 bg-midnight/76 px-1 py-1.5 text-[0.56rem] uppercase tracking-[0.1em] text-stardust/78 backdrop-blur-md">{image.id === project.heroImage?.id ? 'Hero' : projectImages.includes(image) ? `Gallery ${index}` : 'Editorial'}</span>
                         {selectedProjectImageId === image.id ? <span className="absolute right-1.5 top-1.5 flex h-6 w-6 items-center justify-center rounded-full bg-ember text-midnight"><Check size={13} strokeWidth={2.5} /></span> : null}
                       </button>
                     ))}
+                  </div>
+                  <div className="mt-4">
+                    <EditorialMediaPicker
+                      editorialImages={draftEditorialImages}
+                      maxSelections={1}
+                      onAddAssets={(images) => {
+                        images.forEach((image) => stagedAssetIdsRef.current.add(image.id));
+                        setDraftEditorialImages((current) => [...current, ...images].slice(0, 30));
+                      }}
+                      onSelect={(image) => { setSelectedProjectImageId(image.id); setCoverImageUrl(''); }}
+                      projectImages={projectImages}
+                      selectedIds={selectedProjectImageId ? [selectedProjectImageId] : []}
+                    />
                   </div>
                   <label className="mt-4 block">
                     <span className="field-label">Or external image URL</span>
@@ -308,13 +351,13 @@ export function EditorialCollectionFormModal({
           <aside className="hidden min-h-0 overflow-y-auto border-l border-bronze/20 bg-midnight/22 p-5 lg:block">
             <p className="field-label">Live poster preview</p>
             <div className="mt-4 aspect-[3/4] overflow-hidden rounded-xl border border-bronze/35 shadow-[0_26px_60px_rgba(0,0,0,0.5)]">
-              <EditorialPosterArtwork collection={previewCollection} project={project} variant="preview" />
+              <EditorialPosterArtwork collection={previewCollection} project={previewProject} variant="preview" />
             </div>
             <p className="mt-4 text-xs leading-5 text-stardust/42">Your library poster and viewer cover use this same artwork system.</p>
           </aside>
 
           <footer className="col-span-full flex shrink-0 items-center justify-end gap-3 border-t border-bronze/24 bg-midnight/92 px-4 py-3 backdrop-blur-2xl sm:px-6">
-            <Button onClick={onClose} variant="ghost">Cancel</Button>
+            <Button onClick={requestClose} variant="ghost">Cancel</Button>
             <Button disabled={!title.trim() || !accentIsValid} type="submit" variant="primary">{mode === 'create' ? 'Create Editorial Collection' : 'Save Changes'}</Button>
           </footer>
         </form>

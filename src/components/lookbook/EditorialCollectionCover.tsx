@@ -17,7 +17,7 @@ export function EditorialCollectionCover({
   project,
 }: EditorialCollectionCoverProps) {
   const [urlFailed, setUrlFailed] = useState(false);
-  const projectImages = [project?.heroImage, ...(project?.galleryImages ?? [])]
+  const projectImages = [project?.heroImage, ...(project?.galleryImages ?? []), ...(project?.editorialImages ?? [])]
     .filter((image) => Boolean(image));
   const projectImage = collection.coverImageId
     ? projectImages.find((image) => image?.id === collection.coverImageId)

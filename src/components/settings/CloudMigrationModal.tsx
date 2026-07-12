@@ -16,7 +16,7 @@ export function CloudMigrationModal({
   const imageCount =
     data.projects.reduce(
       (count, project) =>
-        count + (project.heroImage ? 1 : 0) + (project.galleryImages?.length ?? 0),
+        count + (project.heroImage ? 1 : 0) + (project.galleryImages?.length ?? 0) + (project.editorialImages?.length ?? 0),
       0,
     ) +
     data.lookbookPages.filter((page) => page.heroImage).length +

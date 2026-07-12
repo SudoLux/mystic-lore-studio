@@ -826,6 +826,9 @@ export function mergeByNewest(
     cloudInitialized,
   ).map((project) => ({
     ...project,
+    editorialImages: cloudProjects.has(project.id)
+      ? cloudProjects.get(project.id)?.editorialImages
+      : localProjects.get(project.id)?.editorialImages,
     galleryImages: cloudProjects.has(project.id)
       ? cloudProjects.get(project.id)?.galleryImages
       : localProjects.get(project.id)?.galleryImages,
@@ -883,6 +886,7 @@ function mergeLocalImageCache(data: StudioData, local: StudioData): StudioData {
   local.projects.forEach((project) => {
     if (project.heroImage) localImages.set(project.heroImage.id, project.heroImage);
     project.galleryImages?.forEach((image) => localImages.set(image.id, image));
+    project.editorialImages?.forEach((image) => localImages.set(image.id, image));
   });
   local.fabrics.forEach((fabric) => {
     if (fabric.image) localImages.set(fabric.image.id, fabric.image);
@@ -915,6 +919,7 @@ function mergeLocalImageCache(data: StudioData, local: StudioData): StudioData {
     })),
     projects: data.projects.map((project) => ({
       ...project,
+      editorialImages: project.editorialImages?.map((image) => mergeImage(image)!),
       galleryImages: project.galleryImages?.map((image) => mergeImage(image)!),
       heroImage: mergeImage(project.heroImage),
     })),
@@ -939,6 +944,7 @@ async function applyProjectImages(
 ) {
   const projectById = new Map(projects.map((project) => [project.id, project]));
   const lookbookById = new Map(lookbooks.map((page) => [page.id, page]));
+  const editorialByProject = new Map<string, Array<{ image: LocalImageAsset; order: number }>>();
   const galleryByProject = new Map<string, Array<{ image: LocalImageAsset; order: number }>>();
 
   const repairs = await Promise.all(
@@ -966,6 +972,10 @@ async function applyProjectImages(
         const gallery = galleryByProject.get(projectId) ?? [];
         gallery.push({ image, order: asNumber(row.display_order, gallery.length) });
         galleryByProject.set(projectId, gallery);
+      } else if (slot.startsWith('editorial') && project) {
+        const editorial = editorialByProject.get(projectId) ?? [];
+        editorial.push({ image, order: asNumber(row.display_order, editorial.length) });
+        editorialByProject.set(projectId, editorial);
       } else if (slot.startsWith('lookbook:')) {
         const lookbookId = slot.split(':')[1];
         const page = lookbookById.get(lookbookId);
@@ -978,6 +988,15 @@ async function applyProjectImages(
   galleryByProject.forEach((gallery, projectId) => {
     const project = projectById.get(projectId);
     if (project) project.galleryImages = gallery.sort((a, b) => a.order - b.order).map(({ image }) => image);
+  });
+  editorialByProject.forEach((editorial, projectId) => {
+    const project = projectById.get(projectId);
+    if (project) {
+      project.editorialImages = editorial
+        .sort((a, b) => a.order - b.order)
+        .map(({ image }) => image)
+        .slice(0, 30);
+    }
   });
 
   return repairs.filter((repair): repair is SyncDeletion => Boolean(repair));
@@ -1077,7 +1096,7 @@ async function clearOlderTombstone(
 }
 
 function projectPayload(userId: string, project: StoredProject) {
-  const { galleryImages: _gallery, heroImage: _hero, ...metadata } = project;
+  const { editorialImages: _editorial, galleryImages: _gallery, heroImage: _hero, ...metadata } = project;
   return {
     client_id: project.id,
     collection_name: project.collection,

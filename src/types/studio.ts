@@ -321,6 +321,8 @@ export type ApparelProject = {
   keyFeatures: string[];
   colorStory: string;
   generalNotes: string;
+  /** Project-owned media reserved for Editorial Collections. */
+  editorialImages?: LocalImageAsset[];
   galleryImages?: LocalImageAsset[];
   heroImage?: LocalImageAsset;
   tags: string[];
@@ -337,6 +339,7 @@ export type ApparelProject = {
 export type ProjectDetailsInput = Omit<
   ApparelProject,
   | 'createdAt'
+  | 'editorialImages'
   | 'galleryImages'
   | 'heroImage'
   | 'id'

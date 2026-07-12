@@ -60,6 +60,7 @@ export function LookbooksPage() {
     data: { editorialCollections, fabrics, projects },
     deleteEditorialCollection,
     updateEditorialCollection,
+    updateProject,
   } = useStudioData();
   const [selectedProjectId, setSelectedProjectId] = useState(() =>
     chooseInitialProject(projects, editorialCollections),
@@ -161,9 +162,17 @@ export function LookbooksPage() {
           collection={formState.collection}
           mode={formState.mode}
           onClose={() => setFormState(null)}
-          onSubmit={(collection) => {
+          onSubmit={(collection, editorialImages) => {
             if (formState.mode === 'create') createEditorialCollection(collection);
             else updateEditorialCollection(collection);
+            if (editorialImages) {
+              const { linkedMaterials, lookbookPages, notes, tasks, ...storedProject } = selectedProject;
+              void linkedMaterials;
+              void lookbookPages;
+              void notes;
+              void tasks;
+              updateProject({ ...storedProject, editorialImages });
+            }
             setFormState(null);
           }}
           project={selectedProject}
@@ -184,8 +193,17 @@ export function LookbooksPage() {
           collection={builderCollection}
           fabrics={fabrics}
           onClose={() => setBuilderCollection(null)}
-          onSave={(collection) => {
+          onSave={(collection, editorialImages) => {
             updateEditorialCollection(collection);
+            const project = projects.find((item) => item.id === collection.projectId);
+            if (project && editorialImages) {
+              const { linkedMaterials, lookbookPages, notes, tasks, ...storedProject } = project;
+              void linkedMaterials;
+              void lookbookPages;
+              void notes;
+              void tasks;
+              updateProject({ ...storedProject, editorialImages });
+            }
             setBuilderCollection(collection);
           }}
           project={projects.find((project) => project.id === builderCollection.projectId)}

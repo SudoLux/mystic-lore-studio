@@ -15,7 +15,8 @@ import {
   SwatchBook,
 } from 'lucide-react';
 import { cn } from '../../lib/classes';
-import { fabricEditorialFallback, projectEditorialImages, projectLinkedEditorialFabrics } from '../../lib/editorialAssets';
+import { fabricEditorialFallback, projectLinkedEditorialFabrics } from '../../lib/editorialAssets';
+import { editorialGalleryLayoutOptions } from '../../lib/editorialMedia';
 import type { LinkedEditorialFabric } from '../../lib/editorialAssets';
 import {
   convertEditorialBlockType,
@@ -26,29 +27,48 @@ import {
   type EditableEditorialBlockType,
 } from '../../lib/editorialBlocks';
 import { getFabricColorHex } from '../../lib/fabricMetadata';
-import type { EditorialBlock, EditorialJsonObject, EditorialJsonValue } from '../../types/editorial';
+import type { EditorialBlock, EditorialImageContent, EditorialJsonObject, EditorialJsonValue } from '../../types/editorial';
 import type { ApparelProject, Fabric, LocalImageAsset } from '../../types/studio';
 import { AdaptiveProjectImage } from '../projects/AdaptiveProjectImage';
 import { FabricColorOrb } from '../fabrics/FabricColorOrb';
-import { contentArray, contentNumber, contentString, isContentRecord } from './blocks/blockContent';
+import { EditorialImageFramingControls } from './EditorialImageFramingControls';
+import { EditorialMediaPicker } from './EditorialMediaPicker';
+import { contentArray, contentString, isContentRecord } from './blocks/blockContent';
 
 type EditorialBlockInspectorProps = {
+  activeBlockId?: string;
   blocks: EditorialBlock[];
+  editorialImages?: LocalImageAsset[];
   fabrics?: Fabric[];
+  hideAdd?: boolean;
+  onActiveBlockChange?: (blockId: string) => void;
   onChange: (blocks: EditorialBlock[]) => void;
+  onEditMedia?: (block: EditorialBlock) => void;
+  onStageAssets?: (images: LocalImageAsset[]) => void;
   project?: ApparelProject;
   sceneId: string;
 };
 
 export function EditorialBlockInspector({
+  activeBlockId: controlledActiveBlockId,
   blocks,
+  editorialImages = [],
   fabrics = [],
+  hideAdd = false,
+  onActiveBlockChange,
   onChange,
+  onEditMedia,
+  onStageAssets,
   project,
   sceneId,
 }: EditorialBlockInspectorProps) {
   const orderedBlocks = [...blocks].sort((a, b) => a.order - b.order);
-  const [activeBlockId, setActiveBlockId] = useState(orderedBlocks[0]?.id ?? '');
+  const [internalActiveBlockId, setInternalActiveBlockId] = useState(orderedBlocks[0]?.id ?? '');
+  const activeBlockId = controlledActiveBlockId ?? internalActiveBlockId;
+  const setActiveBlockId = (blockId: string) => {
+    setInternalActiveBlockId(blockId);
+    onActiveBlockChange?.(blockId);
+  };
   const [newBlockType, setNewBlockType] = useState<EditableEditorialBlockType>('heading');
   const activeBlock = orderedBlocks.find((block) => block.id === activeBlockId) ?? orderedBlocks[0];
 
@@ -98,7 +118,7 @@ export function EditorialBlockInspector({
         </div>
       </div>
 
-      <div className="mt-3 flex gap-2">
+      {!hideAdd ? <div className="mt-3 flex gap-2">
         <select
           aria-label="New block type"
           className="h-11 min-w-0 flex-1 rounded-xl border border-bronze/28 bg-midnight/64 px-3 text-xs text-stardust outline-none focus:border-ember/58"
@@ -108,7 +128,7 @@ export function EditorialBlockInspector({
           {editableEditorialBlockOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
         </select>
         <button aria-label="Add content block" className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-ember/38 bg-ember/9 text-ember transition hover:bg-ember/16" onClick={addBlock} type="button"><Plus size={17} /></button>
-      </div>
+      </div> : null}
 
       {orderedBlocks.length > 0 ? (
         <>
@@ -145,7 +165,7 @@ export function EditorialBlockInspector({
                 </div>
               </div>
               <div className="mt-4">
-                <BlockFields block={activeBlock} fabrics={fabrics} onChange={updateBlock} project={project} />
+                <BlockFields block={activeBlock} editorialImages={editorialImages} fabrics={fabrics} onChange={updateBlock} onEditMedia={onEditMedia} onStageAssets={onStageAssets} project={project} />
               </div>
             </div>
           ) : null}
@@ -162,13 +182,19 @@ export function EditorialBlockInspector({
 
 function BlockFields({
   block,
+  editorialImages,
   fabrics,
   onChange,
+  onEditMedia,
+  onStageAssets,
   project,
 }: {
   block: EditorialBlock;
+  editorialImages: LocalImageAsset[];
   fabrics: Fabric[];
   onChange: (block: EditorialBlock) => void;
+  onEditMedia?: (block: EditorialBlock) => void;
+  onStageAssets?: (images: LocalImageAsset[]) => void;
   project?: ApparelProject;
 }) {
   const isEditable = editableEditorialBlockOptions.some((option) => option.value === block.type);
@@ -178,21 +204,30 @@ function BlockFields({
       : {};
     onChange({ ...block, content: { ...currentContent, ...updates } });
   };
-  const availableImages = projectEditorialImages(project);
+  const projectImages = project
+    ? [project.heroImage, ...(project.galleryImages ?? [])]
+      .filter((image): image is LocalImageAsset => Boolean(image))
+    : [];
+  const availableImages = [...projectImages, ...editorialImages];
   const linkedFabrics = projectLinkedEditorialFabrics(project, fabrics);
 
   return (
     <div className="space-y-4">
-      <BlockField label="Block type">
-        <select
-          className={fieldClassName}
-          onChange={(event) => onChange(convertEditorialBlockType(block, event.target.value as EditableEditorialBlockType))}
-          value={isEditable ? block.type : ''}
-        >
-          {!isEditable ? <option value="">{editorialBlockLabel(block.type)} (legacy)</option> : null}
-          {editableEditorialBlockOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
-        </select>
-      </BlockField>
+      <details className="rounded-xl border border-bronze/18 bg-midnight/24">
+        <summary className="cursor-pointer list-none px-3 py-2.5 text-[0.6rem] font-semibold uppercase tracking-[0.12em] text-stardust/42">Fine tune block type</summary>
+        <div className="border-t border-bronze/14 p-3">
+          <BlockField label="Block type">
+            <select
+              className={fieldClassName}
+              onChange={(event) => onChange(convertEditorialBlockType(block, event.target.value as EditableEditorialBlockType))}
+              value={isEditable ? block.type : ''}
+            >
+              {!isEditable ? <option value="">{editorialBlockLabel(block.type)} (legacy)</option> : null}
+              {editableEditorialBlockOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+            </select>
+          </BlockField>
+        </div>
+      </details>
 
       {block.type === 'heading' ? (
         <>
@@ -218,32 +253,43 @@ function BlockFields({
 
       {block.type === 'image' ? (
         <>
-          <BlockField label="Project image">
-            <ProjectImagePicker
-              images={availableImages}
+          {onEditMedia ? (
+            <button className="flex min-h-14 w-full items-center justify-between rounded-xl border border-ember/32 bg-ember/[0.07] px-4 text-left transition hover:bg-ember/[0.12]" onClick={() => onEditMedia(block)} type="button">
+              <span><span className="block text-xs font-semibold text-stardust">Open Media Composer</span><span className="mt-1 block text-[0.62rem] text-stardust/40">Choose, crop, and caption this photograph.</span></span>
+              <ImageIcon className="text-ember" size={18} />
+            </button>
+          ) : <BlockField label="Image source">
+            <EditorialMediaPicker
+              editorialImages={editorialImages}
+              maxSelections={1}
+              onAddAssets={(images) => onStageAssets?.(images)}
               onSelect={(image) => updateContent({ assetId: image.id, assetName: image.name, url: '' })}
+              projectImages={projectImages}
               selectedIds={[contentString(block.content, 'assetId')]}
             />
-          </BlockField>
-          <BlockField label="Or external image URL"><input className={fieldClassName} inputMode="url" onChange={(event) => updateContent({ assetId: '', assetName: '', url: event.target.value })} placeholder="https://..." type="url" value={contentString(block.content, 'url')} /></BlockField>
+          </BlockField>}
+          {!onEditMedia ? <><BlockField label="Or external image URL"><input className={fieldClassName} inputMode="url" onChange={(event) => updateContent({ assetId: '', assetName: '', url: event.target.value })} placeholder="https://..." type="url" value={contentString(block.content, 'url')} /></BlockField>
           <BlockField label="Alt text"><input className={fieldClassName} onChange={(event) => updateContent({ alt: event.target.value })} placeholder="Describe the image" value={contentString(block.content, 'alt')} /></BlockField>
           <BlockField label="Caption (optional)"><input className={fieldClassName} onChange={(event) => updateContent({ caption: event.target.value })} value={contentString(block.content, 'caption')} /></BlockField>
-          <BlockField label="Image fit">
-            <select className={fieldClassName} onChange={(event) => updateContent({ fit: event.target.value })} value={contentString(block.content, 'fit', 'cover')}>
-              <option value="cover">Fill frame</option>
-              <option value="contain">Fit entire image</option>
-            </select>
-          </BlockField>
+          <EditorialImageFramingControls asset={availableImages.find((image) => image.id === contentString(block.content, 'assetId'))} content={block.content as EditorialImageContent} onChange={updateContent} /></> : null}
         </>
       ) : null}
 
       {block.type === 'gallery' ? (
-        <GalleryAssetEditor
-          columns={contentNumber(block.content, 'columns', 3)}
+        onEditMedia ? (
+          <button className="flex min-h-14 w-full items-center justify-between rounded-xl border border-ember/32 bg-ember/[0.07] px-4 text-left transition hover:bg-ember/[0.12]" onClick={() => onEditMedia(block)} type="button">
+            <span><span className="block text-xs font-semibold text-stardust">Open Photo Layout</span><span className="mt-1 block text-[0.62rem] text-stardust/40">Select images and compare assisted compositions.</span></span>
+            <Images className="text-ember" size={18} />
+          </button>
+        ) : <GalleryAssetEditor
+          editorialImages={editorialImages}
           images={availableImages}
           items={contentArray(block.content, 'images')}
           onChange={(images) => updateContent({ images })}
           onColumnsChange={(columns) => updateContent({ columns })}
+          onLayoutChange={(layout) => updateContent({ layout })}
+          onStageAssets={onStageAssets}
+          projectImages={projectImages}
         />
       ) : null}
 
@@ -302,57 +348,30 @@ function BlockFields({
   );
 }
 
-function ProjectImagePicker({
-  emptyMessage = 'Add project photography before linking an image block.',
-  images,
-  onSelect,
-  selectedIds,
-}: {
-  emptyMessage?: string;
-  images: LocalImageAsset[];
-  onSelect: (image: LocalImageAsset) => void;
-  selectedIds: string[];
-}) {
-  if (images.length === 0) return <PickerEmptyState message={emptyMessage} />;
-  return (
-    <div className="grid grid-cols-3 gap-2">
-      {images.map((image, index) => {
-        const selected = selectedIds.includes(image.id);
-        return (
-          <button
-            aria-pressed={selected}
-            className={cn('relative aspect-[3/4] overflow-hidden rounded-lg border transition', selected ? 'border-ember shadow-[0_0_18px_rgba(200,155,60,.18)]' : 'border-bronze/22 hover:border-bronze/52')}
-            key={image.id}
-            onClick={() => onSelect(image)}
-            type="button"
-          >
-            <AdaptiveProjectImage asset={image} className="absolute inset-0" mode="thumbnail" />
-            <span className="absolute inset-x-0 bottom-0 bg-midnight/76 px-1 py-1.5 text-[0.52rem] uppercase tracking-[0.08em] text-stardust/78 backdrop-blur-md">{index === 0 ? 'Hero' : `Gallery ${index}`}</span>
-            {selected ? <span className="absolute right-1.5 top-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-ember text-midnight">✓</span> : null}
-          </button>
-        );
-      })}
-    </div>
-  );
-}
-
 function GalleryAssetEditor({
-  columns,
+  editorialImages,
   images,
   items,
   onChange,
   onColumnsChange,
+  onLayoutChange,
+  onStageAssets,
+  projectImages,
 }: {
-  columns: number;
+  editorialImages: LocalImageAsset[];
   images: LocalImageAsset[];
   items: EditorialJsonValue[];
   onChange: (items: EditorialJsonValue[]) => void;
   onColumnsChange: (columns: number) => void;
+  onLayoutChange: (layout: string) => void;
+  onStageAssets?: (images: LocalImageAsset[]) => void;
+  projectImages: LocalImageAsset[];
 }) {
   const selectedIds = items.flatMap((item) => isContentRecord(item) && typeof item.assetId === 'string' ? [item.assetId] : []);
   const addImage = (image: LocalImageAsset) => {
     if (selectedIds.includes(image.id)) return;
-    onChange([...items, { alt: image.name, assetId: image.id, assetName: image.name, caption: '', fit: 'cover', url: '' }]);
+    if (items.length >= 6) return;
+    onChange([...items, { alt: image.name, assetId: image.id, assetName: image.name, caption: '', fitMode: 'smart', frame: 'auto', url: '' }]);
   };
   const move = (index: number, direction: -1 | 1) => {
     const nextIndex = index + direction;
@@ -361,11 +380,33 @@ function GalleryAssetEditor({
     [reordered[index], reordered[nextIndex]] = [reordered[nextIndex], reordered[index]];
     onChange(reordered);
   };
+  const updateItem = (index: number, updates: Record<string, EditorialJsonValue>) => {
+    onChange(items.map((item, itemIndex) =>
+      itemIndex === index && isContentRecord(item)
+        ? { ...item, ...updates }
+        : item,
+    ));
+  };
 
   return (
     <div className="space-y-4">
-      <BlockField label="Add project images">
-        <ProjectImagePicker emptyMessage={images.length > 0 ? 'Every project image is already in this gallery.' : undefined} images={images.filter((image) => !selectedIds.includes(image.id))} onSelect={addImage} selectedIds={selectedIds} />
+      <BlockField label="Add gallery media">
+        <EditorialMediaPicker
+          editorialImages={editorialImages}
+          maxSelections={6}
+          onAddAssets={(newImages) => {
+            onStageAssets?.(newImages);
+            const additions = newImages
+              .filter((image) => !selectedIds.includes(image.id))
+              .slice(0, Math.max(0, 6 - selectedIds.length))
+              .map((image) => ({ alt: image.name, assetId: image.id, assetName: image.name, caption: '', fitMode: 'smart', frame: 'auto', url: '' }));
+            if (additions.length) onChange([...items, ...additions]);
+          }}
+          onSelect={addImage}
+          projectImages={projectImages}
+          selectedIds={selectedIds}
+          selectUploaded={false}
+        />
       </BlockField>
       <BlockField label={`Gallery order · ${items.length}`}>
         {items.length > 0 ? (
@@ -376,7 +417,7 @@ function GalleryAssetEditor({
               const asset = images.find((image) => image.id === assetId);
               const label = asset?.name || (typeof content.assetName === 'string' ? content.assetName : '') || (typeof content.url === 'string' ? content.url : '') || `Image ${index + 1}`;
               return (
-                <div className="flex items-center gap-2 rounded-lg border border-bronze/18 bg-midnight/36 p-2" key={`${assetId || label}-${index}`}>
+                <div className="relative flex items-center gap-2 rounded-lg border border-bronze/18 bg-midnight/36 p-2" key={`${assetId || label}-${index}`}>
                   <div className="h-12 w-10 shrink-0 overflow-hidden rounded-md border border-stardust/10 bg-midnight">
                     {asset ? <AdaptiveProjectImage asset={asset} className="h-full w-full" mode="thumbnail" /> : <ImageIcon className="m-auto mt-3 text-stardust/24" size={16} />}
                   </div>
@@ -384,16 +425,25 @@ function GalleryAssetEditor({
                   <BlockToolButton disabled={index === 0} label="Move image up" onClick={() => move(index, -1)}><ChevronUp size={14} /></BlockToolButton>
                   <BlockToolButton disabled={index === items.length - 1} label="Move image down" onClick={() => move(index, 1)}><ChevronDown size={14} /></BlockToolButton>
                   <BlockToolButton danger label="Remove image" onClick={() => onChange(items.filter((_, itemIndex) => itemIndex !== index))}><Trash2 size={14} /></BlockToolButton>
+                  <details className="shrink-0">
+                    <summary className="cursor-pointer list-none rounded-lg border border-bronze/18 px-2 py-1 text-[0.58rem] text-stardust/48 transition hover:border-bronze/42">Frame</summary>
+                    <div className="absolute right-0 z-30 mt-2 w-[18rem] rounded-xl border border-bronze/30 bg-[#11100f] p-3 shadow-[0_18px_45px_rgba(0,0,0,.58)]">
+                      <EditorialImageFramingControls asset={asset} content={content as EditorialImageContent} onChange={(updates) => updateItem(index, updates)} />
+                    </div>
+                  </details>
                 </div>
               );
             })}
           </div>
-        ) : <PickerEmptyState message="Choose project images to compose this gallery." />}
+        ) : <PickerEmptyState message="Choose up to six project or editorial photos to compose this gallery." />}
       </BlockField>
-      <BlockField label="Columns">
-        <select className={fieldClassName} onChange={(event) => onColumnsChange(Number(event.target.value))} value={columns}>
-          <option value="1">One</option><option value="2">Two</option><option value="3">Three</option>
-        </select>
+      <BlockField label="Assisted layout">
+        <div className="grid grid-cols-2 gap-2">
+          {editorialGalleryLayoutOptions.map((option) => (
+            <button className="h-9 rounded-lg border border-bronze/18 px-2 text-xs text-stardust/58 transition hover:border-bronze/44" key={option.value} onClick={() => { onLayoutChange(option.value); onColumnsChange(option.value === 'diptych' ? 2 : option.value === 'feature' ? 1 : 3); }} type="button">{option.label}</button>
+          ))}
+        </div>
+        <p className="mt-2 text-xs text-stardust/34">The selected layout adapts to the number and orientation of your images.</p>
       </BlockField>
     </div>
   );

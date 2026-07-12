@@ -1028,6 +1028,7 @@ function imageMap(data: StudioData) {
   data.projects.forEach((project) => {
     if (project.heroImage) images.set(project.heroImage.id, project.heroImage);
     project.galleryImages?.forEach((image) => images.set(image.id, image));
+    project.editorialImages?.forEach((image) => images.set(image.id, image));
   });
   data.lookbookPages.forEach((page) => {
     if (page.heroImage) images.set(page.heroImage.id, page.heroImage);
@@ -1101,6 +1102,9 @@ function replaceImage(
       if (project.id !== payload.ownerId) return project;
       return {
         ...project,
+        editorialImages: project.editorialImages?.map((image) =>
+          image.id === payload.image.id ? replace(image) : image,
+        ),
         galleryImages: project.galleryImages?.map((image) =>
           image.id === payload.image.id ? replace(image) : image,
         ),
@@ -1118,6 +1122,7 @@ function projectImagePaths(data: StudioData, project?: StoredProject) {
   return [
     project.heroImage,
     ...(project.galleryImages ?? []),
+    ...(project.editorialImages ?? []),
     ...data.lookbookPages
       .filter((page) => page.projectId === project.id)
       .map((page) => page.heroImage),
@@ -1131,6 +1136,7 @@ function mergeMigratedImagePayloads(base: StudioData, migrated: StudioData) {
   migrated.projects.forEach((project) => {
     if (project.heroImage) migratedImages.set(project.heroImage.id, project.heroImage);
     project.galleryImages?.forEach((image) => migratedImages.set(image.id, image));
+    project.editorialImages?.forEach((image) => migratedImages.set(image.id, image));
   });
   migrated.lookbookPages.forEach((page) => {
     if (page.heroImage) migratedImages.set(page.heroImage.id, page.heroImage);
@@ -1153,6 +1159,7 @@ function mergeMigratedImagePayloads(base: StudioData, migrated: StudioData) {
     })),
     projects: base.projects.map((project) => ({
       ...project,
+      editorialImages: project.editorialImages?.map((image) => replace(image)!),
       galleryImages: project.galleryImages?.map((image) => replace(image)!),
       heroImage: replace(project.heroImage),
     })),
