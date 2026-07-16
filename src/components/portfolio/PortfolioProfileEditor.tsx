@@ -242,6 +242,7 @@ function AvatarSelector({
                 asset={asset}
                 className="h-full w-full object-cover"
                 decorative
+                quality="thumbnail"
                 displayOverride={{ objectFit: 'cover', zoom: 1 }}
               />
               {selected ? <SelectionMark /> : null}

@@ -9,6 +9,7 @@ type AdaptiveStoredImageProps = {
   displayFit?: 'cover' | 'contain';
   foregroundClassName?: string;
   mode?: 'compact' | 'primary' | 'thumbnail';
+  priority?: boolean;
 };
 
 export function AdaptiveStoredImage({
@@ -17,6 +18,7 @@ export function AdaptiveStoredImage({
   displayFit,
   foregroundClassName,
   mode = 'primary',
+  priority = false,
 }: AdaptiveStoredImageProps) {
   const orientation = getImageOrientation(asset);
   const display = {
@@ -50,6 +52,7 @@ export function AdaptiveStoredImage({
             asset={asset}
             className="absolute inset-0 scale-110 blur-2xl saturate-75 opacity-52"
             decorative
+            quality="display"
             displayOverride={{
               objectFit: 'cover',
               objectPositionX: display.objectPositionX,
@@ -62,6 +65,8 @@ export function AdaptiveStoredImage({
             <StoredImage
               asset={asset}
               className={cn('absolute inset-0', foregroundClassName)}
+              priority={priority}
+              quality="master"
             />
           </div>
         </>
@@ -70,6 +75,8 @@ export function AdaptiveStoredImage({
           asset={asset}
           className={cn('absolute inset-0', foregroundClassName)}
           displayOverride={compactDisplay}
+          priority={priority}
+          quality={mode === 'thumbnail' ? 'thumbnail' : mode === 'compact' ? 'display' : 'master'}
         />
       )}
     </div>

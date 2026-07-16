@@ -122,7 +122,7 @@ function SafeImage({ alt, className, fit = 'cover', missingLabel, url }: { alt: 
       </div>
     );
   }
-  return <img alt={alt} className={cn(className, fit === 'contain' ? 'object-contain' : 'object-cover')} onError={() => setFailed(true)} src={url} />;
+  return <img alt={alt} className={cn(className, fit === 'contain' ? 'object-contain' : 'object-cover')} decoding="async" loading="lazy" onError={() => setFailed(true)} src={url} />;
 }
 
 function galleryLayoutClass(layout: string, columns: number, compositionId: string) {

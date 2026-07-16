@@ -44,6 +44,8 @@ export function EditorialCollectionCover({
             'absolute inset-0 h-full w-full',
             imageFit === 'contain' ? 'object-contain' : 'object-cover',
           )}
+          decoding="async"
+          loading="lazy"
           onError={() => setUrlFailed(true)}
           src={collection.coverImageUrl}
         />

@@ -153,6 +153,13 @@ export type LookbookFieldItem = {
 export type LocalImageAsset = {
   blobKey?: string;
   dataUrl?: string;
+  displayBlobKey?: string;
+  displayHeight?: number;
+  displayMimeType?: string;
+  displayRemoteUrl?: string;
+  displaySize?: number;
+  displayStoragePath?: string;
+  displayWidth?: number;
   height?: number;
   id: string;
   mimeType: string;
@@ -166,6 +173,8 @@ export type LocalImageAsset = {
   remoteUrl?: string;
   signedUrlExpiresAt?: string;
   storagePath?: string;
+  thumbnailRemoteUrl?: string;
+  thumbnailStoragePath?: string;
   uploadDataUrl?: string;
   uploadError?: string;
   uploadState?:

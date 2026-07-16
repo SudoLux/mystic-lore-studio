@@ -775,6 +775,8 @@ function GalleryViewer({
           asset={viewerImage}
           className="gallery-image-enter absolute inset-0 p-2 sm:p-5"
           key={activeImage.id}
+          priority
+          quality="master"
         />
         {imageCount > 1 ? (
           <>

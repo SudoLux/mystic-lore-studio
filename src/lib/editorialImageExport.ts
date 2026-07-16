@@ -471,7 +471,11 @@ function safeFilePart(value: string, fallback: string) {
 
 async function waitForSceneAssets(host: HTMLElement) {
   await document.fonts?.ready;
-  await Promise.all([...host.querySelectorAll('img')].map((image) => {
+  const images = [...host.querySelectorAll('img')];
+  // Export canvases are intentionally off-screen, so browser lazy-loading would
+  // otherwise leave their images unresolved until after capture.
+  images.forEach((image) => { image.loading = 'eager'; });
+  await Promise.all(images.map((image) => {
     if (image.complete) return Promise.resolve();
     return new Promise<void>((resolve) => {
       const finish = () => resolve();

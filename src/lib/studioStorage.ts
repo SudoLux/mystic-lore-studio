@@ -799,10 +799,12 @@ function stripEphemeralImageUrls(data: StudioData): StudioData {
   const cleanImage = <T extends {
     blobKey?: string;
     dataUrl?: string;
+    displayRemoteUrl?: string;
     previewBlobKey?: string;
     remoteUrl?: string;
     signedUrlExpiresAt?: string;
     storagePath?: string;
+    thumbnailRemoteUrl?: string;
     uploadDataUrl?: string;
   }>(
     image: T | undefined,
@@ -810,9 +812,11 @@ function stripEphemeralImageUrls(data: StudioData): StudioData {
     if (!image) return image;
     const {
       dataUrl,
+      displayRemoteUrl: _displayRemoteUrl,
       remoteUrl: _remoteUrl,
       signedUrlExpiresAt: _expiresAt,
       uploadDataUrl,
+      thumbnailRemoteUrl: _thumbnailRemoteUrl,
       ...stored
     } = image;
     return {

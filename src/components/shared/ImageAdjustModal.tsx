@@ -162,6 +162,8 @@ function StandardImageAdjustModal({
                 <StoredImage
                   asset={draft}
                   className="absolute inset-0 transition-transform duration-150"
+                  priority
+                  quality="master"
                 />
                 <ImageReadabilityOverlay asset={draft} variant="hero" />
                 <div className="pointer-events-none absolute inset-0 border-[8px] border-midnight/12" />
