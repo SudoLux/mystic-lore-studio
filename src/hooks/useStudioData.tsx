@@ -213,6 +213,8 @@ export function StudioDataProvider({
   const flushFunctionRef = useRef<() => Promise<boolean>>(() =>
     Promise.resolve(false),
   );
+  const refreshPromiseRef = useRef<Promise<void> | null>(null);
+  const lastCloudRefreshAtRef = useRef(0);
   const rawDataRef = useRef(rawData);
 
   const saveLocalData = useCallback(
@@ -244,23 +246,6 @@ export function StudioDataProvider({
     }
   }, [userId]);
 
-  const cacheRemotePreviews = useCallback(
-    (data: StudioData) => {
-      void migrateStudioImagePayloads(data, true)
-        .then((cached) => {
-          saveLocalData(
-            mergeMigratedImagePayloads(rawDataRef.current, cached),
-          );
-        })
-        .catch(() => {
-          setLocalCacheWarning(
-            'Cloud data is synced, but some images could not be prepared for offline viewing.',
-          );
-        });
-    },
-    [saveLocalData],
-  );
-
   const applyImageState = useCallback(
     (
       payload: SyncImagePayload,
@@ -290,7 +275,6 @@ export function StudioDataProvider({
         settings: rawDataRef.current.settings,
       });
       saveLocalData(resolved);
-      cacheRemotePreviews(resolved);
 
       if (cloud.mediaRepairs.length > 0) {
         const count = cloud.mediaRepairs.length;
@@ -304,7 +288,7 @@ export function StudioDataProvider({
         ...buildDataSyncOperations(resolved, resolved, cloud.mediaRepairs),
       ];
     },
-    [cacheRemotePreviews, saveLocalData],
+    [saveLocalData],
   );
 
   const performQueueDrain = useCallback(async () => {
@@ -490,68 +474,83 @@ export function StudioDataProvider({
   }, [performQueueDrain, userId]);
   flushFunctionRef.current = flushQueue;
 
-  const refreshCloud = useCallback(async () => {
-    if (!navigator.onLine) {
-      setSyncStatus('offline');
-      return;
+  const refreshCloud = useCallback((force = false) => {
+    if (refreshPromiseRef.current) return refreshPromiseRef.current;
+    if (!force && Date.now() - lastCloudRefreshAtRef.current < 90_000) {
+      return Promise.resolve();
     }
 
-    setSyncStatus('syncing');
-    setSyncPhase('validating');
-    setSyncError(null);
-    setSyncNotice(null);
-    const readiness = await checkCloudSyncReadiness(userId);
-
-    if (!readiness.ready) {
-      setSyncError(readiness.message);
-      setSyncStatus('error');
-      setSyncPhase('idle');
-      readinessConfirmedRef.current = false;
-      return;
-    }
-
-    readinessConfirmedRef.current = true;
-    cloudReadyRef.current = true;
-
-    if (getSyncQueue(userId)) {
-      await flushQueue();
-      return;
-    }
-
-    try {
-      const cloud = await fetchCloudStudioData(userId);
-      const meaningful = hasMeaningfulLocalData(rawDataRef.current);
-      const migrationPending = getMigrationDecision(userId) === 'pending';
-
-      if (!cloud.cloudInitialized && meaningful && migrationPending) {
-        setMigrationAvailable(true);
+    const promise = (async () => {
+      if (!navigator.onLine) {
         setSyncStatus('offline');
-        setSyncPhase('idle');
         return;
       }
 
-      if (cloud.cloudInitialized || cloud.hasCloudData) {
-        await preserveLegacyCache();
-        const followUpOperations = await reconcileCloudSnapshot(cloud);
-        setMigrationDecision(userId, 'completed');
+      setSyncStatus('syncing');
+      setSyncPhase('validating');
+      setSyncError(null);
+      setSyncNotice(null);
+      const readiness = await checkCloudSyncReadiness(userId);
 
-        if (followUpOperations.length > 0) {
-          const queue = enqueueSyncOperations(userId, followUpOperations);
-          setPendingCount(syncQueueCount(queue));
-          setFailedOperationCount(failedSyncOperationCount(queue));
-          await flushQueue();
-          return;
-        }
+      if (!readiness.ready) {
+        setSyncError(readiness.message);
+        setSyncStatus('error');
+        setSyncPhase('idle');
+        readinessConfirmedRef.current = false;
+        return;
       }
 
-      setSyncStatus('synced');
-      setSyncPhase('idle');
-      setLastSyncedAt(new Date().toISOString());
-    } catch (error) {
-      setSyncError(errorMessage(error));
-      setSyncStatus(navigator.onLine ? 'error' : 'offline');
-      setSyncPhase('idle');
-    }
+      readinessConfirmedRef.current = true;
+      cloudReadyRef.current = true;
+
+      if (getSyncQueue(userId)) {
+        await flushQueue();
+        lastCloudRefreshAtRef.current = Date.now();
+        return;
+      }
+
+      try {
+        const cloud = await fetchCloudStudioData(userId);
+        const meaningful = hasMeaningfulLocalData(rawDataRef.current);
+        const migrationPending = getMigrationDecision(userId) === 'pending';
+
+        if (!cloud.cloudInitialized && meaningful && migrationPending) {
+          setMigrationAvailable(true);
+          setSyncStatus('offline');
+          setSyncPhase('idle');
+          return;
+        }
+
+        if (cloud.cloudInitialized || cloud.hasCloudData) {
+          await preserveLegacyCache();
+          const followUpOperations = await reconcileCloudSnapshot(cloud);
+          setMigrationDecision(userId, 'completed');
+
+          if (followUpOperations.length > 0) {
+            const queue = enqueueSyncOperations(userId, followUpOperations);
+            setPendingCount(syncQueueCount(queue));
+            setFailedOperationCount(failedSyncOperationCount(queue));
+            await flushQueue();
+            lastCloudRefreshAtRef.current = Date.now();
+            return;
+          }
+        }
+
+        setSyncStatus('synced');
+        setSyncPhase('idle');
+        setLastSyncedAt(new Date().toISOString());
+        lastCloudRefreshAtRef.current = Date.now();
+      } catch (error) {
+        setSyncError(errorMessage(error));
+        setSyncStatus(navigator.onLine ? 'error' : 'offline');
+        setSyncPhase('idle');
+      }
+    })().finally(() => {
+      refreshPromiseRef.current = null;
+    });
+
+    refreshPromiseRef.current = promise;
+    return promise;
   }, [flushQueue, preserveLegacyCache, reconcileCloudSnapshot, userId]);
 
   useEffect(() => {
@@ -722,7 +721,7 @@ export function StudioDataProvider({
       enqueueSyncOperations(userId, resetOperations);
       await flushQueue();
     } else {
-      await refreshCloud();
+      await refreshCloud(true);
     }
   }, [flushQueue, refreshCloud, userId]);
 
@@ -1002,7 +1001,7 @@ function collectImageDeletions(current: StudioData, next: StudioData): SyncDelet
   const nextImages = imageMap(next);
   const projectImageDeletions = [...currentImages.entries()]
     .filter(([id]) => !nextImages.has(id))
-    .map(([id, image]) => deletion('project_image', id, image.storagePath ? [image.storagePath] : []));
+    .map(([id, image]) => deletion('project_image', id, imageStoragePaths(image)));
   const nextFabricImages = new Set(
     next.fabrics.map((fabric) => fabric.image?.id).filter(Boolean),
   );
@@ -1016,7 +1015,7 @@ function collectImageDeletions(current: StudioData, next: StudioData): SyncDelet
       deletion(
         'fabric_image',
         image.id,
-        image.storagePath ? [image.storagePath] : [],
+        imageStoragePaths(image),
         fabricId,
       ),
     );
@@ -1055,6 +1054,12 @@ async function cleanupRemovedImageBlobs(current: StudioData, next: StudioData) {
       obsoleteKeys.add(image.blobKey);
     }
     if (
+      image.displayBlobKey &&
+      image.displayBlobKey !== replacement?.displayBlobKey
+    ) {
+      obsoleteKeys.add(image.displayBlobKey);
+    }
+    if (
       image.previewBlobKey &&
       image.previewBlobKey !== replacement?.previewBlobKey
     ) {
@@ -1067,6 +1072,11 @@ async function cleanupRemovedImageBlobs(current: StudioData, next: StudioData) {
       deleteImageBlob(key).catch(() => undefined),
     ),
   );
+}
+
+function imageStoragePaths(image: LocalImageAsset) {
+  return [image.storagePath, image.displayStoragePath, image.thumbnailStoragePath]
+    .filter((path): path is string => Boolean(path));
 }
 
 function replaceImage(
@@ -1127,7 +1137,7 @@ function projectImagePaths(data: StudioData, project?: StoredProject) {
       .filter((page) => page.projectId === project.id)
       .map((page) => page.heroImage),
   ]
-    .map((image) => image?.storagePath)
+    .flatMap((image) => image ? imageStoragePaths(image) : [])
     .filter((path): path is string => Boolean(path));
 }
 

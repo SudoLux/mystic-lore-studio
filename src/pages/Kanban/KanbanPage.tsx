@@ -254,6 +254,7 @@ function MobileKanbanProjectCard({
           <StoredImage
             asset={heroImage}
             className="absolute inset-0 h-full w-full object-cover"
+            quality="thumbnail"
           />
         ) : null}
         <ImageReadabilityOverlay asset={heroImage} variant="card" />
@@ -425,6 +426,7 @@ function KanbanProjectCardContent({
           <StoredImage
             asset={heroImage}
             className="h-full w-full object-cover"
+            quality="thumbnail"
           />
         ) : null}
         <ImageReadabilityOverlay asset={heroImage} variant="card" />

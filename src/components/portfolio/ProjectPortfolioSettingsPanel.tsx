@@ -390,7 +390,7 @@ export function ProjectPortfolioSettingsPanel({
                         onClick={() => setDraft((current) => ({ ...current, portfolioCoverImageId: asset.id }))}
                         selected={draft.portfolioCoverImageId === asset.id}
                       >
-                        <StoredImage alt="" asset={asset} decorative displayOverride={{ objectFit: 'cover', zoom: 1 }} />
+                        <StoredImage alt="" asset={asset} decorative displayOverride={{ objectFit: 'cover', zoom: 1 }} quality="thumbnail" />
                       </ImageChoice>
                     ))}
                   </div>
@@ -422,7 +422,7 @@ export function ProjectPortfolioSettingsPanel({
                           order={order >= 0 ? order + 1 : undefined}
                           selected={order >= 0}
                         >
-                          <StoredImage alt="" asset={asset} decorative displayOverride={{ objectFit: 'cover', zoom: 1 }} />
+                          <StoredImage alt="" asset={asset} decorative displayOverride={{ objectFit: 'cover', zoom: 1 }} quality="thumbnail" />
                         </ImageChoice>
                       );
                     })}
@@ -437,7 +437,7 @@ export function ProjectPortfolioSettingsPanel({
                       return (
                         <div className="flex items-center gap-3 rounded-xl border border-bronze/20 bg-midnight/34 p-2" key={assetId}>
                           <div className="h-12 w-10 shrink-0 overflow-hidden rounded-lg border border-bronze/24 bg-midnight">
-                            {asset ? <StoredImage alt="" asset={asset} decorative displayOverride={{ objectFit: 'cover', zoom: 1 }} /> : <PanelImagePlaceholder />}
+                            {asset ? <StoredImage alt="" asset={asset} decorative displayOverride={{ objectFit: 'cover', zoom: 1 }} quality="thumbnail" /> : <PanelImagePlaceholder />}
                           </div>
                           <div className="min-w-0 flex-1">
                             <p className="truncate text-xs font-medium text-stardust">{asset?.name ?? 'Unavailable image'}</p>

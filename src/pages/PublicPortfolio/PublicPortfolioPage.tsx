@@ -244,6 +244,9 @@ function PortfolioHeroVisual({
         <img
           alt={activeImage.alt || `${name || 'Portfolio'} portrait`}
           className="h-full w-full"
+          decoding="async"
+          fetchPriority="high"
+          loading="eager"
           onError={() => setSourceIndex((current) => current + 1)}
           src={activeImage.src}
           style={{
@@ -934,7 +937,7 @@ function PublicExternalImage({ alt, url }: { alt: string; url?: string }) {
       </div>
     );
   }
-  return <img alt={alt} className="h-full w-full object-cover" onError={() => setFailed(true)} src={url} />;
+  return <img alt={alt} className="h-full w-full object-cover" decoding="async" loading="lazy" onError={() => setFailed(true)} src={url} />;
 }
 
 function EmptyEditorialScene() {
@@ -1075,7 +1078,7 @@ function SkillList({ skills }: { skills: readonly string[] }) {
 function PortfolioImage({ image }: { image?: PortfolioImageSnapshot }) {
   const [failed, setFailed] = useState(false);
   if (!image?.src || failed) return <ImageFallback />;
-  return <img alt={image.alt} className="h-full w-full transition duration-500" onError={() => setFailed(true)} src={image.src} style={{ objectFit: image.fit, objectPosition: `${image.positionX}% ${image.positionY}%`, transform: `scale(${image.zoom})` }} />;
+  return <img alt={image.alt} className="h-full w-full transition duration-500" decoding="async" loading="lazy" onError={() => setFailed(true)} src={image.src} style={{ objectFit: image.fit, objectPosition: `${image.positionX}% ${image.positionY}%`, transform: `scale(${image.zoom})` }} />;
 }
 
 function ImageFallback() {

@@ -23,7 +23,10 @@ import {
 } from './studioSyncStorage';
 
 const IMAGE_BUCKET = 'project-images';
-const SIGNED_URL_SECONDS = 60 * 60;
+const SIGNED_URL_SECONDS = 6 * 60 * 60;
+const SIGNED_URL_REFRESH_BUFFER_MS = 5 * 60 * 1000;
+const SIGNED_URL_CACHE_KEY = 'mystic-lore:signed-image-urls:v1';
+const IMMUTABLE_IMAGE_CACHE_SECONDS = '31536000';
 const DATABASE_TIMEOUT_MS = 15_000;
 const IMAGE_TIMEOUT_MS = 45_000;
 const RETRY_DELAYS_MS = [1_000, 2_000, 4_000] as const;
@@ -43,6 +46,8 @@ const REQUIRED_TABLES = [
 ] as const;
 
 type CloudRow = Record<string, unknown>;
+type SignedUrlCacheEntry = { expiresAt: number; url: string };
+const signedUrlCache = new Map<string, SignedUrlCacheEntry>();
 export type CloudTombstone = {
   clientId: string;
   deletedAt: string;
@@ -285,14 +290,64 @@ export async function fetchCloudStudioData(userId: string): Promise<CloudSnapsho
   };
 }
 
-export async function refreshSignedImageUrl(storagePath: string) {
+export async function refreshSignedImageUrl(
+  storagePath: string,
+  options: { force?: boolean } = {},
+) {
+  const cached = options.force ? undefined : readSignedUrlCache(storagePath);
+  if (cached) return cached.url;
+
   const data = await storageRequest('refresh image access', () =>
     requireSupabase()
       .storage.from(IMAGE_BUCKET)
       .createSignedUrl(storagePath, SIGNED_URL_SECONDS),
   );
 
+  writeSignedUrlCache(storagePath, data.signedUrl);
   return data.signedUrl;
+}
+
+function readSignedUrlCache(storagePath: string) {
+  const memoryEntry = signedUrlCache.get(storagePath);
+  if (isSignedUrlFresh(memoryEntry)) return memoryEntry;
+
+  if (typeof window === 'undefined') return undefined;
+  try {
+    const entries = JSON.parse(
+      window.sessionStorage.getItem(SIGNED_URL_CACHE_KEY) ?? '{}',
+    ) as Record<string, SignedUrlCacheEntry>;
+    const entry = entries[storagePath];
+    if (!isSignedUrlFresh(entry)) return undefined;
+    signedUrlCache.set(storagePath, entry);
+    return entry;
+  } catch {
+    return undefined;
+  }
+}
+
+function writeSignedUrlCache(storagePath: string, url: string) {
+  const entry = {
+    expiresAt: Date.now() + SIGNED_URL_SECONDS * 1000,
+    url,
+  } satisfies SignedUrlCacheEntry;
+  signedUrlCache.set(storagePath, entry);
+
+  if (typeof window === 'undefined') return;
+  try {
+    const entries = JSON.parse(
+      window.sessionStorage.getItem(SIGNED_URL_CACHE_KEY) ?? '{}',
+    ) as Record<string, SignedUrlCacheEntry>;
+    entries[storagePath] = entry;
+    window.sessionStorage.setItem(SIGNED_URL_CACHE_KEY, JSON.stringify(entries));
+  } catch {
+    // Memory caching still prevents duplicate signing during this app session.
+  }
+}
+
+function isSignedUrlFresh(entry?: SignedUrlCacheEntry) {
+  return Boolean(
+    entry && entry.expiresAt - SIGNED_URL_REFRESH_BUFFER_MS > Date.now(),
+  );
 }
 
 export async function executeSyncOperations(
@@ -669,6 +724,9 @@ async function upsertImageOperation(
   if (payload.image.blobKey) {
     await deleteImageBlob(payload.image.blobKey).catch(() => undefined);
   }
+  if (payload.image.displayBlobKey) {
+    await deleteImageBlob(payload.image.displayBlobKey).catch(() => undefined);
+  }
 
   return { image: uploaded, payload };
 }
@@ -702,20 +760,62 @@ async function uploadImageAsset(userId: string, payload: SyncImagePayload) {
   await storageRequest(`upload ${image.name}`, () =>
     requireSupabase()
       .storage.from(IMAGE_BUCKET)
-      .upload(storagePath, blob, { contentType: mimeType, upsert: true }),
+      .upload(storagePath, blob, {
+        cacheControl: IMMUTABLE_IMAGE_CACHE_SECONDS,
+        contentType: mimeType,
+        upsert: true,
+      }),
+  );
+
+  const displayVariant = await uploadImageVariant(
+    image.displayBlobKey,
+    undefined,
+    `${storagePath.replace(/\.[^.]+$/, '')}-display`,
+  );
+  const thumbnailVariant = await uploadImageVariant(
+    image.previewBlobKey,
+    image.dataUrl,
+    `${storagePath.replace(/\.[^.]+$/, '')}-thumb`,
   );
 
   return {
     ...image,
     blobKey: undefined,
+    displayBlobKey: undefined,
+    displayMimeType: displayVariant?.mimeType ?? image.displayMimeType,
+    displaySize: displayVariant?.size ?? image.displaySize,
+    displayStoragePath: displayVariant?.storagePath,
     mimeType,
     size: blob.size,
     storagePath,
+    thumbnailStoragePath: thumbnailVariant?.storagePath,
     uploadDataUrl: undefined,
     uploadError: undefined,
     uploadState: 'uploaded' as const,
     updatedAt: new Date().toISOString(),
   };
+}
+
+async function uploadImageVariant(
+  blobKey: string | undefined,
+  fallbackDataUrl: string | undefined,
+  pathWithoutExtension: string,
+) {
+  let blob = blobKey ? await getImageBlob(blobKey) : undefined;
+  if (!blob && fallbackDataUrl) blob = await dataUrlToBlob(fallbackDataUrl);
+  if (!blob) return undefined;
+
+  const mimeType = getUploadMimeType(blob.type);
+  const extension = mimeType === 'image/webp' ? 'webp' : mimeType === 'image/png' ? 'png' : 'jpg';
+  const storagePath = `${pathWithoutExtension}.${extension}`;
+  await storageRequest('upload optimized image variant', () =>
+    requireSupabase().storage.from(IMAGE_BUCKET).upload(storagePath, blob, {
+      cacheControl: IMMUTABLE_IMAGE_CACHE_SECONDS,
+      contentType: mimeType,
+      upsert: true,
+    }),
+  );
+  return { mimeType, size: blob.size, storagePath };
 }
 
 async function imageUploadBlob(image: LocalImageAsset) {
@@ -749,6 +849,7 @@ function fabricImageUpdatePayload(
         id: image.id,
         overlayIntensity: image.overlayIntensity,
         updatedAt: image.updatedAt,
+        variants: imageVariantMetadata(image),
       },
     },
     updated_at: image.updatedAt,
@@ -901,6 +1002,7 @@ function mergeLocalImageCache(data: StudioData, local: StudioData): StudioData {
     return cached
       ? {
           ...image,
+          displayBlobKey: image.displayBlobKey ?? cached.displayBlobKey,
           dataUrl: image.dataUrl ?? cached.dataUrl,
           previewBlobKey: image.previewBlobKey ?? cached.previewBlobKey,
         }
@@ -927,13 +1029,29 @@ function mergeLocalImageCache(data: StudioData, local: StudioData): StudioData {
 }
 
 async function withSignedUrl(image: LocalImageAsset, storagePath: string) {
-  const signedUrl = await refreshSignedImageUrl(storagePath);
+  const [signedUrl, displayRemoteUrl, thumbnailRemoteUrl] = await Promise.all([
+    refreshSignedImageUrl(storagePath),
+    optionalSignedUrl(image.displayStoragePath),
+    optionalSignedUrl(image.thumbnailStoragePath),
+  ]);
 
   return {
     ...image,
+    displayRemoteUrl,
     remoteUrl: signedUrl,
     signedUrlExpiresAt: new Date(Date.now() + SIGNED_URL_SECONDS * 1000).toISOString(),
+    thumbnailRemoteUrl,
   };
+}
+
+async function optionalSignedUrl(storagePath?: string) {
+  if (!storagePath) return undefined;
+  try {
+    return await refreshSignedImageUrl(storagePath);
+  } catch (error) {
+    if (isMissingStorageObject(error)) return undefined;
+    throw error;
+  }
 }
 
 async function applyProjectImages(
@@ -961,7 +1079,7 @@ async function applyProjectImages(
         image = await withSignedUrl(rowToImage(row), storagePath);
       } catch (error) {
         if (!isMissingStorageObject(error)) throw error;
-        return imageRepair(row, [storagePath]);
+        return imageRepair(row, imageStoragePaths(rowToImage(row)));
       }
       const slot = asString(row.slot_type);
       const project = projectById.get(projectId);
@@ -1027,6 +1145,7 @@ function imagePayload(
     height: image.height ?? null,
     metadata: {
       overlayIntensity: image.overlayIntensity ?? 'auto',
+      variants: imageVariantMetadata(image),
     },
     mime_type: image.mimeType,
     position_x: image.objectPositionX ?? 50,
@@ -1296,9 +1415,17 @@ async function rowToFabric(
   fabric.weaveOrKnit = normalizeWovenKnit(fabric.weaveOrKnit);
   const storagePath = nullableString(row.image_path);
   const imageMeta = asRecord(metadata.image);
+  const variants = asRecord(imageMeta.variants);
+  const display = asRecord(variants.display);
+  const thumbnail = asRecord(variants.thumbnail);
   if (storagePath) {
     const image: LocalImageAsset = {
       dataUrl: nullableString(imageMeta.offlinePreviewDataUrl) ?? undefined,
+      displayHeight: optionalNumber(display.height),
+      displayMimeType: nullableString(display.mimeType) ?? undefined,
+      displaySize: optionalNumber(display.size),
+      displayStoragePath: nullableString(display.storagePath) ?? undefined,
+      displayWidth: optionalNumber(display.width),
       height: optionalNumber(row.image_height),
       id: asString(imageMeta.id, `fabric-image-${fabric.id}`),
       mimeType: asString(row.image_mime_type, 'image/webp'),
@@ -1309,6 +1436,7 @@ async function rowToFabric(
       overlayIntensity: asString(imageMeta.overlayIntensity, 'auto') as LocalImageAsset['overlayIntensity'],
       size: asNumber(row.image_size_bytes),
       storagePath,
+      thumbnailStoragePath: nullableString(thumbnail.storagePath) ?? undefined,
       updatedAt: asString(imageMeta.updatedAt, fabric.updatedAt),
       width: optionalNumber(row.image_width),
       zoom: asNumber(row.image_zoom, 1),
@@ -1324,7 +1452,7 @@ async function rowToFabric(
           deletedAt: new Date().toISOString(),
           entity: 'fabric_image',
           ownerId: fabric.id,
-          storagePaths: [storagePath],
+          storagePaths: imageStoragePaths(image),
         },
       };
     }
@@ -1396,8 +1524,16 @@ function rowToYardage(row: CloudRow, projects: Map<string, string>, fabrics: Map
 
 function rowToImage(row: CloudRow): LocalImageAsset {
   const metadata = asRecord(row.metadata);
+  const variants = asRecord(metadata.variants);
+  const display = asRecord(variants.display);
+  const thumbnail = asRecord(variants.thumbnail);
   return {
     dataUrl: nullableString(metadata.offlinePreviewDataUrl) ?? undefined,
+    displayHeight: optionalNumber(display.height),
+    displayMimeType: nullableString(display.mimeType) ?? undefined,
+    displaySize: optionalNumber(display.size),
+    displayStoragePath: nullableString(display.storagePath) ?? undefined,
+    displayWidth: optionalNumber(display.width),
     height: optionalNumber(row.height),
     id: asString(row.client_id),
     mimeType: asString(row.mime_type, 'image/webp'),
@@ -1408,10 +1544,33 @@ function rowToImage(row: CloudRow): LocalImageAsset {
     overlayIntensity: asString(metadata.overlayIntensity, 'auto') as LocalImageAsset['overlayIntensity'],
     size: asNumber(row.size_bytes),
     storagePath: asString(row.storage_path),
+    thumbnailStoragePath: nullableString(thumbnail.storagePath) ?? undefined,
     updatedAt: asString(row.updated_at),
     width: optionalNumber(row.width),
     zoom: asNumber(row.zoom, 1),
   };
+}
+
+function imageVariantMetadata(image: LocalImageAsset) {
+  return {
+    display: image.displayStoragePath
+      ? {
+          height: image.displayHeight ?? null,
+          mimeType: image.displayMimeType ?? null,
+          size: image.displaySize ?? null,
+          storagePath: image.displayStoragePath,
+          width: image.displayWidth ?? null,
+        }
+      : undefined,
+    thumbnail: image.thumbnailStoragePath
+      ? { storagePath: image.thumbnailStoragePath }
+      : undefined,
+  };
+}
+
+function imageStoragePaths(image: LocalImageAsset) {
+  return [image.storagePath, image.displayStoragePath, image.thumbnailStoragePath]
+    .filter((path): path is string => Boolean(path));
 }
 
 function mergeRecords<T extends { id: string; updatedAt?: string }>(

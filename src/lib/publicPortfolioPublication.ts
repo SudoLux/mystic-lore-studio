@@ -521,6 +521,17 @@ async function publishReferencedImages(
     if (!source) return;
 
     try {
+      const preferredType = normalizedImageType(asset.mimeType);
+      const path = `users/${userId}/portfolio/${asset.id}.${extensionFor(preferredType)}`;
+      const publicUrl = supabase!.storage
+        .from(PORTFOLIO_IMAGE_BUCKET)
+        .getPublicUrl(path).data.publicUrl;
+
+      if (publicUrl && await publicImageExists(publicUrl)) {
+        sourceMap.set(source, publicUrl);
+        return;
+      }
+
       let blob: Blob | undefined;
       for (const candidate of assetSources(asset)) {
         const response = await fetch(candidate);
@@ -530,12 +541,16 @@ async function publishReferencedImages(
       }
       if (!blob) return;
       const contentType = normalizedImageType(blob.type || asset.mimeType);
-      const path = `users/${userId}/portfolio/${asset.id}.${extensionFor(contentType)}`;
+      const uploadPath = `users/${userId}/portfolio/${asset.id}.${extensionFor(contentType)}`;
       const { error } = await supabase!.storage
         .from(PORTFOLIO_IMAGE_BUCKET)
-        .upload(path, blob, { cacheControl: '3600', contentType, upsert: true });
+        .upload(uploadPath, blob, {
+          cacheControl: '31536000',
+          contentType,
+          upsert: true,
+        });
       if (error) return;
-      const { data } = supabase!.storage.from(PORTFOLIO_IMAGE_BUCKET).getPublicUrl(path);
+      const { data } = supabase!.storage.from(PORTFOLIO_IMAGE_BUCKET).getPublicUrl(uploadPath);
       if (data.publicUrl) sourceMap.set(source, data.publicUrl);
     } catch {
       // Preserve the current source. The public renderer already has a graceful
@@ -544,6 +559,15 @@ async function publishReferencedImages(
   }));
 
   return sourceMap;
+}
+
+async function publicImageExists(url: string) {
+  try {
+    const response = await fetch(url, { method: 'HEAD' });
+    return response.ok;
+  } catch {
+    return false;
+  }
 }
 
 function collectImageSources(snapshot: PortfolioHomepageSnapshot) {
@@ -591,6 +615,7 @@ function imageSource(asset: LocalImageAsset) {
 function assetSources(asset: LocalImageAsset) {
   return [...new Set([
     asset.remoteUrl,
+    asset.displayRemoteUrl,
     asset.dataUrl,
     asset.uploadDataUrl,
   ].filter((source): source is string => Boolean(source)))];

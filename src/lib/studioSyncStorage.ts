@@ -477,9 +477,12 @@ function imageSyncPayload(payload: unknown) {
       [
         'blobKey',
         'dataUrl',
+        'displayBlobKey',
+        'displayRemoteUrl',
         'previewBlobKey',
         'remoteUrl',
         'signedUrlExpiresAt',
+        'thumbnailRemoteUrl',
         'uploadDataUrl',
         'uploadError',
         'uploadState',

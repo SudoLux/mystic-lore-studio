@@ -154,6 +154,10 @@ export function imageBlobKey(imageId: string) {
   return `image:${imageId}`;
 }
 
+export function displayImageBlobKey(imageId: string) {
+  return `display:${imageId}`;
+}
+
 export function previewImageBlobKey(imageId: string) {
   return `preview:${imageId}`;
 }
