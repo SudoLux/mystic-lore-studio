@@ -68,6 +68,8 @@ export type SyncImagePayload = {
 export type SyncOperation = {
   action: SyncAction;
   attempts: number;
+  /** Optional common ancestor used by the 2.0 adapter for field-aware merges. */
+  basePayload?: unknown;
   clientId: string;
   entity: SyncEntity;
   id: string;
