@@ -1,0 +1,254 @@
+{
+  "checksums": {
+    "canonicalPlan": "6c5a635cf723773a29f08712b93c4d53de54f535e81b31572b213d235bff92af",
+    "roundTrip": "10620cd73ca618995878ea573f4778d16b0d9de5279c039e8fa6a099a21a999c",
+    "source": "10620cd73ca618995878ea573f4778d16b0d9de5279c039e8fa6a099a21a999c"
+  },
+  "conflicts": [],
+  "editorialLookbookOverlaps": [],
+  "idMappings": [
+    {
+      "canonicalId": "df7646fa-7c6f-5547-9d5b-9468c4800eab",
+      "canonicalTable": "collections",
+      "legacyEntity": "collection",
+      "legacyId": "Archive Light\u0000Autumn 2026"
+    },
+    {
+      "canonicalId": "3d789e98-632e-5862-895a-f56ae6d4bb4e",
+      "canonicalTable": "design_briefs",
+      "legacyEntity": "design-brief",
+      "legacyId": "project-legacy-aurora-coat"
+    },
+    {
+      "canonicalId": "7af01914-ab2c-5bf2-b406-ba543405c93f",
+      "canonicalTable": "inventory_entries",
+      "legacyEntity": "fabric-opening-balance",
+      "legacyId": "fabric-legacy-charcoal-twill"
+    },
+    {
+      "canonicalId": "9588f045-3b65-5d80-9d26-9d30ce3d063e",
+      "canonicalTable": "material_variants",
+      "legacyEntity": "fabric-variant",
+      "legacyId": "fabric-legacy-charcoal-twill"
+    },
+    {
+      "canonicalId": "1ad06a9d-f0fa-5e9e-9175-40eea807a7b4",
+      "canonicalTable": "materials",
+      "legacyEntity": "fabric",
+      "legacyId": "fabric-legacy-charcoal-twill"
+    },
+    {
+      "canonicalId": "ff321ce0-b923-5b48-82ae-5421fc352be9",
+      "canonicalTable": "garment_media",
+      "legacyEntity": "garment-media",
+      "legacyId": "project-legacy-aurora-coat:image-legacy-aurora-hero:hero"
+    },
+    {
+      "canonicalId": "4c5d18ff-0b6a-564a-af1b-91ff5ddfe7db",
+      "canonicalTable": "editorial_blocks",
+      "legacyEntity": "lookbook-block",
+      "legacyId": "lookbook-legacy-aurora-cover:body"
+    },
+    {
+      "canonicalId": "ffc2870c-dcbf-522a-951b-ba08f95d210d",
+      "canonicalTable": "editorial_blocks",
+      "legacyEntity": "lookbook-block",
+      "legacyId": "lookbook-legacy-aurora-cover:heading"
+    },
+    {
+      "canonicalId": "d36ad4a9-b452-595a-b883-145b2f68eaf1",
+      "canonicalTable": "editorial_scenes",
+      "legacyEntity": "lookbook-scene",
+      "legacyId": "lookbook-legacy-aurora-cover"
+    },
+    {
+      "canonicalId": "78a3ee12-5b2e-5a47-89ae-55bc170662a9",
+      "canonicalTable": "editorial_collections",
+      "legacyEntity": "lookbook",
+      "legacyId": "lookbook-legacy-aurora-cover"
+    },
+    {
+      "canonicalId": "cabee27e-2682-5ef5-841d-9f89bc1fecf6",
+      "canonicalTable": "garment_materials",
+      "legacyEntity": "material",
+      "legacyId": "material-legacy-shell"
+    },
+    {
+      "canonicalId": "034137f4-7efc-5b9b-9057-dbc8b9887fec",
+      "canonicalTable": "media_assets",
+      "legacyEntity": "media",
+      "legacyId": "image-legacy-aurora-hero"
+    },
+    {
+      "canonicalId": "a9df1564-c58d-5492-a022-7555028ed13c",
+      "canonicalTable": "portfolio_profiles",
+      "legacyEntity": "portfolio-profile",
+      "legacyId": "example-designer"
+    },
+    {
+      "canonicalId": "cf45bc05-0395-5e2a-9545-3664eec2c1ad",
+      "canonicalTable": "portfolio_projects",
+      "legacyEntity": "portfolio-project",
+      "legacyId": "project-legacy-aurora-coat"
+    },
+    {
+      "canonicalId": "0ff7c90a-155e-5a2a-9fad-2b3fa49ccb74",
+      "canonicalTable": "profiles",
+      "legacyEntity": "profile",
+      "legacyId": "portfolio-profile"
+    },
+    {
+      "canonicalId": "7e896c73-7034-58be-a819-7e63ecf3a0dc",
+      "canonicalTable": "garments",
+      "legacyEntity": "project",
+      "legacyId": "project-legacy-aurora-coat"
+    },
+    {
+      "canonicalId": "be3ee1f6-1f87-58c1-b307-e0fe0f69ffb2",
+      "canonicalTable": "studio_members",
+      "legacyEntity": "studio-member",
+      "legacyId": "10000000-0000-4000-8000-000000000111"
+    },
+    {
+      "canonicalId": "666f50fd-8932-5f1f-a47d-913da1edf4dd",
+      "canonicalTable": "tags",
+      "legacyEntity": "tag",
+      "legacyId": "autumn"
+    },
+    {
+      "canonicalId": "e255c649-9744-52b8-9505-35214f9dfe43",
+      "canonicalTable": "tags",
+      "legacyEntity": "tag",
+      "legacyId": "outerwear"
+    },
+    {
+      "canonicalId": "3dd1f238-69e0-5caa-80d0-6d894b2ad836",
+      "canonicalTable": "tags",
+      "legacyEntity": "tag",
+      "legacyId": "utility"
+    },
+    {
+      "canonicalId": "65791b95-93d4-5c49-a578-620e0fac367c",
+      "canonicalTable": "tasks",
+      "legacyEntity": "task",
+      "legacyId": "task-legacy-fitting"
+    },
+    {
+      "canonicalId": "8120a786-d87c-5f59-81bc-88002b22d62a",
+      "canonicalTable": "inventory_entries",
+      "legacyEntity": "yardage",
+      "legacyId": "yardage-legacy-shell"
+    }
+  ],
+  "recovery": {
+    "deterministicIds": true,
+    "idempotentUpserts": true,
+    "legacyFixtureRetained": true,
+    "retryMode": "resume-by-stable-upsert"
+  },
+  "roundTrip": {
+    "exact": true,
+    "intentionalDifferences": [],
+    "unexplainedDataLoss": 0
+  },
+  "rowCounts": {
+    "canonical": {
+      "change_events": 0,
+      "collections": 1,
+      "design_briefs": 1,
+      "editorial_assets": 0,
+      "editorial_blocks": 2,
+      "editorial_collections": 1,
+      "editorial_scenes": 1,
+      "garment_materials": 1,
+      "garment_media": 1,
+      "garment_tags": 3,
+      "garments": 1,
+      "inventory_entries": 2,
+      "material_variants": 1,
+      "materials": 1,
+      "media_assets": 1,
+      "portfolio_editorials": 0,
+      "portfolio_profiles": 1,
+      "portfolio_projects": 1,
+      "profiles": 1,
+      "studio_members": 1,
+      "studio_settings": 1,
+      "studios": 1,
+      "sync_tombstones": 0,
+      "tags": 3,
+      "tasks": 1
+    },
+    "legacy": {
+      "editorialCollections": 0,
+      "fabrics": 1,
+      "linkedMaterials": 1,
+      "lookbookPages": 1,
+      "notes": 1,
+      "portfolioProfiles": 1,
+      "projects": 1,
+      "settings": 1,
+      "tasks": 1,
+      "yardageEntries": 1
+    }
+  },
+  "schemaVersion": "ml-studio-wp2-migration-report-v1",
+  "settingsPolicy": {
+    "canonicalStudioPolicy": [
+      "units",
+      "currency",
+      "version_policy",
+      "ai_policy"
+    ],
+    "deviceOnlyLegacyFields": [
+      "backupReminderCadenceDays",
+      "backupReminderCopy",
+      "updatedAt"
+    ]
+  },
+  "skippedRecords": [],
+  "source": {
+    "checksum": "10620cd73ca618995878ea573f4778d16b0d9de5279c039e8fa6a099a21a999c",
+    "id": "wp0:legacy-studio-data-v5",
+    "version": 6
+  },
+  "target": {
+    "ownerUserId": "10000000-0000-4000-8000-000000000111",
+    "schema": "ml_private",
+    "studioId": "554a2207-931d-5349-9086-c3caf2b89ab0"
+  },
+  "warnings": [
+    {
+      "code": "device-settings-retained",
+      "entity": "settings",
+      "message": "Backup reminder cadence and copy remain device-local; only unit and currency policy enter canonical studio_settings."
+    },
+    {
+      "code": "legacy-notes-retained",
+      "entity": "notes",
+      "message": "1 private note record(s) remain in the verified legacy fixture until a canonical journal/fit-note owner is introduced."
+    },
+    {
+      "code": "legacy-yardage-fields-inferred",
+      "entity": "yardage",
+      "legacyId": "yardage-legacy-shell",
+      "message": "The v5 yardage record lacked a modern type or quantity; the dry run inferred it from the linked material and retained the original fixture."
+    },
+    {
+      "code": "lookbook-bridge-retained",
+      "entity": "lookbook",
+      "message": "Legacy lookbook pages receive parallel canonical editorial rows, but the original pages stay authoritative until WP7."
+    },
+    {
+      "code": "provisional-media-checksum",
+      "entity": "media",
+      "legacyId": "image-legacy-aurora-hero",
+      "message": "No source-byte checksum was available; the dry run used a deterministic metadata checksum and retained the legacy path for copy verification."
+    },
+    {
+      "code": "public-cut-not-created",
+      "entity": "portfolio",
+      "message": "The dry run creates private portfolio curation only; no anonymous publication snapshot is created or changed."
+    }
+  ]
+}
