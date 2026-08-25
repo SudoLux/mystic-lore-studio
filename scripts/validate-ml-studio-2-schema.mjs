@@ -31,12 +31,14 @@ const rlsPath = 'supabase/migrations/20260824051237_ml_studio_2_rls_and_publicat
 const storagePath = 'supabase/migrations/20260824051247_ml_studio_2_storage_policies.sql';
 const bootstrapPath = 'supabase/migrations/20260824070629_enable_canonical_migration_bootstrap.sql';
 const technicalPath = 'supabase/migrations/20260825035858_add_technical_foundation_contracts.sql';
+const measurementPath = 'supabase/migrations/20260825051344_enforce_pom_measurement_integrity.sql';
 const testPath = 'supabase/tests/ml_studio_2_rls_test.sql';
 const foundation = read(foundationPath);
 const rls = read(rlsPath);
 const storage = read(storagePath);
 const bootstrap = read(bootstrapPath);
 const technical = read(technicalPath);
+const measurement = read(measurementPath);
 const rlsTest = read(testPath);
 
 const structurallyBalanced = (sql) => {
@@ -95,6 +97,7 @@ for (const [path, sql] of [
   [storagePath, storage],
   [bootstrapPath, bootstrap],
   [technicalPath, technical],
+  [measurementPath, measurement],
   [testPath, rlsTest],
 ]) {
   check(structurallyBalanced(sql), `Unbalanced SQL delimiters in ${path}.`);
@@ -187,7 +190,7 @@ for (const column of jsonbColumns) {
 
 check((foundation.match(/references /g) ?? []).length >= 80, 'Expected explicit canonical foreign keys are missing.');
 check((foundation.match(/create (?:unique )?index /g) ?? []).length >= 55, 'Expected canonical indexes are missing.');
-const canonicalSql = foundation + rls + storage + bootstrap + technical;
+const canonicalSql = foundation + rls + storage + bootstrap + technical + measurement;
 check(!/\b(create|alter|drop) table public\./i.test(canonicalSql), 'WP2 must not create, alter, or drop legacy public tables.');
 check(!/\bdrop table\b/i.test(canonicalSql), 'WP2 migrations may not drop tables.');
 check(!/\brename\s+(?:table|column)\b/i.test(canonicalSql), 'WP2 migrations may not rename legacy structures.');
@@ -226,6 +229,12 @@ for (const field of ['template_id', 'template_version', 'source_revision_label',
   check(technical.includes(`add column ${field}`), `WP4 export identity field is missing: ${field}`);
 }
 check(technical.includes("'tech_pack'"), 'WP4 tech-pack template type is missing.');
+check(measurement.includes('pom_points_normalized_anchor_check'), 'WP4 POM normalized-anchor constraint is missing.');
+check(measurement.includes('measurement_values_target_nonnegative_check'), 'WP4 non-negative measurement target constraint is missing.');
+check(measurement.includes('fit_measurements_actual_nonnegative_check'), 'WP4 non-negative fit actual constraint is missing.');
+for (const index of ['ml_measurement_values_pom_size_idx', 'ml_grade_values_pom_idx', 'ml_fit_measurements_pom_size_idx']) {
+  check(measurement.includes(`create index ${index}`), `WP4 POM query index is missing: ${index}`);
+}
 
 const srcFiles = [];
 const walk = (directory) => {
@@ -277,6 +286,14 @@ check(technicalRepository.includes('missing_required_view'), 'WP4 required-view 
 check(technicalRepository.includes('missing_source_mapping'), 'WP4 source-mapping validation is missing.');
 check(technicalRepository.includes('unresolved_critical_annotation'), 'WP4 critical-annotation validation is missing.');
 check(technicalRepository.includes('deterministicExportFilename'), 'WP4 deterministic export naming is missing.');
+const measurementRepository = read('src/domains/technical/measurementRepository.ts');
+const measurementPage = read('src/pages/TechnicalStudio/MeasurementStudio.tsx');
+for (const contract of ['convertMeasurement', 'measurementWithinTolerance', 'previewGradeRule', 'parseMeasurementCsv', 'restoreMeasurementSelection']) {
+  check(measurementRepository.includes(`function ${contract}`), `WP4 measurement repository contract is missing: ${contract}`);
+}
+check(measurementPage.includes('POMCanvas'), 'WP4 accessible POM canvas is missing.');
+check(measurementPage.includes('MeasurementDataGrid'), 'WP4 dense measurement grid is missing.');
+check(measurementPage.includes('Structural compare and selective restore'), 'WP4 structural restore UI is missing.');
 
 const plan = Number(rlsTest.match(/select plan\((\d+)\)/)?.[1] ?? 0);
 const assertions = (rlsTest.match(/^select (?:is|results_eq|throws_like|throws_ok|lives_ok)\(/gm) ?? []).length;
@@ -288,7 +305,7 @@ check(rlsTest.includes('unpublish_publication'), 'pgTAP suite lacks unpublicatio
 const migrationNames = readdirSync(new URL('supabase/migrations/', root))
   .filter((name) => name.endsWith('.sql'))
   .sort();
-for (const path of [foundationPath, rlsPath, storagePath, bootstrapPath, technicalPath]) {
+for (const path of [foundationPath, rlsPath, storagePath, bootstrapPath, technicalPath, measurementPath]) {
   check(migrationNames.includes(path.split('/').at(-1)), `Named migration missing: ${path}`);
 }
 check(
@@ -299,8 +316,10 @@ check(
   && migrationNames.indexOf(storagePath.split('/').at(-1))
     < migrationNames.indexOf(bootstrapPath.split('/').at(-1))
   && migrationNames.indexOf(bootstrapPath.split('/').at(-1))
-    < migrationNames.indexOf(technicalPath.split('/').at(-1)),
-  'Migration order is not schema -> RLS -> Storage -> migration bootstrap -> WP4 technical contracts.',
+    < migrationNames.indexOf(technicalPath.split('/').at(-1))
+  && migrationNames.indexOf(technicalPath.split('/').at(-1))
+    < migrationNames.indexOf(measurementPath.split('/').at(-1)),
+  'Migration order is not schema -> RLS -> Storage -> migration bootstrap -> WP4 flats -> WP4 measurements.',
 );
 
 if (failures.length > 0) {

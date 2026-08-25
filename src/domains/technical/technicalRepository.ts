@@ -96,7 +96,18 @@ export async function createTechnicalCheckpoint(state: CanonicalWorkspaceState, 
   if (!spec) throw new Error('Technical specification not found.');
   const garment = state.garments.find((item) => item.id === spec.garmentId)!;
   const flats = requiredFlatViews.map((view) => activeFlat(state, specId, view));
-  const snapshot = { garment: { id: garment.id, code: garment.garmentCode, revision: garment.revision }, spec: { id: spec.id, revisionLabel: spec.revisionLabel }, flats: flats.map((flat) => ({ view: flat?.view, checksum: state.mediaAssets.find((asset) => asset.id === flat?.assetId)?.checksum, annotations: state.flatAnnotations.filter((item) => item.flatId === flat?.id) })) };
+  const setIds = new Set(state.measurementSets.filter((item) => item.specId === specId).map((item) => item.id));
+  const ruleIds = new Set(state.gradeRules.filter((item) => item.specId === specId).map((item) => item.id));
+  const snapshot = {
+    garment: { id: garment.id, code: garment.garmentCode, revision: garment.revision },
+    spec: { id: spec.id, revisionLabel: spec.revisionLabel, unit: spec.unit },
+    flats: flats.map((flat) => ({ view: flat?.view, checksum: state.mediaAssets.find((asset) => asset.id === flat?.assetId)?.checksum, annotations: state.flatAnnotations.filter((item) => item.flatId === flat?.id) })),
+    pomPoints: state.pomPoints.filter((item) => item.specId === specId),
+    measurementSets: state.measurementSets.filter((item) => item.specId === specId),
+    measurementValues: state.measurementValues.filter((item) => setIds.has(item.setId)),
+    gradeRules: state.gradeRules.filter((item) => item.specId === specId),
+    gradeRuleValues: state.gradeRuleValues.filter((item) => ruleIds.has(item.gradeRuleId)),
+  };
   const checksum = await checksumText(stableStringify(snapshot));
   const versionNo = state.garmentVersions.filter((item) => item.garmentId === garment.id).length + 1;
   const version: CanonicalGarmentVersion = { ...record(state.studioId), garmentId: garment.id, versionNo, label: `Technical v${versionNo}`, scope: 'technical', checksum, snapshot };

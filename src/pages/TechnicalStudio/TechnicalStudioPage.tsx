@@ -9,11 +9,13 @@ import type { CanonicalMediaAsset, TechnicalFlatView } from '../../domains/works
 import { useTechnicalStudio } from '../../hooks/useTechnicalStudio';
 import { technicalPreviewUrl } from '../../lib/technicalFiles';
 import { cn } from '../../lib/classes';
+import { MeasurementStudio, type MeasurementSection } from './MeasurementStudio';
 
 export function TechnicalStudioPage({ garmentId, onOpenGarment }: { garmentId?: string; onOpenGarment: (garmentId: string) => void }) {
   const { state } = useTechnicalStudio();
+  const [technicalSection, setTechnicalSection] = useState<'flats' | MeasurementSection>('flats');
   if (!state) return <CanonicalWorkspaceState><Card><p className="text-sm text-stardust/60">Preparing Technical Studio…</p></Card></CanonicalWorkspaceState>;
-  if (garmentId) return <FlatsWorkspace garmentId={garmentId} />;
+  if (garmentId) return <CanonicalWorkspaceState><section className="space-y-4"><nav aria-label="Technical Studio sections" className="flex gap-2 overflow-x-auto pb-1">{(['flats', 'pom', 'measurements', 'grading'] as const).map((item) => <button aria-current={technicalSection === item ? 'page' : undefined} className={cn('min-h-11 shrink-0 rounded-xl border px-4 text-sm capitalize focus:outline-none focus:ring-2 focus:ring-ember/60', technicalSection === item ? 'border-ember bg-ember text-midnight' : 'border-bronze/30 text-stardust/65')} key={item} onClick={() => setTechnicalSection(item)} type="button">{item === 'pom' ? 'POM' : item}</button>)}</nav>{technicalSection === 'flats' ? <FlatsWorkspace garmentId={garmentId} /> : <MeasurementStudio garmentId={garmentId} section={technicalSection} />}</section></CanonicalWorkspaceState>;
   const rows = state.garments.map((garment) => {
     const spec = state.technicalSpecs.find((item) => item.garmentId === garment.id);
     const issues = spec ? validateTechnicalSpec(state, spec.id, true) : [{ message: 'Technical specification not started.' }];

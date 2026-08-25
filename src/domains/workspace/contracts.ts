@@ -187,6 +187,14 @@ export type CanonicalValidationIssue = { code: 'missing_required_view' | 'missin
 export type CanonicalValidationRun = CanonicalRecord & { specId: string; garmentVersionId: string | null; status: 'passed' | 'failed' | 'warning' | 'error'; rulesetVersion: string; issues: CanonicalValidationIssue[]; ranAt: string };
 export type CanonicalGarmentVersion = CanonicalRecord & { garmentId: string; versionNo: number; label: string; scope: 'technical'; checksum: string; snapshot: Record<string, unknown> };
 export type CanonicalTechPackExport = CanonicalRecord & { specId: string; garmentVersionId: string; exportAssetId: string; format: 'pdf' | 'zip'; checksum: string; templateId: string; templateVersion: number; sourceRevisionLabel: string; deterministicFilename: string };
+export type CanonicalPomPoint = CanonicalRecord & { specId: string; code: string; name: string; method: string; diagramAnchor: { x: number; y: number }; sortOrder: number };
+export type CanonicalMeasurementSet = CanonicalRecord & { specId: string; name: string; sampleType: string | null; baseSize: string; status: 'draft' | 'in_review' | 'approved' | 'superseded' };
+export type CanonicalMeasurementValue = CanonicalRecord & { setId: string; pomPointId: string; size: string; target: number; tolerancePlus: number; toleranceMinus: number };
+export type CanonicalGradeRule = CanonicalRecord & { specId: string; name: string; sizeRange: string[]; status: 'draft' | 'approved' | 'superseded' };
+export type CanonicalGradeRuleValue = CanonicalRecord & { gradeRuleId: string; pomPointId: string; fromSize: string; toSize: string; delta: number };
+export type CanonicalSampleRound = CanonicalRecord & { garmentId: string; garmentVersionId: string | null; roundNo: number; sampleType: string; status: 'planned' | 'requested' | 'in_progress' | 'received' | 'reviewed' | 'approved' | 'rejected'; receivedAt: string | null };
+export type CanonicalFitMeasurement = CanonicalRecord & { sampleRoundId: string; pomPointId: string; size: string; actual: number; variance: number };
+export type CanonicalRestoreOperation = CanonicalRecord & { garmentId: string; sourceVersionId: string; resultVersionId: string; selectedPomPointIds: string[]; selectedMeasurementKeys: string[]; reason: string };
 
 export type CanonicalWorkspaceState = {
   annotations: CanonicalAnnotation[];
@@ -207,7 +215,15 @@ export type CanonicalWorkspaceState = {
   moodboards: CanonicalMoodboard[];
   flatAnnotations: CanonicalFlatAnnotation[];
   garmentVersions: CanonicalGarmentVersion[];
-  schemaVersion: 2;
+  gradeRuleValues: CanonicalGradeRuleValue[];
+  gradeRules: CanonicalGradeRule[];
+  measurementSets: CanonicalMeasurementSet[];
+  measurementValues: CanonicalMeasurementValue[];
+  pomPoints: CanonicalPomPoint[];
+  restoreOperations: CanonicalRestoreOperation[];
+  sampleRounds: CanonicalSampleRound[];
+  fitMeasurements: CanonicalFitMeasurement[];
+  schemaVersion: 3;
   studioId: string;
   suppliers: CanonicalSupplier[];
   supplierItems: CanonicalSupplierItem[];

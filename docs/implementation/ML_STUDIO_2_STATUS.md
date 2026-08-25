@@ -1,15 +1,16 @@
 # Mystic Lore Studio 2.0 Implementation Ledger
 
-Last updated: 2026-08-24
+Last updated: 2026-08-25
 
 This ledger records the reproducible baseline and bounded implementation work
 for Mystic Lore Studio 2.0. WP2 establishes the additive canonical schema,
 membership RLS, publication boundary, Storage paths, deterministic legacy
 migration, recovery evidence, and typed read-through adapters. WP3 cuts the
 garment and reusable-library routes over to the persisted canonical workspace
-without changing unrelated legacy domains. The first WP4 segment adds the
-Technical Studio root and source-evidenced flat workflow without entering POM,
-BOM, grading, or construction.
+without changing unrelated legacy domains. WP4 now includes the Technical
+Studio root, source-evidenced flat workflow, stable POM authoring, measurement
+sets, fit actuals, and non-destructive grading. BOM, construction, and export
+completion remain deferred.
 
 ## Work-package Status
 
@@ -20,7 +21,8 @@ BOM, grading, or construction.
 | WP2 | Schema foundation, RLS, storage paths, read-through adapters | Complete | Legacy fixture dry-runs and round-trips with zero unexplained loss; retry/recovery evidence is recorded |
 | WP3 | Garment, collection, design brief, moodboard, media relationships, Material Vault, Component Library, and reusable templates | Complete | Core relationships replace copied project/material fields; canonical routes pass parity and recovery checks |
 | WP4a | Technical specification root, Technical Studio home, flats, annotations, files, validation, and export artifact foundation | Complete | A seeded garment can create, review, approve, version, validate, and export required source-evidenced flats |
-| WP4b-WP10 | Remaining Product Bible sequence | Not started | Begins with POM and measurement templates in Prompt 05 |
+| WP4b | Stable POM, measurement sets and values, fit actuals, grading preview/commit, structural compare, and selective restore | Complete | A seeded garment defines POM once, validates base/graded sets, and records sample actuals against stable points |
+| WP4c-WP10 | Remaining Product Bible sequence | Not started | Begins with BOM, construction, and export completion in Prompt 06 |
 
 ## Verification
 
@@ -49,15 +51,15 @@ Characterization coverage:
 - `tests/shellContract.test.ts`: fixed desktop/compact responsive shell modes
   and semantic native-button navigation for keyboard access.
 
-Latest WP4a verification:
+Latest WP4b verification:
 
 | Command | Result |
 | --- | --- |
-| `npm run validate:schema` | Passed: 66 private tables, 2 public projection tables, 31 pgTAP assertions, 7 preserved legacy inputs |
-| `npm run db:reset` | Passed: all six legacy migrations, four ordered WP2 migrations, and the ordered WP4 technical-contract migration applied to an empty local database |
-| `npm run test:db` | Passed: 31 pgTAP assertions, including existing tenant/publication/Storage policies plus annotation/export contract fields |
+| `npm run validate:schema` | Passed: 66 private tables, 2 public projection tables, 33 pgTAP assertions, 7 preserved legacy inputs |
+| `npm run db:reset` | Passed: all six legacy migrations, four ordered WP2 migrations, and both ordered WP4 migrations applied to an empty local database |
+| `npm run test:db` | Passed: 33 pgTAP assertions, including tenant/publication/Storage policies plus POM, decimal, fit, and index integrity |
 | Authenticated local API dry run | Passed: representative fixture applied through the typed Supabase store; one owner-visible garment; duplicate execution completed safely |
-| `npm test` | Passed: 11 test files, 45 tests, including technical validation, revision comparison, approval gates, checkpoint naming, route-state, and accessibility contracts |
+| `npm test` | Passed: 13 test files, 58 tests, including unit conversion, decimal/tolerance boundaries, CSV failure atomicity, fit variance, grade deltas, migrated state, structural restore, keyboard paths, and responsive contracts |
 | `npm run build` | Passed: TypeScript build and Vite production build |
 
 WP4a evidence:
@@ -70,6 +72,19 @@ WP4a evidence:
   revision identity, visible state gates, and responsive layout contracts.
 - Live authenticated browser verification passed on desktop and 390 px width
   with no horizontal overflow or console errors.
+
+WP4b evidence:
+
+- [ADR-0009: POM, measurement, and grading model](../adr/ADR-0009-wp4-pom-measurement-and-grading.md)
+- `tests/measurements.test.ts`: migrated-state hydration, unit conversion,
+  tolerance boundaries, stable POM identity, fit variance, grade preview and
+  commit, CSV validation/import, structural comparison, and selective restore.
+- `tests/wp4MeasurementUiContract.test.ts`: synchronized POM canvas/list,
+  Enter/Escape editing, dirty/conflict feedback, paste validation, mobile row
+  cards, non-destructive grading, and restore-selection contracts.
+- Live authenticated verification created one seeded POM/base target/sample
+  actual, previewed XS-XL grading, and passed 390 px reflow with no horizontal
+  page overflow or console errors.
 
 WP3 cutover evidence:
 
@@ -101,7 +116,7 @@ See [baseline screenshot manifest](BASELINE_SCREENSHOTS.md).
 | Dashboard | `#/` or `#/dashboard` | `DashboardPage` | `StudioDataProvider` |
 | Garments | `#/projects`, `#/projects/:id` (legacy-compatible paths) | `GarmentLibraryPage`, `CanonicalGarmentWorkspacePage` | `CanonicalWorkspaceProvider` |
 | Libraries | `#/fabrics` (legacy-compatible path) | `LibraryVaultPage` (Material Vault and Component Library) | `CanonicalWorkspaceProvider` |
-| Technical Studio | `#/technical`, `#/technical/:garmentId` | `TechnicalStudioPage`, `FlatCanvas`, `ValidationSummary` | `CanonicalWorkspaceProvider` and technical commands/repository |
+| Technical Studio | `#/technical`, `#/technical/:garmentId` | `TechnicalStudioPage`, `FlatCanvas`, `POMCanvas`, `MeasurementDataGrid`, grading preview, structural restore | `CanonicalWorkspaceProvider` and technical/measurement commands and repositories |
 | Workflow | `#/kanban` | `KanbanPage` | `StudioDataProvider` |
 | Editorial Collections | `#/lookbooks` | `LookbooksPage`, `EditorialSceneBuilder`, `EditorialCollectionViewer` | `StudioDataProvider` and local editorial collection state |
 | Portfolio manager | `#/portfolio` | `PortfolioPage` | `StudioDataProvider` |

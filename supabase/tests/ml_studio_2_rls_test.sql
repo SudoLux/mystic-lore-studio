@@ -3,7 +3,7 @@ begin;
 create extension if not exists pgtap with schema extensions;
 set local search_path = extensions, public, ml_private, ml_public;
 
-select plan(31);
+select plan(33);
 
 insert into auth.users (id, email) values
   ('10000000-0000-4000-8000-000000000001', 'wp2-owner-a@example.test'),
@@ -28,6 +28,24 @@ select is(
   (select count(*) from information_schema.columns where table_schema = 'ml_private' and table_name = 'tech_pack_exports' and column_name in ('template_id', 'template_version', 'source_revision_label', 'deterministic_filename')),
   4::bigint,
   'technical exports retain every deterministic identity input'
+);
+select is(
+  (select count(*) from pg_constraint where conname in (
+    'pom_points_name_not_blank_check', 'pom_points_method_not_blank_check',
+    'pom_points_normalized_anchor_check', 'measurement_sets_name_not_blank_check',
+    'measurement_sets_base_size_not_blank_check', 'measurement_values_size_not_blank_check',
+    'measurement_values_target_nonnegative_check', 'grade_rule_values_sizes_not_blank_check',
+    'fit_measurements_size_not_blank_check', 'fit_measurements_actual_nonnegative_check'
+  )),
+  10::bigint,
+  'POM, target, grade, and fit decimal integrity constraints are installed'
+);
+select is(
+  (select count(*) from pg_indexes where schemaname = 'ml_private' and indexname in (
+    'ml_measurement_values_pom_size_idx', 'ml_grade_values_pom_idx', 'ml_fit_measurements_pom_size_idx'
+  )),
+  3::bigint,
+  'POM-centered target, grade, and fit lookup indexes are installed'
 );
 
 insert into ml_private.studio_members (

@@ -198,6 +198,8 @@ Ordered migrations:
 2. `20260824051237_ml_studio_2_rls_and_publication_boundary.sql`
 3. `20260824051247_ml_studio_2_storage_policies.sql`
 4. `20260824070629_enable_canonical_migration_bootstrap.sql`
+5. `20260825035858_add_technical_foundation_contracts.sql`
+6. `20260825051344_enforce_pom_measurement_integrity.sql`
 
 Verification commands:
 
@@ -213,7 +215,7 @@ npm run build
 `validate:schema` is deterministic and verifies the table inventory, tenant
 columns, allowed JSONB fields, RLS/storage coverage, migration order, pgTAP
 plan, WP3 canonical route boundaries, and checksums of all six legacy
-migrations plus the WP0 fixture. `test:db` executes the 28-assertion pgTAP
+migrations plus the WP0 fixture. `test:db` executes the 33-assertion pgTAP
 matrix on a local or explicit test database.
 
 ## WP2B Transition Contract
@@ -267,5 +269,25 @@ flat revision registration, structured annotations, approval, validation runs,
 comparison preparation, garment Technical checkpoints, and export records.
 Original source bytes and generated ZIP bytes are durable offline blobs with
 canonical private Storage target paths. Front and Back are the initial required
-view set. POM, BOM, grading, and construction tables remain unused until their
-dedicated work-package segments.
+view set. BOM and construction remain unused until their dedicated segment.
+
+## WP4b POM, Measurement, Fit, and Grading Contract
+
+`technical_specs.unit` is the only stored unit for a specification. POM
+targets, asymmetric tolerances, grade deltas, and sample actuals are persisted
+in that unit; millimeter, centimeter, and inch alternatives are explicit display
+conversions. POM rows own normalized anchors, names, and methods independently
+of their canvas rendering.
+
+The `enforce_pom_measurement_integrity` migration adds normalized-anchor,
+non-blank identity, non-negative target/actual, and size constraints plus
+POM-centered target, grading, and fit lookup indexes. Existing Studio-derived
+RLS covers these already-canonical private tables.
+
+The measurement repository provides atomic CSV validation/import, inclusive
+tolerance evaluation, sample variance, grading previews and non-destructive
+graded-set commits. Technical checkpoints now snapshot POM, measurement-set,
+measurement-value, grade-rule, and grade-delta structure. Comparison is keyed
+by stable POM and set/POM/size identity. Selective restore updates only chosen
+rows, records a restore operation with a new checkpoint, and never removes fit
+measurements created after the source checkpoint.
