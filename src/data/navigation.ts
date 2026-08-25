@@ -7,6 +7,7 @@ import {
   BriefcaseBusiness,
   LayoutDashboard,
   Settings,
+  Ruler,
 } from 'lucide-react';
 import type { NavItem } from '../types/navigation';
 
@@ -31,6 +32,13 @@ export const navigationItems: NavItem[] = [
     shortLabel: 'Flow',
     description: 'Workflow board',
     icon: Columns3,
+  },
+  {
+    id: 'technical',
+    label: 'Technical Studio',
+    shortLabel: 'Tech',
+    description: 'Flats and release evidence',
+    icon: Ruler,
   },
   {
     id: 'lookbooks',

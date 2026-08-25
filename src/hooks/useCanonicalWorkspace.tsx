@@ -34,13 +34,14 @@ type CanonicalWorkspaceContextValue = {
   addComponent: (input: ComponentInput) => { componentId: string; variantId: string };
   addGarment: (input: GarmentInput) => string;
   addMaterial: (input: MaterialInput) => { materialId: string; variantId: string };
-  addTemplate: (input: { name: string; templateType: 'pom' | 'measurement' | 'grading' | 'bom' | 'construction' | 'validation' }) => string;
+  addTemplate: (input: { name: string; templateType: 'pom' | 'measurement' | 'grading' | 'bom' | 'construction' | 'validation' | 'tech_pack' }) => string;
   attachAsset: (garmentId: string, assetId: string, role: CanonicalGarmentMedia['role']) => void;
   attachMoodboardItem: (boardId: string, assetId: string, caption?: string) => void;
   attachComponent: (garmentId: string, variantId: string, placement?: string) => void;
   attachMaterial: (garmentId: string, variantId: string, role: string, placement?: string) => void;
   createMoodboard: (garmentId: string, title?: string) => string;
   deleteGarment: (garmentId: string) => void;
+  commitWorkspace: (change: (current: CanonicalWorkspaceState) => CanonicalWorkspaceState) => void;
   error: string | null;
   isReady: boolean;
   recordInventory: (variantId: string, entryType: InventoryEntryType, quantity: number, note?: string) => void;
@@ -71,8 +72,8 @@ export function CanonicalWorkspaceProvider({ children, userId }: { children: Rea
       try {
         const stored = window.localStorage.getItem(key);
         const parsed = stored ? JSON.parse(stored) as CanonicalWorkspaceState : null;
-        const next = parsed?.schemaVersion === 1 && parsed.studioId && Array.isArray(parsed.designBriefs)
-          ? parsed
+        const next = parsed?.studioId && Array.isArray(parsed.designBriefs)
+          ? hydrateTechnicalState(parsed)
           : await createCanonicalWorkspace({ data: rawData, ownerUserId: userId });
         if (cancelled) return;
         window.localStorage.setItem(key, JSON.stringify(next));
@@ -116,6 +117,7 @@ export function CanonicalWorkspaceProvider({ children, userId }: { children: Rea
     attachMaterial: (garmentId, variantId, role, placement) => commit((current) => attachMaterial(current, garmentId, variantId, role, placement).state),
     createMoodboard: (garmentId, title) => { let id = ''; commit((current) => { const result = createMoodboard(current, garmentId, title); id = result.board.id; return result.state; }); return id; },
     deleteGarment: (garmentId) => commit((current) => deleteGarment(current, garmentId)),
+    commitWorkspace: commit,
     error,
     isReady: Boolean(state),
     recordInventory: (variantId, entryType, quantity, note) => commit((current) => recordInventory(current, variantId, entryType, quantity, note).state),
@@ -128,6 +130,21 @@ export function CanonicalWorkspaceProvider({ children, userId }: { children: Rea
   }), [commit, error, state, syncState]);
 
   return <CanonicalWorkspaceContext.Provider value={value}>{children}</CanonicalWorkspaceContext.Provider>;
+}
+
+function hydrateTechnicalState(state: CanonicalWorkspaceState): CanonicalWorkspaceState {
+  return {
+    ...state,
+    flatAnnotations: state.flatAnnotations ?? [],
+    garmentVersions: state.garmentVersions ?? [],
+    schemaVersion: 2,
+    techPackExports: state.techPackExports ?? [],
+    technicalFiles: state.technicalFiles ?? [],
+    technicalFlats: state.technicalFlats ?? [],
+    technicalSpecs: state.technicalSpecs ?? [],
+    validationRuns: state.validationRuns ?? [],
+    templates: (state.templates ?? []).map((template) => ({ ...template, payload: template.payload ?? {} })),
+  };
 }
 
 export function useCanonicalWorkspace() {

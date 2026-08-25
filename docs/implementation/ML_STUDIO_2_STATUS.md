@@ -7,7 +7,9 @@ for Mystic Lore Studio 2.0. WP2 establishes the additive canonical schema,
 membership RLS, publication boundary, Storage paths, deterministic legacy
 migration, recovery evidence, and typed read-through adapters. WP3 cuts the
 garment and reusable-library routes over to the persisted canonical workspace
-without changing unrelated legacy domains.
+without changing unrelated legacy domains. The first WP4 segment adds the
+Technical Studio root and source-evidenced flat workflow without entering POM,
+BOM, grading, or construction.
 
 ## Work-package Status
 
@@ -17,7 +19,8 @@ without changing unrelated legacy domains.
 | WP1 | Route modules, garment workspace shell, domain folders, repository interfaces | Complete | Build and route parity pass without intentional feature change |
 | WP2 | Schema foundation, RLS, storage paths, read-through adapters | Complete | Legacy fixture dry-runs and round-trips with zero unexplained loss; retry/recovery evidence is recorded |
 | WP3 | Garment, collection, design brief, moodboard, media relationships, Material Vault, Component Library, and reusable templates | Complete | Core relationships replace copied project/material fields; canonical routes pass parity and recovery checks |
-| WP4-WP10 | Product Bible sequence | Not started | See Product Bible page 59 |
+| WP4a | Technical specification root, Technical Studio home, flats, annotations, files, validation, and export artifact foundation | Complete | A seeded garment can create, review, approve, version, validate, and export required source-evidenced flats |
+| WP4b-WP10 | Remaining Product Bible sequence | Not started | Begins with POM and measurement templates in Prompt 05 |
 
 ## Verification
 
@@ -46,16 +49,27 @@ Characterization coverage:
 - `tests/shellContract.test.ts`: fixed desktop/compact responsive shell modes
   and semantic native-button navigation for keyboard access.
 
-Latest WP3 verification:
+Latest WP4a verification:
 
 | Command | Result |
 | --- | --- |
-| `npm run validate:schema` | Passed: 66 private tables, 2 public projection tables, 28 pgTAP assertions, 7 preserved legacy inputs |
-| `npm run db:reset` | Passed: all six legacy migrations and four ordered WP2 migrations applied to an empty local database |
-| `npm run test:db` | Passed: 28 pgTAP assertions, including owner-only settings retry, same-Studio access, cross-Studio denial, anonymous denial, Public Cut, and Storage policies |
+| `npm run validate:schema` | Passed: 66 private tables, 2 public projection tables, 31 pgTAP assertions, 7 preserved legacy inputs |
+| `npm run db:reset` | Passed: all six legacy migrations, four ordered WP2 migrations, and the ordered WP4 technical-contract migration applied to an empty local database |
+| `npm run test:db` | Passed: 31 pgTAP assertions, including existing tenant/publication/Storage policies plus annotation/export contract fields |
 | Authenticated local API dry run | Passed: representative fixture applied through the typed Supabase store; one owner-visible garment; duplicate execution completed safely |
-| `npm test` | Passed: 9 test files, 37 tests, including canonical relationship, inventory, media/moodboard, route-state, and accessibility contracts |
+| `npm test` | Passed: 11 test files, 45 tests, including technical validation, revision comparison, approval gates, checkpoint naming, route-state, and accessibility contracts |
 | `npm run build` | Passed: TypeScript build and Vite production build |
+
+WP4a evidence:
+
+- [ADR-0008: Technical flat source evidence](../adr/ADR-0008-wp4-technical-flat-source-evidence.md)
+- `tests/technicalStudio.test.ts`: required-view/source validation, revision
+  comparison, structured critical-annotation resolution, approval, checkpoint,
+  and deterministic filename checks.
+- `tests/wp4UiContract.test.ts`: keyboard canvas/view switching, source and
+  revision identity, visible state gates, and responsive layout contracts.
+- Live authenticated browser verification passed on desktop and 390 px width
+  with no horizontal overflow or console errors.
 
 WP3 cutover evidence:
 
@@ -87,6 +101,7 @@ See [baseline screenshot manifest](BASELINE_SCREENSHOTS.md).
 | Dashboard | `#/` or `#/dashboard` | `DashboardPage` | `StudioDataProvider` |
 | Garments | `#/projects`, `#/projects/:id` (legacy-compatible paths) | `GarmentLibraryPage`, `CanonicalGarmentWorkspacePage` | `CanonicalWorkspaceProvider` |
 | Libraries | `#/fabrics` (legacy-compatible path) | `LibraryVaultPage` (Material Vault and Component Library) | `CanonicalWorkspaceProvider` |
+| Technical Studio | `#/technical`, `#/technical/:garmentId` | `TechnicalStudioPage`, `FlatCanvas`, `ValidationSummary` | `CanonicalWorkspaceProvider` and technical commands/repository |
 | Workflow | `#/kanban` | `KanbanPage` | `StudioDataProvider` |
 | Editorial Collections | `#/lookbooks` | `LookbooksPage`, `EditorialSceneBuilder`, `EditorialCollectionViewer` | `StudioDataProvider` and local editorial collection state |
 | Portfolio manager | `#/portfolio` | `PortfolioPage` | `StudioDataProvider` |

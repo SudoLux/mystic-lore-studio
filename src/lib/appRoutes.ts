@@ -5,6 +5,7 @@ export type AppRoute = {
   fabricId?: string;
   page: PageId;
   projectId?: string;
+  technicalGarmentId?: string;
 };
 
 export type PublicPortfolioRoute = {
@@ -28,6 +29,10 @@ export function parseStudioHashRoute(hash: string): AppRoute {
   }
 
   if (section === 'projects') return { page: 'projects' };
+
+  if (section === 'technical') return recordId
+    ? { page: 'technical', technicalGarmentId: recordId }
+    : { page: 'technical' };
 
   if (section === 'fabrics') {
     return recordId

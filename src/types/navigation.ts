@@ -3,6 +3,7 @@ import type { LucideIcon } from 'lucide-react';
 export type PageId =
   | 'dashboard'
   | 'projects'
+  | 'technical'
   | 'kanban'
   | 'lookbooks'
   | 'portfolio'

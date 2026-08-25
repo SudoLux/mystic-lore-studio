@@ -46,6 +46,8 @@ export type CanonicalMediaAsset = CanonicalRecord & {
   sizeBytes: number;
   storagePath: string;
   width: number | null;
+  localBlobKey?: string;
+  storageState?: 'queued' | 'stored' | 'uploaded';
 };
 
 export type CanonicalMediaDerivative = CanonicalRecord & {
@@ -171,9 +173,20 @@ export type CanonicalSupplierItem = CanonicalRecord & {
 export type CanonicalTemplate = CanonicalRecord & {
   name: string;
   status: 'draft' | 'active' | 'archived';
-  templateType: 'pom' | 'measurement' | 'grading' | 'bom' | 'construction' | 'validation';
+  payload: Record<string, unknown>;
+  templateType: 'pom' | 'measurement' | 'grading' | 'bom' | 'construction' | 'validation' | 'tech_pack';
   version: number;
 };
+
+export type TechnicalFlatView = 'front' | 'back' | 'left' | 'right' | 'inside' | 'detail' | 'other';
+export type CanonicalTechnicalSpec = CanonicalRecord & { garmentId: string; status: 'draft' | 'in_review' | 'approved' | 'released' | 'superseded'; baseSize: string; unit: 'mm' | 'cm' | 'in'; revisionLabel: string };
+export type CanonicalTechnicalFlat = CanonicalRecord & { specId: string; view: TechnicalFlatView; assetId: string; source: 'uploaded' | 'drawn' | 'generated' | 'derived'; approvedAt: string | null; approvedBy: string | null; sortOrder: number };
+export type CanonicalFlatAnnotation = CanonicalRecord & { flatId: string; anchor: { x: number; y: number }; label: string; detail: string; severity: 'info' | 'warning' | 'critical'; status: 'open' | 'resolved' | 'dismissed'; sortOrder: number };
+export type CanonicalTechnicalFile = CanonicalRecord & { specId: string; assetId: string; fileType: 'pattern' | 'cad' | 'illustrator' | 'spreadsheet' | 'pdf' | 'reference' | 'other'; versionLabel: string; isSource: boolean };
+export type CanonicalValidationIssue = { code: 'missing_required_view' | 'missing_source_mapping' | 'unresolved_critical_annotation' | 'unapproved_required_view'; entityId?: string; field: string; message: string; severity: 'error' | 'warning' };
+export type CanonicalValidationRun = CanonicalRecord & { specId: string; garmentVersionId: string | null; status: 'passed' | 'failed' | 'warning' | 'error'; rulesetVersion: string; issues: CanonicalValidationIssue[]; ranAt: string };
+export type CanonicalGarmentVersion = CanonicalRecord & { garmentId: string; versionNo: number; label: string; scope: 'technical'; checksum: string; snapshot: Record<string, unknown> };
+export type CanonicalTechPackExport = CanonicalRecord & { specId: string; garmentVersionId: string; exportAssetId: string; format: 'pdf' | 'zip'; checksum: string; templateId: string; templateVersion: number; sourceRevisionLabel: string; deterministicFilename: string };
 
 export type CanonicalWorkspaceState = {
   annotations: CanonicalAnnotation[];
@@ -192,11 +205,18 @@ export type CanonicalWorkspaceState = {
   mediaDerivatives: CanonicalMediaDerivative[];
   moodboardItems: CanonicalMoodboardItem[];
   moodboards: CanonicalMoodboard[];
-  schemaVersion: 1;
+  flatAnnotations: CanonicalFlatAnnotation[];
+  garmentVersions: CanonicalGarmentVersion[];
+  schemaVersion: 2;
   studioId: string;
   suppliers: CanonicalSupplier[];
   supplierItems: CanonicalSupplierItem[];
   templates: CanonicalTemplate[];
+  technicalFiles: CanonicalTechnicalFile[];
+  technicalFlats: CanonicalTechnicalFlat[];
+  technicalSpecs: CanonicalTechnicalSpec[];
+  techPackExports: CanonicalTechPackExport[];
+  validationRuns: CanonicalValidationRun[];
 };
 
 export type WorkspaceSyncState = 'loading' | 'ready' | 'offline' | 'conflict' | 'error';

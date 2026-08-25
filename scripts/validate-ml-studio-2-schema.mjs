@@ -30,11 +30,13 @@ const foundationPath = 'supabase/migrations/20260824051228_ml_studio_2_canonical
 const rlsPath = 'supabase/migrations/20260824051237_ml_studio_2_rls_and_publication_boundary.sql';
 const storagePath = 'supabase/migrations/20260824051247_ml_studio_2_storage_policies.sql';
 const bootstrapPath = 'supabase/migrations/20260824070629_enable_canonical_migration_bootstrap.sql';
+const technicalPath = 'supabase/migrations/20260825035858_add_technical_foundation_contracts.sql';
 const testPath = 'supabase/tests/ml_studio_2_rls_test.sql';
 const foundation = read(foundationPath);
 const rls = read(rlsPath);
 const storage = read(storagePath);
 const bootstrap = read(bootstrapPath);
+const technical = read(technicalPath);
 const rlsTest = read(testPath);
 
 const structurallyBalanced = (sql) => {
@@ -92,6 +94,7 @@ for (const [path, sql] of [
   [rlsPath, rls],
   [storagePath, storage],
   [bootstrapPath, bootstrap],
+  [technicalPath, technical],
   [testPath, rlsTest],
 ]) {
   check(structurallyBalanced(sql), `Unbalanced SQL delimiters in ${path}.`);
@@ -184,7 +187,7 @@ for (const column of jsonbColumns) {
 
 check((foundation.match(/references /g) ?? []).length >= 80, 'Expected explicit canonical foreign keys are missing.');
 check((foundation.match(/create (?:unique )?index /g) ?? []).length >= 55, 'Expected canonical indexes are missing.');
-const canonicalSql = foundation + rls + storage + bootstrap;
+const canonicalSql = foundation + rls + storage + bootstrap + technical;
 check(!/\b(create|alter|drop) table public\./i.test(canonicalSql), 'WP2 must not create, alter, or drop legacy public tables.');
 check(!/\bdrop table\b/i.test(canonicalSql), 'WP2 migrations may not drop tables.');
 check(!/\brename\s+(?:table|column)\b/i.test(canonicalSql), 'WP2 migrations may not rename legacy structures.');
@@ -216,6 +219,13 @@ check(
   bootstrap.includes('grant insert on table ml_private.studio_settings to authenticated'),
   'Canonical migration bootstrap lacks the matching least-privilege table grant.',
 );
+check(technical.includes("severity text not null default 'info'"), 'WP4 flat annotation severity contract is missing.');
+check(technical.includes("status text not null default 'open'"), 'WP4 flat annotation resolution contract is missing.');
+check(technical.includes('flat_annotations_open_critical_idx'), 'WP4 unresolved-critical annotation index is missing.');
+for (const field of ['template_id', 'template_version', 'source_revision_label', 'deterministic_filename']) {
+  check(technical.includes(`add column ${field}`), `WP4 export identity field is missing: ${field}`);
+}
+check(technical.includes("'tech_pack'"), 'WP4 tech-pack template type is missing.');
 
 const srcFiles = [];
 const walk = (directory) => {
@@ -259,6 +269,14 @@ check(router.includes('<CanonicalGarmentWorkspacePage'), 'Garment detail route m
 check(router.includes('<LibraryVaultPage'), 'Material Vault route must use the canonical WP3 library page.');
 check(!router.includes('<ProjectsPage'), 'WP3 must remove the legacy project-library read path.');
 check(!router.includes('<FabricVaultPage'), 'WP3 must remove the legacy fabric-vault read path.');
+const technicalPage = read('src/pages/TechnicalStudio/TechnicalStudioPage.tsx');
+const technicalRepository = read('src/domains/technical/technicalRepository.ts');
+check(router.includes('<TechnicalStudioPage'), 'WP4 Technical Studio route is missing.');
+check(technicalPage.includes('FlatCanvas'), 'WP4 Flats workspace is missing.');
+check(technicalRepository.includes('missing_required_view'), 'WP4 required-view validation is missing.');
+check(technicalRepository.includes('missing_source_mapping'), 'WP4 source-mapping validation is missing.');
+check(technicalRepository.includes('unresolved_critical_annotation'), 'WP4 critical-annotation validation is missing.');
+check(technicalRepository.includes('deterministicExportFilename'), 'WP4 deterministic export naming is missing.');
 
 const plan = Number(rlsTest.match(/select plan\((\d+)\)/)?.[1] ?? 0);
 const assertions = (rlsTest.match(/^select (?:is|results_eq|throws_like|throws_ok|lives_ok)\(/gm) ?? []).length;
@@ -270,7 +288,7 @@ check(rlsTest.includes('unpublish_publication'), 'pgTAP suite lacks unpublicatio
 const migrationNames = readdirSync(new URL('supabase/migrations/', root))
   .filter((name) => name.endsWith('.sql'))
   .sort();
-for (const path of [foundationPath, rlsPath, storagePath, bootstrapPath]) {
+for (const path of [foundationPath, rlsPath, storagePath, bootstrapPath, technicalPath]) {
   check(migrationNames.includes(path.split('/').at(-1)), `Named migration missing: ${path}`);
 }
 check(
@@ -279,8 +297,10 @@ check(
   && migrationNames.indexOf(rlsPath.split('/').at(-1))
     < migrationNames.indexOf(storagePath.split('/').at(-1))
   && migrationNames.indexOf(storagePath.split('/').at(-1))
-    < migrationNames.indexOf(bootstrapPath.split('/').at(-1)),
-  'WP2 migration order is not schema -> RLS -> Storage -> migration bootstrap.',
+    < migrationNames.indexOf(bootstrapPath.split('/').at(-1))
+  && migrationNames.indexOf(bootstrapPath.split('/').at(-1))
+    < migrationNames.indexOf(technicalPath.split('/').at(-1)),
+  'Migration order is not schema -> RLS -> Storage -> migration bootstrap -> WP4 technical contracts.',
 );
 
 if (failures.length > 0) {

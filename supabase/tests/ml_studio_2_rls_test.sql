@@ -3,7 +3,7 @@ begin;
 create extension if not exists pgtap with schema extensions;
 set local search_path = extensions, public, ml_private, ml_public;
 
-select plan(28);
+select plan(31);
 
 insert into auth.users (id, email) values
   ('10000000-0000-4000-8000-000000000001', 'wp2-owner-a@example.test'),
@@ -13,6 +13,22 @@ insert into auth.users (id, email) values
 insert into ml_private.studios (id, owner_user_id, name, slug) values
   ('20000000-0000-4000-8000-000000000001', '10000000-0000-4000-8000-000000000001', 'WP2 Studio A', 'wp2-studio-a'),
   ('20000000-0000-4000-8000-000000000002', '10000000-0000-4000-8000-000000000002', 'WP2 Studio B', 'wp2-studio-b');
+
+select is(
+  (select column_default from information_schema.columns where table_schema = 'ml_private' and table_name = 'flat_annotations' and column_name = 'severity'),
+  '''info''::text',
+  'flat annotations expose a structured severity workflow field'
+);
+select is(
+  (select column_default from information_schema.columns where table_schema = 'ml_private' and table_name = 'flat_annotations' and column_name = 'status'),
+  '''open''::text',
+  'flat annotations expose a structured resolution workflow field'
+);
+select is(
+  (select count(*) from information_schema.columns where table_schema = 'ml_private' and table_name = 'tech_pack_exports' and column_name in ('template_id', 'template_version', 'source_revision_label', 'deterministic_filename')),
+  4::bigint,
+  'technical exports retain every deterministic identity input'
+);
 
 insert into ml_private.studio_members (
   studio_id, user_id, role, status, joined_at

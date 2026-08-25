@@ -26,7 +26,7 @@ import type {
   RelationshipOption,
 } from './contracts';
 
-const workspaceVersion = 1 as const;
+const workspaceVersion = 2 as const;
 
 export type CanonicalWorkspaceSeed = {
   data: StudioData;
@@ -92,6 +92,8 @@ export async function createCanonicalWorkspace(seed: CanonicalWorkspaceSeed) {
       return { ...base(value), colorStory: value.color_story, garmentId: value.garment_id, intent: value.intent, keyFeatures: value.key_features, silhouette: value.silhouette, targetWearer: value.target_wearer };
     }),
     garmentComponents: [] as CanonicalGarmentComponent[],
+    flatAnnotations: [],
+    garmentVersions: [],
     garmentMaterials: rows('garment_materials').map((row) => {
       const value = row as { created_at: string; garment_id: string; id: string; placement: string | null; required_quantity: number; reserved_quantity: number; role: string; status: CanonicalGarmentMaterial['status']; studio_id: string; unit: CanonicalGarmentMaterial['unit']; updated_at: string; variant_id: string };
       return { ...base(value), garmentId: value.garment_id, placement: value.placement, requiredQuantity: value.required_quantity, reservedQuantity: value.reserved_quantity, role: value.role, status: value.status, unit: value.unit, variantId: value.variant_id };
@@ -137,6 +139,11 @@ export async function createCanonicalWorkspace(seed: CanonicalWorkspaceSeed) {
     supplierItems: [] as CanonicalSupplierItem[],
     suppliers: [] as CanonicalSupplier[],
     templates: [] as CanonicalTemplate[],
+    technicalFiles: [],
+    technicalFlats: [],
+    technicalSpecs: [],
+    techPackExports: [],
+    validationRuns: [],
   });
 }
 
@@ -148,6 +155,8 @@ export function normalizeWorkspace(state: CanonicalWorkspaceState): CanonicalWor
     componentVariants: [...state.componentVariants],
     components: [...state.components].sort((a, b) => a.name.localeCompare(b.name)),
     designBriefs: [...state.designBriefs],
+    flatAnnotations: [...state.flatAnnotations],
+    garmentVersions: [...state.garmentVersions],
     garmentComponents: [...state.garmentComponents],
     garmentMaterials: [...state.garmentMaterials],
     garmentMedia: [...state.garmentMedia].sort((a, b) => a.sortOrder - b.sortOrder),
@@ -162,6 +171,11 @@ export function normalizeWorkspace(state: CanonicalWorkspaceState): CanonicalWor
     supplierItems: [...state.supplierItems],
     suppliers: [...state.suppliers].sort((a, b) => a.name.localeCompare(b.name)),
     templates: [...state.templates].sort((a, b) => a.name.localeCompare(b.name)),
+    technicalFiles: [...state.technicalFiles],
+    technicalFlats: [...state.technicalFlats],
+    technicalSpecs: [...state.technicalSpecs],
+    techPackExports: [...state.techPackExports],
+    validationRuns: [...state.validationRuns],
   };
 }
 
@@ -229,6 +243,7 @@ export function addTemplate(
   const record: CanonicalTemplate = {
     ...newRecord(state.studioId),
     name: input.name.trim(),
+    payload: {},
     status: 'draft',
     templateType: input.templateType,
     version: 1,
@@ -277,6 +292,8 @@ export function attachMoodboardItem(state: CanonicalWorkspaceState, boardId: str
 
 export function deleteGarment(state: CanonicalWorkspaceState, garmentId: string) {
   const boardIds = new Set(state.moodboards.filter((item) => item.garmentId === garmentId).map((item) => item.id));
+  const specIds = new Set(state.technicalSpecs.filter((item) => item.garmentId === garmentId).map((item) => item.id));
+  const flatIds = new Set(state.technicalFlats.filter((item) => specIds.has(item.specId)).map((item) => item.id));
   return normalizeWorkspace({
     ...state,
     annotations: state.annotations.filter((item) => item.garmentId !== garmentId),
@@ -287,6 +304,13 @@ export function deleteGarment(state: CanonicalWorkspaceState, garmentId: string)
     garments: state.garments.filter((item) => item.id !== garmentId),
     moodboards: state.moodboards.filter((item) => item.garmentId !== garmentId),
     moodboardItems: state.moodboardItems.filter((item) => !boardIds.has(item.boardId)),
+    flatAnnotations: state.flatAnnotations.filter((item) => !flatIds.has(item.flatId)),
+    garmentVersions: state.garmentVersions.filter((item) => item.garmentId !== garmentId),
+    techPackExports: state.techPackExports.filter((item) => !specIds.has(item.specId)),
+    technicalFiles: state.technicalFiles.filter((item) => !specIds.has(item.specId)),
+    technicalFlats: state.technicalFlats.filter((item) => !specIds.has(item.specId)),
+    technicalSpecs: state.technicalSpecs.filter((item) => item.garmentId !== garmentId),
+    validationRuns: state.validationRuns.filter((item) => !specIds.has(item.specId)),
   });
 }
 

@@ -1,6 +1,6 @@
 # Mystic Lore Studio 2.0 Canonical Schema
 
-Status: WP3 complete for Garments and Libraries; typed migration/read-through
+Status: WP4a complete through Technical Studio flats; typed migration/read-through
 adapters remain for recovery and untouched domains
 
 Source specification: Product Bible pages 19-32 and 59-60. The ordered SQL
@@ -248,3 +248,24 @@ Legacy project/fabric routes remain as compatibility hash aliases only. Their
 old page components are not mounted by the route router. Dashboard, workflow,
 editorial, portfolio, settings, cloud sync, and public routes remain outside
 WP3 scope and continue to use the accepted legacy/read-through boundary.
+
+## WP4a Technical Studio Contract
+
+The additive `add_technical_foundation_contracts` migration completes fields
+needed by the first working Technical Studio segment:
+
+- `flat_annotations.severity` and `flat_annotations.status` support critical
+  issue gates without encoding workflow state into canvas pixels;
+- `tech_pack_exports` retains `template_id`, `template_version`,
+  `source_revision_label`, and `deterministic_filename` beside its immutable
+  source garment version and checksum;
+- `technical_templates.template_type` admits the `tech_pack` export template;
+- the partial `(studio_id, flat_id)` index covers unresolved critical callouts.
+
+The typed technical repository owns commands for spec creation, source-mapped
+flat revision registration, structured annotations, approval, validation runs,
+comparison preparation, garment Technical checkpoints, and export records.
+Original source bytes and generated ZIP bytes are durable offline blobs with
+canonical private Storage target paths. Front and Back are the initial required
+view set. POM, BOM, grading, and construction tables remain unused until their
+dedicated work-package segments.
