@@ -24,7 +24,7 @@ export function createSpec(state: CanonicalWorkspaceState, garmentId: string, ba
   const existing = state.technicalSpecs.find((item) => item.garmentId === garmentId);
   if (existing) return { spec: existing, state };
   if (!state.garments.some((item) => item.id === garmentId)) throw new Error('The garment does not exist in this studio.');
-  const spec: CanonicalTechnicalSpec = { ...record(state.studioId), garmentId, status: 'draft', baseSize: baseSize.trim() || 'M', unit, revisionLabel: 'A' };
+  const spec: CanonicalTechnicalSpec = { ...record(state.studioId), garmentId, status: 'draft', baseSize: baseSize.trim() || 'M', unit, revisionLabel: 'A', releaseVersionId: null, releaseValidationRunId: null, releasedBy: null, releasedAt: null };
   return { spec, state: { ...state, technicalSpecs: [...state.technicalSpecs, spec] } };
 }
 
@@ -80,7 +80,7 @@ export function approveFlat(state: CanonicalWorkspaceState, flatId: string, appr
 
 export function recordValidationRun(state: CanonicalWorkspaceState, specId: string) {
   const issues = validateTechnicalSpec(state, specId, true);
-  const run: CanonicalValidationRun = { ...record(state.studioId), specId, garmentVersionId: null, status: issues.length ? 'failed' : 'passed', rulesetVersion: technicalRulesetVersion, issues, ranAt: new Date().toISOString() };
+  const run: CanonicalValidationRun = { ...record(state.studioId), specId, garmentVersionId: null, status: issues.length ? 'failed' : 'passed', rulesetVersion: technicalRulesetVersion, issues, ranAt: new Date().toISOString(), actorId: null };
   return { run, state: { ...state, validationRuns: [...state.validationRuns, run] } };
 }
 
@@ -91,13 +91,20 @@ export function prepareFlatComparison(state: CanonicalWorkspaceState, specId: st
   return { current: entry(revisions[0]), previous: revisions[1] ? entry(revisions[1]) : null, view };
 }
 
-export async function createTechnicalCheckpoint(state: CanonicalWorkspaceState, specId: string) {
+export async function createTechnicalCheckpoint(state: CanonicalWorkspaceState, specId: string, label?: string) {
   const spec = state.technicalSpecs.find((item) => item.id === specId);
   if (!spec) throw new Error('Technical specification not found.');
   const garment = state.garments.find((item) => item.id === spec.garmentId)!;
   const flats = requiredFlatViews.map((view) => activeFlat(state, specId, view));
   const setIds = new Set(state.measurementSets.filter((item) => item.specId === specId).map((item) => item.id));
   const ruleIds = new Set(state.gradeRules.filter((item) => item.specId === specId).map((item) => item.id));
+  const sectionIds = new Set(state.constructionSections.filter((item) => item.specId === specId).map((item) => item.id));
+  const stepIds = new Set(state.constructionSteps.filter((item) => sectionIds.has(item.sectionId)).map((item) => item.id));
+  const pomIds = new Set(state.pomPoints.filter((item) => item.specId === specId).map((item) => item.id));
+  const sourceFiles = state.technicalFiles.filter((item) => item.specId === specId).sort((a, b) => a.id.localeCompare(b.id));
+  const sourceAssetIds = new Set(sourceFiles.map((item) => item.assetId));
+  const bomItems = state.bomItems.filter((item) => item.specId === specId).sort((a, b) => a.sortOrder - b.sortOrder || a.id.localeCompare(b.id));
+  const referencedSupplierItemIds = new Set(bomItems.flatMap((item) => item.supplierItemId ? [item.supplierItemId] : []));
   const snapshot = {
     garment: { id: garment.id, code: garment.garmentCode, revision: garment.revision },
     spec: { id: spec.id, revisionLabel: spec.revisionLabel, unit: spec.unit },
@@ -107,10 +114,25 @@ export async function createTechnicalCheckpoint(state: CanonicalWorkspaceState, 
     measurementValues: state.measurementValues.filter((item) => setIds.has(item.setId)),
     gradeRules: state.gradeRules.filter((item) => item.specId === specId),
     gradeRuleValues: state.gradeRuleValues.filter((item) => ruleIds.has(item.gradeRuleId)),
+    sampleRounds: state.sampleRounds.filter((item) => item.garmentId === garment.id),
+    fitMeasurements: state.fitMeasurements.filter((item) => pomIds.has(item.pomPointId)),
+    bomItems,
+    bomCatalog: {
+      materialVariants: state.materialVariants.filter((item) => bomItems.some((bom) => bom.materialVariantId === item.id)),
+      componentVariants: state.componentVariants.filter((item) => bomItems.some((bom) => bom.componentVariantId === item.id)),
+      supplierItems: state.supplierItems.filter((item) => referencedSupplierItemIds.has(item.id)),
+      suppliers: state.suppliers.filter((item) => state.supplierItems.some((offer) => referencedSupplierItemIds.has(offer.id) && offer.supplierId === item.id)),
+    },
+    constructionSections: state.constructionSections.filter((item) => item.specId === specId).sort((a, b) => a.sortOrder - b.sortOrder || a.id.localeCompare(b.id)),
+    constructionSteps: state.constructionSteps.filter((item) => sectionIds.has(item.sectionId)).sort((a, b) => a.sortOrder - b.sortOrder || a.id.localeCompare(b.id)),
+    constructionDetails: state.constructionDetails.filter((item) => stepIds.has(item.stepId)).sort((a, b) => a.sortOrder - b.sortOrder || a.id.localeCompare(b.id)),
+    technicalFiles: sourceFiles,
+    technicalFileAssets: state.mediaAssets.filter((item) => sourceAssetIds.has(item.id)).map((item) => ({ assetId: item.id, checksum: item.checksum, mimeType: item.mimeType, name: item.name, sizeBytes: item.sizeBytes })),
+    templateApplications: state.templateApplications.filter((item) => item.garmentId === garment.id),
   };
   const checksum = await checksumText(stableStringify(snapshot));
   const versionNo = state.garmentVersions.filter((item) => item.garmentId === garment.id).length + 1;
-  const version: CanonicalGarmentVersion = { ...record(state.studioId), garmentId: garment.id, versionNo, label: `Technical v${versionNo}`, scope: 'technical', checksum, snapshot };
+  const version: CanonicalGarmentVersion = { ...record(state.studioId), garmentId: garment.id, versionNo, label: label?.trim() || `Technical v${versionNo}`, scope: 'technical', checksum, snapshot };
   return { version, state: { ...state, garmentVersions: [...state.garmentVersions, version] } };
 }
 

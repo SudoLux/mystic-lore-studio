@@ -2,9 +2,13 @@ import type { StudioData } from '../../lib/studioStorage';
 import { buildLegacyCanonicalMigrationPlan } from '../migration';
 import type {
   CanonicalAnnotation,
+  CanonicalBomItem,
   CanonicalCollection,
   CanonicalComponent,
   CanonicalComponentVariant,
+  CanonicalConstructionDetail,
+  CanonicalConstructionSection,
+  CanonicalConstructionStep,
   CanonicalDesignBrief,
   CanonicalGarment,
   CanonicalGarmentComponent,
@@ -18,15 +22,18 @@ import type {
   CanonicalMoodboard,
   CanonicalMoodboardItem,
   CanonicalRecord,
+  CanonicalReleaseTask,
   CanonicalSupplier,
   CanonicalSupplierItem,
   CanonicalTemplate,
+  CanonicalTemplateApplication,
+  CanonicalValidationWaiver,
   CanonicalWorkspaceState,
   InventoryEntryType,
   RelationshipOption,
 } from './contracts';
 
-const workspaceVersion = 3 as const;
+const workspaceVersion = 4 as const;
 
 export type CanonicalWorkspaceSeed = {
   data: StudioData;
@@ -81,12 +88,16 @@ export async function createCanonicalWorkspace(seed: CanonicalWorkspaceSeed) {
       const value = row as { asset_id: string; body: string; garment_id: string; status: CanonicalAnnotation['status']; created_at: string; id: string; studio_id: string; updated_at: string };
       return { ...base(value), assetId: value.asset_id, body: value.body, garmentId: value.garment_id, status: value.status };
     }),
+    bomItems: [] as CanonicalBomItem[],
     collections: rows('collections').map((row) => {
       const value = row as { created_at: string; id: string; name: string; season: string | null; sort_order: number; status: CanonicalCollection['status']; studio_id: string; updated_at: string };
       return { ...base(value), name: value.name, season: value.season, sortOrder: value.sort_order, status: value.status };
     }),
     componentVariants: [] as CanonicalComponentVariant[],
     components: [] as CanonicalComponent[],
+    constructionDetails: [] as CanonicalConstructionDetail[],
+    constructionSections: [] as CanonicalConstructionSection[],
+    constructionSteps: [] as CanonicalConstructionStep[],
     designBriefs: rows('design_briefs').map((row) => {
       const value = row as { color_story: string; created_at: string; garment_id: string; id: string; intent: string; key_features: string[]; silhouette: string; studio_id: string; target_wearer: string; updated_at: string };
       return { ...base(value), colorStory: value.color_story, garmentId: value.garment_id, intent: value.intent, keyFeatures: value.key_features, silhouette: value.silhouette, targetWearer: value.target_wearer };
@@ -140,6 +151,7 @@ export async function createCanonicalWorkspace(seed: CanonicalWorkspaceSeed) {
     measurementValues: [],
     pomPoints: [],
     restoreOperations: [],
+    releaseTasks: [] as CanonicalReleaseTask[],
     sampleRounds: [],
     fitMeasurements: [],
     schemaVersion: workspaceVersion,
@@ -147,11 +159,13 @@ export async function createCanonicalWorkspace(seed: CanonicalWorkspaceSeed) {
     supplierItems: [] as CanonicalSupplierItem[],
     suppliers: [] as CanonicalSupplier[],
     templates: [] as CanonicalTemplate[],
+    templateApplications: [] as CanonicalTemplateApplication[],
     technicalFiles: [],
     technicalFlats: [],
     technicalSpecs: [],
     techPackExports: [],
     validationRuns: [],
+    validationWaivers: [] as CanonicalValidationWaiver[],
   });
 }
 
@@ -159,9 +173,13 @@ export function normalizeWorkspace(state: CanonicalWorkspaceState): CanonicalWor
   return {
     ...state,
     annotations: [...state.annotations],
+    bomItems: [...state.bomItems].sort((a, b) => a.sortOrder - b.sortOrder || a.id.localeCompare(b.id)),
     collections: [...state.collections].sort((a, b) => a.sortOrder - b.sortOrder || a.name.localeCompare(b.name)),
     componentVariants: [...state.componentVariants],
     components: [...state.components].sort((a, b) => a.name.localeCompare(b.name)),
+    constructionDetails: [...state.constructionDetails].sort((a, b) => a.sortOrder - b.sortOrder || a.id.localeCompare(b.id)),
+    constructionSections: [...state.constructionSections].sort((a, b) => a.sortOrder - b.sortOrder || a.id.localeCompare(b.id)),
+    constructionSteps: [...state.constructionSteps].sort((a, b) => a.sortOrder - b.sortOrder || a.id.localeCompare(b.id)),
     designBriefs: [...state.designBriefs],
     flatAnnotations: [...state.flatAnnotations],
     garmentVersions: [...state.garmentVersions],
@@ -182,16 +200,19 @@ export function normalizeWorkspace(state: CanonicalWorkspaceState): CanonicalWor
     measurementValues: [...state.measurementValues],
     pomPoints: [...state.pomPoints].sort((a, b) => a.sortOrder - b.sortOrder),
     restoreOperations: [...state.restoreOperations],
+    releaseTasks: [...state.releaseTasks],
     sampleRounds: [...state.sampleRounds],
     fitMeasurements: [...state.fitMeasurements],
     supplierItems: [...state.supplierItems],
     suppliers: [...state.suppliers].sort((a, b) => a.name.localeCompare(b.name)),
     templates: [...state.templates].sort((a, b) => a.name.localeCompare(b.name)),
+    templateApplications: [...state.templateApplications],
     technicalFiles: [...state.technicalFiles],
     technicalFlats: [...state.technicalFlats],
     technicalSpecs: [...state.technicalSpecs],
     techPackExports: [...state.techPackExports],
     validationRuns: [...state.validationRuns],
+    validationWaivers: [...state.validationWaivers],
   };
 }
 
@@ -314,9 +335,16 @@ export function deleteGarment(state: CanonicalWorkspaceState, garmentId: string)
   const setIds = new Set(state.measurementSets.filter((item) => specIds.has(item.specId)).map((item) => item.id));
   const ruleIds = new Set(state.gradeRules.filter((item) => specIds.has(item.specId)).map((item) => item.id));
   const sampleRoundIds = new Set(state.sampleRounds.filter((item) => item.garmentId === garmentId).map((item) => item.id));
+  const sectionIds = new Set(state.constructionSections.filter((item) => specIds.has(item.specId)).map((item) => item.id));
+  const stepIds = new Set(state.constructionSteps.filter((item) => sectionIds.has(item.sectionId)).map((item) => item.id));
+  const runIds = new Set(state.validationRuns.filter((item) => specIds.has(item.specId)).map((item) => item.id));
   return normalizeWorkspace({
     ...state,
     annotations: state.annotations.filter((item) => item.garmentId !== garmentId),
+    bomItems: state.bomItems.filter((item) => !specIds.has(item.specId)),
+    constructionDetails: state.constructionDetails.filter((item) => !stepIds.has(item.stepId)),
+    constructionSections: state.constructionSections.filter((item) => !specIds.has(item.specId)),
+    constructionSteps: state.constructionSteps.filter((item) => !sectionIds.has(item.sectionId)),
     garmentComponents: state.garmentComponents.filter((item) => item.garmentId !== garmentId),
     designBriefs: state.designBriefs.filter((item) => item.garmentId !== garmentId),
     garmentMaterials: state.garmentMaterials.filter((item) => item.garmentId !== garmentId),
@@ -332,13 +360,16 @@ export function deleteGarment(state: CanonicalWorkspaceState, garmentId: string)
     measurementValues: state.measurementValues.filter((item) => !setIds.has(item.setId)),
     pomPoints: state.pomPoints.filter((item) => !pomIds.has(item.id)),
     restoreOperations: state.restoreOperations.filter((item) => item.garmentId !== garmentId),
+    releaseTasks: state.releaseTasks.filter((item) => item.garmentId !== garmentId),
     sampleRounds: state.sampleRounds.filter((item) => item.garmentId !== garmentId),
     fitMeasurements: state.fitMeasurements.filter((item) => !sampleRoundIds.has(item.sampleRoundId)),
     techPackExports: state.techPackExports.filter((item) => !specIds.has(item.specId)),
     technicalFiles: state.technicalFiles.filter((item) => !specIds.has(item.specId)),
     technicalFlats: state.technicalFlats.filter((item) => !specIds.has(item.specId)),
     technicalSpecs: state.technicalSpecs.filter((item) => item.garmentId !== garmentId),
+    templateApplications: state.templateApplications.filter((item) => item.garmentId !== garmentId),
     validationRuns: state.validationRuns.filter((item) => !specIds.has(item.specId)),
+    validationWaivers: state.validationWaivers.filter((item) => !runIds.has(item.validationRunId)),
   });
 }
 

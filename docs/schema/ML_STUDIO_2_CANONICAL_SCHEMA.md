@@ -1,7 +1,8 @@
 # Mystic Lore Studio 2.0 Canonical Schema
 
-Status: WP4a complete through Technical Studio flats; typed migration/read-through
-adapters remain for recovery and untouched domains
+Status: WP4 complete through BOM, construction, release, and deterministic tech
+pack; typed migration/read-through adapters remain for recovery and untouched
+domains
 
 Source specification: Product Bible pages 19-32 and 59-60. The ordered SQL
 migrations are authoritative for exact types, checks, foreign keys, indexes,
@@ -58,7 +59,7 @@ erDiagram
 | Identity and catalog | `profiles`, `studios`, `studio_members`, `studio_settings`, `collections`, `garments`, `tags`, `garment_tags` |
 | Design and media | `design_briefs`, `inspiration_boards`, `inspiration_items`, `media_assets`, `garment_media`, `media_derivatives`, `design_annotations` |
 | Materials and components | `materials`, `material_variants`, `inventory_entries`, `garment_materials`, `components`, `component_variants`, `garment_components`, `supplier_items` |
-| Technical foundation | `technical_specs`, `technical_flats`, `flat_annotations`, `technical_files`, `tech_pack_exports`, `validation_runs` |
+| Technical foundation | `technical_specs`, `technical_flats`, `flat_annotations`, `technical_files`, `tech_pack_exports`, `validation_runs`, `validation_waivers` |
 | POM and grading | `pom_points`, `measurement_sets`, `measurement_values`, `grade_rules`, `grade_rule_values`, `fit_measurements` |
 | BOM and construction | `bom_items`, `construction_sections`, `construction_steps`, `construction_details`, `technical_templates`, `template_applications` |
 | Production | `suppliers`, `factories`, `sample_rounds`, `fit_sessions`, `fit_issues`, `cost_sheets`, `cost_items`, `production_orders`, `qc_results` |
@@ -66,7 +67,7 @@ erDiagram
 | Versioning, workflow, AI, sync | `garment_versions`, `entity_revisions`, `change_events`, `restore_operations`, `tasks`, `calendar_events`, `ai_jobs`, `ai_artifacts`, `sync_tombstones` |
 | Public projection | `ml_public.publications`, `ml_public.publication_assets` |
 
-There are 66 canonical private tables and two public projection tables.
+There are 67 canonical private tables and two public projection tables.
 
 ## Design, Library, and Media Relationships
 
@@ -115,7 +116,11 @@ erDiagram
   TECHNICAL_SPECS ||--o{ CONSTRUCTION_SECTIONS : structures
   CONSTRUCTION_SECTIONS ||--o{ CONSTRUCTION_STEPS : orders
   CONSTRUCTION_STEPS ||--o{ CONSTRUCTION_DETAILS : annotates
+  TECHNICAL_SPECS ||--o{ VALIDATION_RUNS : validates
+  VALIDATION_RUNS ||--o{ VALIDATION_WAIVERS : governs
+  TASKS ||--o{ VALIDATION_WAIVERS : follows_up
   GARMENTS ||--o{ GARMENT_VERSIONS : freezes
+  TECHNICAL_SPECS ||--o{ TECH_PACK_EXPORTS : generates
   GARMENT_VERSIONS ||--o{ TECH_PACK_EXPORTS : reproduces
   GARMENTS ||--o{ SAMPLE_ROUNDS : samples
   SAMPLE_ROUNDS ||--o{ FIT_SESSIONS : reviews
@@ -200,6 +205,7 @@ Ordered migrations:
 4. `20260824070629_enable_canonical_migration_bootstrap.sql`
 5. `20260825035858_add_technical_foundation_contracts.sql`
 6. `20260825051344_enforce_pom_measurement_integrity.sql`
+7. `20260825184506_complete_wp4_bom_construction_release_pack.sql`
 
 Verification commands:
 
@@ -215,7 +221,7 @@ npm run build
 `validate:schema` is deterministic and verifies the table inventory, tenant
 columns, allowed JSONB fields, RLS/storage coverage, migration order, pgTAP
 plan, WP3 canonical route boundaries, and checksums of all six legacy
-migrations plus the WP0 fixture. `test:db` executes the 33-assertion pgTAP
+migrations plus the WP0 fixture. `test:db` executes the 44-assertion pgTAP
 matrix on a local or explicit test database.
 
 ## WP2B Transition Contract
@@ -291,3 +297,31 @@ measurement-value, grade-rule, and grade-delta structure. Comparison is keyed
 by stable POM and set/POM/size identity. Selective restore updates only chosen
 rows, records a restore operation with a new checkpoint, and never removes fit
 measurements created after the source checkpoint.
+
+## WP4c BOM, Construction, Release, and Export Contract
+
+The `complete_wp4_bom_construction_release_pack` migration completes the
+structured release surface:
+
+- BOM rows use stable material/component variant relationships, optional
+  supplier-offer and substitute links, or an explicit intentional-free-text
+  state. Quantity, unit, placement, lifecycle status, shortage, and exact cost
+  impact remain queryable columns.
+- Construction sections, steps, and callouts retain stable sort identity.
+  Machine, stitch/seam specification, required flags, asset anchors, and detail
+  resolution status are structured records rather than rendered pixels.
+- A technical spec records its released source version, validation run, actor,
+  time, protected checkpoint, and evidence. Release waivers are separate
+  member-readable audit rows; the database constraint excludes privacy-domain
+  waivers and clients receive no direct mutation grant.
+- An approved tech-pack export records the pinned source garment version,
+  ruleset/template versions, deterministic filename, checksum, private Storage
+  path, generation/approval evidence, and ordered section manifest.
+
+The release repository owns atomic BOM and construction commands, template
+capture/application, grouped validation, governed waiver creation, release
+commit, and deterministic export. Export consumes the released checkpoint,
+stable-orders structured JSON and ZIP entries, fixes archive timestamps, and
+includes stored source bytes. Repeated export of the same release and template
+is byte-identical. AI integrations can only submit candidates to these commands;
+they cannot write technical or released records directly.

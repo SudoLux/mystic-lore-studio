@@ -3,7 +3,7 @@ begin;
 create extension if not exists pgtap with schema extensions;
 set local search_path = extensions, public, ml_private, ml_public;
 
-select plan(33);
+select plan(44);
 
 insert into auth.users (id, email) values
   ('10000000-0000-4000-8000-000000000001', 'wp2-owner-a@example.test'),
@@ -47,6 +47,70 @@ select is(
   3::bigint,
   'POM-centered target, grade, and fit lookup indexes are installed'
 );
+select is(
+  (select count(*) from information_schema.columns where table_schema = 'ml_private' and table_name = 'bom_items' and column_name in (
+    'intentional_free_text', 'supplier_item_id', 'substitute_item_id', 'status',
+    'shortage_quantity', 'unit_cost', 'currency', 'cost_impact'
+  )),
+  8::bigint,
+  'BOM rows retain explicit link, offer, substitute, shortage, status, and cost evidence'
+);
+select is(
+  (select count(*) from information_schema.columns where table_schema = 'ml_private' and table_name = 'tech_pack_exports' and column_name in (
+    'ruleset_version', 'storage_path', 'generated_at', 'section_manifest_json', 'approved_by', 'approved_at'
+  )),
+  6::bigint,
+  'tech-pack exports retain ruleset, private path, generation time, manifest, and approval evidence'
+);
+select is(
+  (select count(*) from information_schema.columns where table_schema = 'ml_private' and table_name = 'technical_specs' and column_name in (
+    'release_version_id', 'release_validation_run_id', 'released_by', 'released_at'
+  )),
+  4::bigint,
+  'technical release roots reference their checkpoint, validation run, actor, and time'
+);
+select is(
+  (select count(*) from pg_constraint where conname in (
+    'bom_items_intentional_free_text_check', 'bom_items_status_check',
+    'bom_items_substitute_not_self_check', 'bom_items_supplier_item_fk',
+    'bom_items_substitute_item_fk', 'bom_items_description_not_blank_check',
+    'bom_items_quantity_positive_check', 'bom_items_placement_not_blank_check',
+    'bom_items_unit_cost_nonnegative_check', 'bom_items_shortage_within_quantity_check',
+    'construction_steps_operation_not_blank_check',
+    'construction_steps_status_check', 'construction_steps_seam_allowance_nonnegative_check',
+    'construction_steps_required_machine_check', 'construction_steps_required_stitch_check',
+    'construction_details_status_check', 'construction_details_callout_not_blank_check',
+    'construction_details_normalized_anchor_check'
+  )),
+  18::bigint,
+  'BOM and construction integrity constraints are installed'
+);
+select is(
+  (select count(*) from pg_indexes where schemaname = 'ml_private' and indexname in (
+    'ml_bom_items_supplier_item_idx', 'ml_bom_items_substitute_item_idx',
+    'ml_bom_items_shortage_idx', 'ml_construction_details_open_critical_idx',
+    'ml_validation_waivers_spec_idx', 'ml_validation_waivers_run_idx',
+    'ml_technical_specs_release_version_idx'
+  )),
+  7::bigint,
+  'release validation and relationship lookup indexes are installed'
+);
+select is(
+  (select relation.relrowsecurity
+   from pg_class relation
+   join pg_namespace namespace on namespace.oid = relation.relnamespace
+   where namespace.nspname = 'ml_private' and relation.relname = 'validation_waivers'),
+  true,
+  'validation waiver evidence is protected by row-level security'
+);
+select is(
+  (select count(*) from pg_constraint
+   where conrelid = 'ml_private.validation_waivers'::regclass
+     and conname = 'validation_waivers_domain_check'
+     and pg_get_constraintdef(oid) not ilike '%privacy%'),
+  1::bigint,
+  'privacy cannot be represented as a waivable release domain'
+);
 
 insert into ml_private.studio_members (
   studio_id, user_id, role, status, joined_at
@@ -65,6 +129,46 @@ insert into ml_private.garments (
 ) values
   ('40000000-0000-4000-8000-000000000001', '20000000-0000-4000-8000-000000000001', '30000000-0000-4000-8000-000000000001', 'GA-001', 'Studio A Garment'),
   ('40000000-0000-4000-8000-000000000002', '20000000-0000-4000-8000-000000000002', '30000000-0000-4000-8000-000000000002', 'GB-001', 'Studio B Garment');
+
+insert into ml_private.technical_specs (
+  id, studio_id, garment_id, base_size, unit
+) values (
+  '41000000-0000-4000-8000-000000000001',
+  '20000000-0000-4000-8000-000000000001',
+  '40000000-0000-4000-8000-000000000001', 'M', 'cm'
+);
+
+insert into ml_private.validation_runs (
+  id, studio_id, spec_id, status, ruleset_version, result_json, created_by
+) values (
+  '42000000-0000-4000-8000-000000000001',
+  '20000000-0000-4000-8000-000000000001',
+  '41000000-0000-4000-8000-000000000001', 'warning', 'wp4-release-v1',
+  '{"issues":["bom.shortage"]}'::jsonb,
+  '10000000-0000-4000-8000-000000000001'
+);
+
+insert into ml_private.tasks (
+  id, studio_id, garment_id, title, priority
+) values (
+  '43000000-0000-4000-8000-000000000001',
+  '20000000-0000-4000-8000-000000000001',
+  '40000000-0000-4000-8000-000000000001',
+  'Resolve approved shortage', 'high'
+);
+
+insert into ml_private.validation_waivers (
+  id, studio_id, spec_id, validation_run_id, rule_code, domain, reason,
+  actor_id, follow_up_task_id
+) values (
+  '44000000-0000-4000-8000-000000000001',
+  '20000000-0000-4000-8000-000000000001',
+  '41000000-0000-4000-8000-000000000001',
+  '42000000-0000-4000-8000-000000000001', 'bom.shortage', 'bom',
+  'Prototype shortage approved with production follow-up.',
+  '10000000-0000-4000-8000-000000000001',
+  '43000000-0000-4000-8000-000000000001'
+);
 
 insert into ml_private.portfolio_profiles (
   id, studio_id, username_slug, headline
@@ -182,6 +286,26 @@ select results_eq(
   'Studio A owner selects only Studio A garments'
 );
 select results_eq(
+  $$select count(*) from ml_private.validation_waivers$$,
+  array[1::bigint],
+  'same-Studio owner reads immutable release waiver evidence'
+);
+select throws_like(
+  $$insert into ml_private.validation_waivers (
+      studio_id, spec_id, validation_run_id, rule_code, domain, reason,
+      actor_id, follow_up_task_id
+    ) values (
+      '20000000-0000-4000-8000-000000000001',
+      '41000000-0000-4000-8000-000000000001',
+      '42000000-0000-4000-8000-000000000001', 'bom.direct-client', 'bom',
+      'Direct authenticated writes must remain unavailable.',
+      '10000000-0000-4000-8000-000000000001',
+      '43000000-0000-4000-8000-000000000001'
+    )$$,
+  '%permission denied for table validation_waivers%',
+  'authenticated clients cannot forge waiver audit rows directly'
+);
+select results_eq(
   $$with changed as (
       update ml_private.garments
       set title = 'Studio A Garment Updated'
@@ -210,6 +334,11 @@ select lives_ok(
 );
 
 set local request.jwt.claim.sub = '10000000-0000-4000-8000-000000000002';
+select results_eq(
+  $$select count(*) from ml_private.validation_waivers$$,
+  array[0::bigint],
+  'cross-Studio owner cannot read Studio A waiver evidence'
+);
 select throws_like(
   $$insert into ml_private.studio_settings (studio_id, units, currency)
     values ('20000000-0000-4000-8000-000000000001', 'mm', 'EUR')
@@ -240,6 +369,11 @@ select results_eq(
   $$select count(*) from ml_private.garments$$,
   array[1::bigint],
   'reviewer role can read its Studio garments'
+);
+select results_eq(
+  $$select count(*) from ml_private.validation_waivers$$,
+  array[1::bigint],
+  'same-Studio reviewer can inspect release waiver evidence'
 );
 select throws_like(
   $$insert into ml_private.garments (studio_id, garment_code, title)

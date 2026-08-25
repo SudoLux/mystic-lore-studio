@@ -7,10 +7,10 @@ for Mystic Lore Studio 2.0. WP2 establishes the additive canonical schema,
 membership RLS, publication boundary, Storage paths, deterministic legacy
 migration, recovery evidence, and typed read-through adapters. WP3 cuts the
 garment and reusable-library routes over to the persisted canonical workspace
-without changing unrelated legacy domains. WP4 now includes the Technical
-Studio root, source-evidenced flat workflow, stable POM authoring, measurement
-sets, fit actuals, and non-destructive grading. BOM, construction, and export
-completion remain deferred.
+without changing unrelated legacy domains. WP4 now includes the complete
+Technical Studio: source-evidenced flats, stable POM authoring, measurements,
+fit actuals, non-destructive grading, linked BOM, ordered construction, release
+validation, governed waivers, and deterministic structured tech packs.
 
 ## Work-package Status
 
@@ -22,7 +22,8 @@ completion remain deferred.
 | WP3 | Garment, collection, design brief, moodboard, media relationships, Material Vault, Component Library, and reusable templates | Complete | Core relationships replace copied project/material fields; canonical routes pass parity and recovery checks |
 | WP4a | Technical specification root, Technical Studio home, flats, annotations, files, validation, and export artifact foundation | Complete | A seeded garment can create, review, approve, version, validate, and export required source-evidenced flats |
 | WP4b | Stable POM, measurement sets and values, fit actuals, grading preview/commit, structural compare, and selective restore | Complete | A seeded garment defines POM once, validates base/graded sets, and records sample actuals against stable points |
-| WP4c-WP10 | Remaining Product Bible sequence | Not started | Begins with BOM, construction, and export completion in Prompt 06 |
+| WP4c | Linked BOM, ordered construction, release validation and waivers, templates, and deterministic structured tech packs | Complete | A seeded garment produces a validated, reproducible, approved tech pack from structured data |
+| WP5-WP10 | Remaining Product Bible sequence | Not started | Begins with garment-wide versioning and restore work in WP5 |
 
 ## Verification
 
@@ -51,16 +52,34 @@ Characterization coverage:
 - `tests/shellContract.test.ts`: fixed desktop/compact responsive shell modes
   and semantic native-button navigation for keyboard access.
 
-Latest WP4b verification:
+Latest WP4 completion verification:
 
 | Command | Result |
 | --- | --- |
-| `npm run validate:schema` | Passed: 66 private tables, 2 public projection tables, 33 pgTAP assertions, 7 preserved legacy inputs |
-| `npm run db:reset` | Passed: all six legacy migrations, four ordered WP2 migrations, and both ordered WP4 migrations applied to an empty local database |
-| `npm run test:db` | Passed: 33 pgTAP assertions, including tenant/publication/Storage policies plus POM, decimal, fit, and index integrity |
+| `npm run validate:schema` | Passed: 67 private tables, 2 public projection tables, 44 pgTAP assertions, 7 preserved legacy inputs |
+| `npm run db:reset` | Passed: all six legacy migrations, four ordered WP2 migrations, and all three ordered WP4 migrations applied to an empty local database |
+| `npm run test:db` | Passed: 44 pgTAP assertions, including tenant/publication/Storage policies, POM integrity, BOM/construction constraints, release evidence, same/cross-Studio waiver access, direct-write denial, privacy exclusion, and indexes |
 | Authenticated local API dry run | Passed: representative fixture applied through the typed Supabase store; one owner-visible garment; duplicate execution completed safely |
-| `npm test` | Passed: 13 test files, 58 tests, including unit conversion, decimal/tolerance boundaries, CSV failure atomicity, fit variance, grade deltas, migrated state, structural restore, keyboard paths, and responsive contracts |
+| `npm test` | Passed: 15 test files, 68 tests, including linked/free-text BOM, unit and substitution failures, stable construction order, template reuse, waiver rules, byte-identical repeat export, and a full seeded release |
 | `npm run build` | Passed: TypeScript build and Vite production build |
+
+WP4c evidence:
+
+- [ADR-0010: release gates, waivers, and approval](../adr/ADR-0010-wp4-release-gates-waivers-and-approval.md)
+- [ADR-0011: deterministic structured tech pack](../adr/ADR-0011-deterministic-structured-tech-pack.md)
+- `tests/wp4ReleasePack.test.ts`: linked and intentional-free-text BOM rows,
+  unit errors, substitutions, shortage/cost effects, stable construction order,
+  template application, waiver governance, privacy rejection, full release,
+  and byte-identical repeated export.
+- `tests/wp4ReleaseUiContract.test.ts`: RelationshipPicker integration,
+  component detail, accessible ordering, template application evidence,
+  grouped validation, release confirmation, export stages, manifest, and AI
+  candidate-only language.
+- Live authenticated verification completed the seeded Waden garment with one
+  linked approved shell BOM row and one machine/stitch/seam-defined construction
+  step, approved Release A with zero waivers, and recorded the six-section
+  `MLS-B6B08932-tech-v001-template-v1-cf258c47.zip` artifact. Desktop and
+  390 px verification passed without horizontal overflow or console errors.
 
 WP4a evidence:
 
@@ -116,7 +135,7 @@ See [baseline screenshot manifest](BASELINE_SCREENSHOTS.md).
 | Dashboard | `#/` or `#/dashboard` | `DashboardPage` | `StudioDataProvider` |
 | Garments | `#/projects`, `#/projects/:id` (legacy-compatible paths) | `GarmentLibraryPage`, `CanonicalGarmentWorkspacePage` | `CanonicalWorkspaceProvider` |
 | Libraries | `#/fabrics` (legacy-compatible path) | `LibraryVaultPage` (Material Vault and Component Library) | `CanonicalWorkspaceProvider` |
-| Technical Studio | `#/technical`, `#/technical/:garmentId` | `TechnicalStudioPage`, `FlatCanvas`, `POMCanvas`, `MeasurementDataGrid`, grading preview, structural restore | `CanonicalWorkspaceProvider` and technical/measurement commands and repositories |
+| Technical Studio | `#/technical`, `#/technical/:garmentId` | `TechnicalStudioPage`, `FlatCanvas`, `POMCanvas`, `MeasurementDataGrid`, `BomWorkspace`, `ConstructionWorkspace`, `ReleaseWorkspace`, grading, validation, and export panels | `CanonicalWorkspaceProvider` and technical, measurement, and release commands/repositories |
 | Workflow | `#/kanban` | `KanbanPage` | `StudioDataProvider` |
 | Editorial Collections | `#/lookbooks` | `LookbooksPage`, `EditorialSceneBuilder`, `EditorialCollectionViewer` | `StudioDataProvider` and local editorial collection state |
 | Portfolio manager | `#/portfolio` | `PortfolioPage` | `StudioDataProvider` |
@@ -185,7 +204,7 @@ Storage buckets:
 
 WP2A adds isolated canonical schemas while preserving everything above:
 
-- `ml_private`: 66 canonical Studio-owned identity, garment, design, media,
+- `ml_private`: 67 canonical Studio-owned identity, garment, design, media,
   materials, components, technical, production, story, versioning, workflow,
   AI, and sync tables.
 - `ml_public`: immutable `publications` and `publication_assets` projections.
@@ -205,9 +224,10 @@ recovery and untouched domains. See the
 [ADR-0005](../adr/ADR-0005-canonical-schema-and-public-cut-boundary.md), and
 [ADR-0006](../adr/ADR-0006-deterministic-legacy-read-through.md).
 
-All private application tables enable RLS with owner-only authenticated policies.
-The portfolio publication tables intentionally allow anonymous `select` only for
-rows marked public; they do not grant anonymous access to private studio tables.
+All private application tables enable RLS. Legacy rows remain owner-scoped;
+canonical rows use active Studio membership and role-aware write policies. The
+portfolio publication tables intentionally allow anonymous `select` only for
+rows marked public; they do not grant anonymous access to private Studio tables.
 
 ## Migration Ledger
 
@@ -223,6 +243,9 @@ rows marked public; they do not grant anonymous access to private studio tables.
 | `20260824051237_ml_studio_2_rls_and_publication_boundary.sql` | Membership RLS, least-privilege grants, public payload immutability/privacy, publication commands, audit triggers | WP2A added; 28-assertion pgTAP runtime gate passed in WP2B |
 | `20260824051247_ml_studio_2_storage_policies.sql` | Canonical private/public buckets, paths, and Storage object policies | WP2A added; legacy buckets preserved |
 | `20260824070629_enable_canonical_migration_bootstrap.sql` | Owner-only INSERT permission required for retry-safe settings upsert after trigger bootstrap | WP2B added; no legacy mutation |
+| `20260825035858_add_technical_foundation_contracts.sql` | Flat source/revision, annotation severity/status, export-template evidence, and critical-callout index | WP4a added; additive technical foundation |
+| `20260825051344_enforce_pom_measurement_integrity.sql` | Stable POM anchors, decimal measurement/fit constraints, and grading lookup indexes | WP4b added; canonical technical rows retained |
+| `20260825184506_complete_wp4_bom_construction_release_pack.sql` | Linked/free-text BOM semantics, construction requirements, immutable waiver evidence, release lineage, and deterministic export manifest | WP4c added; versioning work deferred |
 
 No legacy migration or table was edited or removed. The safe, sanitized input
 artifact remains `tests/fixtures/legacy-studio-data-v5.json`; WP2 retains it as
@@ -236,9 +259,10 @@ These are observed current behaviors, not WP0 fixes:
    migration plan, but current UI cloud merge remains legacy until WP7 cutover.
 2. Canonical unit/currency/version/AI policy is separated from device-only
    backup reminder preferences; the current UI still reads the legacy settings.
-3. Conflict handling is timestamp-based newest-wins with tombstones. There is
-   no append-only change event stream, named Freeze Frame, structural diff, or
-   non-destructive restore model yet.
+3. Legacy conflict handling is timestamp-based newest-wins with tombstones.
+   Technical checkpoints and selective measurement restore exist, but the
+   garment-wide change stream, Freeze Frame, structural diff, and restore model
+   remain WP5 work.
 4. Browser IDs now have deterministic UUIDv5 mappings in WP2 evidence. WP3
    Garments and Libraries use their canonical IDs; untouched domains still use
    legacy IDs until their own route cutover.
@@ -258,6 +282,10 @@ These are observed current behaviors, not WP0 fixes:
 - [ADR-0005: Canonical schema and Public Cut boundary](../adr/ADR-0005-canonical-schema-and-public-cut-boundary.md)
 - [ADR-0006: Deterministic legacy migration and read-through](../adr/ADR-0006-deterministic-legacy-read-through.md)
 - [ADR-0007: WP3 canonical garment and library route cutover](../adr/ADR-0007-wp3-canonical-garment-route-cutover.md)
+- [ADR-0008: WP4 technical flat source evidence](../adr/ADR-0008-wp4-technical-flat-source-evidence.md)
+- [ADR-0009: WP4 POM, measurement, and grading model](../adr/ADR-0009-wp4-pom-measurement-and-grading.md)
+- [ADR-0010: WP4 release gates, waivers, and approval](../adr/ADR-0010-wp4-release-gates-waivers-and-approval.md)
+- [ADR-0011: deterministic structured tech pack](../adr/ADR-0011-deterministic-structured-tech-pack.md)
 - Vitest is the WP0 automated test harness. It adds no browser runtime behavior.
 - Existing repository screenshots are the signed-in visual baseline. WP0 does
   not add an authentication bypass merely to create new captures.

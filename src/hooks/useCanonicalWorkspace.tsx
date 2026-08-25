@@ -42,6 +42,7 @@ type CanonicalWorkspaceContextValue = {
   createMoodboard: (garmentId: string, title?: string) => string;
   deleteGarment: (garmentId: string) => void;
   commitWorkspace: (change: (current: CanonicalWorkspaceState) => CanonicalWorkspaceState) => void;
+  currentActorId: string;
   error: string | null;
   isReady: boolean;
   recordInventory: (variantId: string, entryType: InventoryEntryType, quantity: number, note?: string) => void;
@@ -118,6 +119,7 @@ export function CanonicalWorkspaceProvider({ children, userId }: { children: Rea
     createMoodboard: (garmentId, title) => { let id = ''; commit((current) => { const result = createMoodboard(current, garmentId, title); id = result.board.id; return result.state; }); return id; },
     deleteGarment: (garmentId) => commit((current) => deleteGarment(current, garmentId)),
     commitWorkspace: commit,
+    currentActorId: userId,
     error,
     isReady: Boolean(state),
     recordInventory: (variantId, entryType, quantity, note) => commit((current) => recordInventory(current, variantId, entryType, quantity, note).state),
@@ -127,7 +129,7 @@ export function CanonicalWorkspaceProvider({ children, userId }: { children: Rea
     syncState,
     updateBrief: (garmentId, patch) => commit((current) => updateBrief(current, garmentId, patch)),
     updateGarment: (garmentId, patch) => commit((current) => updateGarment(current, garmentId, patch)),
-  }), [commit, error, state, syncState]);
+  }), [commit, error, state, syncState, userId]);
 
   return <CanonicalWorkspaceContext.Provider value={value}>{children}</CanonicalWorkspaceContext.Provider>;
 }
@@ -135,6 +137,10 @@ export function CanonicalWorkspaceProvider({ children, userId }: { children: Rea
 function hydrateTechnicalState(state: CanonicalWorkspaceState): CanonicalWorkspaceState {
   return {
     ...state,
+    bomItems: state.bomItems ?? [],
+    constructionDetails: state.constructionDetails ?? [],
+    constructionSections: state.constructionSections ?? [],
+    constructionSteps: state.constructionSteps ?? [],
     flatAnnotations: state.flatAnnotations ?? [],
     garmentVersions: state.garmentVersions ?? [],
     gradeRuleValues: state.gradeRuleValues ?? [],
@@ -143,14 +149,31 @@ function hydrateTechnicalState(state: CanonicalWorkspaceState): CanonicalWorkspa
     measurementValues: state.measurementValues ?? [],
     pomPoints: state.pomPoints ?? [],
     restoreOperations: state.restoreOperations ?? [],
+    releaseTasks: state.releaseTasks ?? [],
     sampleRounds: state.sampleRounds ?? [],
     fitMeasurements: state.fitMeasurements ?? [],
-    schemaVersion: 3,
-    techPackExports: state.techPackExports ?? [],
+    schemaVersion: 4,
+    techPackExports: (state.techPackExports ?? []).map((item) => ({
+      ...item,
+      approvedAt: item.approvedAt ?? null,
+      approvedBy: item.approvedBy ?? null,
+      generatedAt: item.generatedAt ?? item.createdAt,
+      rulesetVersion: item.rulesetVersion ?? 'wp4-flats-v1',
+      sectionManifest: item.sectionManifest ?? [],
+      storagePath: item.storagePath ?? state.mediaAssets.find((asset) => asset.id === item.exportAssetId)?.storagePath ?? '',
+    })),
     technicalFiles: state.technicalFiles ?? [],
     technicalFlats: state.technicalFlats ?? [],
-    technicalSpecs: state.technicalSpecs ?? [],
-    validationRuns: state.validationRuns ?? [],
+    technicalSpecs: (state.technicalSpecs ?? []).map((item) => ({
+      ...item,
+      releaseValidationRunId: item.releaseValidationRunId ?? null,
+      releaseVersionId: item.releaseVersionId ?? null,
+      releasedAt: item.releasedAt ?? null,
+      releasedBy: item.releasedBy ?? null,
+    })),
+    templateApplications: state.templateApplications ?? [],
+    validationRuns: (state.validationRuns ?? []).map((item) => ({ ...item, actorId: item.actorId ?? null })),
+    validationWaivers: state.validationWaivers ?? [],
     templates: (state.templates ?? []).map((template) => ({ ...template, payload: template.payload ?? {} })),
   };
 }

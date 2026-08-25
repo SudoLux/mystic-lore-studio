@@ -179,14 +179,16 @@ export type CanonicalTemplate = CanonicalRecord & {
 };
 
 export type TechnicalFlatView = 'front' | 'back' | 'left' | 'right' | 'inside' | 'detail' | 'other';
-export type CanonicalTechnicalSpec = CanonicalRecord & { garmentId: string; status: 'draft' | 'in_review' | 'approved' | 'released' | 'superseded'; baseSize: string; unit: 'mm' | 'cm' | 'in'; revisionLabel: string };
+export type CanonicalTechnicalSpec = CanonicalRecord & { garmentId: string; status: 'draft' | 'in_review' | 'approved' | 'released' | 'superseded'; baseSize: string; unit: 'mm' | 'cm' | 'in'; revisionLabel: string; releaseVersionId: string | null; releaseValidationRunId: string | null; releasedBy: string | null; releasedAt: string | null };
 export type CanonicalTechnicalFlat = CanonicalRecord & { specId: string; view: TechnicalFlatView; assetId: string; source: 'uploaded' | 'drawn' | 'generated' | 'derived'; approvedAt: string | null; approvedBy: string | null; sortOrder: number };
 export type CanonicalFlatAnnotation = CanonicalRecord & { flatId: string; anchor: { x: number; y: number }; label: string; detail: string; severity: 'info' | 'warning' | 'critical'; status: 'open' | 'resolved' | 'dismissed'; sortOrder: number };
 export type CanonicalTechnicalFile = CanonicalRecord & { specId: string; assetId: string; fileType: 'pattern' | 'cad' | 'illustrator' | 'spreadsheet' | 'pdf' | 'reference' | 'other'; versionLabel: string; isSource: boolean };
-export type CanonicalValidationIssue = { code: 'missing_required_view' | 'missing_source_mapping' | 'unresolved_critical_annotation' | 'unapproved_required_view'; entityId?: string; field: string; message: string; severity: 'error' | 'warning' };
-export type CanonicalValidationRun = CanonicalRecord & { specId: string; garmentVersionId: string | null; status: 'passed' | 'failed' | 'warning' | 'error'; rulesetVersion: string; issues: CanonicalValidationIssue[]; ranAt: string };
+export type ValidationDomain = 'flats' | 'pom' | 'measurements' | 'bom' | 'construction' | 'files' | 'privacy' | 'release';
+export type CanonicalValidationIssue = { code: string; domain?: ValidationDomain; entityId?: string; field: string; message: string; severity: 'error' | 'warning' | 'critical'; waivable?: boolean };
+export type CanonicalValidationRun = CanonicalRecord & { specId: string; garmentVersionId: string | null; status: 'passed' | 'failed' | 'warning' | 'error'; rulesetVersion: string; issues: CanonicalValidationIssue[]; ranAt: string; actorId: string | null };
 export type CanonicalGarmentVersion = CanonicalRecord & { garmentId: string; versionNo: number; label: string; scope: 'technical'; checksum: string; snapshot: Record<string, unknown> };
-export type CanonicalTechPackExport = CanonicalRecord & { specId: string; garmentVersionId: string; exportAssetId: string; format: 'pdf' | 'zip'; checksum: string; templateId: string; templateVersion: number; sourceRevisionLabel: string; deterministicFilename: string };
+export type TechPackSectionManifestItem = { checksum: string; id: string; recordCount: number; title: string };
+export type CanonicalTechPackExport = CanonicalRecord & { specId: string; garmentVersionId: string; exportAssetId: string; format: 'pdf' | 'zip'; checksum: string; templateId: string; templateVersion: number; sourceRevisionLabel: string; deterministicFilename: string; rulesetVersion: string; storagePath: string; generatedAt: string; sectionManifest: TechPackSectionManifestItem[]; approvedBy: string | null; approvedAt: string | null };
 export type CanonicalPomPoint = CanonicalRecord & { specId: string; code: string; name: string; method: string; diagramAnchor: { x: number; y: number }; sortOrder: number };
 export type CanonicalMeasurementSet = CanonicalRecord & { specId: string; name: string; sampleType: string | null; baseSize: string; status: 'draft' | 'in_review' | 'approved' | 'superseded' };
 export type CanonicalMeasurementValue = CanonicalRecord & { setId: string; pomPointId: string; size: string; target: number; tolerancePlus: number; toleranceMinus: number };
@@ -195,12 +197,23 @@ export type CanonicalGradeRuleValue = CanonicalRecord & { gradeRuleId: string; p
 export type CanonicalSampleRound = CanonicalRecord & { garmentId: string; garmentVersionId: string | null; roundNo: number; sampleType: string; status: 'planned' | 'requested' | 'in_progress' | 'received' | 'reviewed' | 'approved' | 'rejected'; receivedAt: string | null };
 export type CanonicalFitMeasurement = CanonicalRecord & { sampleRoundId: string; pomPointId: string; size: string; actual: number; variance: number };
 export type CanonicalRestoreOperation = CanonicalRecord & { garmentId: string; sourceVersionId: string; resultVersionId: string; selectedPomPointIds: string[]; selectedMeasurementKeys: string[]; reason: string };
+export type CanonicalBomItem = CanonicalRecord & { specId: string; itemType: 'material_variant' | 'component_variant' | 'custom'; materialVariantId: string | null; componentVariantId: string | null; intentionalFreeText: boolean; description: string; quantity: number; unit: CanonicalInventoryEntry['unit']; placement: string; supplierItemId: string | null; substituteItemId: string | null; status: 'draft' | 'linked' | 'approved' | 'shortage' | 'substituted'; shortageQuantity: number; unitCost: number; currency: string; costImpact: number; sortOrder: number };
+export type CanonicalConstructionSection = CanonicalRecord & { specId: string; name: string; sortOrder: number; status: 'draft' | 'approved' | 'superseded' };
+export type CanonicalConstructionStep = CanonicalRecord & { sectionId: string; stepNumber: number; operation: string; machine: string; machineRequired: boolean; stitchSpec: string; stitchRequired: boolean; seamAllowance: number | null; status: 'draft' | 'ready' | 'approved'; sortOrder: number };
+export type CanonicalConstructionDetail = CanonicalRecord & { stepId: string; assetId: string | null; anchor: { x: number; y: number } | null; callout: string; severity: 'info' | 'warning' | 'critical'; status: 'open' | 'resolved' | 'dismissed'; sortOrder: number };
+export type CanonicalTemplateApplication = CanonicalRecord & { templateId: string; garmentId: string; appliedBy: string | null; appliedAt: string; mapping: { copiedIds: string[]; sourceVersion: number } };
+export type CanonicalReleaseTask = CanonicalRecord & { garmentId: string; title: string; description: string; status: 'todo' | 'in_progress' | 'blocked' | 'done' | 'cancelled'; priority: 'low' | 'medium' | 'high' | 'urgent'; dueAt: string | null; assigneeId: string | null; sortOrder: number };
+export type CanonicalValidationWaiver = CanonicalRecord & { specId: string; validationRunId: string; ruleCode: string; domain: Exclude<ValidationDomain, 'privacy'>; reason: string; actorId: string; followUpTaskId: string; waivedAt: string };
 
 export type CanonicalWorkspaceState = {
   annotations: CanonicalAnnotation[];
+  bomItems: CanonicalBomItem[];
   collections: CanonicalCollection[];
   componentVariants: CanonicalComponentVariant[];
   components: CanonicalComponent[];
+  constructionDetails: CanonicalConstructionDetail[];
+  constructionSections: CanonicalConstructionSection[];
+  constructionSteps: CanonicalConstructionStep[];
   designBriefs: CanonicalDesignBrief[];
   garmentComponents: CanonicalGarmentComponent[];
   garmentMaterials: CanonicalGarmentMaterial[];
@@ -221,18 +234,21 @@ export type CanonicalWorkspaceState = {
   measurementValues: CanonicalMeasurementValue[];
   pomPoints: CanonicalPomPoint[];
   restoreOperations: CanonicalRestoreOperation[];
+  releaseTasks: CanonicalReleaseTask[];
   sampleRounds: CanonicalSampleRound[];
   fitMeasurements: CanonicalFitMeasurement[];
-  schemaVersion: 3;
+  schemaVersion: 4;
   studioId: string;
   suppliers: CanonicalSupplier[];
   supplierItems: CanonicalSupplierItem[];
   templates: CanonicalTemplate[];
+  templateApplications: CanonicalTemplateApplication[];
   technicalFiles: CanonicalTechnicalFile[];
   technicalFlats: CanonicalTechnicalFlat[];
   technicalSpecs: CanonicalTechnicalSpec[];
   techPackExports: CanonicalTechPackExport[];
   validationRuns: CanonicalValidationRun[];
+  validationWaivers: CanonicalValidationWaiver[];
 };
 
 export type WorkspaceSyncState = 'loading' | 'ready' | 'offline' | 'conflict' | 'error';

@@ -32,6 +32,7 @@ const storagePath = 'supabase/migrations/20260824051247_ml_studio_2_storage_poli
 const bootstrapPath = 'supabase/migrations/20260824070629_enable_canonical_migration_bootstrap.sql';
 const technicalPath = 'supabase/migrations/20260825035858_add_technical_foundation_contracts.sql';
 const measurementPath = 'supabase/migrations/20260825051344_enforce_pom_measurement_integrity.sql';
+const releasePath = 'supabase/migrations/20260825184506_complete_wp4_bom_construction_release_pack.sql';
 const testPath = 'supabase/tests/ml_studio_2_rls_test.sql';
 const foundation = read(foundationPath);
 const rls = read(rlsPath);
@@ -39,6 +40,7 @@ const storage = read(storagePath);
 const bootstrap = read(bootstrapPath);
 const technical = read(technicalPath);
 const measurement = read(measurementPath);
+const release = read(releasePath);
 const rlsTest = read(testPath);
 
 const structurallyBalanced = (sql) => {
@@ -98,6 +100,7 @@ for (const [path, sql] of [
   [bootstrapPath, bootstrap],
   [technicalPath, technical],
   [measurementPath, measurement],
+  [releasePath, release],
   [testPath, rlsTest],
 ]) {
   check(structurallyBalanced(sql), `Unbalanced SQL delimiters in ${path}.`);
@@ -120,10 +123,12 @@ const expectedPrivateTables = [
   'editorial_assets', 'portfolio_profiles', 'portfolio_projects',
   'portfolio_editorials', 'garment_versions', 'entity_revisions', 'change_events',
   'restore_operations', 'tasks', 'calendar_events', 'ai_jobs', 'ai_artifacts',
+  'validation_waivers',
   'sync_tombstones',
 ].sort();
 
-const actualPrivateTables = [...foundation.matchAll(/create table ml_private\.([a-z_]+)/g)]
+const canonicalTableSql = foundation + '\n' + release;
+const actualPrivateTables = [...canonicalTableSql.matchAll(/create table ml_private\.([a-z_]+)/g)]
   .map((match) => match[1])
   .sort();
 const actualPublicTables = [...foundation.matchAll(/create table ml_public\.([a-z_]+)/g)]
@@ -140,7 +145,7 @@ check(
 );
 
 const tableBlock = (table) => {
-  const match = foundation.match(
+  const match = canonicalTableSql.match(
     new RegExp(`create table ml_private\\.${table} \\(([\\s\\S]*?)\\n\\);`),
   );
   return match?.[1] ?? '';
@@ -154,7 +159,7 @@ for (const table of expectedPrivateTables) {
     check(/\bstudio_id uuid\b/.test(block), `Tenant table lacks studio_id: ${table}`);
   }
   check(
-    rls.includes(`'${table}'`) || rls.includes(`ml_private.${table}`),
+    rls.includes(`'${table}'`) || rls.includes(`ml_private.${table}`) || release.includes(`ml_private.${table}`),
     `Canonical table is missing from RLS coverage: ${table}`,
   );
 }
@@ -162,7 +167,7 @@ for (const table of expectedPrivateTables) {
 const immutableOrJoinTables = new Set([
   'garment_tags', 'inventory_entries', 'garment_versions', 'tech_pack_exports',
   'validation_runs', 'template_applications', 'entity_revisions', 'change_events',
-  'restore_operations',
+  'restore_operations', 'validation_waivers',
 ]);
 for (const table of expectedPrivateTables) {
   if (immutableOrJoinTables.has(table)) continue;
@@ -180,8 +185,9 @@ const allowedJsonbColumns = new Set([
   'content_json', 'settings_json', 'usage_json', 'case_study_json', 'json_patch',
   'inverse_patch', 'input_refs_json', 'candidate_json', 'provenance_json',
   'confidence_json', 'media_manifest',
+  'section_manifest_json',
 ]);
-const jsonbColumns = [...foundation.matchAll(/^\s+([a-z_]+) jsonb\b/gm)]
+const jsonbColumns = [...canonicalTableSql.matchAll(/^\s+([a-z_]+) jsonb\b/gm)]
   .map((match) => match[1]);
 for (const column of jsonbColumns) {
   check(allowedJsonbColumns.has(column), `Unapproved JSONB column: ${column}`);
@@ -190,7 +196,7 @@ for (const column of jsonbColumns) {
 
 check((foundation.match(/references /g) ?? []).length >= 80, 'Expected explicit canonical foreign keys are missing.');
 check((foundation.match(/create (?:unique )?index /g) ?? []).length >= 55, 'Expected canonical indexes are missing.');
-const canonicalSql = foundation + rls + storage + bootstrap + technical + measurement;
+const canonicalSql = foundation + rls + storage + bootstrap + technical + measurement + release;
 check(!/\b(create|alter|drop) table public\./i.test(canonicalSql), 'WP2 must not create, alter, or drop legacy public tables.');
 check(!/\bdrop table\b/i.test(canonicalSql), 'WP2 migrations may not drop tables.');
 check(!/\brename\s+(?:table|column)\b/i.test(canonicalSql), 'WP2 migrations may not rename legacy structures.');
@@ -235,6 +241,26 @@ check(measurement.includes('fit_measurements_actual_nonnegative_check'), 'WP4 no
 for (const index of ['ml_measurement_values_pom_size_idx', 'ml_grade_values_pom_idx', 'ml_fit_measurements_pom_size_idx']) {
   check(measurement.includes(`create index ${index}`), `WP4 POM query index is missing: ${index}`);
 }
+for (const field of ['intentional_free_text', 'supplier_item_id', 'substitute_item_id', 'shortage_quantity', 'cost_impact']) {
+  check(release.includes(`add column ${field}`), `WP4 BOM release field is missing: ${field}`);
+}
+for (const field of ['release_version_id', 'release_validation_run_id', 'released_by', 'released_at']) {
+  check(release.includes(`add column ${field}`), `WP4 release identity field is missing: ${field}`);
+}
+for (const field of ['ruleset_version', 'storage_path', 'generated_at', 'section_manifest_json', 'approved_by', 'approved_at']) {
+  check(release.includes(`add column ${field}`), `WP4 deterministic export evidence is missing: ${field}`);
+}
+check(release.includes('create table ml_private.validation_waivers'), 'WP4 waiver audit table is missing.');
+check(release.includes("domain in ('flats', 'pom', 'measurements', 'bom', 'construction', 'files', 'release')"), 'WP4 privacy rules must be excluded from waivable domains.');
+check(release.includes('alter table ml_private.validation_waivers enable row level security'), 'WP4 waiver evidence must enable RLS.');
+check(
+  release.indexOf('update ml_private.bom_items') < release.indexOf('add constraint bom_items_intentional_free_text_check'),
+  'WP4 existing custom BOM intent must be backfilled before its explicit-intent constraint.',
+);
+check(
+  release.indexOf('update ml_private.tech_pack_exports') < release.indexOf('alter column ruleset_version set not null'),
+  'WP4 foundation exports must receive deterministic release evidence before non-null enforcement.',
+);
 
 const srcFiles = [];
 const walk = (directory) => {
@@ -294,6 +320,14 @@ for (const contract of ['convertMeasurement', 'measurementWithinTolerance', 'pre
 check(measurementPage.includes('POMCanvas'), 'WP4 accessible POM canvas is missing.');
 check(measurementPage.includes('MeasurementDataGrid'), 'WP4 dense measurement grid is missing.');
 check(measurementPage.includes('Structural compare and selective restore'), 'WP4 structural restore UI is missing.');
+const releaseRepository = read('src/domains/technical/releaseRepository.ts');
+const releasePage = read('src/pages/TechnicalStudio/ReleaseStudio.tsx');
+for (const contract of ['createBomItem', 'applyConstructionTemplate', 'validateRelease', 'releaseTechnicalSpec', 'generateDeterministicTechPack']) {
+  check(releaseRepository.includes(`function ${contract}`), `WP4 release repository contract is missing: ${contract}`);
+}
+for (const contract of ['Component detail', 'Assembly sequence', 'Request audited waiver', 'Non-waivable privacy', 'Export panel']) {
+  check(releasePage.includes(contract), `WP4 release UI contract is missing: ${contract}`);
+}
 
 const plan = Number(rlsTest.match(/select plan\((\d+)\)/)?.[1] ?? 0);
 const assertions = (rlsTest.match(/^select (?:is|results_eq|throws_like|throws_ok|lives_ok)\(/gm) ?? []).length;
@@ -305,7 +339,7 @@ check(rlsTest.includes('unpublish_publication'), 'pgTAP suite lacks unpublicatio
 const migrationNames = readdirSync(new URL('supabase/migrations/', root))
   .filter((name) => name.endsWith('.sql'))
   .sort();
-for (const path of [foundationPath, rlsPath, storagePath, bootstrapPath, technicalPath, measurementPath]) {
+for (const path of [foundationPath, rlsPath, storagePath, bootstrapPath, technicalPath, measurementPath, releasePath]) {
   check(migrationNames.includes(path.split('/').at(-1)), `Named migration missing: ${path}`);
 }
 check(
@@ -318,8 +352,10 @@ check(
   && migrationNames.indexOf(bootstrapPath.split('/').at(-1))
     < migrationNames.indexOf(technicalPath.split('/').at(-1))
   && migrationNames.indexOf(technicalPath.split('/').at(-1))
-    < migrationNames.indexOf(measurementPath.split('/').at(-1)),
-  'Migration order is not schema -> RLS -> Storage -> migration bootstrap -> WP4 flats -> WP4 measurements.',
+    < migrationNames.indexOf(measurementPath.split('/').at(-1))
+  && migrationNames.indexOf(measurementPath.split('/').at(-1))
+    < migrationNames.indexOf(releasePath.split('/').at(-1)),
+  'Migration order is not schema -> RLS -> Storage -> migration bootstrap -> WP4 flats -> WP4 measurements -> WP4 release.',
 );
 
 if (failures.length > 0) {
