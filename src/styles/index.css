@@ -1,4 +1,14 @@
 @import "tailwindcss";
+
+@layer components {
+  .field {
+    @apply h-11 w-full rounded-xl border border-bronze/30 bg-midnight/60 px-3 text-sm text-stardust outline-none transition placeholder:text-stardust/38 focus:border-ember/70 focus:ring-2 focus:ring-ember/25;
+  }
+
+  .field-label {
+    @apply mb-1.5 block text-xs font-medium text-stardust/65;
+  }
+}
 @source "../pages/PublicPortfolio";
 
 @theme {

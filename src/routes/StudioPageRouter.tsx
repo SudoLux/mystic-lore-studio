@@ -1,15 +1,15 @@
 import { DashboardPage } from '../pages/Dashboard';
-import { FabricVaultPage } from '../pages/FabricVault';
+import { GarmentLibraryPage } from '../pages/GarmentLibrary';
+import { CanonicalGarmentWorkspacePage } from '../pages/GarmentWorkspace';
+import { LibraryVaultPage } from '../pages/LibraryVault';
 import { KanbanPage } from '../pages/Kanban';
 import { LookbooksPage } from '../pages/Lookbooks';
 import { PortfolioPage } from '../pages/Portfolio';
-import { ProjectsPage } from '../pages/Projects';
 import { SettingsPage } from '../pages/Settings';
 import { StatsPage } from '../pages/Stats';
 import type { AppRoute } from '../lib/appRoutes';
 import type { PageId } from '../types/navigation';
 import type { ApparelProject, Fabric } from '../types/studio';
-import { GarmentWorkspaceRoute } from './garments/GarmentWorkspaceRoute';
 
 export type StudioPageRouterProps = {
   onAddFabric: () => void;
@@ -31,13 +31,8 @@ export type StudioPageRouterProps = {
  */
 export function StudioPageRouter({
   onAddFabric,
-  onDeleteFabric,
-  onDeleteProject,
-  onEditFabric,
-  onEditProject,
   onNavigate,
   onNewProject,
-  onOpenFabric,
   onOpenProject,
   route,
 }: StudioPageRouterProps) {
@@ -54,28 +49,17 @@ export function StudioPageRouter({
 
   if (route.page === 'projects') {
     return route.projectId ? (
-      <GarmentWorkspaceRoute
+      <CanonicalGarmentWorkspacePage
         onBack={() => onNavigate('projects')}
-        onDeleteProject={onDeleteProject}
-        onEditProject={onEditProject}
-        projectId={route.projectId}
+        garmentId={route.projectId}
       />
     ) : (
-      <ProjectsPage onNewProject={onNewProject} onOpenProject={onOpenProject} />
+      <GarmentLibraryPage onOpenGarment={onOpenProject} />
     );
   }
 
   if (route.page === 'fabrics') {
-    return (
-      <FabricVaultPage
-        fabricId={route.fabricId}
-        onBack={() => onNavigate('fabrics')}
-        onDeleteFabric={onDeleteFabric}
-        onEditFabric={onEditFabric}
-        onNewFabric={onAddFabric}
-        onOpenFabric={onOpenFabric}
-      />
-    );
+    return <LibraryVaultPage />;
   }
 
   if (route.page === 'kanban') return <KanbanPage />;

@@ -3,10 +3,11 @@
 Last updated: 2026-08-24
 
 This ledger records the reproducible baseline and bounded implementation work
-for Mystic Lore Studio 2.0. WP2 uses Product Bible pages 11, 19-35, and 59-60
-to establish the additive canonical schema, membership RLS, publication
-boundary, Storage paths, deterministic legacy migration, recovery evidence,
-and typed read-through adapters without switching the application UI.
+for Mystic Lore Studio 2.0. WP2 establishes the additive canonical schema,
+membership RLS, publication boundary, Storage paths, deterministic legacy
+migration, recovery evidence, and typed read-through adapters. WP3 cuts the
+garment and reusable-library routes over to the persisted canonical workspace
+without changing unrelated legacy domains.
 
 ## Work-package Status
 
@@ -15,7 +16,8 @@ and typed read-through adapters without switching the application UI.
 | WP0 | Current behavior, migration input, screenshots, characterization tests, ADRs | Complete | Legacy fixture, baseline screenshots, and verification commands are reproducible |
 | WP1 | Route modules, garment workspace shell, domain folders, repository interfaces | Complete | Build and route parity pass without intentional feature change |
 | WP2 | Schema foundation, RLS, storage paths, read-through adapters | Complete | Legacy fixture dry-runs and round-trips with zero unexplained loss; retry/recovery evidence is recorded |
-| WP3-WP10 | Product Bible sequence | Not started | See Product Bible page 59 |
+| WP3 | Garment, collection, design brief, moodboard, media relationships, Material Vault, Component Library, and reusable templates | Complete | Core relationships replace copied project/material fields; canonical routes pass parity and recovery checks |
+| WP4-WP10 | Product Bible sequence | Not started | See Product Bible page 59 |
 
 ## Verification
 
@@ -44,7 +46,7 @@ Characterization coverage:
 - `tests/shellContract.test.ts`: fixed desktop/compact responsive shell modes
   and semantic native-button navigation for keyboard access.
 
-Latest WP2 verification:
+Latest WP3 verification:
 
 | Command | Result |
 | --- | --- |
@@ -52,8 +54,18 @@ Latest WP2 verification:
 | `npm run db:reset` | Passed: all six legacy migrations and four ordered WP2 migrations applied to an empty local database |
 | `npm run test:db` | Passed: 28 pgTAP assertions, including owner-only settings retry, same-Studio access, cross-Studio denial, anonymous denial, Public Cut, and Storage policies |
 | Authenticated local API dry run | Passed: representative fixture applied through the typed Supabase store; one owner-visible garment; duplicate execution completed safely |
-| `npm test` | Passed: 7 test files, 27 tests |
+| `npm test` | Passed: 9 test files, 37 tests, including canonical relationship, inventory, media/moodboard, route-state, and accessibility contracts |
 | `npm run build` | Passed: TypeScript build and Vite production build |
+
+WP3 cutover evidence:
+
+- [ADR-0007: canonical garment and library route cutover](../adr/ADR-0007-wp3-canonical-garment-route-cutover.md)
+- `tests/canonicalWorkspace.test.ts`: fixture-to-canonical parity plus one-to-one
+  brief, reusable variant, inventory-ledger, moodboard/media, and dependency
+  deletion checks.
+- `tests/wp3UiContract.test.ts`: loading/error/offline, keyboard-native
+  relationship selection, destructive confirmation, and responsive layout
+  contract checks.
 
 WP2 dry-run artifacts:
 
@@ -73,8 +85,8 @@ See [baseline screenshot manifest](BASELINE_SCREENSHOTS.md).
 | --- | --- | --- | --- |
 | Access | no authenticated Supabase session | `AuthScreen` | `useAuth` |
 | Dashboard | `#/` or `#/dashboard` | `DashboardPage` | `StudioDataProvider` |
-| Projects | `#/projects`, `#/projects/:id` | `ProjectsPage`, `ProjectDetailPage` | `StudioDataProvider` |
-| Fabric Vault | `#/fabrics`, `#/fabrics/:id` | `FabricVaultPage` | `StudioDataProvider` |
+| Garments | `#/projects`, `#/projects/:id` (legacy-compatible paths) | `GarmentLibraryPage`, `CanonicalGarmentWorkspacePage` | `CanonicalWorkspaceProvider` |
+| Libraries | `#/fabrics` (legacy-compatible path) | `LibraryVaultPage` (Material Vault and Component Library) | `CanonicalWorkspaceProvider` |
 | Workflow | `#/kanban` | `KanbanPage` | `StudioDataProvider` |
 | Editorial Collections | `#/lookbooks` | `LookbooksPage`, `EditorialSceneBuilder`, `EditorialCollectionViewer` | `StudioDataProvider` and local editorial collection state |
 | Portfolio manager | `#/portfolio` | `PortfolioPage` | `StudioDataProvider` |
@@ -90,7 +102,8 @@ WP1 composition boundaries:
 - `src/routes/PublicPortfolioRoute.tsx`: public snapshot route loading only.
 - `src/routes/StudioAppRoute.tsx`: authenticated hash route state only.
 - `src/routes/AuthenticatedStudioShell.tsx`: private shell chrome only.
-- `src/routes/StudioPageRouter.tsx`: legacy feature-page routing adapter.
+- `src/routes/StudioPageRouter.tsx`: compatibility router; Garments and
+  Libraries resolve to canonical WP3 route modules.
 - `src/routes/StudioModalLayer.tsx`: form, destructive, migration, and sync
   modal orchestration.
 - `src/routes/garments/GarmentWorkspaceRoute.tsx`: nested garment workspace
@@ -153,9 +166,11 @@ WP2A adds isolated canonical schemas while preserving everything above:
 - `portfolio-assets`: copied public-safe derivatives under
   `publications/{publication_id}/{publication_asset_id}/...`.
 
-The current UI does not reference any canonical schema or bucket name. Typed
-migration/read-through adapters exist under `src/domains/migration`, but no
-route, page, hook, or component is cut over. See the
+The WP3 Garments and Libraries UI uses `CanonicalWorkspaceProvider`, which
+imports the accepted deterministic migration graph into separately persisted
+canonical browser records. It never reads legacy project/fabric/linked-material
+arrays after initialization. Typed migration/read-through adapters remain for
+recovery and untouched domains. See the
 [canonical schema specification](../schema/ML_STUDIO_2_CANONICAL_SCHEMA.md),
 [ADR-0005](../adr/ADR-0005-canonical-schema-and-public-cut-boundary.md), and
 [ADR-0006](../adr/ADR-0006-deterministic-legacy-read-through.md).
@@ -194,8 +209,9 @@ These are observed current behaviors, not WP0 fixes:
 3. Conflict handling is timestamp-based newest-wins with tombstones. There is
    no append-only change event stream, named Freeze Frame, structural diff, or
    non-destructive restore model yet.
-4. Browser IDs now have deterministic UUIDv5 mappings in WP2 evidence. The UI
-   continues to expose legacy IDs until a later domain route cutover.
+4. Browser IDs now have deterministic UUIDv5 mappings in WP2 evidence. WP3
+   Garments and Libraries use their canonical IDs; untouched domains still use
+   legacy IDs until their own route cutover.
 5. Legacy `lookbook_pages` and newer Editorial Collections coexist by explicit
    `preserve-both-until-wp7` policy; overlap is reported, never silently merged.
 6. The migration ledger includes both aggregate `portfolio_publications` and
@@ -211,12 +227,13 @@ These are observed current behaviors, not WP0 fixes:
 - [ADR-0004: Route and domain boundaries](../adr/ADR-0004-route-and-domain-boundaries.md)
 - [ADR-0005: Canonical schema and Public Cut boundary](../adr/ADR-0005-canonical-schema-and-public-cut-boundary.md)
 - [ADR-0006: Deterministic legacy migration and read-through](../adr/ADR-0006-deterministic-legacy-read-through.md)
+- [ADR-0007: WP3 canonical garment and library route cutover](../adr/ADR-0007-wp3-canonical-garment-route-cutover.md)
 - Vitest is the WP0 automated test harness. It adds no browser runtime behavior.
 - Existing repository screenshots are the signed-in visual baseline. WP0 does
   not add an authentication bypass merely to create new captures.
-- WP1 preserves current feature-page presentation. The AppShell remains the
-  established desktop fixed rail and compact mobile/tablet dock; Threadline is
-  a reserved optional workspace slot, not a visible new rail yet.
+- WP3 adds a visible wide-screen Threadline panel to the canonical garment
+  workspace. On narrow screens it remains ordinary document flow rather than a
+  hidden capability.
 
 ## Open Decisions
 

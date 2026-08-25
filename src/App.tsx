@@ -1,5 +1,6 @@
 import { useAuth } from './hooks/useAuth';
 import { StudioDataProvider } from './hooks/useStudioData';
+import { CanonicalWorkspaceProvider } from './hooks/useCanonicalWorkspace';
 import { getPublicPortfolioRoute } from './lib/appRoutes';
 import { AuthScreen } from './pages/Auth/AuthScreen';
 import { PublicPortfolioRoute } from './routes/PublicPortfolioRoute';
@@ -23,7 +24,9 @@ function App() {
 
   return (
     <StudioDataProvider userId={session.user.id}>
-      <StudioAppRoute />
+      <CanonicalWorkspaceProvider userId={session.user.id}>
+        <StudioAppRoute />
+      </CanonicalWorkspaceProvider>
     </StudioDataProvider>
   );
 }

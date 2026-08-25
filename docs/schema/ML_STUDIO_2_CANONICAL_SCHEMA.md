@@ -1,6 +1,7 @@
 # Mystic Lore Studio 2.0 Canonical Schema
 
-Status: WP2 complete with typed migration/read-through adapters; no application route cutover
+Status: WP3 complete for Garments and Libraries; typed migration/read-through
+adapters remain for recovery and untouched domains
 
 Source specification: Product Bible pages 19-32 and 59-60. The ordered SQL
 migrations are authoritative for exact types, checks, foreign keys, indexes,
@@ -211,9 +212,9 @@ npm run build
 
 `validate:schema` is deterministic and verifies the table inventory, tenant
 columns, allowed JSONB fields, RLS/storage coverage, migration order, pgTAP
-plan, unchanged UI routes, and checksums of all six legacy migrations plus
-the WP0 fixture. `test:db` executes the 28-assertion pgTAP matrix on a local or
-explicit test database.
+plan, WP3 canonical route boundaries, and checksums of all six legacy
+migrations plus the WP0 fixture. `test:db` executes the 28-assertion pgTAP
+matrix on a local or explicit test database.
 
 ## WP2B Transition Contract
 
@@ -233,4 +234,17 @@ The committed machine report is
 It is regenerated in memory and compared byte-for-structure by the application
 tests, preventing stale row counts, mappings, warnings, or checksums.
 
-WP2 stops before any route or UI domain cutover and before legacy retirement.
+## WP3 Route Cutover
+
+`CanonicalWorkspaceProvider` consumes the accepted deterministic migration
+graph and persists a user-scoped canonical browser workspace. The Garment
+Library, garment overview/Design Studio, Material Vault, and Component Library
+call this repository instead of reading legacy project, fabric, or linked
+material arrays. The same typed records mirror `ml_private` table ownership and
+relationship rules, while the browser cache remains recoverable independently
+of the legacy aggregate.
+
+Legacy project/fabric routes remain as compatibility hash aliases only. Their
+old page components are not mounted by the route router. Dashboard, workflow,
+editorial, portfolio, settings, cloud sync, and public routes remain outside
+WP3 scope and continue to use the accepted legacy/read-through boundary.

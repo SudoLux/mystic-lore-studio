@@ -237,6 +237,29 @@ for (const path of srcFiles) {
   );
 }
 
+const wp3CanonicalFiles = [
+  'src/hooks/useCanonicalWorkspace.tsx',
+  'src/pages/GarmentLibrary/GarmentLibraryPage.tsx',
+  'src/pages/GarmentWorkspace/CanonicalGarmentWorkspacePage.tsx',
+  'src/pages/LibraryVault/LibraryVaultPage.tsx',
+  'src/components/shared/RelationshipPicker.tsx',
+];
+for (const path of wp3CanonicalFiles) {
+  const contents = read(path);
+  check(
+    contents.includes('useCanonicalWorkspace')
+      || contents.includes('RelationshipOption')
+      || path.endsWith('useCanonicalWorkspace.tsx'),
+    `WP3 canonical route boundary missing: ${path}`,
+  );
+}
+const router = read('src/routes/StudioPageRouter.tsx');
+check(router.includes('<GarmentLibraryPage'), 'Garment Library route must use the canonical WP3 page.');
+check(router.includes('<CanonicalGarmentWorkspacePage'), 'Garment detail route must use the canonical WP3 workspace.');
+check(router.includes('<LibraryVaultPage'), 'Material Vault route must use the canonical WP3 library page.');
+check(!router.includes('<ProjectsPage'), 'WP3 must remove the legacy project-library read path.');
+check(!router.includes('<FabricVaultPage'), 'WP3 must remove the legacy fabric-vault read path.');
+
 const plan = Number(rlsTest.match(/select plan\((\d+)\)/)?.[1] ?? 0);
 const assertions = (rlsTest.match(/^select (?:is|results_eq|throws_like|throws_ok|lives_ok)\(/gm) ?? []).length;
 check(plan === assertions, `pgTAP plan (${plan}) does not match assertion count (${assertions}).`);
