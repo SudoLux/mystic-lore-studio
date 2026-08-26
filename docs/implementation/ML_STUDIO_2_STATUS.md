@@ -31,7 +31,8 @@ orders, milestones, QC results, waivers, and final decision.
 | WP5 | Append-only change ledger, named Freeze Frames, domain-aware diff, scoped restore, conflicts, and release/publication protection | Complete | Restoring an older scope creates a new version while all earlier and pinned evidence remains unchanged |
 | WP6a | Supplier/factory capabilities, pinned sample rounds, fit sessions, measurements, issues, private evidence, decisions, and provenance-preserving promotions | Complete | Sample and fit decisions are reproducible, version-pinned, and traceable to stable POM and media evidence; costing, orders, and QC remain deferred |
 | WP6b | Quantity costing, released-version production orders, milestones, QC templates/results/waivers, decisions, and integrated timeline | Complete | Sample, fit, cost, order, milestone, and QC decisions reference the correct released garment version |
-| WP7-WP10 | Remaining Product Bible sequence | Not started | WP7 begins Editorial normalization and migration; no Editorial cutover occurred in WP6 |
+| WP7 | Editorial Collection normalization, Story from System, private export manifests, and canonical route cutover | Complete | Canonical collections preserve legacy editorial/lookbook evidence, sync-ready records remain private, and approved exports are checksum reproducible |
+| WP8-WP10 | Remaining Product Bible sequence | Not started | WP8 begins Portfolio work; WP7 intentionally leaves Portfolio and public publication routes unchanged |
 
 ## Verification
 
@@ -69,6 +70,23 @@ Latest WP6 completion verification:
 | `npm run test:db` | Passed: 82 pgTAP assertions, including same-Studio QC access, cross-Studio mutation denial, reviewer read, anonymous denial, table grants, RLS, provenance triggers, append-only waivers, and tenant-first indexes |
 | `npm test` | Passed: 20 files, 94 tests, including four-decimal rounding, ISO currency, quantity scenarios, waste, invalid totals, immutable order pinning, stale-source warnings, QC failures/waivers, ledger evidence, and integrated chronology |
 | `npm run build` | Passed: TypeScript and Vite production build |
+
+Latest WP7 completion verification:
+
+| Command | Result |
+| --- | --- |
+| `npm run validate:schema` | Passed: 77 private tables, 2 public projection tables, 87 pgTAP assertions, and 7 protected legacy inputs |
+| `npm run db:reset` | Passed: every migration, including additive `20260826103000_normalize_editorial_story_from_system.sql`, applies to an empty local database |
+| `npm run test:db` | Passed: 87 pgTAP assertions, including private Editorial relationship/export RLS, operation-specific member policies, source provenance, and append-only export evidence |
+| `npm test` | Passed: 21 test files, 98 tests, including legacy normalization, source staleness, ordered scenes, asset-rights export gates, and deterministic private export identity |
+| `npm run build` | Passed: TypeScript and Vite production build |
+
+WP7 evidence:
+
+- [ADR-0016: canonical Editorial Collections and Story from System](../adr/ADR-0016-wp7-editorial-story-from-system.md)
+- `tests/wp7Editorial.test.ts`: legacy normalization report, one primary plus
+  supporting garments, keyboard-safe scene order, source checksum staleness,
+  asset-rights export gate, and deterministic private export identity.
 
 WP6 completion evidence:
 
@@ -205,7 +223,7 @@ See [baseline screenshot manifest](BASELINE_SCREENSHOTS.md).
 | Production & fit | `#/production`, `#/production/:garmentId` | `ProductionPage`, sample rounds, Fit Review, private evidence gallery, decision and promotion controls | `CanonicalWorkspaceProvider` and production repositories |
 | Versions & Diff | `#/versions` | `VersionsPage`, `DiffViewer`, `FreezeFrameDialog`, `RestorePreview`, `ConflictResolver`, `ReleaseGate` | `CanonicalWorkspaceProvider` and versioning commands/repository |
 | Workflow | `#/kanban` | `KanbanPage` | `StudioDataProvider` |
-| Editorial Collections | `#/lookbooks` | `LookbooksPage`, `EditorialSceneBuilder`, `EditorialCollectionViewer` | `StudioDataProvider` and local editorial collection state |
+| Editorial Collections | `#/lookbooks` | `EditorialStudioPage`, canonical collection/scene/block/asset/export records, Story from System | `CanonicalWorkspaceProvider` and Editorial repository |
 | Portfolio manager | `#/portfolio` | `PortfolioPage` | `StudioDataProvider` |
 | Studio signals | `#/stats` | `StatsPage` | `StudioDataProvider` |
 | Settings and sync | `#/settings` | `SettingsPage` | `StudioDataProvider`, sync queue |

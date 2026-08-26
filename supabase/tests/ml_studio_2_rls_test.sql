@@ -3,7 +3,7 @@ begin;
 create extension if not exists pgtap with schema extensions;
 set local search_path = extensions, public, ml_private, ml_public;
 
-select plan(82);
+select plan(87);
 
 insert into auth.users (id, email) values
   ('10000000-0000-4000-8000-000000000001', 'wp2-owner-a@example.test'),
@@ -819,6 +819,37 @@ select throws_ok(
   '23514',
   'Published asset manifests are retained as immutable history.',
   'unpublication retains the immutable copied-asset manifest history'
+);
+
+select is(
+  (select count(*) from information_schema.tables where table_schema = 'ml_private' and table_name in ('editorial_collection_garments', 'editorial_exports')),
+  2::bigint,
+  'WP7 creates normalized editorial garment links and immutable export manifests'
+);
+select is(
+  (select count(*) from pg_class relation join pg_namespace namespace on namespace.oid = relation.relnamespace
+    where namespace.nspname = 'ml_private' and relation.relname in ('editorial_collection_garments', 'editorial_exports') and relation.relrowsecurity),
+  2::bigint,
+  'WP7 editorial relationship and export tables enforce RLS'
+);
+select is(
+  (select count(*) from pg_policies where schemaname = 'ml_private' and tablename = 'editorial_collection_garments'
+    and policyname in ('studio_select', 'studio_insert', 'studio_update', 'studio_delete')),
+  4::bigint,
+  'same-studio editorial garment relationships have operation-specific member policies'
+);
+select is(
+  (select count(*) from pg_policies where schemaname = 'ml_private' and tablename = 'editorial_exports'
+    and policyname in ('studio_select', 'studio_insert')),
+  2::bigint,
+  'private editorial exports have member-only read and explicit insert policies'
+);
+select is(
+  (select count(*) from pg_trigger trigger join pg_class relation on relation.oid = trigger.tgrelid
+    join pg_namespace namespace on namespace.oid = relation.relnamespace
+    where namespace.nspname = 'ml_private' and trigger.tgname in ('editorial_blocks_assert_live_source', 'editorial_exports_append_only')),
+  2::bigint,
+  'Story from System provenance and immutable export evidence triggers are installed'
 );
 
 select * from finish();

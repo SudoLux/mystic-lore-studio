@@ -3,7 +3,7 @@ import { GarmentLibraryPage } from '../pages/GarmentLibrary';
 import { CanonicalGarmentWorkspacePage } from '../pages/GarmentWorkspace';
 import { LibraryVaultPage } from '../pages/LibraryVault';
 import { KanbanPage } from '../pages/Kanban';
-import { LookbooksPage } from '../pages/Lookbooks';
+import { EditorialStudioPage } from '../pages/EditorialStudio';
 import { PortfolioPage } from '../pages/Portfolio';
 import { SettingsPage } from '../pages/Settings';
 import { StatsPage } from '../pages/Stats';
@@ -78,7 +78,7 @@ export function StudioPageRouter({
   if (route.page === 'versions') return <VersionsPage />;
 
   if (route.page === 'kanban') return <KanbanPage />;
-  if (route.page === 'lookbooks') return <LookbooksPage />;
+  if (route.page === 'lookbooks') return <EditorialStudioPage />;
   if (route.page === 'portfolio') return <PortfolioPage />;
   if (route.page === 'stats') return <StatsPage />;
   return <SettingsPage />;

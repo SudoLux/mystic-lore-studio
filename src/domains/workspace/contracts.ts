@@ -223,6 +223,14 @@ export type VersionDependencyKind = 'release' | 'export' | 'order' | 'publicatio
 export type CanonicalVersionDependency = { artifactId: string; kind: VersionDependencyKind; label: string; versionId: string };
 export type CanonicalConflict = CanonicalRecord & { baseValue: unknown; entityId: string; entityType: string; field: string; garmentId: string; localOperationId: string; localValue: unknown; remoteOperationId: string; remoteValue: unknown; resolution: 'pending' | 'local' | 'remote' | 'custom'; resolvedValue?: unknown };
 export type CanonicalEditorialVersionProjection = CanonicalRecord & { garmentId: string; liveDataStaleness: 'current' | 'source_changed' | 'media_missing' | 'privacy_blocked'; sortOrder: number; title: string };
+export type EditorialCollectionStatus = 'draft' | 'in_review' | 'ready' | 'approved' | 'published' | 'retired' | 'archived';
+export type EditorialLiveSource = 'garment' | 'design_brief' | 'material' | 'technical_spec' | 'measurement_set' | 'construction_step' | 'production_timeline' | 'garment_version';
+export type CanonicalEditorialCollection = CanonicalRecord & { primaryGarmentId: string; primaryGarmentVersionId: string | null; title: string; subtitle: string; description: string; templateType: string; themeId: string | null; transition: Record<string, unknown>; exportSettings: Record<string, unknown>; status: EditorialCollectionStatus; approvedAt: string | null; approvedBy: string | null; publishedAt: string | null; publishedBy: string | null };
+export type CanonicalEditorialCollectionGarment = CanonicalRecord & { collectionId: string; garmentId: string; role: 'primary' | 'supporting'; sortOrder: number };
+export type CanonicalEditorialScene = CanonicalRecord & { collectionId: string; sceneType: string; title: string; subtitle: string; description: string; narrativeRole: string; background: Record<string, unknown>; transition: Record<string, unknown>; sortOrder: number };
+export type CanonicalEditorialBlock = CanonicalRecord & { sceneId: string; blockType: string; content: Record<string, unknown>; settings: Record<string, unknown>; sortOrder: number; liveSource: EditorialLiveSource | null; sourceGarmentId: string | null; sourceVersionId: string | null; sourceEntityId: string | null; sourceFieldPath: string | null; sourceChecksum: string | null; staleness: 'current' | 'source_changed' | 'missing_source'; aiArtifactId: string | null };
+export type CanonicalEditorialAsset = CanonicalRecord & { collectionId: string; assetId: string; role: string; usage: Record<string, unknown>; sortOrder: number };
+export type CanonicalEditorialExport = CanonicalRecord & { collectionId: string; collectionRevision: number; format: 'pdf' | 'image'; checksum: string; storagePath: string; sourceGarmentVersionId: string | null; manifest: Record<string, unknown>; generatedAt: string; approvedAt: string | null; approvedBy: string | null };
 export type CanonicalPortfolioVersionProjection = CanonicalRecord & { caseStudy: string; garmentId: string; selectedAssetIds: string[]; sortOrder: number; visibility: 'private' | 'ready' | 'published' };
 export type TechPackSectionManifestItem = { checksum: string; id: string; recordCount: number; title: string };
 export type CanonicalTechPackExport = CanonicalRecord & { specId: string; garmentVersionId: string; exportAssetId: string; format: 'pdf' | 'zip'; checksum: string; templateId: string; templateVersion: number; sourceRevisionLabel: string; deterministicFilename: string; rulesetVersion: string; storagePath: string; generatedAt: string; sectionManifest: TechPackSectionManifestItem[]; approvedBy: string | null; approvedAt: string | null };
@@ -275,6 +283,12 @@ export type CanonicalWorkspaceState = {
   costSheets: CanonicalCostSheet[];
   designBriefs: CanonicalDesignBrief[];
   entityRevisions: CanonicalEntityRevision[];
+  editorialAssets: CanonicalEditorialAsset[];
+  editorialBlocks: CanonicalEditorialBlock[];
+  editorialCollectionGarments: CanonicalEditorialCollectionGarment[];
+  editorialCollections: CanonicalEditorialCollection[];
+  editorialExports: CanonicalEditorialExport[];
+  editorialScenes: CanonicalEditorialScene[];
   factories: CanonicalFactory[];
   fitIssuePromotions: CanonicalFitIssuePromotion[];
   fitIssues: CanonicalFitIssue[];
@@ -311,7 +325,7 @@ export type CanonicalWorkspaceState = {
   sampleRoundMedia: CanonicalSampleRoundMedia[];
   sampleRounds: CanonicalSampleRound[];
   fitMeasurements: CanonicalFitMeasurement[];
-  schemaVersion: 7;
+  schemaVersion: 8;
   studioId: string;
   suppliers: CanonicalSupplier[];
   supplierItems: CanonicalSupplierItem[];

@@ -12,6 +12,12 @@ import type {
   CanonicalCostItem,
   CanonicalCostSheet,
   CanonicalDesignBrief,
+  CanonicalEditorialAsset,
+  CanonicalEditorialBlock,
+  CanonicalEditorialCollection,
+  CanonicalEditorialCollectionGarment,
+  CanonicalEditorialExport,
+  CanonicalEditorialScene,
   CanonicalFactory,
   CanonicalFitIssue,
   CanonicalFitIssuePromotion,
@@ -48,7 +54,7 @@ import type {
   RelationshipOption,
 } from './contracts';
 
-const workspaceVersion = 7 as const;
+const workspaceVersion = 8 as const;
 
 export type CanonicalWorkspaceSeed = {
   data: StudioData;
@@ -121,6 +127,28 @@ export async function createCanonicalWorkspace(seed: CanonicalWorkspaceSeed) {
       return { ...base(value), colorStory: value.color_story, garmentId: value.garment_id, intent: value.intent, keyFeatures: value.key_features, silhouette: value.silhouette, targetWearer: value.target_wearer };
     }),
     entityRevisions: [],
+    editorialAssets: rows('editorial_assets').map((row) => {
+      const value = row as { asset_id: string; collection_id: string; created_at: string; id: string; role: string; sort_order: number; studio_id: string; updated_at: string; usage_json: Record<string, unknown> };
+      return { ...base(value), assetId: value.asset_id, collectionId: value.collection_id, role: value.role, sortOrder: value.sort_order, usage: value.usage_json ?? {} } satisfies CanonicalEditorialAsset;
+    }),
+    editorialBlocks: rows('editorial_blocks').map((row) => {
+      const value = row as { block_type: string; content_json: Record<string, unknown>; created_at: string; id: string; scene_id: string; settings_json: Record<string, unknown>; sort_order: number; studio_id: string; updated_at: string };
+      return { ...base(value), aiArtifactId: null, blockType: value.block_type, content: value.content_json?.value && typeof value.content_json.value === 'object' ? value.content_json.value as Record<string, unknown> : value.content_json ?? {}, liveSource: null, sceneId: value.scene_id, settings: value.settings_json ?? {}, sortOrder: value.sort_order, sourceChecksum: null, sourceEntityId: null, sourceFieldPath: null, sourceGarmentId: null, sourceVersionId: null, staleness: 'current' } satisfies CanonicalEditorialBlock;
+    }),
+    editorialCollectionGarments: rows('editorial_collections').map((row, sortOrder) => {
+      const value = row as { created_at: string; garment_id: string; id: string; studio_id: string; updated_at: string };
+      return { ...base({ ...value, id: crypto.randomUUID() }), collectionId: value.id, garmentId: value.garment_id, role: 'primary', sortOrder } satisfies CanonicalEditorialCollectionGarment;
+    }),
+    editorialCollections: rows('editorial_collections').map((row) => {
+      const value = row as { created_at: string; garment_id: string; id: string; status: CanonicalEditorialCollection['status']; studio_id: string; template_type: string; theme_id: string | null; title: string; updated_at: string };
+      return { ...base(value), approvedAt: null, approvedBy: null, description: '', exportSettings: {}, primaryGarmentId: value.garment_id, primaryGarmentVersionId: null, publishedAt: null, publishedBy: null, status: value.status === 'approved' ? 'approved' : 'draft', subtitle: '', templateType: value.template_type, themeId: value.theme_id, title: value.title, transition: {} } satisfies CanonicalEditorialCollection;
+    }),
+    editorialExports: [] as CanonicalEditorialExport[],
+    editorialScenes: rows('editorial_scenes').map((row) => {
+      const value = row as { collection_id: string; created_at: string; id: string; scene_type: string; sort_order: number; studio_id: string; title: string | null; transition_json: Record<string, unknown>; updated_at: string };
+      const metadata = value.transition_json ?? {};
+      return { ...base(value), background: metadata.background as Record<string, unknown> ?? {}, collectionId: value.collection_id, description: String(metadata.description ?? ''), narrativeRole: String(metadata.narrativeRole ?? 'supporting'), sceneType: value.scene_type, sortOrder: value.sort_order, subtitle: String(metadata.subtitle ?? ''), title: value.title ?? 'Untitled scene', transition: metadata.transition as Record<string, unknown> ?? {} } satisfies CanonicalEditorialScene;
+    }),
     factories: [] as CanonicalFactory[],
     fitIssuePromotions: [] as CanonicalFitIssuePromotion[],
     fitIssues: [] as CanonicalFitIssue[],
@@ -221,6 +249,12 @@ export function normalizeWorkspace(state: CanonicalWorkspaceState): CanonicalWor
     costSheets: [...state.costSheets].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt)),
     designBriefs: [...state.designBriefs],
     entityRevisions: [...state.entityRevisions],
+    editorialAssets: [...state.editorialAssets].sort((a, b) => a.sortOrder - b.sortOrder || a.id.localeCompare(b.id)),
+    editorialBlocks: [...state.editorialBlocks].sort((a, b) => a.sortOrder - b.sortOrder || a.id.localeCompare(b.id)),
+    editorialCollectionGarments: [...state.editorialCollectionGarments].sort((a, b) => a.sortOrder - b.sortOrder || a.id.localeCompare(b.id)),
+    editorialCollections: [...state.editorialCollections].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt) || a.title.localeCompare(b.title)),
+    editorialExports: [...state.editorialExports].sort((a, b) => b.generatedAt.localeCompare(a.generatedAt)),
+    editorialScenes: [...state.editorialScenes].sort((a, b) => a.sortOrder - b.sortOrder || a.id.localeCompare(b.id)),
     factories: [...state.factories].sort((a, b) => a.name.localeCompare(b.name)),
     fitIssuePromotions: [...state.fitIssuePromotions],
     fitIssues: [...state.fitIssues],

@@ -48,6 +48,8 @@ export function snapshotGarmentScope(state: CanonicalWorkspaceState, garmentId: 
   const costSheetIds = new Set(state.costSheets.filter((item) => item.garmentId === garmentId).map((item) => item.id));
   const productionOrderIds = new Set(state.productionOrders.filter((item) => item.garmentId === garmentId).map((item) => item.id));
   const qcInspectionIds = new Set(state.qcInspections.filter((item) => productionOrderIds.has(item.productionOrderId)).map((item) => item.id));
+  const editorialCollectionIds = new Set(state.editorialCollectionGarments.filter((item) => item.garmentId === garmentId).map((item) => item.collectionId));
+  const editorialSceneIds = new Set(state.editorialScenes.filter((item) => editorialCollectionIds.has(item.collectionId)).map((item) => item.id));
   const boardIds = new Set(state.moodboards.filter((item) => item.garmentId === garmentId).map((item) => item.id));
   const designAssetIds = new Set(state.garmentMedia.filter((item) => item.garmentId === garmentId).map((item) => item.assetId));
   const materialVariantIds = new Set(state.garmentMaterials.filter((item) => item.garmentId === garmentId).map((item) => item.variantId));
@@ -97,6 +99,12 @@ export function snapshotGarmentScope(state: CanonicalWorkspaceState, garmentId: 
     sampleRounds: stableRows(state.sampleRounds.filter((item) => item.garmentId === garmentId)),
   };
   if (scope === 'all' || scope === 'editorial') domains.editorial = {
+    editorialAssets: stableRows(state.editorialAssets.filter((item) => editorialCollectionIds.has(item.collectionId))),
+    editorialBlocks: stableRows(state.editorialBlocks.filter((item) => editorialSceneIds.has(item.sceneId))),
+    editorialCollectionGarments: stableRows(state.editorialCollectionGarments.filter((item) => editorialCollectionIds.has(item.collectionId))),
+    editorialCollections: stableRows(state.editorialCollections.filter((item) => editorialCollectionIds.has(item.id))),
+    editorialExports: stableRows(state.editorialExports.filter((item) => editorialCollectionIds.has(item.collectionId))),
+    editorialScenes: stableRows(state.editorialScenes.filter((item) => editorialCollectionIds.has(item.collectionId))),
     versionEditorial: stableRows(state.versionEditorial.filter((item) => item.garmentId === garmentId)),
   };
   if (scope === 'all' || scope === 'portfolio') domains.portfolio = {
@@ -624,6 +632,8 @@ function diffWarning(collection: string, field: string) {
   if (collection === 'qcResults' || collection === 'qcWaivers') return 'Recorded inspection evidence and release decisions remain protected.';
   if (collection === 'mediaAssets' && field === 'checksum') return 'The source asset remains retained while referenced elsewhere.';
   if (collection === 'versionEditorial' && field === 'liveDataStaleness') return 'Published editorial snapshots remain unchanged until republished.';
+  if (collection === 'editorialExports') return 'An export manifest is immutable; create a fresh export after an explicit approval.';
+  if (collection === 'editorialBlocks' && ['sourceChecksum', 'staleness'].includes(field)) return 'Story from System remains visibly stale until its approved source is refreshed.';
   if (collection === 'versionPortfolio') return 'The Public Cut remains unchanged until explicit publish.';
   return undefined;
 }
