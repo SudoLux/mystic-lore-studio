@@ -1,8 +1,8 @@
 # Mystic Lore Studio 2.0 Canonical Schema
 
-Status: WP5 complete through append-only change history, named Freeze Frames,
-domain-aware comparison, scoped restore, and release/publication protection;
-typed migration/read-through adapters remain for recovery and untouched domains
+Status: WP6a complete through version-pinned supplier/factory, sampling, and
+fit evidence; append-only history, named Freeze Frames, domain-aware comparison,
+scoped restore, and release/publication protection remain in force
 
 Source specification: Product Bible pages 18, 28, 31, 33-35, 40, 56, and
 59-60. The ordered SQL
@@ -63,12 +63,12 @@ erDiagram
 | Technical foundation | `technical_specs`, `technical_flats`, `flat_annotations`, `technical_files`, `tech_pack_exports`, `validation_runs`, `validation_waivers` |
 | POM and grading | `pom_points`, `measurement_sets`, `measurement_values`, `grade_rules`, `grade_rule_values`, `fit_measurements` |
 | BOM and construction | `bom_items`, `construction_sections`, `construction_steps`, `construction_details`, `technical_templates`, `template_applications` |
-| Production | `suppliers`, `factories`, `sample_rounds`, `fit_sessions`, `fit_issues`, `cost_sheets`, `cost_items`, `production_orders`, `qc_results` |
+| Production | `suppliers`, `factories`, `sample_rounds`, `sample_round_media`, `fit_sessions`, `fit_session_media`, `fit_issues`, `fit_issue_promotions`, `cost_sheets`, `cost_items`, `production_orders`, `qc_results` |
 | Story and portfolio | `editorial_collections`, `editorial_scenes`, `editorial_blocks`, `editorial_assets`, `portfolio_profiles`, `portfolio_projects`, `portfolio_editorials` |
 | Versioning, workflow, AI, sync | `garment_versions`, `entity_revisions`, `change_events`, `restore_operations`, `tasks`, `calendar_events`, `ai_jobs`, `ai_artifacts`, `sync_tombstones` |
 | Public projection | `ml_public.publications`, `ml_public.publication_assets` |
 
-There are 67 canonical private tables and two public projection tables.
+There are 70 canonical private tables and two public projection tables.
 
 ## Design, Library, and Media Relationships
 
@@ -124,9 +124,16 @@ erDiagram
   TECHNICAL_SPECS ||--o{ TECH_PACK_EXPORTS : generates
   GARMENT_VERSIONS ||--o{ TECH_PACK_EXPORTS : reproduces
   GARMENTS ||--o{ SAMPLE_ROUNDS : samples
+  FACTORIES ||--o{ SAMPLE_ROUNDS : produces
+  GARMENT_VERSIONS ||--o{ SAMPLE_ROUNDS : pins
+  SAMPLE_ROUNDS ||--o{ SAMPLE_ROUND_MEDIA : evidences
   SAMPLE_ROUNDS ||--o{ FIT_SESSIONS : reviews
+  GARMENT_VERSIONS ||--o{ FIT_SESSIONS : pins
+  FIT_SESSIONS ||--o{ FIT_SESSION_MEDIA : evidences
   FIT_SESSIONS ||--o{ FIT_ISSUES : records
-  SAMPLE_ROUNDS ||--o{ FIT_MEASUREMENTS : observes
+  FIT_SESSIONS ||--o{ FIT_MEASUREMENTS : observes
+  POM_POINTS ||--o{ FIT_MEASUREMENTS : identifies
+  FIT_ISSUES ||--o{ FIT_ISSUE_PROMOTIONS : promotes
   GARMENTS ||--o{ COST_SHEETS : costs
   COST_SHEETS ||--o{ COST_ITEMS : contains
   GARMENT_VERSIONS ||--o{ PRODUCTION_ORDERS : releases
@@ -208,6 +215,7 @@ Ordered migrations:
 6. `20260825051344_enforce_pom_measurement_integrity.sql`
 7. `20260825184506_complete_wp4_bom_construction_release_pack.sql`
 8. `20260825203246_implement_wp5_freeze_frames_restore.sql`
+9. `20260826061816_implement_wp6_production_sampling_fit.sql`
 
 Verification commands:
 
@@ -222,8 +230,8 @@ npm run build
 
 `validate:schema` is deterministic and verifies the table inventory, tenant
 columns, allowed JSONB fields, RLS/storage coverage, migration order, pgTAP
-plan, WP3/WP4/WP5 canonical route boundaries, and checksums of all six legacy
-migrations plus the WP0 fixture. `test:db` executes the 60-assertion pgTAP
+plan, WP3/WP4/WP5/WP6 canonical route boundaries, and checksums of all six legacy
+migrations plus the WP0 fixture. `test:db` executes the 68-assertion pgTAP
 matrix on a local or explicit test database.
 
 ## WP2B Transition Contract
@@ -356,3 +364,29 @@ media checksums, editorial live-data staleness, and portfolio selection.
 Restore uses a hashed preview then creates a new child frame and append-only
 audit evidence. Media rows and later fit actuals are intentionally not removed
 by scoped restore.
+
+## WP6a Sourcing, Sampling, and Fit Contract
+
+The additive `implement_wp6_production_sampling_fit` migration completes the
+first Production segment without implementing costing, orders, or QC:
+
+- supplier capability and MOQ fields plus factory supplier/contact/capability
+  relationships support reusable sourcing identity;
+- sample rounds, sessions, measurements, and issues are pinned to the same
+  garment Freeze Frame; trigger guards reject cross-garment version or POM
+  references;
+- `sample_round_media` and `fit_session_media` map private media assets to
+  explicit evidence roles, ordering, queue/failure state, and retry count;
+- `fit_issue_promotions` preserves source issue/session/sample/version lineage
+  while creating a task, non-writing POM adjustment candidate, construction
+  callout, or version note;
+- all new evidence tables use authenticated grants plus the established
+  membership-derived RLS policies, and every source/version/POM query has a
+  tenant-first index.
+
+The typed production repository mirrors these rules in the canonical browser
+workspace. Production Home creates only version-pinned rounds. Fit Review uses
+the exact session source for actuals, issues, gallery captures, decisions, and
+promotions. Local mobile captures queue in private storage paths and retain
+retry state across reload. Freeze Frame production snapshots include this
+evidence, while scoped restore keeps physical sample and fit records immutable.

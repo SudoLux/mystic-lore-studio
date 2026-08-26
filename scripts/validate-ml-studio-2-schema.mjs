@@ -34,6 +34,7 @@ const technicalPath = 'supabase/migrations/20260825035858_add_technical_foundati
 const measurementPath = 'supabase/migrations/20260825051344_enforce_pom_measurement_integrity.sql';
 const releasePath = 'supabase/migrations/20260825184506_complete_wp4_bom_construction_release_pack.sql';
 const versioningPath = 'supabase/migrations/20260825203246_implement_wp5_freeze_frames_restore.sql';
+const productionPath = 'supabase/migrations/20260826061816_implement_wp6_production_sampling_fit.sql';
 const testPath = 'supabase/tests/ml_studio_2_rls_test.sql';
 const foundation = read(foundationPath);
 const rls = read(rlsPath);
@@ -43,6 +44,7 @@ const technical = read(technicalPath);
 const measurement = read(measurementPath);
 const release = read(releasePath);
 const versioning = read(versioningPath);
+const production = read(productionPath);
 const rlsTest = read(testPath);
 
 const structurallyBalanced = (sql) => {
@@ -104,6 +106,7 @@ for (const [path, sql] of [
   [measurementPath, measurement],
   [releasePath, release],
   [versioningPath, versioning],
+  [productionPath, production],
   [testPath, rlsTest],
 ]) {
   check(structurallyBalanced(sql), `Unbalanced SQL delimiters in ${path}.`);
@@ -127,10 +130,11 @@ const expectedPrivateTables = [
   'portfolio_editorials', 'garment_versions', 'entity_revisions', 'change_events',
   'restore_operations', 'tasks', 'calendar_events', 'ai_jobs', 'ai_artifacts',
   'validation_waivers',
+  'sample_round_media', 'fit_session_media', 'fit_issue_promotions',
   'sync_tombstones',
 ].sort();
 
-const canonicalTableSql = foundation + '\n' + release;
+const canonicalTableSql = foundation + '\n' + release + '\n' + production;
 const actualPrivateTables = [...canonicalTableSql.matchAll(/create table ml_private\.([a-z_]+)/g)]
   .map((match) => match[1])
   .sort();
@@ -162,7 +166,7 @@ for (const table of expectedPrivateTables) {
     check(/\bstudio_id uuid\b/.test(block), `Tenant table lacks studio_id: ${table}`);
   }
   check(
-    rls.includes(`'${table}'`) || rls.includes(`ml_private.${table}`) || release.includes(`ml_private.${table}`),
+    rls.includes(`'${table}'`) || rls.includes(`ml_private.${table}`) || release.includes(`ml_private.${table}`) || production.includes(`ml_private.${table}`),
     `Canonical table is missing from RLS coverage: ${table}`,
   );
 }
@@ -199,7 +203,7 @@ for (const column of jsonbColumns) {
 
 check((foundation.match(/references /g) ?? []).length >= 80, 'Expected explicit canonical foreign keys are missing.');
 check((foundation.match(/create (?:unique )?index /g) ?? []).length >= 55, 'Expected canonical indexes are missing.');
-const canonicalSql = foundation + rls + storage + bootstrap + technical + measurement + release + versioning;
+const canonicalSql = foundation + rls + storage + bootstrap + technical + measurement + release + versioning + production;
 check(!/\b(create|alter|drop) table public\./i.test(canonicalSql), 'WP2 must not create, alter, or drop legacy public tables.');
 check(!/\bdrop table\b/i.test(canonicalSql), 'WP2 migrations may not drop tables.');
 check(!/\brename\s+(?:table|column)\b/i.test(canonicalSql), 'WP2 migrations may not rename legacy structures.');
@@ -279,6 +283,16 @@ for (const command of ['create_freeze_frame', 'commit_restore']) {
 }
 check(versioning.includes('on delete restrict'), 'WP5 protected Freeze Frame relationships must use restricted deletion.');
 check(versioning.includes("set search_path = ''"), 'WP5 command and trigger functions must pin an empty search path.');
+for (const table of ['sample_round_media', 'fit_session_media', 'fit_issue_promotions']) {
+  check(production.includes(`create table ml_private.${table}`), `WP6 production evidence table is missing: ${table}`);
+  check(production.includes(`alter table ml_private.${table} enable row level security`), `WP6 production evidence RLS is missing: ${table}`);
+}
+for (const trigger of ['fit_sessions_require_version_pin', 'fit_measurements_require_provenance', 'fit_issues_require_provenance', 'fit_issue_promotions_require_provenance']) {
+  check(production.includes(`create trigger ${trigger}`), `WP6 provenance trigger is missing: ${trigger}`);
+}
+for (const index of ['ml_fit_sessions_version_date_idx', 'ml_fit_issues_version_status_idx', 'ml_fit_measurements_session_pom_idx', 'ml_fit_issue_promotions_issue_idx']) {
+  check(production.includes(`create index ${index}`), `WP6 fit evidence lookup index is missing: ${index}`);
+}
 
 const srcFiles = [];
 const walk = (directory) => {
@@ -355,6 +369,15 @@ for (const contract of ['Timeline', 'Version A', 'Version B', 'Structural compar
   check(versionsPage.includes(contract), `WP5 Versions/Diff UI contract is missing: ${contract}`);
 }
 check(router.includes('<VersionsPage'), 'WP5 Versions & Diff route is missing.');
+const productionRepository = read('src/domains/production/productionRepository.ts');
+const productionPage = read('src/pages/Production/ProductionPage.tsx');
+for (const contract of ['createSampleRound', 'createFitSession', 'recordFitMeasurement', 'createFitIssue', 'promoteFitIssue']) {
+  check(productionRepository.includes(`function ${contract}`), `WP6 production repository contract is missing: ${contract}`);
+}
+for (const contract of ['Production & sampling', 'Fit review', 'Capture evidence', 'Promote observation', 'POM candidate']) {
+  check(productionPage.includes(contract), `WP6 Production UI contract is missing: ${contract}`);
+}
+check(router.includes('<ProductionPage'), 'WP6 Production route is missing.');
 
 const plan = Number(rlsTest.match(/select plan\((\d+)\)/)?.[1] ?? 0);
 const assertions = (rlsTest.match(/^select (?:is|results_eq|throws_like|throws_ok|lives_ok)\(/gm) ?? []).length;
@@ -366,7 +389,7 @@ check(rlsTest.includes('unpublish_publication'), 'pgTAP suite lacks unpublicatio
 const migrationNames = readdirSync(new URL('supabase/migrations/', root))
   .filter((name) => name.endsWith('.sql'))
   .sort();
-for (const path of [foundationPath, rlsPath, storagePath, bootstrapPath, technicalPath, measurementPath, releasePath, versioningPath]) {
+for (const path of [foundationPath, rlsPath, storagePath, bootstrapPath, technicalPath, measurementPath, releasePath, versioningPath, productionPath]) {
   check(migrationNames.includes(path.split('/').at(-1)), `Named migration missing: ${path}`);
 }
 check(
@@ -383,8 +406,10 @@ check(
   && migrationNames.indexOf(measurementPath.split('/').at(-1))
     < migrationNames.indexOf(releasePath.split('/').at(-1))
   && migrationNames.indexOf(releasePath.split('/').at(-1))
-    < migrationNames.indexOf(versioningPath.split('/').at(-1)),
-  'Migration order is not schema -> RLS -> Storage -> bootstrap -> WP4 flats -> measurements -> release -> WP5 versioning.',
+    < migrationNames.indexOf(versioningPath.split('/').at(-1))
+  && migrationNames.indexOf(versioningPath.split('/').at(-1))
+    < migrationNames.indexOf(productionPath.split('/').at(-1)),
+  'Migration order is not schema -> RLS -> Storage -> bootstrap -> WP4 flats -> measurements -> release -> WP5 versioning -> WP6 production.',
 );
 
 if (failures.length > 0) {

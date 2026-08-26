@@ -4,6 +4,7 @@ import type { PageId } from '../types/navigation';
 export type AppRoute = {
   fabricId?: string;
   page: PageId;
+  productionGarmentId?: string;
   projectId?: string;
   technicalGarmentId?: string;
 };
@@ -34,6 +35,10 @@ export function parseStudioHashRoute(hash: string): AppRoute {
     ? { page: 'technical', technicalGarmentId: recordId }
     : { page: 'technical' };
 
+  if (section === 'production') return recordId
+    ? { page: 'production', productionGarmentId: recordId }
+    : { page: 'production' };
+
   if (section === 'fabrics') {
     return recordId
       ? { page: 'fabrics', fabricId: recordId }
@@ -43,6 +48,7 @@ export function parseStudioHashRoute(hash: string): AppRoute {
   if (
     section === 'dashboard' ||
     section === 'kanban' ||
+    section === 'production' ||
     section === 'versions' ||
     section === 'lookbooks' ||
     section === 'portfolio' ||

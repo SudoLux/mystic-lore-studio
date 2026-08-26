@@ -9,6 +9,7 @@ import { SettingsPage } from '../pages/Settings';
 import { StatsPage } from '../pages/Stats';
 import { TechnicalStudioPage } from '../pages/TechnicalStudio';
 import { VersionsPage } from '../pages/Versions';
+import { ProductionPage } from '../pages/Production';
 import type { AppRoute } from '../lib/appRoutes';
 import type { PageId } from '../types/navigation';
 import type { ApparelProject, Fabric } from '../types/studio';
@@ -24,6 +25,7 @@ export type StudioPageRouterProps = {
   onOpenFabric: (fabricId: string) => void;
   onOpenProject: (projectId: string) => void;
   onOpenTechnicalGarment: (garmentId: string) => void;
+  onOpenProductionGarment: (garmentId: string) => void;
   route: AppRoute;
 };
 
@@ -38,6 +40,7 @@ export function StudioPageRouter({
   onNewProject,
   onOpenProject,
   onOpenTechnicalGarment,
+  onOpenProductionGarment,
   route,
 }: StudioPageRouterProps) {
   if (route.page === 'dashboard') {
@@ -69,6 +72,8 @@ export function StudioPageRouter({
   if (route.page === 'technical') {
     return <TechnicalStudioPage garmentId={route.technicalGarmentId} onOpenGarment={onOpenTechnicalGarment} />;
   }
+
+  if (route.page === 'production') return <ProductionPage garmentId={route.productionGarmentId} onOpenGarment={onOpenProductionGarment} />;
 
   if (route.page === 'versions') return <VersionsPage />;
 

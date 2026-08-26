@@ -30,7 +30,7 @@ type FreezeFrameSnapshot = {
 
 const domainOrder: Array<Exclude<FreezeFrameScope, 'all'>> = ['design', 'technical', 'production', 'editorial', 'portfolio'];
 const immutableMeta = new Set(['createdAt', 'updatedAt', 'revision', 'studioId']);
-const nonRestorableCollections = new Set(['fitMeasurements', 'mediaAssets']);
+const nonRestorableCollections = new Set(['fitMeasurements', 'fitIssues', 'fitSessionMedia', 'fitSessions', 'sampleRoundMedia', 'mediaAssets']);
 
 export function snapshotGarmentScope(state: CanonicalWorkspaceState, garmentId: string, scope: FreezeFrameScope): FreezeFrameSnapshot {
   const garment = state.garments.find((item) => item.id === garmentId);
@@ -43,6 +43,8 @@ export function snapshotGarmentScope(state: CanonicalWorkspaceState, garmentId: 
   const sectionIds = new Set(state.constructionSections.filter((item) => specIds.has(item.specId)).map((item) => item.id));
   const stepIds = new Set(state.constructionSteps.filter((item) => sectionIds.has(item.sectionId)).map((item) => item.id));
   const roundIds = new Set(state.sampleRounds.filter((item) => item.garmentId === garmentId).map((item) => item.id));
+  const fitSessionIds = new Set(state.fitSessions.filter((item) => roundIds.has(item.sampleRoundId)).map((item) => item.id));
+  const fitIssueIds = new Set(state.fitIssues.filter((item) => fitSessionIds.has(item.fitSessionId)).map((item) => item.id));
   const boardIds = new Set(state.moodboards.filter((item) => item.garmentId === garmentId).map((item) => item.id));
   const designAssetIds = new Set(state.garmentMedia.filter((item) => item.garmentId === garmentId).map((item) => item.assetId));
   const materialVariantIds = new Set(state.garmentMaterials.filter((item) => item.garmentId === garmentId).map((item) => item.variantId));
@@ -75,8 +77,13 @@ export function snapshotGarmentScope(state: CanonicalWorkspaceState, garmentId: 
   };
   if (scope === 'all' || scope === 'production') domains.production = {
     fitMeasurements: stableRows(state.fitMeasurements.filter((item) => roundIds.has(item.sampleRoundId))),
+    fitIssuePromotions: stableRows(state.fitIssuePromotions.filter((item) => fitIssueIds.has(item.fitIssueId))),
+    fitIssues: stableRows(state.fitIssues.filter((item) => fitSessionIds.has(item.fitSessionId))),
+    fitSessionMedia: stableRows(state.fitSessionMedia.filter((item) => fitSessionIds.has(item.fitSessionId))),
+    fitSessions: stableRows(state.fitSessions.filter((item) => roundIds.has(item.sampleRoundId))),
     inventoryEntries: stableRows(state.inventoryEntries.filter((item) => materialVariantIds.has(item.variantId))),
     releaseTasks: stableRows(state.releaseTasks.filter((item) => item.garmentId === garmentId)),
+    sampleRoundMedia: stableRows(state.sampleRoundMedia.filter((item) => roundIds.has(item.sampleRoundId))),
     sampleRounds: stableRows(state.sampleRounds.filter((item) => item.garmentId === garmentId)),
   };
   if (scope === 'all' || scope === 'editorial') domains.editorial = {
@@ -402,6 +409,8 @@ function auditDescriptors(): Array<{ entityType: string; garmentId: (after: Cano
   const section = (after: CanonicalWorkspaceState, before: CanonicalWorkspaceState, row: CanonicalRecord) => { const value = findBoth(after.constructionSections, before.constructionSections, String((row as unknown as Record<string, unknown>).sectionId)); return value ? spec(after, before, { ...value, specId: value.specId } as unknown as CanonicalRecord) : null; };
   const step = (after: CanonicalWorkspaceState, before: CanonicalWorkspaceState, row: CanonicalRecord) => { const value = findBoth(after.constructionSteps, before.constructionSteps, String((row as unknown as Record<string, unknown>).stepId)); return value ? section(after, before, { ...value, sectionId: value.sectionId } as unknown as CanonicalRecord) : null; };
   const round = (after: CanonicalWorkspaceState, before: CanonicalWorkspaceState, row: CanonicalRecord) => findBoth(after.sampleRounds, before.sampleRounds, String((row as unknown as Record<string, unknown>).sampleRoundId))?.garmentId ?? null;
+  const session = (after: CanonicalWorkspaceState, before: CanonicalWorkspaceState, row: CanonicalRecord) => { const value = findBoth(after.fitSessions, before.fitSessions, String((row as unknown as Record<string, unknown>).fitSessionId)); return value ? round(after, before, { ...value, sampleRoundId: value.sampleRoundId } as unknown as CanonicalRecord) : null; };
+  const issue = (after: CanonicalWorkspaceState, before: CanonicalWorkspaceState, row: CanonicalRecord) => { const value = findBoth(after.fitIssues, before.fitIssues, String((row as unknown as Record<string, unknown>).fitIssueId)); return value ? session(after, before, { ...value, fitSessionId: value.fitSessionId } as unknown as CanonicalRecord) : null; };
   return [
     { entityType: 'garment', garmentId: (_a, _b, row) => row.id, rows: (s) => s.garments, scope: 'all' },
     { entityType: 'design_brief', garmentId: direct('garmentId'), rows: (s) => s.designBriefs, scope: 'design' },
@@ -422,6 +431,11 @@ function auditDescriptors(): Array<{ entityType: string; garmentId: (after: Cano
     { entityType: 'construction_step', garmentId: section, rows: (s) => s.constructionSteps, scope: 'technical' },
     { entityType: 'construction_detail', garmentId: step, rows: (s) => s.constructionDetails, scope: 'technical' },
     { entityType: 'sample_round', garmentId: direct('garmentId'), rows: (s) => s.sampleRounds, scope: 'production' },
+    { entityType: 'sample_round_media', garmentId: round, rows: (s) => s.sampleRoundMedia, scope: 'production' },
+    { entityType: 'fit_session', garmentId: round, rows: (s) => s.fitSessions, scope: 'production' },
+    { entityType: 'fit_session_media', garmentId: session, rows: (s) => s.fitSessionMedia, scope: 'production' },
+    { entityType: 'fit_issue', garmentId: session, rows: (s) => s.fitIssues, scope: 'production' },
+    { entityType: 'fit_issue_promotion', garmentId: issue, rows: (s) => s.fitIssuePromotions, scope: 'production' },
     { entityType: 'fit_measurement', garmentId: round, rows: (s) => s.fitMeasurements, scope: 'production' },
     { entityType: 'release_task', garmentId: direct('garmentId'), rows: (s) => s.releaseTasks, scope: 'production' },
     { entityType: 'editorial_collection', garmentId: direct('garmentId'), rows: (s) => s.versionEditorial, scope: 'editorial' },

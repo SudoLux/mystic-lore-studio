@@ -27,7 +27,8 @@ release/publication lineage.
 | WP4b | Stable POM, measurement sets and values, fit actuals, grading preview/commit, structural compare, and selective restore | Complete | A seeded garment defines POM once, validates base/graded sets, and records sample actuals against stable points |
 | WP4c | Linked BOM, ordered construction, release validation and waivers, templates, and deterministic structured tech packs | Complete | A seeded garment produces a validated, reproducible, approved tech pack from structured data |
 | WP5 | Append-only change ledger, named Freeze Frames, domain-aware diff, scoped restore, conflicts, and release/publication protection | Complete | Restoring an older scope creates a new version while all earlier and pinned evidence remains unchanged |
-| WP6-WP10 | Remaining Product Bible sequence | Not started | Begins with Production in WP6 |
+| WP6a | Supplier/factory capabilities, pinned sample rounds, fit sessions, measurements, issues, private evidence, decisions, and provenance-preserving promotions | Complete | Sample and fit decisions are reproducible, version-pinned, and traceable to stable POM and media evidence; costing, orders, and QC remain deferred |
+| WP6b-WP10 | Remaining Product Bible sequence | Not started | WP6b begins costing, orders, and QC after the accepted fit foundation |
 
 ## Verification
 
@@ -55,6 +56,26 @@ Characterization coverage:
   the six-lens garment-workspace contract.
 - `tests/shellContract.test.ts`: fixed desktop/compact responsive shell modes
   and semantic native-button navigation for keyboard access.
+
+Latest WP6a completion verification:
+
+| Command | Result |
+| --- | --- |
+| `npm run validate:schema` | Passed: 70 private tables, 2 public projection tables, 68 pgTAP assertions, 7 preserved legacy inputs |
+| `npm run db:reset` | Passed: all prior migrations and additive `20260826061816_implement_wp6_production_sampling_fit.sql` apply to an empty local database |
+| `npm run test:db` | Passed: 68 pgTAP assertions, including evidence-table RLS/grants, normalized target constraints, provenance triggers, and tenant-first indexes |
+| `npm test` | Passed: 19 files, 88 tests, including pinned sample/fit lineage, stable-POM actuals, multi-round behavior, conflict rejection, evidence queue/retry/reload, and provenance-preserving task/version-note promotion |
+| `npm run build` | Passed: TypeScript and Vite production build |
+
+WP6a evidence:
+
+- [ADR-0013: version-pinned sampling and fit provenance](../adr/ADR-0013-wp6-sampling-fit-provenance.md)
+- `tests/wp6Production.test.ts`: canonical sourcing, sample, session,
+  measurement, issue, decision, promotion, offline evidence, stable-POM, and
+  no-cost/no-order/no-QC boundary coverage.
+- `tests/wp6ProductionUiContract.test.ts`: Production Home, Fit Review,
+  gallery, mobile capture, queue/retry, decision, task, and promotion
+  interaction contracts.
 
 Latest WP5 completion verification:
 
@@ -157,6 +178,7 @@ See [baseline screenshot manifest](BASELINE_SCREENSHOTS.md).
 | Garments | `#/projects`, `#/projects/:id` (legacy-compatible paths) | `GarmentLibraryPage`, `CanonicalGarmentWorkspacePage` | `CanonicalWorkspaceProvider` |
 | Libraries | `#/fabrics` (legacy-compatible path) | `LibraryVaultPage` (Material Vault and Component Library) | `CanonicalWorkspaceProvider` |
 | Technical Studio | `#/technical`, `#/technical/:garmentId` | `TechnicalStudioPage`, `FlatCanvas`, `POMCanvas`, `MeasurementDataGrid`, `BomWorkspace`, `ConstructionWorkspace`, `ReleaseWorkspace`, grading, validation, and export panels | `CanonicalWorkspaceProvider` and technical, measurement, and release commands/repositories |
+| Production & fit | `#/production`, `#/production/:garmentId` | `ProductionPage`, sample rounds, Fit Review, private evidence gallery, decision and promotion controls | `CanonicalWorkspaceProvider` and production repositories |
 | Versions & Diff | `#/versions` | `VersionsPage`, `DiffViewer`, `FreezeFrameDialog`, `RestorePreview`, `ConflictResolver`, `ReleaseGate` | `CanonicalWorkspaceProvider` and versioning commands/repository |
 | Workflow | `#/kanban` | `KanbanPage` | `StudioDataProvider` |
 | Editorial Collections | `#/lookbooks` | `LookbooksPage`, `EditorialSceneBuilder`, `EditorialCollectionViewer` | `StudioDataProvider` and local editorial collection state |

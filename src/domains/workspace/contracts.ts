@@ -153,10 +153,24 @@ export type CanonicalGarmentComponent = CanonicalRecord & {
 };
 
 export type CanonicalSupplier = CanonicalRecord & {
+  capabilities: Record<string, unknown>;
   defaultLeadTimeDays: number | null;
+  minimumOrderQuantity: number | null;
   name: string;
   status: 'prospect' | 'active' | 'paused' | 'archived';
   supplierType: 'material' | 'component' | 'service' | 'mixed';
+};
+
+export type CanonicalFactory = CanonicalRecord & {
+  capabilities: Record<string, unknown>;
+  contactEmail: string | null;
+  contactName: string | null;
+  leadTimeDays: number | null;
+  minimumOrderQuantity: number | null;
+  name: string;
+  phone: string | null;
+  status: 'prospect' | 'active' | 'paused' | 'archived';
+  supplierId: string | null;
 };
 
 export type CanonicalSupplierItem = CanonicalRecord & {
@@ -217,8 +231,14 @@ export type CanonicalMeasurementSet = CanonicalRecord & { specId: string; name: 
 export type CanonicalMeasurementValue = CanonicalRecord & { setId: string; pomPointId: string; size: string; target: number; tolerancePlus: number; toleranceMinus: number };
 export type CanonicalGradeRule = CanonicalRecord & { specId: string; name: string; sizeRange: string[]; status: 'draft' | 'approved' | 'superseded' };
 export type CanonicalGradeRuleValue = CanonicalRecord & { gradeRuleId: string; pomPointId: string; fromSize: string; toSize: string; delta: number };
-export type CanonicalSampleRound = CanonicalRecord & { garmentId: string; garmentVersionId: string | null; roundNo: number; sampleType: string; status: 'planned' | 'requested' | 'in_progress' | 'received' | 'reviewed' | 'approved' | 'rejected'; receivedAt: string | null };
-export type CanonicalFitMeasurement = CanonicalRecord & { sampleRoundId: string; pomPointId: string; size: string; actual: number; variance: number };
+export type CanonicalSampleRound = CanonicalRecord & { factoryId: string | null; garmentId: string; garmentVersionId: string | null; notes: string; receivedAt: string | null; requestedAt: string | null; roundNo: number; sampleType: string; status: 'planned' | 'requested' | 'in_progress' | 'received' | 'reviewed' | 'approved' | 'rejected' };
+export type CanonicalFitSession = CanonicalRecord & { decision: 'revise' | 'approve' | 'reject' | 'hold' | null; decisionNote: string; fitDate: string; garmentVersionId: string; modelProfile: Record<string, unknown>; sampleRoundId: string; status: 'draft' | 'in_review' | 'decided'; summary: string };
+export type CanonicalFitMeasurement = CanonicalRecord & { actual: number; fitSessionId: string | null; garmentVersionId: string | null; pomPointId: string; sampleRoundId: string; size: string; variance: number };
+export type CanonicalFitIssue = CanonicalRecord & { area: string; fitSessionId: string; garmentVersionId: string; observation: string; ownerTaskId: string | null; pomPointId: string | null; resolution: string | null; severity: 'low' | 'medium' | 'high' | 'critical'; status: 'open' | 'planned' | 'resolved' | 'accepted' };
+export type EvidenceCaptureStatus = 'queued' | 'uploaded' | 'failed';
+export type CanonicalSampleRoundMedia = CanonicalRecord & { assetId: string; captureStatus: EvidenceCaptureStatus; capturedAt: string; retryCount: number; role: 'sample' | 'detail' | 'fit' | 'reference'; sampleRoundId: string; sortOrder: number };
+export type CanonicalFitSessionMedia = CanonicalRecord & { assetId: string; captureStatus: EvidenceCaptureStatus; capturedAt: string; fitSessionId: string; retryCount: number; role: 'fit' | 'detail' | 'reference' | 'mark_up'; sortOrder: number };
+export type CanonicalFitIssuePromotion = CanonicalRecord & { candidate: Record<string, unknown>; constructionDetailId: string | null; createdBy: string | null; fitIssueId: string; garmentId: string; garmentVersionId: string; note: string; pomPointId: string | null; promotionType: 'task' | 'pom_adjustment_candidate' | 'construction_callout' | 'version_note'; resolvedAt: string | null; status: 'candidate' | 'applied' | 'dismissed'; taskId: string | null };
 export type CanonicalRestoreOperation = CanonicalRecord & { actorId: string | null; baseRevision: number; dependencies: CanonicalVersionDependency[]; garmentId: string; inversePatch: CanonicalJsonPatch[]; previewChecksum: string; reason: string; replayPatch: CanonicalJsonPatch[]; resultRevision: number; resultVersionId: string; scope: FreezeFrameScope; selectedKeys: string[]; selectedMeasurementKeys: string[]; selectedPomPointIds: string[]; sourceVersionId: string };
 export type CanonicalBomItem = CanonicalRecord & { specId: string; itemType: 'material_variant' | 'component_variant' | 'custom'; materialVariantId: string | null; componentVariantId: string | null; intentionalFreeText: boolean; description: string; quantity: number; unit: CanonicalInventoryEntry['unit']; placement: string; supplierItemId: string | null; substituteItemId: string | null; status: 'draft' | 'linked' | 'approved' | 'shortage' | 'substituted'; shortageQuantity: number; unitCost: number; currency: string; costImpact: number; sortOrder: number };
 export type CanonicalConstructionSection = CanonicalRecord & { specId: string; name: string; sortOrder: number; status: 'draft' | 'approved' | 'superseded' };
@@ -240,6 +260,9 @@ export type CanonicalWorkspaceState = {
   constructionSteps: CanonicalConstructionStep[];
   designBriefs: CanonicalDesignBrief[];
   entityRevisions: CanonicalEntityRevision[];
+  factories: CanonicalFactory[];
+  fitIssuePromotions: CanonicalFitIssuePromotion[];
+  fitIssues: CanonicalFitIssue[];
   garmentComponents: CanonicalGarmentComponent[];
   garmentMaterials: CanonicalGarmentMaterial[];
   garmentMedia: CanonicalGarmentMedia[];
@@ -253,6 +276,8 @@ export type CanonicalWorkspaceState = {
   moodboardItems: CanonicalMoodboardItem[];
   moodboards: CanonicalMoodboard[];
   flatAnnotations: CanonicalFlatAnnotation[];
+  fitSessionMedia: CanonicalFitSessionMedia[];
+  fitSessions: CanonicalFitSession[];
   garmentVersions: CanonicalGarmentVersion[];
   gradeRuleValues: CanonicalGradeRuleValue[];
   gradeRules: CanonicalGradeRule[];
@@ -261,9 +286,10 @@ export type CanonicalWorkspaceState = {
   pomPoints: CanonicalPomPoint[];
   restoreOperations: CanonicalRestoreOperation[];
   releaseTasks: CanonicalReleaseTask[];
+  sampleRoundMedia: CanonicalSampleRoundMedia[];
   sampleRounds: CanonicalSampleRound[];
   fitMeasurements: CanonicalFitMeasurement[];
-  schemaVersion: 5;
+  schemaVersion: 6;
   studioId: string;
   suppliers: CanonicalSupplier[];
   supplierItems: CanonicalSupplierItem[];

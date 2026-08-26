@@ -54,7 +54,7 @@ export function StudioAppRoute() {
 
   useEffect(() => {
     window.scrollTo({ left: 0, top: 0 });
-  }, [route.fabricId, route.page, route.projectId, route.technicalGarmentId]);
+  }, [route.fabricId, route.page, route.productionGarmentId, route.projectId, route.technicalGarmentId]);
 
   const navigateToPage = (page: PageId) => {
     window.history.pushState(null, '', page === 'dashboard' ? '#' : `#/${page}`);
@@ -69,6 +69,11 @@ export function StudioAppRoute() {
   const openTechnicalGarment = (garmentId: string) => {
     window.history.pushState(null, '', `#/technical/${garmentId}`);
     setRoute({ page: 'technical', technicalGarmentId: garmentId });
+  };
+
+  const openProductionGarment = (garmentId: string) => {
+    window.history.pushState(null, '', `#/production/${garmentId}`);
+    setRoute({ page: 'production', productionGarmentId: garmentId });
   };
 
   const closeProject = () => navigateToPage('projects');
@@ -132,6 +137,7 @@ export function StudioAppRoute() {
           onOpenFabric={openFabric}
           onOpenProject={openProject}
           onOpenTechnicalGarment={openTechnicalGarment}
+          onOpenProductionGarment={openProductionGarment}
           route={route}
         />
       </AuthenticatedStudioShell>

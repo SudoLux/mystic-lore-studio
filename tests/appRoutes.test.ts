@@ -16,6 +16,7 @@ describe('current route behavior', () => {
     });
     expect(parseStudioHashRoute('#/kanban')).toEqual({ page: 'kanban' });
     expect(parseStudioHashRoute('#/technical/garment-aurora')).toEqual({ page: 'technical', technicalGarmentId: 'garment-aurora' });
+    expect(parseStudioHashRoute('#/production/garment-aurora')).toEqual({ page: 'production', productionGarmentId: 'garment-aurora' });
   });
 
   it('falls back to dashboard for an unknown hash route', () => {

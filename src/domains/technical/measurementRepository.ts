@@ -101,7 +101,7 @@ export function upsertMeasurementValue(state: CanonicalWorkspaceState, input: Ex
 export function createSampleRound(state: CanonicalWorkspaceState, garmentId: string, sampleType: string) {
   if (!state.garments.some((item) => item.id === garmentId)) throw new Error('Garment not found.');
   const roundNo = state.sampleRounds.filter((item) => item.garmentId === garmentId).reduce((max, item) => Math.max(max, item.roundNo), 0) + 1;
-  const sampleRound: CanonicalSampleRound = { ...record(state.studioId), garmentId, garmentVersionId: null, roundNo, sampleType: sampleType.trim() || `Sample ${roundNo}`, status: 'received', receivedAt: new Date().toISOString() };
+  const sampleRound: CanonicalSampleRound = { ...record(state.studioId), factoryId: null, garmentId, garmentVersionId: state.garmentVersions.filter((item) => item.garmentId === garmentId).sort((a, b) => b.versionNo - a.versionNo)[0]?.id ?? null, notes: '', requestedAt: null, roundNo, sampleType: sampleType.trim() || `Sample ${roundNo}`, status: 'received', receivedAt: new Date().toISOString() };
   return { sampleRound, state: { ...state, sampleRounds: [...state.sampleRounds, sampleRound] } };
 }
 
@@ -115,7 +115,7 @@ export function recordFitActual(state: CanonicalWorkspaceState, input: Extract<M
   const variance = round4(input.actual - target.target);
   const fit: CanonicalFitMeasurement = current
     ? touch({ ...current, actual: round4(input.actual), variance })
-    : { ...record(state.studioId), sampleRoundId: sample.id, pomPointId: input.pomPointId, size: input.size, actual: round4(input.actual), variance };
+    : { ...record(state.studioId), fitSessionId: null, garmentVersionId: sample.garmentVersionId, sampleRoundId: sample.id, pomPointId: input.pomPointId, size: input.size, actual: round4(input.actual), variance };
   return { fit, state: { ...state, fitMeasurements: [...state.fitMeasurements.filter((item) => item.id !== fit.id), fit] } };
 }
 

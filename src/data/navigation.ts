@@ -8,6 +8,7 @@ import {
   LayoutDashboard,
   Settings,
   Ruler,
+  Factory,
   GitCompareArrows,
 } from 'lucide-react';
 import type { NavItem } from '../types/navigation';
@@ -40,6 +41,13 @@ export const navigationItems: NavItem[] = [
     shortLabel: 'Tech',
     description: 'Flats and release evidence',
     icon: Ruler,
+  },
+  {
+    id: 'production',
+    label: 'Production',
+    shortLabel: 'Production',
+    description: 'Samples and fit evidence',
+    icon: Factory,
   },
   {
     id: 'versions',

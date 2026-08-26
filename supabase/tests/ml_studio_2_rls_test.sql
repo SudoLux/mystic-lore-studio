@@ -3,7 +3,7 @@ begin;
 create extension if not exists pgtap with schema extensions;
 set local search_path = extensions, public, ml_private, ml_public;
 
-select plan(60);
+select plan(68);
 
 insert into auth.users (id, email) values
   ('10000000-0000-4000-8000-000000000001', 'wp2-owner-a@example.test'),
@@ -162,6 +162,71 @@ select is(
      and routine_name in ('create_freeze_frame', 'commit_restore')),
   2::bigint,
   'authenticated Freeze Frame and restore command boundaries are installed'
+);
+select is(
+  (select count(*) from information_schema.tables
+   where table_schema = 'ml_private' and table_name in ('sample_round_media', 'fit_session_media', 'fit_issue_promotions')),
+  3::bigint,
+  'WP6 creates normalized private evidence and promotion relationship tables'
+);
+select is(
+  (select count(*) from information_schema.columns
+   where table_schema = 'ml_private'
+     and ((table_name = 'suppliers' and column_name in ('capabilities_json', 'minimum_order_quantity'))
+       or (table_name = 'factories' and column_name in ('supplier_id', 'contact_name', 'contact_email', 'phone'))
+       or (table_name = 'fit_sessions' and column_name in ('garment_version_id', 'status', 'decision_note'))
+       or (table_name = 'fit_measurements' and column_name in ('fit_session_id', 'garment_version_id'))
+       or (table_name = 'fit_issues' and column_name in ('garment_version_id', 'pom_point_id', 'owner_task_id')))),
+  14::bigint,
+  'WP6 stores sourcing capability and fit provenance as explicit columns'
+);
+select is(
+  (select count(*) from pg_constraint where conname in (
+    'fit_sessions_version_fk', 'fit_measurements_session_fk', 'fit_measurements_version_fk',
+    'fit_issues_version_fk', 'fit_issues_pom_fk', 'fit_issue_promotions_target_check')),
+  6::bigint,
+  'fit source/version/POM and promotion targets have normalized constraints'
+);
+select is(
+  (select count(*) from pg_trigger trigger
+   join pg_class relation on relation.oid = trigger.tgrelid
+   join pg_namespace namespace on namespace.oid = relation.relnamespace
+   where namespace.nspname = 'ml_private' and trigger.tgname in (
+     'fit_sessions_require_version_pin', 'fit_measurements_require_provenance',
+     'fit_issues_require_provenance', 'fit_issue_promotions_require_provenance')),
+  4::bigint,
+  'fit sessions, measurements, issues, and promotions enforce provenance triggers'
+);
+select is(
+  (select count(*) from pg_indexes where schemaname = 'ml_private' and indexname in (
+    'ml_fit_sessions_version_date_idx', 'ml_fit_issues_version_status_idx',
+    'ml_fit_measurements_session_pom_idx', 'ml_fit_issue_promotions_issue_idx')),
+  4::bigint,
+  'version-pinned fit review lookups have tenant-first indexes'
+);
+select is(
+  (select count(*) from pg_class relation
+   join pg_namespace namespace on namespace.oid = relation.relnamespace
+   where namespace.nspname = 'ml_private'
+     and relation.relname in ('sample_round_media', 'fit_session_media', 'fit_issue_promotions')
+     and relation.relrowsecurity),
+  3::bigint,
+  'new production evidence tables enable row-level security'
+);
+select is(
+  (select count(*) from pg_policies
+   where schemaname = 'ml_private' and tablename in ('sample_round_media', 'fit_session_media', 'fit_issue_promotions')
+     and policyname in ('studio_select', 'studio_insert', 'studio_update', 'studio_delete')),
+  12::bigint,
+  'new production evidence tables use membership-derived read/write policies'
+);
+select is(
+  (select count(*) from information_schema.table_privileges
+   where table_schema = 'ml_private' and grantee = 'authenticated'
+     and table_name in ('sample_round_media', 'fit_session_media', 'fit_issue_promotions')
+     and privilege_type in ('SELECT', 'INSERT', 'UPDATE', 'DELETE')),
+  12::bigint,
+  'authenticated grants are limited to the canonical evidence tables and enforced by RLS'
 );
 
 insert into ml_private.studio_members (
