@@ -7,6 +7,7 @@ import type {
   CanonicalValidationIssue,
   CanonicalValidationRun,
   CanonicalWorkspaceState,
+  FreezeFrameKind,
   TechnicalFlatView,
 } from '../workspace';
 import { flatViewOptions, requiredFlatViews, technicalRulesetVersion, type FlatComparison, type TechnicalCommand } from './contracts';
@@ -91,7 +92,7 @@ export function prepareFlatComparison(state: CanonicalWorkspaceState, specId: st
   return { current: entry(revisions[0]), previous: revisions[1] ? entry(revisions[1]) : null, view };
 }
 
-export async function createTechnicalCheckpoint(state: CanonicalWorkspaceState, specId: string, label?: string) {
+export async function createTechnicalCheckpoint(state: CanonicalWorkspaceState, specId: string, label?: string, options: { actorId?: string | null; kind?: FreezeFrameKind; notes?: string } = {}) {
   const spec = state.technicalSpecs.find((item) => item.id === specId);
   if (!spec) throw new Error('Technical specification not found.');
   const garment = state.garments.find((item) => item.id === spec.garmentId)!;
@@ -130,9 +131,47 @@ export async function createTechnicalCheckpoint(state: CanonicalWorkspaceState, 
     technicalFileAssets: state.mediaAssets.filter((item) => sourceAssetIds.has(item.id)).map((item) => ({ assetId: item.id, checksum: item.checksum, mimeType: item.mimeType, name: item.name, sizeBytes: item.sizeBytes })),
     templateApplications: state.templateApplications.filter((item) => item.garmentId === garment.id),
   };
-  const checksum = await checksumText(stableStringify(snapshot));
+  const versionSnapshot = {
+    ...snapshot,
+    domains: {
+      technical: {
+        bomItems: snapshot.bomItems,
+        constructionDetails: snapshot.constructionDetails,
+        constructionSections: snapshot.constructionSections,
+        constructionSteps: snapshot.constructionSteps,
+        flatAnnotations: state.flatAnnotations.filter((item) => state.technicalFlats.some((flat) => flat.specId === specId && flat.id === item.flatId)),
+        gradeRuleValues: snapshot.gradeRuleValues,
+        gradeRules: snapshot.gradeRules,
+        measurementSets: snapshot.measurementSets,
+        measurementValues: snapshot.measurementValues,
+        mediaAssets: state.mediaAssets.filter((item) => sourceAssetIds.has(item.id)),
+        pomPoints: snapshot.pomPoints,
+        technicalFiles: snapshot.technicalFiles,
+        technicalFlats: state.technicalFlats.filter((item) => item.specId === specId),
+        technicalSpecs: [spec],
+      },
+    },
+    garment: { ...garment, code: garment.garmentCode },
+    schemaVersion: 1,
+    scope: 'technical',
+  };
+  const checksum = await checksumText(stableStringify(versionSnapshot));
   const versionNo = state.garmentVersions.filter((item) => item.garmentId === garment.id).length + 1;
-  const version: CanonicalGarmentVersion = { ...record(state.studioId), garmentId: garment.id, versionNo, label: label?.trim() || `Technical v${versionNo}`, scope: 'technical', checksum, snapshot };
+  const parentVersionId = state.garmentVersions.filter((item) => item.garmentId === garment.id).sort((a, b) => b.versionNo - a.versionNo)[0]?.id ?? null;
+  const version: CanonicalGarmentVersion = {
+    ...record(state.studioId),
+    baseRevision: garment.revision,
+    checksum,
+    createdBy: options.actorId ?? null,
+    garmentId: garment.id,
+    kind: options.kind ?? 'named',
+    label: label?.trim() || `Technical v${versionNo}`,
+    notes: options.notes?.trim() ?? '',
+    parentVersionId,
+    scope: 'technical',
+    snapshot: versionSnapshot,
+    versionNo,
+  };
   return { version, state: { ...state, garmentVersions: [...state.garmentVersions, version] } };
 }
 

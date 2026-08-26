@@ -33,7 +33,7 @@ import type {
   RelationshipOption,
 } from './contracts';
 
-const workspaceVersion = 4 as const;
+const workspaceVersion = 5 as const;
 
 export type CanonicalWorkspaceSeed = {
   data: StudioData;
@@ -89,6 +89,7 @@ export async function createCanonicalWorkspace(seed: CanonicalWorkspaceSeed) {
       return { ...base(value), assetId: value.asset_id, body: value.body, garmentId: value.garment_id, status: value.status };
     }),
     bomItems: [] as CanonicalBomItem[],
+    changeEvents: [],
     collections: rows('collections').map((row) => {
       const value = row as { created_at: string; id: string; name: string; season: string | null; sort_order: number; status: CanonicalCollection['status']; studio_id: string; updated_at: string };
       return { ...base(value), name: value.name, season: value.season, sortOrder: value.sort_order, status: value.status };
@@ -102,7 +103,9 @@ export async function createCanonicalWorkspace(seed: CanonicalWorkspaceSeed) {
       const value = row as { color_story: string; created_at: string; garment_id: string; id: string; intent: string; key_features: string[]; silhouette: string; studio_id: string; target_wearer: string; updated_at: string };
       return { ...base(value), colorStory: value.color_story, garmentId: value.garment_id, intent: value.intent, keyFeatures: value.key_features, silhouette: value.silhouette, targetWearer: value.target_wearer };
     }),
+    entityRevisions: [],
     garmentComponents: [] as CanonicalGarmentComponent[],
+    conflicts: [],
     flatAnnotations: [],
     garmentVersions: [],
     gradeRuleValues: [],
@@ -166,6 +169,9 @@ export async function createCanonicalWorkspace(seed: CanonicalWorkspaceSeed) {
     techPackExports: [],
     validationRuns: [],
     validationWaivers: [] as CanonicalValidationWaiver[],
+    versionDependencies: [],
+    versionEditorial: [],
+    versionPortfolio: [],
   });
 }
 
@@ -174,6 +180,7 @@ export function normalizeWorkspace(state: CanonicalWorkspaceState): CanonicalWor
     ...state,
     annotations: [...state.annotations],
     bomItems: [...state.bomItems].sort((a, b) => a.sortOrder - b.sortOrder || a.id.localeCompare(b.id)),
+    changeEvents: [...state.changeEvents].sort((a, b) => a.occurredAt.localeCompare(b.occurredAt) || a.id.localeCompare(b.id)),
     collections: [...state.collections].sort((a, b) => a.sortOrder - b.sortOrder || a.name.localeCompare(b.name)),
     componentVariants: [...state.componentVariants],
     components: [...state.components].sort((a, b) => a.name.localeCompare(b.name)),
@@ -181,6 +188,7 @@ export function normalizeWorkspace(state: CanonicalWorkspaceState): CanonicalWor
     constructionSections: [...state.constructionSections].sort((a, b) => a.sortOrder - b.sortOrder || a.id.localeCompare(b.id)),
     constructionSteps: [...state.constructionSteps].sort((a, b) => a.sortOrder - b.sortOrder || a.id.localeCompare(b.id)),
     designBriefs: [...state.designBriefs],
+    entityRevisions: [...state.entityRevisions],
     flatAnnotations: [...state.flatAnnotations],
     garmentVersions: [...state.garmentVersions],
     gradeRuleValues: [...state.gradeRuleValues],
@@ -189,6 +197,7 @@ export function normalizeWorkspace(state: CanonicalWorkspaceState): CanonicalWor
     garmentMaterials: [...state.garmentMaterials],
     garmentMedia: [...state.garmentMedia].sort((a, b) => a.sortOrder - b.sortOrder),
     garments: [...state.garments].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt)),
+    conflicts: [...state.conflicts],
     inventoryEntries: [...state.inventoryEntries].sort((a, b) => b.occurredAt.localeCompare(a.occurredAt)),
     materialVariants: [...state.materialVariants],
     materials: [...state.materials].sort((a, b) => a.name.localeCompare(b.name)),
@@ -213,6 +222,9 @@ export function normalizeWorkspace(state: CanonicalWorkspaceState): CanonicalWor
     techPackExports: [...state.techPackExports],
     validationRuns: [...state.validationRuns],
     validationWaivers: [...state.validationWaivers],
+    versionDependencies: [...state.versionDependencies],
+    versionEditorial: [...state.versionEditorial].sort((a, b) => a.sortOrder - b.sortOrder),
+    versionPortfolio: [...state.versionPortfolio].sort((a, b) => a.sortOrder - b.sortOrder),
   };
 }
 
@@ -328,6 +340,9 @@ export function attachMoodboardItem(state: CanonicalWorkspaceState, boardId: str
 }
 
 export function deleteGarment(state: CanonicalWorkspaceState, garmentId: string) {
+  if (state.garmentVersions.some((item) => item.garmentId === garmentId)) {
+    throw new Error('This garment has protected Freeze Frames or downstream evidence and cannot be deleted.');
+  }
   const boardIds = new Set(state.moodboards.filter((item) => item.garmentId === garmentId).map((item) => item.id));
   const specIds = new Set(state.technicalSpecs.filter((item) => item.garmentId === garmentId).map((item) => item.id));
   const flatIds = new Set(state.technicalFlats.filter((item) => specIds.has(item.specId)).map((item) => item.id));

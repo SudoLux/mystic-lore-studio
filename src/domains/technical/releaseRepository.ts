@@ -249,7 +249,7 @@ export async function releaseTechnicalSpec(state: CanonicalWorkspaceState, input
   const waivedCodes = new Set(input.waivers.map((item) => item.ruleCode));
   const blockers = preview.issues.filter((item) => !waivedCodes.has(item.code));
   if (blockers.length) throw new Error(blockers[0].message);
-  const checkpoint = await createTechnicalCheckpoint(state, input.specId, input.checkpointLabel);
+  const checkpoint = await createTechnicalCheckpoint(state, input.specId, input.checkpointLabel, { actorId: input.actorId, kind: 'release', notes: `Protected technical release for ${input.specId}` });
   const now = new Date().toISOString();
   const run: CanonicalValidationRun = { ...record(state.studioId), actorId: input.actorId, garmentVersionId: checkpoint.version.id, issues: preview.issues, ranAt: now, rulesetVersion: releaseRulesetVersion, specId: input.specId, status: input.waivers.length ? 'warning' : 'passed' };
   const spec = requireSpec(state, input.specId);

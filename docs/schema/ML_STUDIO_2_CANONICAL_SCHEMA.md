@@ -1,10 +1,11 @@
 # Mystic Lore Studio 2.0 Canonical Schema
 
-Status: WP4 complete through BOM, construction, release, and deterministic tech
-pack; typed migration/read-through adapters remain for recovery and untouched
-domains
+Status: WP5 complete through append-only change history, named Freeze Frames,
+domain-aware comparison, scoped restore, and release/publication protection;
+typed migration/read-through adapters remain for recovery and untouched domains
 
-Source specification: Product Bible pages 19-32 and 59-60. The ordered SQL
+Source specification: Product Bible pages 18, 28, 31, 33-35, 40, 56, and
+59-60. The ordered SQL
 migrations are authoritative for exact types, checks, foreign keys, indexes,
 grants, triggers, and policies.
 
@@ -206,6 +207,7 @@ Ordered migrations:
 5. `20260825035858_add_technical_foundation_contracts.sql`
 6. `20260825051344_enforce_pom_measurement_integrity.sql`
 7. `20260825184506_complete_wp4_bom_construction_release_pack.sql`
+8. `20260825203246_implement_wp5_freeze_frames_restore.sql`
 
 Verification commands:
 
@@ -220,8 +222,8 @@ npm run build
 
 `validate:schema` is deterministic and verifies the table inventory, tenant
 columns, allowed JSONB fields, RLS/storage coverage, migration order, pgTAP
-plan, WP3 canonical route boundaries, and checksums of all six legacy
-migrations plus the WP0 fixture. `test:db` executes the 44-assertion pgTAP
+plan, WP3/WP4/WP5 canonical route boundaries, and checksums of all six legacy
+migrations plus the WP0 fixture. `test:db` executes the 60-assertion pgTAP
 matrix on a local or explicit test database.
 
 ## WP2B Transition Contract
@@ -325,3 +327,32 @@ stable-orders structured JSON and ZIP entries, fixes archive timestamps, and
 includes stored source bytes. Repeated export of the same release and template
 is byte-identical. AI integrations can only submit candidates to these commands;
 they cannot write technical or released records directly.
+
+## WP5 Change Ledger, Freeze Frame, and Restore Contract
+
+The `implement_wp5_freeze_frames_restore` migration makes the versioning roots
+operational rather than descriptive:
+
+- Freeze Frames add decision notes, named/release/restore kind, fresh base
+  revision, validated domain scope, garment-local parent identity, and
+  checksum lookup. Parent/current foreign keys restrict deletion.
+- Change events add scope and base/result revisions. Entity revisions, change
+  events, and restore operations reject update and delete. Release, export,
+  order, and publication references protect their source Freeze Frame.
+- Restore operations retain selected keys, downstream dependencies, preview
+  checksum, replay/inverse patches, actor, source/result versions, and
+  base/result revision.
+- Authenticated command wrappers create a Freeze Frame or commit a restore only
+  after Studio-write authorization and a row-locked expected-revision check.
+  Internal helpers pin an empty search path and are not exposed as Data API
+  schemas.
+- A publication transition rejects a non-current source Freeze Frame. Existing
+  immutable Public Cuts are unaffected by working-state restore.
+
+The typed versioning repository mirrors these invariants for the current
+canonical browser workspace. Structural comparison addresses stable field and
+row identity, POM and measurements, BOM substitution/cost, construction order,
+media checksums, editorial live-data staleness, and portfolio selection.
+Restore uses a hashed preview then creates a new child frame and append-only
+audit evidence. Media rows and later fit actuals are intentionally not removed
+by scoped restore.

@@ -18,6 +18,7 @@ import {
   type ReleaseWaiverInput,
 } from '../domains/technical';
 import type { CanonicalBomItem, CanonicalConstructionDetail } from '../domains/workspace';
+import { assertFreshServerState } from '../domains/versioning';
 import { useCanonicalWorkspace } from './useCanonicalWorkspace';
 
 export function useReleaseStudio() {
@@ -36,6 +37,15 @@ export function useReleaseStudio() {
   const applyTemplate = (specId: string, templateId: string) => commitWorkspace((current) => applyConstructionTemplate(current, specId, templateId, currentActorId).state);
   const release = async (specId: string, templateId: string, checkpointLabel: string, waivers: ReleaseWaiverInput[]) => {
     if (!state) throw new Error('The workspace is not ready.');
+    const spec = state.technicalSpecs.find((item) => item.id === specId);
+    const garment = state.garments.find((item) => item.id === spec?.garmentId);
+    if (!garment) throw new Error('The release garment is unavailable.');
+    assertFreshServerState({
+      actualRevision: garment.revision,
+      expectedRevision: garment.revision,
+      hasConflicts: state.conflicts.some((item) => item.garmentId === garment.id && item.resolution === 'pending'),
+      online: navigator.onLine !== false,
+    });
     const result = await releaseTechnicalSpec(state, { actorId: currentActorId, checkpointLabel, specId, templateId, waivers });
     commitWorkspace(() => result.state);
     return result;

@@ -10,7 +10,10 @@ garment and reusable-library routes over to the persisted canonical workspace
 without changing unrelated legacy domains. WP4 now includes the complete
 Technical Studio: source-evidenced flats, stable POM authoring, measurements,
 fit actuals, non-destructive grading, linked BOM, ordered construction, release
-validation, governed waivers, and deterministic structured tech packs.
+validation, governed waivers, and deterministic structured tech packs. WP5
+adds the append-only garment change ledger, named Freeze Frames, structural
+comparison, consequence-aware scoped restore, conflict handling, and protected
+release/publication lineage.
 
 ## Work-package Status
 
@@ -23,7 +26,8 @@ validation, governed waivers, and deterministic structured tech packs.
 | WP4a | Technical specification root, Technical Studio home, flats, annotations, files, validation, and export artifact foundation | Complete | A seeded garment can create, review, approve, version, validate, and export required source-evidenced flats |
 | WP4b | Stable POM, measurement sets and values, fit actuals, grading preview/commit, structural compare, and selective restore | Complete | A seeded garment defines POM once, validates base/graded sets, and records sample actuals against stable points |
 | WP4c | Linked BOM, ordered construction, release validation and waivers, templates, and deterministic structured tech packs | Complete | A seeded garment produces a validated, reproducible, approved tech pack from structured data |
-| WP5-WP10 | Remaining Product Bible sequence | Not started | Begins with garment-wide versioning and restore work in WP5 |
+| WP5 | Append-only change ledger, named Freeze Frames, domain-aware diff, scoped restore, conflicts, and release/publication protection | Complete | Restoring an older scope creates a new version while all earlier and pinned evidence remains unchanged |
+| WP6-WP10 | Remaining Product Bible sequence | Not started | Begins with Production in WP6 |
 
 ## Verification
 
@@ -52,16 +56,33 @@ Characterization coverage:
 - `tests/shellContract.test.ts`: fixed desktop/compact responsive shell modes
   and semantic native-button navigation for keyboard access.
 
-Latest WP4 completion verification:
+Latest WP5 completion verification:
 
 | Command | Result |
 | --- | --- |
-| `npm run validate:schema` | Passed: 67 private tables, 2 public projection tables, 44 pgTAP assertions, 7 preserved legacy inputs |
-| `npm run db:reset` | Passed: all six legacy migrations, four ordered WP2 migrations, and all three ordered WP4 migrations applied to an empty local database |
-| `npm run test:db` | Passed: 44 pgTAP assertions, including tenant/publication/Storage policies, POM integrity, BOM/construction constraints, release evidence, same/cross-Studio waiver access, direct-write denial, privacy exclusion, and indexes |
+| `npm run validate:schema` | Passed: 67 private tables, 2 public projection tables, 60 pgTAP assertions, 7 preserved legacy inputs |
+| `npm run db:reset` | Passed: all six legacy migrations, four ordered WP2 migrations, three ordered WP4 migrations, and the additive WP5 migration applied to an empty local database |
+| `npm run test:db` | Passed: 60 pgTAP assertions, including tenant/publication/Storage policies, fresh revision commands, append-only audit evidence, cross-Studio/anonymous denial, stale publication rejection, and protected release deletion |
 | Authenticated local API dry run | Passed: representative fixture applied through the typed Supabase store; one owner-visible garment; duplicate execution completed safely |
-| `npm test` | Passed: 15 test files, 68 tests, including linked/free-text BOM, unit and substitution failures, stable construction order, template reuse, waiver rules, byte-identical repeat export, and a full seeded release |
+| `npm test` | Passed: 17 test files, 79 tests, including replay/reverse evidence, deterministic checksums, structural domain diff, scoped restore, dependency warnings, conflict policies, protected frames, and responsive UI contracts |
 | `npm run build` | Passed: TypeScript build and Vite production build |
+
+WP5 evidence:
+
+- [ADR-0012: append-only Freeze Frames and structural restore](../adr/ADR-0012-wp5-freeze-frames-structural-restore.md)
+- `tests/wp5Versioning.test.ts`: checksums and parent/current lineage,
+  high-value mutation ledger, replay/reverse, domain-aware comparison, scoped
+  restore, pinned dependency warnings, release protection, fresh-state gates,
+  scalar/ordered/media/tombstone conflict policies, and evidence preservation.
+- `tests/wp5VersioningUiContract.test.ts`: Versions timeline, A/B selectors,
+  desktop and narrow-screen diff, scoped selection, Freeze Frame dialog,
+  restore consequence preview, conflict resolution, and fresh-state gate.
+- Live authenticated verification captured the garment-wide `WP5 browser
+  review` Freeze Frame, compared it with protected Release A, selected 21
+  restorable structural changes, and surfaced the pinned release and tech-pack
+  export before commit. Desktop and 390 px layouts passed without page overflow
+  or console warnings/errors; the restore itself was intentionally left at
+  preview so released working data was not changed.
 
 WP4c evidence:
 
@@ -136,6 +157,7 @@ See [baseline screenshot manifest](BASELINE_SCREENSHOTS.md).
 | Garments | `#/projects`, `#/projects/:id` (legacy-compatible paths) | `GarmentLibraryPage`, `CanonicalGarmentWorkspacePage` | `CanonicalWorkspaceProvider` |
 | Libraries | `#/fabrics` (legacy-compatible path) | `LibraryVaultPage` (Material Vault and Component Library) | `CanonicalWorkspaceProvider` |
 | Technical Studio | `#/technical`, `#/technical/:garmentId` | `TechnicalStudioPage`, `FlatCanvas`, `POMCanvas`, `MeasurementDataGrid`, `BomWorkspace`, `ConstructionWorkspace`, `ReleaseWorkspace`, grading, validation, and export panels | `CanonicalWorkspaceProvider` and technical, measurement, and release commands/repositories |
+| Versions & Diff | `#/versions` | `VersionsPage`, `DiffViewer`, `FreezeFrameDialog`, `RestorePreview`, `ConflictResolver`, `ReleaseGate` | `CanonicalWorkspaceProvider` and versioning commands/repository |
 | Workflow | `#/kanban` | `KanbanPage` | `StudioDataProvider` |
 | Editorial Collections | `#/lookbooks` | `LookbooksPage`, `EditorialSceneBuilder`, `EditorialCollectionViewer` | `StudioDataProvider` and local editorial collection state |
 | Portfolio manager | `#/portfolio` | `PortfolioPage` | `StudioDataProvider` |
@@ -242,10 +264,10 @@ rows marked public; they do not grant anonymous access to private Studio tables.
 | `20260824051228_ml_studio_2_canonical_schema.sql` | Additive canonical schemas, types, 66 private tables, two public projection tables, foreign keys, indexes, revision and identity guards | WP2A added; no legacy mutation |
 | `20260824051237_ml_studio_2_rls_and_publication_boundary.sql` | Membership RLS, least-privilege grants, public payload immutability/privacy, publication commands, audit triggers | WP2A added; 28-assertion pgTAP runtime gate passed in WP2B |
 | `20260824051247_ml_studio_2_storage_policies.sql` | Canonical private/public buckets, paths, and Storage object policies | WP2A added; legacy buckets preserved |
-| `20260824070629_enable_canonical_migration_bootstrap.sql` | Owner-only INSERT permission required for retry-safe settings upsert after trigger bootstrap | WP2B added; no legacy mutation |
 | `20260825035858_add_technical_foundation_contracts.sql` | Flat source/revision, annotation severity/status, export-template evidence, and critical-callout index | WP4a added; additive technical foundation |
 | `20260825051344_enforce_pom_measurement_integrity.sql` | Stable POM anchors, decimal measurement/fit constraints, and grading lookup indexes | WP4b added; canonical technical rows retained |
 | `20260825184506_complete_wp4_bom_construction_release_pack.sql` | Linked/free-text BOM semantics, construction requirements, immutable waiver evidence, release lineage, and deterministic export manifest | WP4c added; versioning work deferred |
+| `20260825203246_implement_wp5_freeze_frames_restore.sql` | Freeze Frame scope/parent identity, append-only replay evidence, fresh-revision commands, restore audit, protected dependencies, and stale publication rejection | WP5 added; no legacy mutation |
 
 No legacy migration or table was edited or removed. The safe, sanitized input
 artifact remains `tests/fixtures/legacy-studio-data-v5.json`; WP2 retains it as
@@ -259,10 +281,9 @@ These are observed current behaviors, not WP0 fixes:
    migration plan, but current UI cloud merge remains legacy until WP7 cutover.
 2. Canonical unit/currency/version/AI policy is separated from device-only
    backup reminder preferences; the current UI still reads the legacy settings.
-3. Legacy conflict handling is timestamp-based newest-wins with tombstones.
-   Technical checkpoints and selective measurement restore exist, but the
-   garment-wide change stream, Freeze Frame, structural diff, and restore model
-   remain WP5 work.
+3. Legacy domains still use timestamp-based newest-wins with tombstones. Every
+   canonical garment mutation now uses the WP5 ledger and conflict policies;
+   untouched legacy domains adopt that model only during their own cutover.
 4. Browser IDs now have deterministic UUIDv5 mappings in WP2 evidence. WP3
    Garments and Libraries use their canonical IDs; untouched domains still use
    legacy IDs until their own route cutover.
@@ -286,6 +307,7 @@ These are observed current behaviors, not WP0 fixes:
 - [ADR-0009: WP4 POM, measurement, and grading model](../adr/ADR-0009-wp4-pom-measurement-and-grading.md)
 - [ADR-0010: WP4 release gates, waivers, and approval](../adr/ADR-0010-wp4-release-gates-waivers-and-approval.md)
 - [ADR-0011: deterministic structured tech pack](../adr/ADR-0011-deterministic-structured-tech-pack.md)
+- [ADR-0012: append-only Freeze Frames and structural restore](../adr/ADR-0012-wp5-freeze-frames-structural-restore.md)
 - Vitest is the WP0 automated test harness. It adds no browser runtime behavior.
 - Existing repository screenshots are the signed-in visual baseline. WP0 does
   not add an authentication bypass merely to create new captures.

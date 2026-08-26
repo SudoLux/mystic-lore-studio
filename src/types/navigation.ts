@@ -4,6 +4,7 @@ export type PageId =
   | 'dashboard'
   | 'projects'
   | 'technical'
+  | 'versions'
   | 'kanban'
   | 'lookbooks'
   | 'portfolio'

@@ -3,7 +3,7 @@ begin;
 create extension if not exists pgtap with schema extensions;
 set local search_path = extensions, public, ml_private, ml_public;
 
-select plan(44);
+select plan(60);
 
 insert into auth.users (id, email) values
   ('10000000-0000-4000-8000-000000000001', 'wp2-owner-a@example.test'),
@@ -110,6 +110,58 @@ select is(
      and pg_get_constraintdef(oid) not ilike '%privacy%'),
   1::bigint,
   'privacy cannot be represented as a waivable release domain'
+);
+select is(
+  (select count(*) from information_schema.columns
+   where table_schema = 'ml_private'
+     and ((table_name = 'garment_versions' and column_name in ('notes', 'version_kind', 'base_revision'))
+       or (table_name = 'change_events' and column_name = 'related_operation_ids'))),
+  4::bigint,
+  'Freeze Frames retain decision identity and merge events retain both source operation IDs'
+);
+select is(
+  (select count(*) from information_schema.columns
+   where table_schema = 'ml_private' and table_name = 'restore_operations'
+     and column_name in ('replay_patch', 'inverse_patch', 'selected_keys_json',
+       'dependency_json', 'preview_checksum', 'base_revision', 'result_revision')),
+  7::bigint,
+  'restore commits retain selection, replay, checksum, dependency, and revision evidence'
+);
+select is(
+  (select count(*) from pg_constraint where conname in (
+    'garment_versions_kind_check', 'garment_versions_base_revision_check',
+    'garment_versions_scope_domain_check', 'garment_versions_parent_fk',
+    'restore_operations_revision_order_check', 'restore_operations_scope_domain_check'
+  )),
+  6::bigint,
+  'Freeze Frame parentage, scope, kind, and restore revision constraints are installed'
+);
+select is(
+  (select count(*) from pg_indexes where schemaname in ('ml_private', 'ml_public')
+    and indexname in ('ml_garment_versions_checksum_idx', 'ml_garment_versions_parent_idx',
+      'ml_change_events_entity_time_idx', 'ml_restore_operations_source_idx',
+      'ml_tech_pack_exports_version_idx', 'ml_production_orders_version_idx',
+      'ml_publications_source_version_idx')),
+  7::bigint,
+  'version comparison and protected dependency indexes are installed'
+);
+select is(
+  (select count(*) from pg_trigger trigger
+   join pg_class relation on relation.oid = trigger.tgrelid
+   join pg_namespace namespace on namespace.oid = relation.relnamespace
+   where not trigger.tgisinternal and namespace.nspname in ('ml_private', 'ml_public')
+     and trigger.tgname in ('change_events_append_only', 'entity_revisions_append_only',
+       'restore_operations_append_only', 'garment_versions_immutable_and_protected',
+       'publications_require_fresh_source')),
+  5::bigint,
+  'append-only history, protected Freeze Frames, and fresh publication triggers are installed'
+);
+select is(
+  (select count(*) from information_schema.routines
+   where routine_schema = 'ml_private'
+     and routine_name in ('create_freeze_frame', 'commit_restore')),
+  2::bigint,
+  'authenticated Freeze Frame and restore command boundaries are installed'
 );
 
 insert into ml_private.studio_members (
@@ -332,6 +384,47 @@ select lives_ok(
     set units = excluded.units, currency = excluded.currency$$,
   'Studio owner can safely retry the singleton settings upsert during canonical migration'
 );
+select lives_ok(
+  $$select ml_private.create_freeze_frame(
+      '40000000-0000-4000-8000-000000000001', 'Owner design review',
+      'Approved cross-domain direction', '{"domain":"all"}'::jsonb,
+      '{"garment":{"id":"40000000-0000-4000-8000-000000000001"}}'::jsonb,
+      repeat('1', 64)::ml_private.sha256_checksum,
+      (select revision from ml_private.garments where id = '40000000-0000-4000-8000-000000000001'),
+      '90000000-0000-4000-8000-000000000001', 'named'
+    )$$,
+  'Studio owner creates a fresh-revision named Freeze Frame through the command boundary'
+);
+select results_eq(
+  $$select count(*) from ml_private.garment_versions version
+    join ml_private.garments garment on garment.current_version_id = version.id
+    where version.label = 'Owner design review' and version.parent_version_id is null
+      and version.base_revision < garment.revision$$,
+  array[1::bigint],
+  'Freeze Frame becomes the current garment child and preserves its base revision'
+);
+select throws_ok(
+  $$select ml_private.create_freeze_frame(
+      '40000000-0000-4000-8000-000000000001', 'Stale frame', '',
+      '{"domain":"all"}'::jsonb, '{}'::jsonb,
+      repeat('2', 64)::ml_private.sha256_checksum, 1,
+      '90000000-0000-4000-8000-000000000002', 'named'
+    )$$,
+  '40001',
+  'Fresh server state is required; expected revision 1, found 3.',
+  'stale Freeze Frame creation is rejected rather than blindly queued'
+);
+select lives_ok(
+  $$select ml_private.create_freeze_frame(
+      '40000000-0000-4000-8000-000000000001', 'Factory release frame',
+      'Protected release evidence', '{"domain":"technical"}'::jsonb,
+      '{"technical":{"status":"released"}}'::jsonb,
+      repeat('3', 64)::ml_private.sha256_checksum,
+      (select revision from ml_private.garments where id = '40000000-0000-4000-8000-000000000001'),
+      '90000000-0000-4000-8000-000000000003', 'release'
+    )$$,
+  'Studio owner creates a release Freeze Frame as a child of the current frame'
+);
 
 set local request.jwt.claim.sub = '10000000-0000-4000-8000-000000000002';
 select results_eq(
@@ -352,6 +445,17 @@ select throws_like(
     values ('20000000-0000-4000-8000-000000000001', 'GA-002', 'Forbidden garment')$$,
   '%row-level security%',
   'Studio B owner cannot insert a Studio A garment'
+);
+select throws_ok(
+  $$select ml_private.create_freeze_frame(
+      '40000000-0000-4000-8000-000000000001', 'Cross-studio frame', '',
+      '{"domain":"all"}'::jsonb, '{}'::jsonb,
+      repeat('4', 64)::ml_private.sha256_checksum, 4,
+      '90000000-0000-4000-8000-000000000004', 'named'
+    )$$,
+  '42501',
+  'Garment not found or caller cannot create a Freeze Frame.',
+  'cross-Studio owners cannot create Freeze Frames for another Studio'
 );
 select throws_like(
   $$insert into ml_private.tasks (studio_id, garment_id, title)
@@ -404,8 +508,77 @@ select results_eq(
   array[1::bigint],
   'anonymous callers see only copied assets for a current publication'
 );
+select throws_like(
+  $$select ml_private.create_freeze_frame(
+      '40000000-0000-4000-8000-000000000001', 'Anonymous frame', '',
+      '{"domain":"all"}'::jsonb, '{}'::jsonb,
+      repeat('5', 64)::ml_private.sha256_checksum, 4,
+      '90000000-0000-4000-8000-000000000005', 'named'
+    )$$,
+  '%permission denied for schema ml_private%',
+  'anonymous callers cannot invoke private Freeze Frame commands'
+);
 
 reset role;
+select throws_ok(
+  $$update ml_private.change_events
+    set origin = 'system'
+    where operation_id = '90000000-0000-4000-8000-000000000001'$$,
+  '23514',
+  'Version history is append-only; create a new event or Freeze Frame.',
+  'change ledger rows cannot be rewritten'
+);
+select throws_ok(
+  $$delete from ml_private.entity_revisions
+    where garment_version_id = (
+      select id from ml_private.garment_versions where label = 'Owner design review'
+    )$$,
+  '23514',
+  'Version history is append-only; create a new event or Freeze Frame.',
+  'entity revision evidence cannot be deleted'
+);
+update ml_private.technical_specs
+set release_version_id = (
+  select id from ml_private.garment_versions where label = 'Factory release frame'
+)
+where id = '41000000-0000-4000-8000-000000000001';
+select throws_ok(
+  $$delete from ml_private.garment_versions where label = 'Factory release frame'$$,
+  '23503',
+  'Freeze Frame is protected by a release, export, order, or publication.',
+  'release-referenced Freeze Frames cannot be deleted'
+);
+insert into ml_private.portfolio_projects (
+  id, studio_id, profile_id, garment_id, slug, case_study_json, visibility
+) values (
+  '51000000-0000-4000-8000-000000000001',
+  '20000000-0000-4000-8000-000000000001',
+  '50000000-0000-4000-8000-000000000001',
+  '40000000-0000-4000-8000-000000000001',
+  'studio-a-garment', '{}', 'ready'
+);
+insert into ml_public.publications (
+  id, studio_id, profile_id, publication_type, source_id, source_version_id,
+  portfolio_project_id, public_path, snapshot_json, media_manifest, checksum,
+  is_public, is_current, created_by
+) values (
+  '60000000-0000-4000-8000-000000000005',
+  '20000000-0000-4000-8000-000000000001',
+  '50000000-0000-4000-8000-000000000001', 'project',
+  '51000000-0000-4000-8000-000000000001',
+  (select id from ml_private.garment_versions where label = 'Owner design review'),
+  '51000000-0000-4000-8000-000000000001',
+  '/wp2-designer/studio-a-garment', '{"display_name":"Stale cut"}'::jsonb,
+  '[]'::jsonb, repeat('6', 64), false, false,
+  '10000000-0000-4000-8000-000000000001'
+);
+select throws_ok(
+  $$update ml_public.publications set is_public = true, published_at = now()
+    where id = '60000000-0000-4000-8000-000000000005'$$,
+  '40001',
+  'Fresh server state is required; publication source is not the current Freeze Frame.',
+  'publication cannot use a stale Freeze Frame as its fresh source'
+);
 select throws_ok(
   $$insert into ml_public.publications (
       studio_id, profile_id, publication_type, source_id, public_path,

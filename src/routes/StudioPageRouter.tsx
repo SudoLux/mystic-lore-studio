@@ -8,6 +8,7 @@ import { PortfolioPage } from '../pages/Portfolio';
 import { SettingsPage } from '../pages/Settings';
 import { StatsPage } from '../pages/Stats';
 import { TechnicalStudioPage } from '../pages/TechnicalStudio';
+import { VersionsPage } from '../pages/Versions';
 import type { AppRoute } from '../lib/appRoutes';
 import type { PageId } from '../types/navigation';
 import type { ApparelProject, Fabric } from '../types/studio';
@@ -68,6 +69,8 @@ export function StudioPageRouter({
   if (route.page === 'technical') {
     return <TechnicalStudioPage garmentId={route.technicalGarmentId} onOpenGarment={onOpenTechnicalGarment} />;
   }
+
+  if (route.page === 'versions') return <VersionsPage />;
 
   if (route.page === 'kanban') return <KanbanPage />;
   if (route.page === 'lookbooks') return <LookbooksPage />;

@@ -221,7 +221,26 @@ export function restoreMeasurementSelection(state: CanonicalWorkspaceState, sour
   let pomPoints = [...state.pomPoints]; let measurementValues = [...state.measurementValues];
   for (const sourcePoint of selectedPom) { const current = pomPoints.find((item) => item.id === sourcePoint.id); const restored = current ? touch({ ...current, name: sourcePoint.name, method: sourcePoint.method, diagramAnchor: sourcePoint.diagramAnchor, sortOrder: sourcePoint.sortOrder }) : { ...sourcePoint, revision: sourcePoint.revision + 1, updatedAt: new Date().toISOString() }; pomPoints = [...pomPoints.filter((item) => item.id !== restored.id), restored]; }
   for (const sourceValue of selectedValues) { const current = measurementValues.find((item) => measurementKey(item) === measurementKey(sourceValue)); const restored = current ? touch({ ...current, target: sourceValue.target, tolerancePlus: sourceValue.tolerancePlus, toleranceMinus: sourceValue.toleranceMinus }) : { ...sourceValue, revision: sourceValue.revision + 1, updatedAt: new Date().toISOString() }; measurementValues = [...measurementValues.filter((item) => measurementKey(item) !== measurementKey(restored)), restored]; }
-  const operation: CanonicalRestoreOperation = { ...record(state.studioId), garmentId: spec.garmentId, sourceVersionId, resultVersionId, selectedPomPointIds: selection.pomPointIds, selectedMeasurementKeys: selection.measurementKeys, reason: reason.trim() || 'Restore selected technical rows' };
+  const garment = state.garments.find((item) => item.id === spec.garmentId);
+  const selectedKeys = [...selection.pomPointIds.map((id) => `technical:pomPoints:${id}:$record`), ...selection.measurementKeys.map((id) => `technical:measurementValues:${id}:$record`)];
+  const operation: CanonicalRestoreOperation = {
+    ...record(state.studioId),
+    actorId: null,
+    baseRevision: garment?.revision ?? 1,
+    dependencies: [],
+    garmentId: spec.garmentId,
+    inversePatch: [],
+    previewChecksum: source.checksum,
+    reason: reason.trim() || 'Restore selected technical rows',
+    replayPatch: [],
+    resultRevision: garment?.revision ?? 1,
+    resultVersionId,
+    scope: 'technical',
+    selectedKeys,
+    selectedMeasurementKeys: selection.measurementKeys,
+    selectedPomPointIds: selection.pomPointIds,
+    sourceVersionId,
+  };
   return { operation, state: { ...state, pomPoints, measurementValues, restoreOperations: [...state.restoreOperations, operation] } };
 }
 

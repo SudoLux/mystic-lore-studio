@@ -32,7 +32,7 @@ async function technicalWorkspace() {
 describe('WP4 POM, measurement, fit, and grading domain', () => {
   it('hydrates migrated workspaces with typed empty technical collections', async () => {
     const { state } = await technicalWorkspace();
-    expect(state.schemaVersion).toBe(4);
+    expect(state.schemaVersion).toBe(5);
     expect(state.pomPoints).toEqual([]);
     expect(state.measurementSets).toEqual([]);
     expect(state.fitMeasurements).toEqual([]);

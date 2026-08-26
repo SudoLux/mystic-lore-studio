@@ -33,6 +33,7 @@ const bootstrapPath = 'supabase/migrations/20260824070629_enable_canonical_migra
 const technicalPath = 'supabase/migrations/20260825035858_add_technical_foundation_contracts.sql';
 const measurementPath = 'supabase/migrations/20260825051344_enforce_pom_measurement_integrity.sql';
 const releasePath = 'supabase/migrations/20260825184506_complete_wp4_bom_construction_release_pack.sql';
+const versioningPath = 'supabase/migrations/20260825203246_implement_wp5_freeze_frames_restore.sql';
 const testPath = 'supabase/tests/ml_studio_2_rls_test.sql';
 const foundation = read(foundationPath);
 const rls = read(rlsPath);
@@ -41,6 +42,7 @@ const bootstrap = read(bootstrapPath);
 const technical = read(technicalPath);
 const measurement = read(measurementPath);
 const release = read(releasePath);
+const versioning = read(versioningPath);
 const rlsTest = read(testPath);
 
 const structurallyBalanced = (sql) => {
@@ -101,6 +103,7 @@ for (const [path, sql] of [
   [technicalPath, technical],
   [measurementPath, measurement],
   [releasePath, release],
+  [versioningPath, versioning],
   [testPath, rlsTest],
 ]) {
   check(structurallyBalanced(sql), `Unbalanced SQL delimiters in ${path}.`);
@@ -196,7 +199,7 @@ for (const column of jsonbColumns) {
 
 check((foundation.match(/references /g) ?? []).length >= 80, 'Expected explicit canonical foreign keys are missing.');
 check((foundation.match(/create (?:unique )?index /g) ?? []).length >= 55, 'Expected canonical indexes are missing.');
-const canonicalSql = foundation + rls + storage + bootstrap + technical + measurement + release;
+const canonicalSql = foundation + rls + storage + bootstrap + technical + measurement + release + versioning;
 check(!/\b(create|alter|drop) table public\./i.test(canonicalSql), 'WP2 must not create, alter, or drop legacy public tables.');
 check(!/\bdrop table\b/i.test(canonicalSql), 'WP2 migrations may not drop tables.');
 check(!/\brename\s+(?:table|column)\b/i.test(canonicalSql), 'WP2 migrations may not rename legacy structures.');
@@ -261,6 +264,21 @@ check(
   release.indexOf('update ml_private.tech_pack_exports') < release.indexOf('alter column ruleset_version set not null'),
   'WP4 foundation exports must receive deterministic release evidence before non-null enforcement.',
 );
+for (const field of ['notes', 'version_kind', 'base_revision']) {
+  check(versioning.includes(`add column ${field}`), `WP5 Freeze Frame field is missing: ${field}`);
+}
+check(versioning.includes('add column related_operation_ids'), 'WP5 combined merge operation references are missing.');
+for (const field of ['replay_patch', 'inverse_patch', 'selected_keys_json', 'dependency_json', 'preview_checksum']) {
+  check(versioning.includes(`add column ${field}`), `WP5 restore evidence field is missing: ${field}`);
+}
+for (const trigger of ['change_events_append_only', 'entity_revisions_append_only', 'restore_operations_append_only', 'garment_versions_immutable_and_protected', 'publications_require_fresh_source']) {
+  check(versioning.includes(`create trigger ${trigger}`), `WP5 append-only or fresh-state trigger is missing: ${trigger}`);
+}
+for (const command of ['create_freeze_frame', 'commit_restore']) {
+  check(versioning.includes(`function ml_private.${command}`), `WP5 authenticated command boundary is missing: ${command}`);
+}
+check(versioning.includes('on delete restrict'), 'WP5 protected Freeze Frame relationships must use restricted deletion.');
+check(versioning.includes("set search_path = ''"), 'WP5 command and trigger functions must pin an empty search path.');
 
 const srcFiles = [];
 const walk = (directory) => {
@@ -328,6 +346,15 @@ for (const contract of ['createBomItem', 'applyConstructionTemplate', 'validateR
 for (const contract of ['Component detail', 'Assembly sequence', 'Request audited waiver', 'Non-waivable privacy', 'Export panel']) {
   check(releasePage.includes(contract), `WP4 release UI contract is missing: ${contract}`);
 }
+const versioningRepository = read('src/domains/versioning/versioningRepository.ts');
+const versionsPage = read('src/pages/Versions/VersionsPage.tsx');
+for (const contract of ['recordWorkspaceChangeEvents', 'createFreezeFrame', 'compareFreezeFrame', 'previewRestore', 'commitRestore', 'assertFreshServerState']) {
+  check(versioningRepository.includes(`function ${contract}`), `WP5 versioning repository contract is missing: ${contract}`);
+}
+for (const contract of ['Timeline', 'Version A', 'Version B', 'Structural comparison', 'Preview restore', 'ReleaseGate']) {
+  check(versionsPage.includes(contract), `WP5 Versions/Diff UI contract is missing: ${contract}`);
+}
+check(router.includes('<VersionsPage'), 'WP5 Versions & Diff route is missing.');
 
 const plan = Number(rlsTest.match(/select plan\((\d+)\)/)?.[1] ?? 0);
 const assertions = (rlsTest.match(/^select (?:is|results_eq|throws_like|throws_ok|lives_ok)\(/gm) ?? []).length;
@@ -339,7 +366,7 @@ check(rlsTest.includes('unpublish_publication'), 'pgTAP suite lacks unpublicatio
 const migrationNames = readdirSync(new URL('supabase/migrations/', root))
   .filter((name) => name.endsWith('.sql'))
   .sort();
-for (const path of [foundationPath, rlsPath, storagePath, bootstrapPath, technicalPath, measurementPath, releasePath]) {
+for (const path of [foundationPath, rlsPath, storagePath, bootstrapPath, technicalPath, measurementPath, releasePath, versioningPath]) {
   check(migrationNames.includes(path.split('/').at(-1)), `Named migration missing: ${path}`);
 }
 check(
@@ -354,8 +381,10 @@ check(
   && migrationNames.indexOf(technicalPath.split('/').at(-1))
     < migrationNames.indexOf(measurementPath.split('/').at(-1))
   && migrationNames.indexOf(measurementPath.split('/').at(-1))
-    < migrationNames.indexOf(releasePath.split('/').at(-1)),
-  'Migration order is not schema -> RLS -> Storage -> migration bootstrap -> WP4 flats -> WP4 measurements -> WP4 release.',
+    < migrationNames.indexOf(releasePath.split('/').at(-1))
+  && migrationNames.indexOf(releasePath.split('/').at(-1))
+    < migrationNames.indexOf(versioningPath.split('/').at(-1)),
+  'Migration order is not schema -> RLS -> Storage -> bootstrap -> WP4 flats -> measurements -> release -> WP5 versioning.',
 );
 
 if (failures.length > 0) {

@@ -186,7 +186,30 @@ export type CanonicalTechnicalFile = CanonicalRecord & { specId: string; assetId
 export type ValidationDomain = 'flats' | 'pom' | 'measurements' | 'bom' | 'construction' | 'files' | 'privacy' | 'release';
 export type CanonicalValidationIssue = { code: string; domain?: ValidationDomain; entityId?: string; field: string; message: string; severity: 'error' | 'warning' | 'critical'; waivable?: boolean };
 export type CanonicalValidationRun = CanonicalRecord & { specId: string; garmentVersionId: string | null; status: 'passed' | 'failed' | 'warning' | 'error'; rulesetVersion: string; issues: CanonicalValidationIssue[]; ranAt: string; actorId: string | null };
-export type CanonicalGarmentVersion = CanonicalRecord & { garmentId: string; versionNo: number; label: string; scope: 'technical'; checksum: string; snapshot: Record<string, unknown> };
+export type FreezeFrameScope = 'all' | 'design' | 'technical' | 'production' | 'editorial' | 'portfolio';
+export type FreezeFrameKind = 'named' | 'release' | 'restore';
+export type CanonicalGarmentVersion = CanonicalRecord & {
+  baseRevision: number;
+  checksum: string;
+  createdBy: string | null;
+  garmentId: string;
+  kind: FreezeFrameKind;
+  label: string;
+  notes: string;
+  parentVersionId: string | null;
+  scope: FreezeFrameScope;
+  snapshot: Record<string, unknown>;
+  versionNo: number;
+};
+export type CanonicalEntityRevision = CanonicalRecord & { garmentVersionId: string; entityType: string; entityId: string; operation: 'create' | 'update' | 'delete' | 'restore'; snapshot: Record<string, unknown>; checksum: string; scope: FreezeFrameScope };
+export type CanonicalJsonPatch = { op: 'add' | 'replace' | 'remove'; path: string; value?: unknown };
+export type CanonicalChangeOrigin = 'user' | 'sync' | 'migration' | 'ai_acceptance' | 'restore' | 'publication' | 'system';
+export type CanonicalChangeEvent = CanonicalRecord & { actorId: string | null; baseRevision: number | null; entityId: string; entityType: string; garmentId: string | null; inversePatch: CanonicalJsonPatch[]; jsonPatch: CanonicalJsonPatch[]; occurredAt: string; operation: 'create' | 'update' | 'delete' | 'restore' | 'publish' | 'unpublish' | 'role_change' | 'accept_ai'; operationId: string; origin: CanonicalChangeOrigin; relatedOperationIds: string[]; resultRevision: number | null; scope: FreezeFrameScope };
+export type VersionDependencyKind = 'release' | 'export' | 'order' | 'publication';
+export type CanonicalVersionDependency = { artifactId: string; kind: VersionDependencyKind; label: string; versionId: string };
+export type CanonicalConflict = CanonicalRecord & { baseValue: unknown; entityId: string; entityType: string; field: string; garmentId: string; localOperationId: string; localValue: unknown; remoteOperationId: string; remoteValue: unknown; resolution: 'pending' | 'local' | 'remote' | 'custom'; resolvedValue?: unknown };
+export type CanonicalEditorialVersionProjection = CanonicalRecord & { garmentId: string; liveDataStaleness: 'current' | 'source_changed' | 'media_missing' | 'privacy_blocked'; sortOrder: number; title: string };
+export type CanonicalPortfolioVersionProjection = CanonicalRecord & { caseStudy: string; garmentId: string; selectedAssetIds: string[]; sortOrder: number; visibility: 'private' | 'ready' | 'published' };
 export type TechPackSectionManifestItem = { checksum: string; id: string; recordCount: number; title: string };
 export type CanonicalTechPackExport = CanonicalRecord & { specId: string; garmentVersionId: string; exportAssetId: string; format: 'pdf' | 'zip'; checksum: string; templateId: string; templateVersion: number; sourceRevisionLabel: string; deterministicFilename: string; rulesetVersion: string; storagePath: string; generatedAt: string; sectionManifest: TechPackSectionManifestItem[]; approvedBy: string | null; approvedAt: string | null };
 export type CanonicalPomPoint = CanonicalRecord & { specId: string; code: string; name: string; method: string; diagramAnchor: { x: number; y: number }; sortOrder: number };
@@ -196,7 +219,7 @@ export type CanonicalGradeRule = CanonicalRecord & { specId: string; name: strin
 export type CanonicalGradeRuleValue = CanonicalRecord & { gradeRuleId: string; pomPointId: string; fromSize: string; toSize: string; delta: number };
 export type CanonicalSampleRound = CanonicalRecord & { garmentId: string; garmentVersionId: string | null; roundNo: number; sampleType: string; status: 'planned' | 'requested' | 'in_progress' | 'received' | 'reviewed' | 'approved' | 'rejected'; receivedAt: string | null };
 export type CanonicalFitMeasurement = CanonicalRecord & { sampleRoundId: string; pomPointId: string; size: string; actual: number; variance: number };
-export type CanonicalRestoreOperation = CanonicalRecord & { garmentId: string; sourceVersionId: string; resultVersionId: string; selectedPomPointIds: string[]; selectedMeasurementKeys: string[]; reason: string };
+export type CanonicalRestoreOperation = CanonicalRecord & { actorId: string | null; baseRevision: number; dependencies: CanonicalVersionDependency[]; garmentId: string; inversePatch: CanonicalJsonPatch[]; previewChecksum: string; reason: string; replayPatch: CanonicalJsonPatch[]; resultRevision: number; resultVersionId: string; scope: FreezeFrameScope; selectedKeys: string[]; selectedMeasurementKeys: string[]; selectedPomPointIds: string[]; sourceVersionId: string };
 export type CanonicalBomItem = CanonicalRecord & { specId: string; itemType: 'material_variant' | 'component_variant' | 'custom'; materialVariantId: string | null; componentVariantId: string | null; intentionalFreeText: boolean; description: string; quantity: number; unit: CanonicalInventoryEntry['unit']; placement: string; supplierItemId: string | null; substituteItemId: string | null; status: 'draft' | 'linked' | 'approved' | 'shortage' | 'substituted'; shortageQuantity: number; unitCost: number; currency: string; costImpact: number; sortOrder: number };
 export type CanonicalConstructionSection = CanonicalRecord & { specId: string; name: string; sortOrder: number; status: 'draft' | 'approved' | 'superseded' };
 export type CanonicalConstructionStep = CanonicalRecord & { sectionId: string; stepNumber: number; operation: string; machine: string; machineRequired: boolean; stitchSpec: string; stitchRequired: boolean; seamAllowance: number | null; status: 'draft' | 'ready' | 'approved'; sortOrder: number };
@@ -208,6 +231,7 @@ export type CanonicalValidationWaiver = CanonicalRecord & { specId: string; vali
 export type CanonicalWorkspaceState = {
   annotations: CanonicalAnnotation[];
   bomItems: CanonicalBomItem[];
+  changeEvents: CanonicalChangeEvent[];
   collections: CanonicalCollection[];
   componentVariants: CanonicalComponentVariant[];
   components: CanonicalComponent[];
@@ -215,10 +239,12 @@ export type CanonicalWorkspaceState = {
   constructionSections: CanonicalConstructionSection[];
   constructionSteps: CanonicalConstructionStep[];
   designBriefs: CanonicalDesignBrief[];
+  entityRevisions: CanonicalEntityRevision[];
   garmentComponents: CanonicalGarmentComponent[];
   garmentMaterials: CanonicalGarmentMaterial[];
   garmentMedia: CanonicalGarmentMedia[];
   garments: CanonicalGarment[];
+  conflicts: CanonicalConflict[];
   inventoryEntries: CanonicalInventoryEntry[];
   materialVariants: CanonicalMaterialVariant[];
   materials: CanonicalMaterial[];
@@ -237,7 +263,7 @@ export type CanonicalWorkspaceState = {
   releaseTasks: CanonicalReleaseTask[];
   sampleRounds: CanonicalSampleRound[];
   fitMeasurements: CanonicalFitMeasurement[];
-  schemaVersion: 4;
+  schemaVersion: 5;
   studioId: string;
   suppliers: CanonicalSupplier[];
   supplierItems: CanonicalSupplierItem[];
@@ -249,6 +275,16 @@ export type CanonicalWorkspaceState = {
   techPackExports: CanonicalTechPackExport[];
   validationRuns: CanonicalValidationRun[];
   validationWaivers: CanonicalValidationWaiver[];
+  versionDependencies: CanonicalVersionDependency[];
+  versionEditorial: CanonicalEditorialVersionProjection[];
+  versionPortfolio: CanonicalPortfolioVersionProjection[];
+};
+
+export type WorkspaceChangeContext = {
+  actorId: string;
+  operationId?: string;
+  origin?: CanonicalChangeOrigin;
+  skipAutoLedger?: boolean;
 };
 
 export type WorkspaceSyncState = 'loading' | 'ready' | 'offline' | 'conflict' | 'error';

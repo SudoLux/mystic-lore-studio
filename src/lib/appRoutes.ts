@@ -43,6 +43,7 @@ export function parseStudioHashRoute(hash: string): AppRoute {
   if (
     section === 'dashboard' ||
     section === 'kanban' ||
+    section === 'versions' ||
     section === 'lookbooks' ||
     section === 'portfolio' ||
     section === 'stats' ||

@@ -26,8 +26,10 @@ import type {
   CanonicalWorkspaceState,
   InventoryEntryType,
   RelationshipOption,
+  WorkspaceChangeContext,
   WorkspaceSyncState,
 } from '../domains/workspace';
+import { recordWorkspaceChangeEvents } from '../domains/versioning';
 
 type CanonicalWorkspaceContextValue = {
   addCollection: (name: string, season?: string) => string;
@@ -41,7 +43,7 @@ type CanonicalWorkspaceContextValue = {
   attachMaterial: (garmentId: string, variantId: string, role: string, placement?: string) => void;
   createMoodboard: (garmentId: string, title?: string) => string;
   deleteGarment: (garmentId: string) => void;
-  commitWorkspace: (change: (current: CanonicalWorkspaceState) => CanonicalWorkspaceState) => void;
+  commitWorkspace: (change: (current: CanonicalWorkspaceState) => CanonicalWorkspaceState, context?: Omit<WorkspaceChangeContext, 'actorId'>) => void;
   currentActorId: string;
   error: string | null;
   isReady: boolean;
@@ -90,10 +92,10 @@ export function CanonicalWorkspaceProvider({ children, userId }: { children: Rea
     return () => { cancelled = true; };
   }, [attempt, key, rawData, userId]);
 
-  const commit = useCallback((change: (current: CanonicalWorkspaceState) => CanonicalWorkspaceState) => {
+  const commit = useCallback((change: (current: CanonicalWorkspaceState) => CanonicalWorkspaceState, context: Omit<WorkspaceChangeContext, 'actorId'> = {}) => {
     setState((current) => {
       if (!current) return current;
-      const next = change(current);
+      const next = recordWorkspaceChangeEvents(current, change(current), { actorId: userId, ...context });
       try {
         window.localStorage.setItem(key, JSON.stringify(next));
         setError(null);
@@ -104,7 +106,7 @@ export function CanonicalWorkspaceProvider({ children, userId }: { children: Rea
       }
       return next;
     });
-  }, [key]);
+  }, [key, userId]);
 
   const value = useMemo<CanonicalWorkspaceContextValue>(() => ({
     addCollection: (name, season) => { let id = ''; commit((current) => { const result = addCollection(current, name, season); id = result.record.id; return result.state; }); return id; },
@@ -138,21 +140,42 @@ function hydrateTechnicalState(state: CanonicalWorkspaceState): CanonicalWorkspa
   return {
     ...state,
     bomItems: state.bomItems ?? [],
+    changeEvents: (state.changeEvents ?? []).map((item) => ({ ...item, relatedOperationIds: item.relatedOperationIds ?? [] })),
     constructionDetails: state.constructionDetails ?? [],
     constructionSections: state.constructionSections ?? [],
     constructionSteps: state.constructionSteps ?? [],
+    conflicts: state.conflicts ?? [],
+    entityRevisions: state.entityRevisions ?? [],
     flatAnnotations: state.flatAnnotations ?? [],
-    garmentVersions: state.garmentVersions ?? [],
+    garmentVersions: (state.garmentVersions ?? []).map((item) => ({
+      ...item,
+      baseRevision: item.baseRevision ?? state.garments.find((garment) => garment.id === item.garmentId)?.revision ?? 1,
+      createdBy: item.createdBy ?? null,
+      kind: item.kind ?? 'named',
+      notes: item.notes ?? '',
+      parentVersionId: item.parentVersionId ?? null,
+    })),
     gradeRuleValues: state.gradeRuleValues ?? [],
     gradeRules: state.gradeRules ?? [],
     measurementSets: state.measurementSets ?? [],
     measurementValues: state.measurementValues ?? [],
     pomPoints: state.pomPoints ?? [],
-    restoreOperations: state.restoreOperations ?? [],
+    restoreOperations: (state.restoreOperations ?? []).map((item) => ({
+      ...item,
+      actorId: item.actorId ?? null,
+      baseRevision: item.baseRevision ?? 1,
+      dependencies: item.dependencies ?? [],
+      inversePatch: item.inversePatch ?? [],
+      previewChecksum: item.previewChecksum ?? '',
+      replayPatch: item.replayPatch ?? [],
+      resultRevision: item.resultRevision ?? 1,
+      scope: item.scope ?? 'technical',
+      selectedKeys: item.selectedKeys ?? [...(item.selectedPomPointIds ?? []), ...(item.selectedMeasurementKeys ?? [])],
+    })),
     releaseTasks: state.releaseTasks ?? [],
     sampleRounds: state.sampleRounds ?? [],
     fitMeasurements: state.fitMeasurements ?? [],
-    schemaVersion: 4,
+    schemaVersion: 5,
     techPackExports: (state.techPackExports ?? []).map((item) => ({
       ...item,
       approvedAt: item.approvedAt ?? null,
@@ -174,6 +197,9 @@ function hydrateTechnicalState(state: CanonicalWorkspaceState): CanonicalWorkspa
     templateApplications: state.templateApplications ?? [],
     validationRuns: (state.validationRuns ?? []).map((item) => ({ ...item, actorId: item.actorId ?? null })),
     validationWaivers: state.validationWaivers ?? [],
+    versionDependencies: state.versionDependencies ?? [],
+    versionEditorial: state.versionEditorial ?? [],
+    versionPortfolio: state.versionPortfolio ?? [],
     templates: (state.templates ?? []).map((template) => ({ ...template, payload: template.payload ?? {} })),
   };
 }
