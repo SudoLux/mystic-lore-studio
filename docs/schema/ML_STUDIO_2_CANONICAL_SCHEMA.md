@@ -1,8 +1,9 @@
 # Mystic Lore Studio 2.0 Canonical Schema
 
-Status: WP6a complete through version-pinned supplier/factory, sampling, and
-fit evidence; append-only history, named Freeze Frames, domain-aware comparison,
-scoped restore, and release/publication protection remain in force
+Status: WP6 complete through version-pinned sourcing, sampling, fit, quantity
+costing, production orders, milestones, QC, and timeline; append-only history,
+named Freeze Frames, scoped restore, and release/publication protection remain
+in force
 
 Source specification: Product Bible pages 18, 28, 31, 33-35, 40, 56, and
 59-60. The ordered SQL
@@ -63,12 +64,12 @@ erDiagram
 | Technical foundation | `technical_specs`, `technical_flats`, `flat_annotations`, `technical_files`, `tech_pack_exports`, `validation_runs`, `validation_waivers` |
 | POM and grading | `pom_points`, `measurement_sets`, `measurement_values`, `grade_rules`, `grade_rule_values`, `fit_measurements` |
 | BOM and construction | `bom_items`, `construction_sections`, `construction_steps`, `construction_details`, `technical_templates`, `template_applications` |
-| Production | `suppliers`, `factories`, `sample_rounds`, `sample_round_media`, `fit_sessions`, `fit_session_media`, `fit_issues`, `fit_issue_promotions`, `cost_sheets`, `cost_items`, `production_orders`, `qc_results` |
+| Production | `suppliers`, `factories`, `sample_rounds`, `sample_round_media`, `fit_sessions`, `fit_session_media`, `fit_issues`, `fit_issue_promotions`, `cost_sheets`, `cost_items`, `production_orders`, `production_milestones`, `qc_templates`, `qc_template_checks`, `qc_inspections`, `qc_results`, `qc_waivers` |
 | Story and portfolio | `editorial_collections`, `editorial_scenes`, `editorial_blocks`, `editorial_assets`, `portfolio_profiles`, `portfolio_projects`, `portfolio_editorials` |
 | Versioning, workflow, AI, sync | `garment_versions`, `entity_revisions`, `change_events`, `restore_operations`, `tasks`, `calendar_events`, `ai_jobs`, `ai_artifacts`, `sync_tombstones` |
 | Public projection | `ml_public.publications`, `ml_public.publication_assets` |
 
-There are 70 canonical private tables and two public projection tables.
+There are 75 canonical private tables and two public projection tables.
 
 ## Design, Library, and Media Relationships
 
@@ -135,10 +136,18 @@ erDiagram
   POM_POINTS ||--o{ FIT_MEASUREMENTS : identifies
   FIT_ISSUES ||--o{ FIT_ISSUE_PROMOTIONS : promotes
   GARMENTS ||--o{ COST_SHEETS : costs
+  GARMENT_VERSIONS ||--o{ COST_SHEETS : pins
   COST_SHEETS ||--o{ COST_ITEMS : contains
+  COST_SHEETS ||--o{ PRODUCTION_ORDERS : authorizes
   GARMENT_VERSIONS ||--o{ PRODUCTION_ORDERS : releases
   FACTORIES ||--o{ PRODUCTION_ORDERS : manufactures
-  PRODUCTION_ORDERS ||--o{ QC_RESULTS : verifies
+  PRODUCTION_ORDERS ||--o{ PRODUCTION_MILESTONES : schedules
+  QC_TEMPLATES ||--o{ QC_TEMPLATE_CHECKS : defines
+  PRODUCTION_ORDERS ||--o{ QC_INSPECTIONS : verifies
+  QC_TEMPLATES ||--o{ QC_INSPECTIONS : applies
+  QC_INSPECTIONS ||--o{ QC_RESULTS : records
+  QC_RESULTS ||--o| QC_WAIVERS : excepts
+  TASKS ||--o{ QC_WAIVERS : follows_up
 ```
 
 The Studio setting establishes the preferred measurement unit. Each technical
@@ -390,3 +399,24 @@ the exact session source for actuals, issues, gallery captures, decisions, and
 promotions. Local mobile captures queue in private storage paths and retain
 retry state across reload. Freeze Frame production snapshots include this
 evidence, while scoped restore keeps physical sample and fit records immutable.
+
+## WP6b Costing, Orders, QC, and Timeline Contract
+
+The additive `complete_wp6_costing_orders_qc` migration completes Production:
+
+- cost sheets pin a release, ISO currency, quantity basis, COGS, wholesale,
+  margin, approval actor, and time; line items separate per-unit and per-order
+  cost behavior and may link BOM/material/component identities;
+- production orders require an approved same-version cost sheet and released
+  technical source. A guard makes the pinned version immutable;
+- `production_milestones` provides normalized owner/date/status chronology;
+- versioned `qc_templates` and `qc_template_checks` apply through a pinned
+  `qc_inspection`; result evidence and issue tasks use explicit foreign keys;
+- append-only `qc_waivers` require actor, reason, time, affected rule, and
+  follow-up task. Required failed checks block release until passed or waived;
+- approval, waiver, decision, and order-status triggers append change events.
+
+The production route now contains Samples & Fit, Cost Sheet, Order & QC, and
+Timeline views. Quantity scenarios are keyboard-accessible, wide tables retain
+a horizontal fallback, empty/error/retry messages remain visible, and stale
+orders explain that later design edits never repoint their source version.

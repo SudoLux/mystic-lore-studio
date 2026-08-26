@@ -144,6 +144,8 @@ function hydrateTechnicalState(state: CanonicalWorkspaceState): CanonicalWorkspa
     constructionDetails: state.constructionDetails ?? [],
     constructionSections: state.constructionSections ?? [],
     constructionSteps: state.constructionSteps ?? [],
+    costItems: state.costItems ?? [],
+    costSheets: state.costSheets ?? [],
     conflicts: state.conflicts ?? [],
     entityRevisions: state.entityRevisions ?? [],
     factories: (state.factories ?? []).map((item) => ({
@@ -172,6 +174,13 @@ function hydrateTechnicalState(state: CanonicalWorkspaceState): CanonicalWorkspa
     measurementSets: state.measurementSets ?? [],
     measurementValues: state.measurementValues ?? [],
     pomPoints: state.pomPoints ?? [],
+    productionMilestones: state.productionMilestones ?? [],
+    productionOrders: state.productionOrders ?? [],
+    qcInspections: state.qcInspections ?? [],
+    qcResults: state.qcResults ?? [],
+    qcTemplateChecks: state.qcTemplateChecks ?? [],
+    qcTemplates: state.qcTemplates ?? [],
+    qcWaivers: state.qcWaivers ?? [],
     restoreOperations: (state.restoreOperations ?? []).map((item) => ({
       ...item,
       actorId: item.actorId ?? null,
@@ -197,7 +206,7 @@ function hydrateTechnicalState(state: CanonicalWorkspaceState): CanonicalWorkspa
       fitSessionId: item.fitSessionId ?? null,
       garmentVersionId: item.garmentVersionId ?? null,
     })),
-    schemaVersion: 6,
+    schemaVersion: 7,
     techPackExports: (state.techPackExports ?? []).map((item) => ({
       ...item,
       approvedAt: item.approvedAt ?? null,

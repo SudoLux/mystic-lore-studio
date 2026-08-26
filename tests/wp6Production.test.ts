@@ -65,11 +65,12 @@ describe('WP6 sourcing, sample, and fit provenance', () => {
     expect(retried.fitSessionMedia[0]).toMatchObject({ captureStatus: 'uploaded', fitSessionId: session.id, retryCount: 1 });
   });
 
-  it('records decisions without expanding into costing, order, or QC commands', async () => {
+  it('records decisions before handing the pinned version into costing, order, and QC commands', async () => {
     const { state, session } = await preparedFit();
     const decided = decideFitSession(state, { decision: 'revise', note: 'Increase bicep ease.', sessionId: session.id });
     expect(decided.session).toMatchObject({ decision: 'revise', status: 'decided' });
-    expect(readFileSync(new URL('../src/domains/production/productionRepository.ts', import.meta.url), 'utf8')).not.toMatch(/costSheet|productionOrder|qcResult/i);
+    const repository = readFileSync(new URL('../src/domains/production/productionRepository.ts', import.meta.url), 'utf8');
+    for (const contract of ['createCostSheet', 'createProductionOrder', 'startQcInspection']) expect(repository).toContain(`function ${contract}`);
   });
 
   it('supports multiple rounds while keeping a changed POM reference and offline evidence stable', async () => {

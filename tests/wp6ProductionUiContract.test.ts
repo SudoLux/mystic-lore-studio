@@ -17,4 +17,10 @@ describe('WP6 Production UI contracts', () => {
   it('provides queue/retry behavior and a reachable Production mobile navigation item', () => {
     expect(page).toContain('Retry'); expect(page).toContain('offline'); expect(mobileNav).toContain("'production'");
   });
+
+  it('contains quantity Cost Sheet, pinned order, QC, waiver, release, and Timeline contracts', () => {
+    for (const label of ['Quantity-aware costing', 'Cost Sheet', 'COGS / unit', 'Wholesale', 'Margin', 'Production order', 'Source version stale', 'QC checklist', 'Waive', 'Release decision', 'Production chronology']) expect(page).toContain(label);
+    expect(page).toContain('aria-label="Production workspace"');
+    expect(page).toContain('overflow-x-auto');
+  });
 });

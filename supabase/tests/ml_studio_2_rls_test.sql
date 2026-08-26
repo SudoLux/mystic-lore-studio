@@ -3,7 +3,7 @@ begin;
 create extension if not exists pgtap with schema extensions;
 set local search_path = extensions, public, ml_private, ml_public;
 
-select plan(68);
+select plan(82);
 
 insert into auth.users (id, email) values
   ('10000000-0000-4000-8000-000000000001', 'wp2-owner-a@example.test'),
@@ -228,6 +228,79 @@ select is(
   12::bigint,
   'authenticated grants are limited to the canonical evidence tables and enforced by RLS'
 );
+select is(
+  (select count(*) from information_schema.tables where table_schema = 'ml_private' and table_name in (
+    'production_milestones', 'qc_templates', 'qc_template_checks', 'qc_inspections', 'qc_waivers')),
+  5::bigint,
+  'WP6 completion creates normalized timeline, QC template, inspection, and waiver tables'
+);
+select is(
+  (select count(*) from information_schema.columns where table_schema = 'ml_private' and (
+    (table_name = 'cost_sheets' and column_name in ('name', 'cogs_per_unit', 'wholesale_unit_price', 'margin_pct', 'approved_by', 'approved_at'))
+    or (table_name = 'cost_items' and column_name in ('basis', 'currency', 'bom_item_id', 'material_variant_id', 'component_variant_id')))),
+  11::bigint,
+  'quantity costing retains scenario totals, ISO currency, approval, and normalized source relationships'
+);
+select is(
+  (select count(*) from information_schema.columns where table_schema = 'ml_private' and table_name = 'production_orders'
+    and column_name in ('cost_sheet_id', 'target_start_date', 'target_delivery_date', 'approved_by', 'approved_at', 'placed_at')),
+  6::bigint,
+  'production orders retain cost, approval, placement, and target-date evidence'
+);
+select is(
+  (select count(*) from information_schema.columns where table_schema = 'ml_private' and table_name = 'qc_results'
+    and column_name in ('inspection_id', 'template_check_id', 'evidence_asset_id', 'issue_task_id')),
+  4::bigint,
+  'QC results normalize inspection, template check, private evidence, and task relationships'
+);
+select is(
+  (select count(*) from pg_constraint where conname in (
+    'production_orders_cost_sheet_fk', 'production_milestones_order_fk',
+    'qc_inspections_order_fk', 'qc_inspections_version_fk', 'qc_inspections_template_fk',
+    'qc_results_inspection_fk', 'qc_results_template_check_fk', 'qc_waivers_task_fk')),
+  8::bigint,
+  'order, milestone, inspection, result, template, and waiver relationships use stable foreign keys'
+);
+select is(
+  (select count(*) from pg_trigger trigger
+   join pg_class relation on relation.oid = trigger.tgrelid
+   join pg_namespace namespace on namespace.oid = relation.relnamespace
+   where namespace.nspname = 'ml_private' and trigger.tgname in (
+     'production_orders_require_release_pin', 'qc_inspections_require_provenance',
+     'qc_results_require_provenance', 'qc_waivers_append_only', 'production_orders_record_status')),
+  5::bigint,
+  'released-version pins, QC provenance, immutable waivers, and order status audit triggers are installed'
+);
+select is(
+  (select count(*) from pg_indexes where schemaname = 'ml_private' and indexname in (
+    'ml_cost_items_sheet_basis_idx', 'ml_production_milestones_order_idx',
+    'ml_qc_inspections_version_idx', 'ml_qc_results_inspection_idx', 'ml_qc_waivers_task_idx')),
+  5::bigint,
+  'cost, order timeline, QC, and follow-up task lookups have tenant-first indexes'
+);
+select is(
+  (select count(*) from pg_class relation
+   join pg_namespace namespace on namespace.oid = relation.relnamespace
+   where namespace.nspname = 'ml_private'
+     and relation.relname in ('production_milestones', 'qc_templates', 'qc_template_checks', 'qc_inspections', 'qc_waivers')
+     and relation.relrowsecurity),
+  5::bigint,
+  'all WP6 completion tables enable row-level security'
+);
+select is(
+  (select count(*) from pg_policies where schemaname = 'ml_private'
+    and tablename in ('production_milestones', 'qc_templates', 'qc_template_checks', 'qc_inspections', 'qc_waivers')
+    and policyname in ('studio_select', 'studio_insert', 'studio_update', 'studio_delete')),
+  17::bigint,
+  'WP6 completion policies separate mutable records from append-only waiver evidence'
+);
+select is(
+  (select count(*) from information_schema.table_privileges where table_schema = 'ml_private' and grantee = 'authenticated'
+    and table_name in ('production_milestones', 'qc_templates', 'qc_template_checks', 'qc_inspections', 'qc_waivers')
+    and privilege_type in ('SELECT', 'INSERT', 'UPDATE', 'DELETE')),
+  17::bigint,
+  'authenticated grants match the WP6 completion policy surface and exclude anonymous access'
+);
 
 insert into ml_private.studio_members (
   studio_id, user_id, role, status, joined_at
@@ -246,6 +319,10 @@ insert into ml_private.garments (
 ) values
   ('40000000-0000-4000-8000-000000000001', '20000000-0000-4000-8000-000000000001', '30000000-0000-4000-8000-000000000001', 'GA-001', 'Studio A Garment'),
   ('40000000-0000-4000-8000-000000000002', '20000000-0000-4000-8000-000000000002', '30000000-0000-4000-8000-000000000002', 'GB-001', 'Studio B Garment');
+
+insert into ml_private.qc_templates (id, studio_id, name, version, status) values
+  ('40500000-0000-4000-8000-000000000001', '20000000-0000-4000-8000-000000000001', 'Studio A final QC', 1, 'active'),
+  ('40500000-0000-4000-8000-000000000002', '20000000-0000-4000-8000-000000000002', 'Studio B final QC', 1, 'active');
 
 insert into ml_private.technical_specs (
   id, studio_id, garment_id, base_size, unit
@@ -407,6 +484,19 @@ select results_eq(
   array[1::bigint],
   'same-Studio owner reads immutable release waiver evidence'
 );
+select results_eq(
+  $$select count(*) from ml_private.qc_templates$$,
+  array[1::bigint],
+  'same-Studio owner reads only its reusable QC templates'
+);
+select results_eq(
+  $$with changed as (
+      update ml_private.qc_templates set name = 'Cross-studio QC mutation'
+      where id = '40500000-0000-4000-8000-000000000002' returning 1
+    ) select count(*) from changed$$,
+  array[0::bigint],
+  'Cross-studio owner cannot update another Studio QC template'
+);
 select throws_like(
   $$insert into ml_private.validation_waivers (
       studio_id, spec_id, validation_run_id, rule_code, domain, reason,
@@ -544,6 +634,11 @@ select results_eq(
   array[1::bigint],
   'same-Studio reviewer can inspect release waiver evidence'
 );
+select results_eq(
+  $$select count(*) from ml_private.qc_templates$$,
+  array[1::bigint],
+  'same-Studio reviewer can inspect reusable QC templates'
+);
 select throws_like(
   $$insert into ml_private.garments (studio_id, garment_code, title)
     values ('20000000-0000-4000-8000-000000000001', 'GA-003', 'Reviewer write')$$,
@@ -553,6 +648,11 @@ select throws_like(
 
 reset role;
 set local role anon;
+select throws_like(
+  $$select count(*) from ml_private.qc_templates$$,
+  '%permission denied for schema ml_private%',
+  'anonymous callers cannot inspect private QC templates'
+);
 select throws_like(
   $$select count(*) from ml_private.garments$$,
   '%permission denied for schema ml_private%',

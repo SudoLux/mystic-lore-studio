@@ -9,6 +9,8 @@ import type {
   CanonicalConstructionDetail,
   CanonicalConstructionSection,
   CanonicalConstructionStep,
+  CanonicalCostItem,
+  CanonicalCostSheet,
   CanonicalDesignBrief,
   CanonicalFactory,
   CanonicalFitIssue,
@@ -26,6 +28,13 @@ import type {
   CanonicalMediaDerivative,
   CanonicalMoodboard,
   CanonicalMoodboardItem,
+  CanonicalProductionMilestone,
+  CanonicalProductionOrder,
+  CanonicalQcInspection,
+  CanonicalQcResult,
+  CanonicalQcTemplate,
+  CanonicalQcTemplateCheck,
+  CanonicalQcWaiver,
   CanonicalRecord,
   CanonicalReleaseTask,
   CanonicalSampleRoundMedia,
@@ -39,7 +48,7 @@ import type {
   RelationshipOption,
 } from './contracts';
 
-const workspaceVersion = 6 as const;
+const workspaceVersion = 7 as const;
 
 export type CanonicalWorkspaceSeed = {
   data: StudioData;
@@ -105,6 +114,8 @@ export async function createCanonicalWorkspace(seed: CanonicalWorkspaceSeed) {
     constructionDetails: [] as CanonicalConstructionDetail[],
     constructionSections: [] as CanonicalConstructionSection[],
     constructionSteps: [] as CanonicalConstructionStep[],
+    costItems: [] as CanonicalCostItem[],
+    costSheets: [] as CanonicalCostSheet[],
     designBriefs: rows('design_briefs').map((row) => {
       const value = row as { color_story: string; created_at: string; garment_id: string; id: string; intent: string; key_features: string[]; silhouette: string; studio_id: string; target_wearer: string; updated_at: string };
       return { ...base(value), colorStory: value.color_story, garmentId: value.garment_id, intent: value.intent, keyFeatures: value.key_features, silhouette: value.silhouette, targetWearer: value.target_wearer };
@@ -164,6 +175,13 @@ export async function createCanonicalWorkspace(seed: CanonicalWorkspaceSeed) {
     measurementSets: [],
     measurementValues: [],
     pomPoints: [],
+    productionMilestones: [] as CanonicalProductionMilestone[],
+    productionOrders: [] as CanonicalProductionOrder[],
+    qcInspections: [] as CanonicalQcInspection[],
+    qcResults: [] as CanonicalQcResult[],
+    qcTemplateChecks: [] as CanonicalQcTemplateCheck[],
+    qcTemplates: [] as CanonicalQcTemplate[],
+    qcWaivers: [] as CanonicalQcWaiver[],
     restoreOperations: [],
     releaseTasks: [] as CanonicalReleaseTask[],
     sampleRoundMedia: [] as CanonicalSampleRoundMedia[],
@@ -199,6 +217,8 @@ export function normalizeWorkspace(state: CanonicalWorkspaceState): CanonicalWor
     constructionDetails: [...state.constructionDetails].sort((a, b) => a.sortOrder - b.sortOrder || a.id.localeCompare(b.id)),
     constructionSections: [...state.constructionSections].sort((a, b) => a.sortOrder - b.sortOrder || a.id.localeCompare(b.id)),
     constructionSteps: [...state.constructionSteps].sort((a, b) => a.sortOrder - b.sortOrder || a.id.localeCompare(b.id)),
+    costItems: [...state.costItems].sort((a, b) => a.sortOrder - b.sortOrder || a.id.localeCompare(b.id)),
+    costSheets: [...state.costSheets].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt)),
     designBriefs: [...state.designBriefs],
     entityRevisions: [...state.entityRevisions],
     factories: [...state.factories].sort((a, b) => a.name.localeCompare(b.name)),
@@ -225,6 +245,13 @@ export function normalizeWorkspace(state: CanonicalWorkspaceState): CanonicalWor
     measurementSets: [...state.measurementSets],
     measurementValues: [...state.measurementValues],
     pomPoints: [...state.pomPoints].sort((a, b) => a.sortOrder - b.sortOrder),
+    productionMilestones: [...state.productionMilestones].sort((a, b) => a.sortOrder - b.sortOrder || a.id.localeCompare(b.id)),
+    productionOrders: [...state.productionOrders].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt)),
+    qcInspections: [...state.qcInspections].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt)),
+    qcResults: [...state.qcResults],
+    qcTemplateChecks: [...state.qcTemplateChecks].sort((a, b) => a.sortOrder - b.sortOrder || a.id.localeCompare(b.id)),
+    qcTemplates: [...state.qcTemplates].sort((a, b) => a.name.localeCompare(b.name) || b.version - a.version),
+    qcWaivers: [...state.qcWaivers].sort((a, b) => b.waivedAt.localeCompare(a.waivedAt)),
     restoreOperations: [...state.restoreOperations],
     releaseTasks: [...state.releaseTasks],
     sampleRoundMedia: [...state.sampleRoundMedia].sort((a, b) => a.sortOrder - b.sortOrder),
@@ -373,6 +400,9 @@ export function deleteGarment(state: CanonicalWorkspaceState, garmentId: string)
   const sectionIds = new Set(state.constructionSections.filter((item) => specIds.has(item.specId)).map((item) => item.id));
   const stepIds = new Set(state.constructionSteps.filter((item) => sectionIds.has(item.sectionId)).map((item) => item.id));
   const runIds = new Set(state.validationRuns.filter((item) => specIds.has(item.specId)).map((item) => item.id));
+  const costSheetIds = new Set(state.costSheets.filter((item) => item.garmentId === garmentId).map((item) => item.id));
+  const productionOrderIds = new Set(state.productionOrders.filter((item) => item.garmentId === garmentId).map((item) => item.id));
+  const qcInspectionIds = new Set(state.qcInspections.filter((item) => productionOrderIds.has(item.productionOrderId)).map((item) => item.id));
   return normalizeWorkspace({
     ...state,
     annotations: state.annotations.filter((item) => item.garmentId !== garmentId),
@@ -380,6 +410,8 @@ export function deleteGarment(state: CanonicalWorkspaceState, garmentId: string)
     constructionDetails: state.constructionDetails.filter((item) => !stepIds.has(item.stepId)),
     constructionSections: state.constructionSections.filter((item) => !specIds.has(item.specId)),
     constructionSteps: state.constructionSteps.filter((item) => !sectionIds.has(item.sectionId)),
+    costItems: state.costItems.filter((item) => !costSheetIds.has(item.costSheetId)),
+    costSheets: state.costSheets.filter((item) => item.garmentId !== garmentId),
     garmentComponents: state.garmentComponents.filter((item) => item.garmentId !== garmentId),
     designBriefs: state.designBriefs.filter((item) => item.garmentId !== garmentId),
     fitIssuePromotions: state.fitIssuePromotions.filter((item) => !fitIssueIds.has(item.fitIssueId)),
@@ -398,6 +430,11 @@ export function deleteGarment(state: CanonicalWorkspaceState, garmentId: string)
     measurementSets: state.measurementSets.filter((item) => !specIds.has(item.specId)),
     measurementValues: state.measurementValues.filter((item) => !setIds.has(item.setId)),
     pomPoints: state.pomPoints.filter((item) => !pomIds.has(item.id)),
+    productionMilestones: state.productionMilestones.filter((item) => !productionOrderIds.has(item.productionOrderId)),
+    productionOrders: state.productionOrders.filter((item) => item.garmentId !== garmentId),
+    qcInspections: state.qcInspections.filter((item) => !productionOrderIds.has(item.productionOrderId)),
+    qcResults: state.qcResults.filter((item) => !qcInspectionIds.has(item.inspectionId)),
+    qcWaivers: state.qcWaivers.filter((item) => !qcInspectionIds.has(item.inspectionId)),
     restoreOperations: state.restoreOperations.filter((item) => item.garmentId !== garmentId),
     releaseTasks: state.releaseTasks.filter((item) => item.garmentId !== garmentId),
     sampleRoundMedia: state.sampleRoundMedia.filter((item) => !sampleRoundIds.has(item.sampleRoundId)),

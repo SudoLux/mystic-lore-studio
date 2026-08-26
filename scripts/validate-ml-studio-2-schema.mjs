@@ -35,6 +35,7 @@ const measurementPath = 'supabase/migrations/20260825051344_enforce_pom_measurem
 const releasePath = 'supabase/migrations/20260825184506_complete_wp4_bom_construction_release_pack.sql';
 const versioningPath = 'supabase/migrations/20260825203246_implement_wp5_freeze_frames_restore.sql';
 const productionPath = 'supabase/migrations/20260826061816_implement_wp6_production_sampling_fit.sql';
+const productionCompletionPath = 'supabase/migrations/20260826080100_complete_wp6_costing_orders_qc.sql';
 const testPath = 'supabase/tests/ml_studio_2_rls_test.sql';
 const foundation = read(foundationPath);
 const rls = read(rlsPath);
@@ -45,6 +46,7 @@ const measurement = read(measurementPath);
 const release = read(releasePath);
 const versioning = read(versioningPath);
 const production = read(productionPath);
+const productionCompletion = read(productionCompletionPath);
 const rlsTest = read(testPath);
 
 const structurallyBalanced = (sql) => {
@@ -107,6 +109,7 @@ for (const [path, sql] of [
   [releasePath, release],
   [versioningPath, versioning],
   [productionPath, production],
+  [productionCompletionPath, productionCompletion],
   [testPath, rlsTest],
 ]) {
   check(structurallyBalanced(sql), `Unbalanced SQL delimiters in ${path}.`);
@@ -131,10 +134,12 @@ const expectedPrivateTables = [
   'restore_operations', 'tasks', 'calendar_events', 'ai_jobs', 'ai_artifacts',
   'validation_waivers',
   'sample_round_media', 'fit_session_media', 'fit_issue_promotions',
+  'production_milestones', 'qc_templates', 'qc_template_checks',
+  'qc_inspections', 'qc_waivers',
   'sync_tombstones',
 ].sort();
 
-const canonicalTableSql = foundation + '\n' + release + '\n' + production;
+const canonicalTableSql = foundation + '\n' + release + '\n' + production + '\n' + productionCompletion;
 const actualPrivateTables = [...canonicalTableSql.matchAll(/create table ml_private\.([a-z_]+)/g)]
   .map((match) => match[1])
   .sort();
@@ -166,7 +171,7 @@ for (const table of expectedPrivateTables) {
     check(/\bstudio_id uuid\b/.test(block), `Tenant table lacks studio_id: ${table}`);
   }
   check(
-    rls.includes(`'${table}'`) || rls.includes(`ml_private.${table}`) || release.includes(`ml_private.${table}`) || production.includes(`ml_private.${table}`),
+    rls.includes(`'${table}'`) || rls.includes(`ml_private.${table}`) || release.includes(`ml_private.${table}`) || production.includes(`ml_private.${table}`) || productionCompletion.includes(`ml_private.${table}`),
     `Canonical table is missing from RLS coverage: ${table}`,
   );
 }
@@ -203,7 +208,7 @@ for (const column of jsonbColumns) {
 
 check((foundation.match(/references /g) ?? []).length >= 80, 'Expected explicit canonical foreign keys are missing.');
 check((foundation.match(/create (?:unique )?index /g) ?? []).length >= 55, 'Expected canonical indexes are missing.');
-const canonicalSql = foundation + rls + storage + bootstrap + technical + measurement + release + versioning + production;
+const canonicalSql = foundation + rls + storage + bootstrap + technical + measurement + release + versioning + production + productionCompletion;
 check(!/\b(create|alter|drop) table public\./i.test(canonicalSql), 'WP2 must not create, alter, or drop legacy public tables.');
 check(!/\bdrop table\b/i.test(canonicalSql), 'WP2 migrations may not drop tables.');
 check(!/\brename\s+(?:table|column)\b/i.test(canonicalSql), 'WP2 migrations may not rename legacy structures.');
@@ -293,6 +298,19 @@ for (const trigger of ['fit_sessions_require_version_pin', 'fit_measurements_req
 for (const index of ['ml_fit_sessions_version_date_idx', 'ml_fit_issues_version_status_idx', 'ml_fit_measurements_session_pom_idx', 'ml_fit_issue_promotions_issue_idx']) {
   check(production.includes(`create index ${index}`), `WP6 fit evidence lookup index is missing: ${index}`);
 }
+for (const table of ['production_milestones', 'qc_templates', 'qc_template_checks', 'qc_inspections', 'qc_waivers']) {
+  check(productionCompletion.includes(`create table ml_private.${table}`), `WP6 completion table is missing: ${table}`);
+  check(productionCompletion.includes(`alter table ml_private.%I enable row level security`) || productionCompletion.includes(`alter table ml_private.${table} enable row level security`), `WP6 completion RLS is missing: ${table}`);
+}
+for (const field of ['cogs_per_unit', 'wholesale_unit_price', 'margin_pct', 'approved_by', 'approved_at']) {
+  check(productionCompletion.includes(`add column ${field}`), `WP6 quantity cost evidence is missing: ${field}`);
+}
+for (const trigger of ['production_orders_require_release_pin', 'qc_inspections_require_provenance', 'qc_results_require_provenance', 'qc_waivers_append_only', 'production_orders_record_status']) {
+  check(productionCompletion.includes(`create trigger ${trigger}`), `WP6 release/QC/audit trigger is missing: ${trigger}`);
+}
+for (const index of ['ml_cost_items_sheet_basis_idx', 'ml_production_milestones_order_idx', 'ml_qc_inspections_version_idx', 'ml_qc_results_inspection_idx', 'ml_qc_waivers_task_idx']) {
+  check(productionCompletion.includes(`create index ${index}`), `WP6 production lookup index is missing: ${index}`);
+}
 
 const srcFiles = [];
 const walk = (directory) => {
@@ -371,10 +389,10 @@ for (const contract of ['Timeline', 'Version A', 'Version B', 'Structural compar
 check(router.includes('<VersionsPage'), 'WP5 Versions & Diff route is missing.');
 const productionRepository = read('src/domains/production/productionRepository.ts');
 const productionPage = read('src/pages/Production/ProductionPage.tsx');
-for (const contract of ['createSampleRound', 'createFitSession', 'recordFitMeasurement', 'createFitIssue', 'promoteFitIssue']) {
+for (const contract of ['createSampleRound', 'createFitSession', 'recordFitMeasurement', 'createFitIssue', 'promoteFitIssue', 'createCostSheet', 'addCostItem', 'createProductionOrder', 'startQcInspection', 'waiveQcResult', 'decideQcInspection', 'productionTimeline']) {
   check(productionRepository.includes(`function ${contract}`), `WP6 production repository contract is missing: ${contract}`);
 }
-for (const contract of ['Production & sampling', 'Fit review', 'Capture evidence', 'Promote observation', 'POM candidate']) {
+for (const contract of ['Production & sampling', 'Fit review', 'Capture evidence', 'Promote observation', 'POM candidate', 'Quantity-aware costing', 'Cost Sheet', 'Production order', 'QC checklist', 'Release decision', 'Production chronology']) {
   check(productionPage.includes(contract), `WP6 Production UI contract is missing: ${contract}`);
 }
 check(router.includes('<ProductionPage'), 'WP6 Production route is missing.');
@@ -389,7 +407,7 @@ check(rlsTest.includes('unpublish_publication'), 'pgTAP suite lacks unpublicatio
 const migrationNames = readdirSync(new URL('supabase/migrations/', root))
   .filter((name) => name.endsWith('.sql'))
   .sort();
-for (const path of [foundationPath, rlsPath, storagePath, bootstrapPath, technicalPath, measurementPath, releasePath, versioningPath, productionPath]) {
+for (const path of [foundationPath, rlsPath, storagePath, bootstrapPath, technicalPath, measurementPath, releasePath, versioningPath, productionPath, productionCompletionPath]) {
   check(migrationNames.includes(path.split('/').at(-1)), `Named migration missing: ${path}`);
 }
 check(
@@ -408,8 +426,10 @@ check(
   && migrationNames.indexOf(releasePath.split('/').at(-1))
     < migrationNames.indexOf(versioningPath.split('/').at(-1))
   && migrationNames.indexOf(versioningPath.split('/').at(-1))
-    < migrationNames.indexOf(productionPath.split('/').at(-1)),
-  'Migration order is not schema -> RLS -> Storage -> bootstrap -> WP4 flats -> measurements -> release -> WP5 versioning -> WP6 production.',
+    < migrationNames.indexOf(productionPath.split('/').at(-1))
+  && migrationNames.indexOf(productionPath.split('/').at(-1))
+    < migrationNames.indexOf(productionCompletionPath.split('/').at(-1)),
+  'Migration order is not schema -> RLS -> Storage -> bootstrap -> WP4 flats -> measurements -> release -> WP5 versioning -> WP6 sampling -> WP6 costing/QC.',
 );
 
 if (failures.length > 0) {

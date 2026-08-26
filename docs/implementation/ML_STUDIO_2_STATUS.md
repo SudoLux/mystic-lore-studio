@@ -1,6 +1,6 @@
 # Mystic Lore Studio 2.0 Implementation Ledger
 
-Last updated: 2026-08-25
+Last updated: 2026-08-26
 
 This ledger records the reproducible baseline and bounded implementation work
 for Mystic Lore Studio 2.0. WP2 establishes the additive canonical schema,
@@ -13,7 +13,9 @@ fit actuals, non-destructive grading, linked BOM, ordered construction, release
 validation, governed waivers, and deterministic structured tech packs. WP5
 adds the append-only garment change ledger, named Freeze Frames, structural
 comparison, consequence-aware scoped restore, conflict handling, and protected
-release/publication lineage.
+release/publication lineage. WP6 completes the released-version production
+chain from supplier/sample/fit evidence through quantity costing, factory
+orders, milestones, QC results, waivers, and final decision.
 
 ## Work-package Status
 
@@ -28,7 +30,8 @@ release/publication lineage.
 | WP4c | Linked BOM, ordered construction, release validation and waivers, templates, and deterministic structured tech packs | Complete | A seeded garment produces a validated, reproducible, approved tech pack from structured data |
 | WP5 | Append-only change ledger, named Freeze Frames, domain-aware diff, scoped restore, conflicts, and release/publication protection | Complete | Restoring an older scope creates a new version while all earlier and pinned evidence remains unchanged |
 | WP6a | Supplier/factory capabilities, pinned sample rounds, fit sessions, measurements, issues, private evidence, decisions, and provenance-preserving promotions | Complete | Sample and fit decisions are reproducible, version-pinned, and traceable to stable POM and media evidence; costing, orders, and QC remain deferred |
-| WP6b-WP10 | Remaining Product Bible sequence | Not started | WP6b begins costing, orders, and QC after the accepted fit foundation |
+| WP6b | Quantity costing, released-version production orders, milestones, QC templates/results/waivers, decisions, and integrated timeline | Complete | Sample, fit, cost, order, milestone, and QC decisions reference the correct released garment version |
+| WP7-WP10 | Remaining Product Bible sequence | Not started | WP7 begins Editorial normalization and migration; no Editorial cutover occurred in WP6 |
 
 ## Verification
 
@@ -56,6 +59,27 @@ Characterization coverage:
   the six-lens garment-workspace contract.
 - `tests/shellContract.test.ts`: fixed desktop/compact responsive shell modes
   and semantic native-button navigation for keyboard access.
+
+Latest WP6 completion verification:
+
+| Command | Result |
+| --- | --- |
+| `npm run validate:schema` | Passed: 75 private tables, 2 public projection tables, 82 pgTAP assertions, 7 preserved legacy inputs |
+| `npm run db:reset` | Passed: all prior migrations and additive `20260826080100_complete_wp6_costing_orders_qc.sql` apply to an empty local database |
+| `npm run test:db` | Passed: 82 pgTAP assertions, including same-Studio QC access, cross-Studio mutation denial, reviewer read, anonymous denial, table grants, RLS, provenance triggers, append-only waivers, and tenant-first indexes |
+| `npm test` | Passed: 20 files, 94 tests, including four-decimal rounding, ISO currency, quantity scenarios, waste, invalid totals, immutable order pinning, stale-source warnings, QC failures/waivers, ledger evidence, and integrated chronology |
+| `npm run build` | Passed: TypeScript and Vite production build |
+
+WP6 completion evidence:
+
+- [ADR-0014: quantity-scenario costing and currency integrity](../adr/ADR-0014-wp6-quantity-costing.md)
+- [ADR-0015: released-version orders, QC decisions, and production timeline](../adr/ADR-0015-wp6-orders-qc-timeline.md)
+- `tests/wp6ProductionCompletion.test.ts`: exact cost math, quantity/fixed
+  scenarios, ISO validation, approved sheet/order pinning, staleness,
+  milestones, QC failure/waiver/decision, change ledger, and chronology.
+- `tests/wp6ProductionUiContract.test.ts`: Cost Sheet, COGS/wholesale/margin,
+  order stale-source warning, QC checklist/waiver/release decision, Timeline,
+  keyboard navigation, and narrow-table fallbacks.
 
 Latest WP6a completion verification:
 
@@ -290,6 +314,8 @@ rows marked public; they do not grant anonymous access to private Studio tables.
 | `20260825051344_enforce_pom_measurement_integrity.sql` | Stable POM anchors, decimal measurement/fit constraints, and grading lookup indexes | WP4b added; canonical technical rows retained |
 | `20260825184506_complete_wp4_bom_construction_release_pack.sql` | Linked/free-text BOM semantics, construction requirements, immutable waiver evidence, release lineage, and deterministic export manifest | WP4c added; versioning work deferred |
 | `20260825203246_implement_wp5_freeze_frames_restore.sql` | Freeze Frame scope/parent identity, append-only replay evidence, fresh-revision commands, restore audit, protected dependencies, and stale publication rejection | WP5 added; no legacy mutation |
+| `20260826061816_implement_wp6_production_sampling_fit.sql` | Supplier/factory capability, version-pinned sample and fit evidence, private media queue/retry, and provenance-preserving issue promotion | WP6a added; no legacy mutation |
+| `20260826080100_complete_wp6_costing_orders_qc.sql` | Quantity costing, immutable released-version order pin, normalized milestones, versioned QC templates/results, append-only waivers, change events, RLS, grants, and indexes | WP6b added; Editorial remains untouched |
 
 No legacy migration or table was edited or removed. The safe, sanitized input
 artifact remains `tests/fixtures/legacy-studio-data-v5.json`; WP2 retains it as
@@ -330,6 +356,9 @@ These are observed current behaviors, not WP0 fixes:
 - [ADR-0010: WP4 release gates, waivers, and approval](../adr/ADR-0010-wp4-release-gates-waivers-and-approval.md)
 - [ADR-0011: deterministic structured tech pack](../adr/ADR-0011-deterministic-structured-tech-pack.md)
 - [ADR-0012: append-only Freeze Frames and structural restore](../adr/ADR-0012-wp5-freeze-frames-structural-restore.md)
+- [ADR-0013: version-pinned sampling and fit provenance](../adr/ADR-0013-wp6-sampling-fit-provenance.md)
+- [ADR-0014: quantity-scenario costing and currency integrity](../adr/ADR-0014-wp6-quantity-costing.md)
+- [ADR-0015: released-version orders, QC decisions, and production timeline](../adr/ADR-0015-wp6-orders-qc-timeline.md)
 - Vitest is the WP0 automated test harness. It adds no browser runtime behavior.
 - Existing repository screenshots are the signed-in visual baseline. WP0 does
   not add an authentication bypass merely to create new captures.
