@@ -30,6 +30,7 @@ export function AppShell({
 
   return (
     <div className="min-h-screen bg-midnight text-stardust">
+      <a className="skip-link" href="#main-content">Skip to main content</a>
       <div className="min-h-screen bg-[radial-gradient(circle_at_8%_0%,rgba(200,155,60,0.08),transparent_24rem),linear-gradient(115deg,rgba(27,58,99,0.24)_0%,rgba(10,10,10,0)_38%),linear-gradient(245deg,rgba(154,108,60,0.14)_0%,rgba(10,10,10,0)_34%)]">
         <div className="mx-auto min-h-screen w-full max-w-[1760px] lg:pl-[6.75rem] xl:pl-[18rem]">
           <Sidebar
@@ -40,7 +41,7 @@ export function AppShell({
             syncStatus={syncStatus}
             userEmail={userEmail}
           />
-          <main className="min-w-0 px-4 pb-36 pt-4 sm:px-6 sm:pt-7 md:max-lg:pb-40 lg:px-8 lg:pb-8 xl:px-10">
+          <main className="min-w-0 px-4 pb-36 pt-4 sm:px-6 sm:pt-7 md:max-lg:pb-40 lg:px-8 lg:pb-8 xl:px-10" id="main-content" tabIndex={-1}>
             <div className="mx-auto w-full max-w-[88rem]">
               <div className="mb-3 rounded-2xl border border-bronze/22 bg-midnight/58 p-2.5 shadow-[0_16px_45px_rgba(0,0,0,0.22),inset_0_1px_0_rgba(237,227,207,0.035)] backdrop-blur-xl md:max-lg:mb-4 md:max-lg:p-3 lg:hidden">
                 <div className="flex items-center justify-between gap-3">
@@ -61,7 +62,7 @@ export function AppShell({
                     {onSignOut ? (
                       <button
                         aria-label="Sign out"
-                        className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-bronze/24 bg-midnight/42 text-stardust/60 transition hover:border-ember/42 hover:text-ember"
+                        className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-bronze/24 bg-midnight/42 text-stardust/60 transition hover:border-ember/42 hover:text-ember focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ember focus-visible:ring-offset-2 focus-visible:ring-offset-midnight"
                         onClick={onSignOut}
                         type="button"
                       >

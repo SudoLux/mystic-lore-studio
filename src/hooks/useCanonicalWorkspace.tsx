@@ -30,6 +30,7 @@ import type {
   WorkspaceSyncState,
 } from '../domains/workspace';
 import { recordWorkspaceChangeEvents } from '../domains/versioning';
+import { recordClientEvent } from '../lib/observability';
 
 type CanonicalWorkspaceContextValue = {
   addCollection: (name: string, season?: string) => string;
@@ -84,6 +85,7 @@ export function CanonicalWorkspaceProvider({ children, userId }: { children: Rea
         setSyncState(navigator.onLine === false ? 'offline' : 'ready');
       } catch (reason) {
         if (cancelled) return;
+        recordClientEvent({ context: { stage: 'hydrate' }, kind: 'migration_warning' });
         setError(reason instanceof Error ? reason.message : 'The canonical workspace could not be prepared.');
         setSyncState('error');
       }
@@ -101,6 +103,7 @@ export function CanonicalWorkspaceProvider({ children, userId }: { children: Rea
         setError(null);
         setSyncState(navigator.onLine === false ? 'offline' : 'ready');
       } catch (reason) {
+        recordClientEvent({ context: { stage: 'local_commit' }, kind: 'client_error' });
         setError(reason instanceof Error ? reason.message : 'Changes remain in this tab but could not be saved locally.');
         setSyncState('error');
       }

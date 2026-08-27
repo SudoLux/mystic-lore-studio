@@ -10,6 +10,7 @@ import { PageHeader } from '../../components/shared/PageHeader';
 import { acceptAiArtifact, aiWorkflowLabels, completeAiJobWithFakeProvider, defaultAiInputRefs, failAiJob, queueAiJob, rejectAiArtifact, retryAiJob, startAiJob } from '../../domains/ai';
 import type { AiWorkflow } from '../../domains/workspace';
 import { useCanonicalWorkspace } from '../../hooks/useCanonicalWorkspace';
+import { recordClientEvent } from '../../lib/observability';
 
 const workflows = Object.keys(aiWorkflowLabels) as AiWorkflow[];
 
@@ -33,7 +34,7 @@ function AiStudioWorkspace() {
     setNotice(jobId ? 'Candidate request queued with version-pinned private inputs.' : 'Candidate request is already queued.');
   });
   const start = (jobId: string) => run(jobId, () => commitWorkspace((current) => startAiJob(current, jobId).state, { skipAutoLedger: true }));
-  const generate = (jobId: string) => run(jobId, () => commitWorkspace((current) => { try { return completeAiJobWithFakeProvider(current, jobId).state; } catch (error) { queueMicrotask(() => setNotice(message(error))); return failAiJob(current, jobId, 'candidate_generation_failed').state; } }, { skipAutoLedger: true }));
+  const generate = (jobId: string) => run(jobId, () => commitWorkspace((current) => { try { return completeAiJobWithFakeProvider(current, jobId).state; } catch (error) { recordClientEvent({ context: { stage: 'candidate_generation' }, kind: 'ai_job' }); queueMicrotask(() => setNotice(message(error))); return failAiJob(current, jobId, 'candidate_generation_failed').state; } }, { skipAutoLedger: true }));
   const retry = (jobId: string) => run(jobId, () => commitWorkspace((current) => retryAiJob(current, jobId, currentActorId).state, { skipAutoLedger: true }));
   const accept = (artifactId: string, selectedFieldKeys: string[], decisionNote: string) => run(artifactId, () => commitWorkspace((current) => {
     if (current.conflicts.some((item) => item.garmentId === garmentId && item.resolution === 'pending')) throw new Error('Resolve garment conflicts before AI acceptance.');
@@ -43,7 +44,7 @@ function AiStudioWorkspace() {
   }, { skipAutoLedger: true }));
   const reject = (artifactId: string, decisionNote: string) => run(artifactId, () => commitWorkspace((current) => rejectAiArtifact(current, { actorId: currentActorId, actorRole: 'owner', artifactId, decisionNote }).state, { skipAutoLedger: true }));
 
-  function run(id: string, action: () => void) { setBusyId(id); setNotice(''); try { action(); } catch (error) { setNotice(message(error)); } finally { setBusyId(''); } }
+  function run(id: string, action: () => void) { setBusyId(id); setNotice(''); try { action(); } catch (error) { recordClientEvent({ context: { stage: 'ai_command' }, kind: 'ai_job' }); setNotice(message(error)); } finally { setBusyId(''); } }
 
   return <section className="space-y-5">
     <MobilePageHeader badge="AI Jobs" kicker="Private candidates, human decisions" title="Governed AI" />

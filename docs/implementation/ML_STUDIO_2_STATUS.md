@@ -21,7 +21,10 @@ cuts Portfolio Studio and anonymous routes over to immutable, allowlisted
 Public Cuts with copied rights-cleared media derivatives. WP9 adds the
 candidate-only AI control plane: versioned private inputs, immutable artifacts,
 staleness detection, designer decisions, typed acceptance commands, and
-append-only attribution.
+append-only attribution. WP10 hardens those accepted flows with responsive
+Field Mode, consistent dialog and keyboard behavior, narrow-workbench
+alternatives, reduced-motion support, measurable local scale fixtures, and
+private-safe client observability.
 
 ## Work-package Status
 
@@ -40,7 +43,7 @@ append-only attribution.
 | WP7 | Editorial Collection normalization, Story from System, private export manifests, and canonical route cutover | Complete | Canonical collections preserve legacy editorial/lookbook evidence, sync-ready records remain private, and approved exports are checksum reproducible |
 | WP8 | Portfolio profile/project/editorial curation, Public Cut preview, immutable publication history, copied media, and anonymous route cutover | Complete | Anonymous access exposes only selected immutable payloads and copied public-safe derivatives, proven by application and database privacy tests |
 | WP9 | Governed AI jobs, normalized source references, reviewable candidates, deterministic test provider, and typed/audited acceptance | Complete | AI cannot bypass domain validation or directly write private/public production records; every accepted field is attributable to its source, actor, command, and change event |
-| WP10 | Hardening, accessibility, performance, resilience, and release readiness | Not started | Begins only after the governed AI boundary is accepted |
+| WP10 | Hardening, accessibility, performance, resilience, and release readiness | Complete locally | Local responsive/accessibility/reliability/performance gates pass; beta-only device and assistive-technology checks are explicitly listed |
 
 ## Verification
 
@@ -142,6 +145,23 @@ WP9 evidence:
   produced one normal portfolio domain event and an attributed acceptance
   operation. Desktop and 390 px layouts had no horizontal overflow; a clean
   reload had no console warnings or errors.
+
+Latest WP10 hardening verification:
+
+| Command | Result |
+| --- | --- |
+| `npm run validate:schema` | Passed: 85 private tables, 2 public projection tables, 131 pgTAP assertions, and 7 preserved legacy inputs |
+| `npm run test:db` | Passed: 131 pgTAP assertions, including existing RLS, tenant, publication, and governed-AI privacy coverage; WP10 adds no new persistence surface |
+| `npm test -- --run` | Passed: 27 files, 126 tests, including WP10 focus/skip/reduced-motion, Field Mode, narrow-table/canvas alternatives, private-observability, and scale-fixture checks |
+| `npm run build` | Passed: TypeScript and Vite production build. Main app asset is 1,240.98 kB / 326.62 kB gzip; the existing code-splitting advisory remains recorded as a beta follow-up. |
+| `git diff --check` | Passed |
+
+WP10 evidence:
+
+- [WP10 responsive, accessibility, performance, and observability evidence](WP10_HARDENING_EVIDENCE.md)
+- `tests/wp10Hardening.test.ts`: skip/focus/reduced-motion, dialog, Field Mode,
+  narrow semantic alternatives, private diagnostic filtering, and deterministic
+  scale-fixture checks.
 
 WP6 completion evidence:
 

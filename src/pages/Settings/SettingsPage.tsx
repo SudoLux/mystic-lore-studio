@@ -11,6 +11,7 @@ import { BrandLockup } from '../../components/layout/BrandLockup';
 import { Badge } from '../../components/shared/Badge';
 import { Button } from '../../components/shared/Button';
 import { Card } from '../../components/shared/Card';
+import { ObservabilityPanel } from '../../components/settings/ObservabilityPanel';
 import { MobilePageHeader } from '../../components/shared/MobilePageHeader';
 import { PageHeader } from '../../components/shared/PageHeader';
 import { useStudioData } from '../../hooks/useStudioData';
@@ -283,6 +284,8 @@ export function SettingsPage() {
           onConfirm={handleConfirmReset}
         />
       ) : null}
+
+      <ObservabilityPanel />
 
       <Card className="border-ember/32 bg-[linear-gradient(135deg,rgba(27,58,99,0.24),rgba(61,43,31,0.62))]" elevated>
         <div className="grid gap-5 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)] lg:items-center">

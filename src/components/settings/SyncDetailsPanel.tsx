@@ -12,6 +12,7 @@ import type { SyncProgress } from '../../hooks/useStudioData';
 import { formatStudioDate } from '../../lib/dates';
 import type { SyncPhase, SyncStatus } from '../../lib/studioSyncStorage';
 import { Button } from '../shared/Button';
+import { useDialogA11y } from '../shared/useDialogA11y';
 
 const phaseLabels: Record<SyncPhase, string> = {
   idle: 'Waiting',
@@ -53,6 +54,7 @@ export function SyncDetailsPanel({
   status: SyncStatus;
   syncNotice: string | null;
 }) {
+  const dialogRef = useDialogA11y(isOpen, onClose);
   if (!isOpen) return null;
 
   const percent = progress.total
@@ -68,6 +70,8 @@ export function SyncDetailsPanel({
         aria-modal="true"
         className="max-h-[88dvh] w-full max-w-xl overflow-y-auto rounded-t-[1.75rem] border border-bronze/34 bg-[linear-gradient(145deg,rgba(27,58,99,0.38),rgba(10,10,10,0.99),rgba(61,43,31,0.72))] p-5 text-stardust shadow-[0_30px_100px_rgba(0,0,0,0.62)] sm:rounded-[1.75rem] sm:p-6"
         role="dialog"
+        ref={dialogRef}
+        tabIndex={-1}
       >
         <div className="flex items-start justify-between gap-4">
           <div className="flex min-w-0 items-center gap-3">

@@ -6,6 +6,8 @@ import { Button } from '../../components/shared/Button';
 import { CanonicalWorkspaceState } from '../../components/shared/CanonicalWorkspaceState';
 import { MobilePageHeader } from '../../components/shared/MobilePageHeader';
 import { PageHeader } from '../../components/shared/PageHeader';
+import { FieldModePanel } from '../../components/shared/FieldModePanel';
+import { recordClientEvent } from '../../lib/observability';
 
 export function EditorialStudioPage() {
   const studio = useEditorialStudio();
@@ -25,12 +27,13 @@ export function EditorialStudioPage() {
   const exportCollection = async (format: 'pdf' | 'image') => {
     if (!selected) return;
     try { const artifact = await studio.createExport(selected.id, format); setNotice(`${format.toUpperCase()} export committed: ${artifact.checksum.slice(0, 12)}.`); }
-    catch (error) { setNotice(error instanceof Error ? error.message : 'Export could not be committed.'); }
+    catch (error) { recordClientEvent({ context: { format, surface: 'editorial' }, kind: 'export_failure' }); setNotice(error instanceof Error ? error.message : 'Export could not be committed.'); }
   };
   return <CanonicalWorkspaceState>
     <div className="min-w-0">
       <MobilePageHeader badge="Editorial" kicker="Private story system" title="Editorial Collections" action={<Button aria-label="New editorial collection" className="h-11 w-11 rounded-full p-0" onClick={create}><Plus aria-hidden="true" /></Button>} />
       <PageHeader badge="Editorial" description="Compose private, garment-linked stories from approved studio evidence." title="Editorial Collections"><Button icon={<Plus aria-hidden="true" size={16} />} onClick={create}>New Collection</Button></PageHeader>
+      <FieldModePanel captureLabel="Start a new story" description="A shoot-ready capture and next-move view for editorial collection work." moves={[{ detail: `${studio.collections.length} private collection${studio.collections.length === 1 ? '' : 's'} available on this device.`, label: 'Open the current collection', onSelect: () => setSelectedId(selected?.id ?? studio.collections[0]?.id ?? null) }, { detail: 'Refresh approved garment facts before committing an export.', label: 'Refresh story sources', onSelect: () => studio.refreshLiveData() }]} onCapture={create} title="Shoots & story capture" />
       {notice ? <p aria-live="polite" className="mb-4 rounded-xl border border-bronze/35 bg-midnight/70 px-3 py-2 text-sm text-stardust/75">{notice}</p> : null}
       <div className="grid gap-5 xl:grid-cols-[minmax(16rem,0.8fr)_minmax(0,2fr)]">
         <aside className="rounded-2xl border border-bronze/25 bg-midnight/65 p-3">

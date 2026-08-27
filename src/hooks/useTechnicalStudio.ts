@@ -12,6 +12,7 @@ import {
 import type { CanonicalTechnicalFile, TechnicalFlatView } from '../domains/workspace';
 import { getImageBlob, saveImageBlob } from '../lib/imageBlobStore';
 import { storeTechnicalSource } from '../lib/technicalFiles';
+import { recordClientEvent } from '../lib/observability';
 
 export function useTechnicalStudio() {
   const { commitWorkspace, currentActorId, state } = useCanonicalWorkspace();
@@ -65,10 +66,16 @@ export function useTechnicalStudio() {
     const templateRecord = state.templates.find((item) => item.id === selectedTemplateId && item.templateType === 'tech_pack' && item.status === 'active') ?? state.templates.find((item) => item.templateType === 'tech_pack' && item.status === 'active');
     if (!templateRecord) throw new Error('Select an active tech-pack template.');
     const version = state.garmentVersions.find((item) => item.id === spec.releaseVersionId)!;
-    const generated = await generateDeterministicTechPack(state, specId, version.id, templateRecord.id, async (assetId) => {
-      const asset = state.mediaAssets.find((item) => item.id === assetId);
-      return asset?.localBlobKey ? (await getImageBlob(asset.localBlobKey) ?? null) : null;
-    });
+    let generated;
+    try {
+      generated = await generateDeterministicTechPack(state, specId, version.id, templateRecord.id, async (assetId) => {
+        const asset = state.mediaAssets.find((item) => item.id === assetId);
+        return asset?.localBlobKey ? (await getImageBlob(asset.localBlobKey) ?? null) : null;
+      });
+    } catch (error) {
+      recordClientEvent({ context: { format: 'zip', stage: 'generate_tech_pack' }, kind: 'export_failure' });
+      throw error;
+    }
     const blob = new Blob([Uint8Array.from(generated.bytes)], { type: 'application/zip' });
     const checksum = generated.checksum;
     const filename = deterministicExportFilename(garment.garmentCode, version.versionNo, templateRecord.version, checksum, 'zip');

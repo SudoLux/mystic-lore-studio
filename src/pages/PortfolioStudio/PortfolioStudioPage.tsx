@@ -19,6 +19,7 @@ import {
 } from '../../domains/portfolio';
 import type { CanonicalEditorialScene, CanonicalMediaAsset, CanonicalPortfolioEditorial, CanonicalPortfolioProject, CanonicalPortfolioTechnicalExcerpt } from '../../domains/workspace';
 import { PublicCutPreview } from './PublicCutPreview';
+import { recordClientEvent } from '../../lib/observability';
 
 type Tab = 'projects' | 'editorials' | 'profile' | 'publish';
 
@@ -54,7 +55,7 @@ export function PortfolioStudioPage() {
       const committed = await commitPublicCutToSupabase(state, result.publications);
       commitWorkspace(() => result.state, { origin: 'publication' });
       setMessage(`Published immutable Public Cut ${result.preview.checksum.slice(0, 12)} (${committed.mode}).`);
-    } catch (error) { setMessage(error instanceof Error ? error.message : 'The Public Cut could not be published.'); }
+    } catch (error) { recordClientEvent({ context: { action: 'publish' }, kind: 'publication_failure' }); setMessage(error instanceof Error ? error.message : 'The Public Cut could not be published.'); }
     finally { setBusy(false); }
   };
 
@@ -64,7 +65,7 @@ export function PortfolioStudioPage() {
       const committed = await unpublishPublicCutFromSupabase(profile.id);
       commitWorkspace((currentState) => unpublishPublicCut(currentState, profile.id, syncState === 'ready'), { origin: 'publication' });
       setMessage(`Unpublished ${committed.unpublishedIds.length || history.filter((item) => item.isCurrent).length} current Public Cut(s).`);
-    } catch (error) { setMessage(error instanceof Error ? error.message : 'The Public Cut could not be unpublished.'); }
+    } catch (error) { recordClientEvent({ context: { action: 'unpublish' }, kind: 'publication_failure' }); setMessage(error instanceof Error ? error.message : 'The Public Cut could not be unpublished.'); }
     finally { setBusy(false); }
   };
 
