@@ -16,7 +16,7 @@ import {
   relationshipOptions,
   updateBrief,
 } from '../src/domains/workspace';
-import { importStudioData } from '../src/lib/studioStorage';
+import { createSeedStudioData, importStudioData } from '../src/lib/studioStorage';
 
 const fixtureText = readFileSync(new URL('./fixtures/legacy-studio-data-v5.json', import.meta.url), 'utf8');
 const OWNER_ID = '10000000-0000-4000-8000-000000000111';
@@ -31,6 +31,16 @@ async function workspace() {
 }
 
 describe('WP3 canonical garment workspace', () => {
+  it('hydrates the first-run browser seed when the default portfolio timestamp is empty', async () => {
+    const state = await createCanonicalWorkspace({
+      data: createSeedStudioData(),
+      ownerUserId: OWNER_ID,
+      studioName: 'First-run Studio',
+      studioSlug: 'first-run-studio',
+    });
+    expect(state.garments.length).toBeGreaterThan(0);
+  });
+
   it('hydrates core garment, brief, media, material, and inventory relationships from the accepted migration graph', async () => {
     const state = await workspace();
     expect(state.garments).toHaveLength(1);

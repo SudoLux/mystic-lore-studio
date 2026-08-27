@@ -156,6 +156,17 @@ function hydrateTechnicalState(state: CanonicalWorkspaceState, rawData: ReturnTy
   }];
   return {
     ...state,
+    aiAcceptanceCommands: state.aiAcceptanceCommands ?? [],
+    aiAcceptances: state.aiAcceptances ?? [],
+    aiArtifacts: (state.aiArtifacts ?? []).map((item) => ({
+      ...item,
+      acceptanceOperationId: item.acceptanceOperationId ?? null,
+      acceptedPayloadChecksum: item.acceptedPayloadChecksum ?? null,
+      decisionReason: item.decisionReason ?? '',
+      fields: item.fields ?? [],
+    })),
+    aiInputRefs: state.aiInputRefs ?? [],
+    aiJobs: state.aiJobs ?? [],
     bomItems: state.bomItems ?? [],
     changeEvents: (state.changeEvents ?? []).map((item) => ({ ...item, relatedOperationIds: item.relatedOperationIds ?? [] })),
     constructionDetails: state.constructionDetails ?? [],
@@ -276,7 +287,7 @@ function hydrateTechnicalState(state: CanonicalWorkspaceState, rawData: ReturnTy
     portfolioProjects: state.portfolioProjects ?? [],
     portfolioTechnicalExcerpts: state.portfolioTechnicalExcerpts ?? [],
     publications: state.publications ?? [],
-    schemaVersion: 9,
+    schemaVersion: 10,
     techPackExports: (state.techPackExports ?? []).map((item) => ({
       ...item,
       approvedAt: item.approvedAt ?? null,

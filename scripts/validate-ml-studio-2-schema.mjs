@@ -38,7 +38,9 @@ const productionPath = 'supabase/migrations/20260826061816_implement_wp6_product
 const productionCompletionPath = 'supabase/migrations/20260826080100_complete_wp6_costing_orders_qc.sql';
 const editorialPath = 'supabase/migrations/20260826103000_normalize_editorial_story_from_system.sql';
 const portfolioPath = 'supabase/migrations/20260826121000_implement_wp8_public_cuts.sql';
+const aiPath = 'supabase/migrations/20260827213019_implement_wp9_governed_ai_candidates.sql';
 const testPath = 'supabase/tests/ml_studio_2_rls_test.sql';
+const aiTestPath = 'supabase/tests/wp9_ai_governance_test.sql';
 const foundation = read(foundationPath);
 const rls = read(rlsPath);
 const storage = read(storagePath);
@@ -51,7 +53,9 @@ const production = read(productionPath);
 const productionCompletion = read(productionCompletionPath);
 const editorial = read(editorialPath);
 const portfolio = read(portfolioPath);
+const ai = read(aiPath);
 const rlsTest = read(testPath);
+const aiRlsTest = read(aiTestPath);
 
 const structurallyBalanced = (sql) => {
   let depth = 0;
@@ -116,7 +120,9 @@ for (const [path, sql] of [
   [productionCompletionPath, productionCompletion],
   [editorialPath, editorial],
   [portfolioPath, portfolio],
+  [aiPath, ai],
   [testPath, rlsTest],
+  [aiTestPath, aiRlsTest],
 ]) {
   check(structurallyBalanced(sql), `Unbalanced SQL delimiters in ${path}.`);
 }
@@ -138,6 +144,8 @@ const expectedPrivateTables = [
   'editorial_assets', 'portfolio_profiles', 'portfolio_projects',
   'portfolio_editorials', 'garment_versions', 'entity_revisions', 'change_events',
   'restore_operations', 'tasks', 'calendar_events', 'ai_jobs', 'ai_artifacts',
+  'ai_job_input_refs', 'ai_artifact_media', 'ai_artifact_acceptances',
+  'ai_acceptance_commands',
   'validation_waivers',
   'sample_round_media', 'fit_session_media', 'fit_issue_promotions',
   'production_milestones', 'qc_templates', 'qc_template_checks',
@@ -148,7 +156,7 @@ const expectedPrivateTables = [
   'sync_tombstones',
 ].sort();
 
-const canonicalTableSql = foundation + '\n' + release + '\n' + production + '\n' + productionCompletion + '\n' + editorial + '\n' + portfolio;
+const canonicalTableSql = foundation + '\n' + release + '\n' + production + '\n' + productionCompletion + '\n' + editorial + '\n' + portfolio + '\n' + ai;
 const actualPrivateTables = [...canonicalTableSql.matchAll(/create table ml_private\.([a-z_]+)/g)]
   .map((match) => match[1])
   .sort();
@@ -180,7 +188,7 @@ for (const table of expectedPrivateTables) {
     check(/\bstudio_id uuid\b/.test(block), `Tenant table lacks studio_id: ${table}`);
   }
   check(
-    rls.includes(`'${table}'`) || rls.includes(`ml_private.${table}`) || release.includes(`ml_private.${table}`) || production.includes(`ml_private.${table}`) || productionCompletion.includes(`ml_private.${table}`) || editorial.includes(`ml_private.${table}`) || portfolio.includes(`ml_private.${table}`),
+    rls.includes(`'${table}'`) || rls.includes(`ml_private.${table}`) || release.includes(`ml_private.${table}`) || production.includes(`ml_private.${table}`) || productionCompletion.includes(`ml_private.${table}`) || editorial.includes(`ml_private.${table}`) || portfolio.includes(`ml_private.${table}`) || ai.includes(`ml_private.${table}`),
     `Canonical table is missing from RLS coverage: ${table}`,
   );
 }
@@ -206,11 +214,13 @@ const allowedJsonbColumns = new Set([
   'content_json', 'settings_json', 'usage_json', 'case_study_json', 'json_patch',
   'inverse_patch', 'input_refs_json', 'candidate_json', 'provenance_json',
   'confidence_json', 'media_manifest',
+  'field_manifest_json',
   'section_manifest_json',
   'manifest_json',
 ]);
-const jsonbColumns = [...canonicalTableSql.matchAll(/^\s+([a-z_]+) jsonb\b/gm)]
-  .map((match) => match[1]);
+const jsonbColumns = expectedPrivateTables.flatMap((table) =>
+  [...tableBlock(table).matchAll(/^\s+([a-z_]+) jsonb\b/gm)].map((match) => match[1]),
+);
 for (const column of jsonbColumns) {
   check(allowedJsonbColumns.has(column), `Unapproved JSONB column: ${column}`);
   check(!/_ids_json$/.test(column), `Core relationships may not be stored in JSONB: ${column}`);
@@ -218,7 +228,7 @@ for (const column of jsonbColumns) {
 
 check((foundation.match(/references /g) ?? []).length >= 80, 'Expected explicit canonical foreign keys are missing.');
 check((foundation.match(/create (?:unique )?index /g) ?? []).length >= 55, 'Expected canonical indexes are missing.');
-const canonicalSql = foundation + rls + storage + bootstrap + technical + measurement + release + versioning + production + productionCompletion + editorial + portfolio;
+const canonicalSql = foundation + rls + storage + bootstrap + technical + measurement + release + versioning + production + productionCompletion + editorial + portfolio + ai;
 check(!/\b(create|alter|drop) table public\./i.test(canonicalSql), 'WP2 must not create, alter, or drop legacy public tables.');
 check(!/\bdrop table\b/i.test(canonicalSql), 'WP2 migrations may not drop tables.');
 check(!/\brename\s+(?:table|column)\b/i.test(canonicalSql), 'WP2 migrations may not rename legacy structures.');
@@ -341,6 +351,27 @@ for (const trigger of ['portfolio_projects_assert_source_version', 'portfolio_ed
 for (const contract of ['publication_root_keys_allowed', 'jsonb_has_private_key', 'jsonb_has_unknown_public_key', 'source_derivative_id', 'rights_checked_at', 'source_revision']) {
   check(portfolio.includes(contract), `WP8 Public Cut boundary contract is missing: ${contract}`);
 }
+for (const table of ['ai_job_input_refs', 'ai_artifact_media', 'ai_artifact_acceptances', 'ai_acceptance_commands']) {
+  check(ai.includes(`create table ml_private.${table}`), `WP9 normalized AI evidence table is missing: ${table}`);
+  check(ai.includes(`ml_private.${table}`) && ai.includes('enable row level security'), `WP9 RLS coverage is missing: ${table}`);
+}
+for (const workflow of ['technical_flat_generation', 'pom_assistance', 'bom_assistance', 'construction_recommendations', 'tech_pack_validation', 'editorial_generation', 'portfolio_drafting']) {
+  check(ai.includes(`'${workflow}'`), `WP9 governed workflow is missing: ${workflow}`);
+}
+for (const field of ['provider', 'idempotency_key', 'source_checksum', 'retry_of_job_id', 'attempt_no', 'candidate_checksum', 'field_manifest_json', 'acceptance_operation_id', 'accepted_payload_checksum', 'generated_at']) {
+  check(ai.includes(field), `WP9 provenance or retry field is missing: ${field}`);
+}
+for (const trigger of ['ai_job_input_refs_assert_source', 'ai_artifacts_protect_evidence', 'ai_artifact_acceptances_append_only', 'ai_acceptance_commands_append_only', 'ai_artifact_media_require_private_path']) {
+  check(ai.includes(`create trigger ${trigger}`), `WP9 source/privacy/append-only trigger is missing: ${trigger}`);
+}
+for (const command of ['accept_ai_artifact', 'reject_ai_artifact']) {
+  check(ai.includes(`function ml_private.${command}`), `WP9 governed decision command is missing: ${command}`);
+}
+for (const contract of ['AI acceptance receipt must reference a normal domain change event.', 'AI candidate sources changed after generation.', 'AI artifact media must remain in the private Studio asset path.']) {
+  check(ai.includes(contract), `WP9 trust boundary contract is missing: ${contract}`);
+}
+check(ai.includes('revoke insert, update, delete on table ml_private.ai_artifacts from authenticated'), 'WP9 browser clients must not write candidate artifacts directly.');
+check(ai.includes('grant select on table ml_private.ai_artifacts to authenticated'), 'WP9 reviewers need read-only candidate access.');
 
 const srcFiles = [];
 const walk = (directory) => {
@@ -448,17 +479,46 @@ for (const contract of ['Curate the public cut', 'Public preview', 'Privacy & re
 check(anonymousPortfolioLoader.includes(".schema('ml_public')"), 'WP8 anonymous loader must query only the public projection schema.');
 check(!/CanonicalWorkspace|StudioData|ml_private|useCanonicalWorkspace/.test(anonymousPortfolioLoader), 'WP8 anonymous loader must not import or mention private workspace data.');
 
-const plan = Number(rlsTest.match(/select plan\((\d+)\)/)?.[1] ?? 0);
-const assertions = (rlsTest.match(/^select (?:is|isnt|ok|results_eq|throws_like|throws_ok|lives_ok)\(/gm) ?? []).length;
-check(plan === assertions, `pgTAP plan (${plan}) does not match assertion count (${assertions}).`);
+const aiRepository = read('src/domains/ai/governedAiRepository.ts');
+const aiProvider = read('src/domains/ai/fakeAiProvider.ts');
+const aiPage = read('src/pages/AiStudio/AiStudioPage.tsx');
+const aiPanel = read('src/components/ai/AiCandidatePanel.tsx');
+check(router.includes('<AiStudioPage'), 'WP9 AI Jobs route is missing.');
+for (const contract of ['queueAiJob', 'startAiJob', 'completeAiJobWithFakeProvider', 'retryAiJob', 'acceptAiArtifact', 'rejectAiArtifact', 'aiArtifactSourcesFresh', 'assertPrivateCandidateBoundary']) {
+  check(aiRepository.includes(`function ${contract}`), `WP9 governed AI repository contract is missing: ${contract}`);
+}
+for (const command of ['registerFlat', 'createPomPoint', 'createBomItem', 'addConstructionStep', 'recordTechPackValidationRun', 'addEditorialBlock', 'updatePortfolioProject']) {
+  check(aiRepository.includes(command), `WP9 typed acceptance command is missing: ${command}`);
+}
+check(aiRepository.includes("origin: 'ai_acceptance'"), 'WP9 accepted candidates must emit normal AI-origin domain events.');
+check(aiProvider.includes("generatedBy: 'deterministic_fake'"), 'WP9 normal tests require the deterministic fake provider.');
+check(!/fetch\(|openai|anthropic|paid/i.test(aiProvider), 'WP9 fake provider must not call a paid model.');
+for (const contract of ['Queued', 'Running', 'Candidate', 'Accepted', 'Rejected', 'Modified after generation']) {
+  check(aiPage.includes(contract), `WP9 AI lifecycle UI state is missing: ${contract}`);
+}
+for (const contract of ['Inspect sources', 'Candidate fields', 'Contextual confidence', 'Commit consequence', 'Accept selected through domain commands', 'Reject candidate']) {
+  check(aiPanel.includes(contract), `WP9 candidate review contract is missing: ${contract}`);
+}
+
+const pgTapCount = (contents, path) => {
+  const plan = Number(contents.match(/select plan\((\d+)\)/)?.[1] ?? 0);
+  const assertionCount = (contents.match(/^select (?:is|isnt|ok|results_eq|throws_like|throws_ok|lives_ok)\(/gm) ?? []).length;
+  check(plan === assertionCount, `${path} pgTAP plan (${plan}) does not match assertion count (${assertionCount}).`);
+  return assertionCount;
+};
+const assertions = pgTapCount(rlsTest, testPath) + pgTapCount(aiRlsTest, aiTestPath);
 check(rlsTest.includes('set local role anon'), 'pgTAP suite lacks anonymous access tests.');
 check(rlsTest.includes('Cross-studio'), 'pgTAP suite lacks cross-studio denial tests.');
 check(rlsTest.includes('unpublish_publication'), 'pgTAP suite lacks unpublication tests.');
+check(aiRlsTest.includes('browser members cannot directly accept a candidate'), 'WP9 pgTAP suite lacks direct-write prevention.');
+check(aiRlsTest.includes('acceptance fails when a source revision changed after generation'), 'WP9 pgTAP suite lacks stale-source denial.');
+check(aiRlsTest.includes('reviewers cannot decide AI candidates'), 'WP9 pgTAP suite lacks decision permission denial.');
+check(aiRlsTest.includes('generated media cannot cross Studio storage prefixes'), 'WP9 pgTAP suite lacks private media enforcement.');
 
 const migrationNames = readdirSync(new URL('supabase/migrations/', root))
   .filter((name) => name.endsWith('.sql'))
   .sort();
-for (const path of [foundationPath, rlsPath, storagePath, bootstrapPath, technicalPath, measurementPath, releasePath, versioningPath, productionPath, productionCompletionPath, editorialPath, portfolioPath]) {
+for (const path of [foundationPath, rlsPath, storagePath, bootstrapPath, technicalPath, measurementPath, releasePath, versioningPath, productionPath, productionCompletionPath, editorialPath, portfolioPath, aiPath]) {
   check(migrationNames.includes(path.split('/').at(-1)), `Named migration missing: ${path}`);
 }
 check(
@@ -489,6 +549,10 @@ check(
 check(
   migrationNames.indexOf(editorialPath.split('/').at(-1)) < migrationNames.indexOf(portfolioPath.split('/').at(-1)),
   'WP8 Public Cut migration must run after WP7 editorial normalization.',
+);
+check(
+  migrationNames.indexOf(portfolioPath.split('/').at(-1)) < migrationNames.indexOf(aiPath.split('/').at(-1)),
+  'WP9 governed AI migration must run after the WP8 Public Cut boundary.',
 );
 
 if (failures.length > 0) {

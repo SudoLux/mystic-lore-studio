@@ -10,6 +10,7 @@ import {
   Ruler,
   Factory,
   GitCompareArrows,
+  Sparkles,
 } from 'lucide-react';
 import type { NavItem } from '../types/navigation';
 
@@ -55,6 +56,13 @@ export const navigationItems: NavItem[] = [
     shortLabel: 'Versions',
     description: 'Freeze Frames and restore',
     icon: GitCompareArrows,
+  },
+  {
+    id: 'ai',
+    label: 'AI Jobs',
+    shortLabel: 'AI',
+    description: 'Governed candidates',
+    icon: Sparkles,
   },
   {
     id: 'lookbooks',

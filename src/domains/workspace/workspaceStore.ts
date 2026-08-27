@@ -1,6 +1,11 @@
 import type { StudioData } from '../../lib/studioStorage';
 import { buildLegacyCanonicalMigrationPlan } from '../migration';
 import type {
+  CanonicalAiAcceptance,
+  CanonicalAiAcceptanceCommand,
+  CanonicalAiArtifact,
+  CanonicalAiInputRef,
+  CanonicalAiJob,
   CanonicalAnnotation,
   CanonicalBomItem,
   CanonicalCollection,
@@ -57,7 +62,7 @@ import type {
   RelationshipOption,
 } from './contracts';
 
-const workspaceVersion = 9 as const;
+const workspaceVersion = 10 as const;
 
 export type CanonicalWorkspaceSeed = {
   data: StudioData;
@@ -108,6 +113,11 @@ export async function createCanonicalWorkspace(seed: CanonicalWorkspaceSeed) {
     ?? createId();
 
   return normalizeWorkspace({
+    aiAcceptanceCommands: [] as CanonicalAiAcceptanceCommand[],
+    aiAcceptances: [] as CanonicalAiAcceptance[],
+    aiArtifacts: [] as CanonicalAiArtifact[],
+    aiInputRefs: [] as CanonicalAiInputRef[],
+    aiJobs: [] as CanonicalAiJob[],
     annotations: rows('design_annotations').map((row) => {
       const value = row as { asset_id: string; body: string; garment_id: string; status: CanonicalAnnotation['status']; created_at: string; id: string; studio_id: string; updated_at: string };
       return { ...base(value), assetId: value.asset_id, body: value.body, garmentId: value.garment_id, status: value.status };
@@ -254,6 +264,11 @@ export async function createCanonicalWorkspace(seed: CanonicalWorkspaceSeed) {
 export function normalizeWorkspace(state: CanonicalWorkspaceState): CanonicalWorkspaceState {
   return {
     ...state,
+    aiAcceptanceCommands: [...state.aiAcceptanceCommands].sort((a, b) => a.sortOrder - b.sortOrder || a.id.localeCompare(b.id)),
+    aiAcceptances: [...state.aiAcceptances].sort((a, b) => b.acceptedAt.localeCompare(a.acceptedAt)),
+    aiArtifacts: [...state.aiArtifacts].sort((a, b) => b.generatedAt.localeCompare(a.generatedAt)),
+    aiInputRefs: [...state.aiInputRefs].sort((a, b) => a.sortOrder - b.sortOrder || a.id.localeCompare(b.id)),
+    aiJobs: [...state.aiJobs].sort((a, b) => b.createdAt.localeCompare(a.createdAt)),
     annotations: [...state.annotations],
     bomItems: [...state.bomItems].sort((a, b) => a.sortOrder - b.sortOrder || a.id.localeCompare(b.id)),
     changeEvents: [...state.changeEvents].sort((a, b) => a.occurredAt.localeCompare(b.occurredAt) || a.id.localeCompare(b.id)),
@@ -536,4 +551,8 @@ function newRecord(studioId: string) {
 function touch<T extends CanonicalRecord>(record: T): T { return { ...record, revision: record.revision + 1, updatedAt: new Date().toISOString() }; }
 function createId() { return globalThis.crypto?.randomUUID?.() ?? `wp3-${Math.random().toString(36).slice(2)}-${Date.now().toString(36)}`; }
 function nextCode(state: CanonicalWorkspaceState, prefix: string) { return `${prefix}-${String(state.garments.length + state.materials.length + state.components.length + 1).padStart(3, '0')}`; }
-function deterministicGeneratedAt(data: StudioData) { return data.portfolioProfile.updatedAt ?? data.projects[0]?.updatedAt ?? '2026-08-24T00:00:00.000Z'; }
+function deterministicGeneratedAt(data: StudioData) {
+  return [data.portfolioProfile.updatedAt, data.projects[0]?.updatedAt]
+    .find((value): value is string => Boolean(value && Number.isFinite(Date.parse(value))))
+    ?? '2026-08-24T00:00:00.000Z';
+}

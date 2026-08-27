@@ -433,6 +433,12 @@ function auditDescriptors(): Array<{ entityType: string; garmentId: (after: Cano
   const costSheet = (after: CanonicalWorkspaceState, before: CanonicalWorkspaceState, row: CanonicalRecord) => findBoth(after.costSheets, before.costSheets, String((row as unknown as Record<string, unknown>).costSheetId))?.garmentId ?? null;
   const productionOrder = (after: CanonicalWorkspaceState, before: CanonicalWorkspaceState, row: CanonicalRecord) => findBoth(after.productionOrders, before.productionOrders, String((row as unknown as Record<string, unknown>).productionOrderId))?.garmentId ?? null;
   const qcInspection = (after: CanonicalWorkspaceState, before: CanonicalWorkspaceState, row: CanonicalRecord) => { const value = findBoth(after.qcInspections, before.qcInspections, String((row as unknown as Record<string, unknown>).inspectionId)); return value ? productionOrder(after, before, { ...value, productionOrderId: value.productionOrderId } as unknown as CanonicalRecord) : null; };
+  const editorialBlock = (after: CanonicalWorkspaceState, before: CanonicalWorkspaceState, row: CanonicalRecord) => {
+    const sceneId = String((row as unknown as Record<string, unknown>).sceneId);
+    const scene = findBoth(after.editorialScenes, before.editorialScenes, sceneId);
+    const collection = scene ? findBoth(after.editorialCollections, before.editorialCollections, scene.collectionId) : null;
+    return collection?.primaryGarmentId ?? null;
+  };
   return [
     { entityType: 'garment', garmentId: (_a, _b, row) => row.id, rows: (s) => s.garments, scope: 'all' },
     { entityType: 'design_brief', garmentId: direct('garmentId'), rows: (s) => s.designBriefs, scope: 'design' },
@@ -452,6 +458,7 @@ function auditDescriptors(): Array<{ entityType: string; garmentId: (after: Cano
     { entityType: 'construction_section', garmentId: spec, rows: (s) => s.constructionSections, scope: 'technical' },
     { entityType: 'construction_step', garmentId: section, rows: (s) => s.constructionSteps, scope: 'technical' },
     { entityType: 'construction_detail', garmentId: step, rows: (s) => s.constructionDetails, scope: 'technical' },
+    { entityType: 'validation_run', garmentId: spec, rows: (s) => s.validationRuns, scope: 'technical' },
     { entityType: 'sample_round', garmentId: direct('garmentId'), rows: (s) => s.sampleRounds, scope: 'production' },
     { entityType: 'sample_round_media', garmentId: round, rows: (s) => s.sampleRoundMedia, scope: 'production' },
     { entityType: 'fit_session', garmentId: round, rows: (s) => s.fitSessions, scope: 'production' },
@@ -467,8 +474,11 @@ function auditDescriptors(): Array<{ entityType: string; garmentId: (after: Cano
     { entityType: 'qc_result', garmentId: qcInspection, rows: (s) => s.qcResults, scope: 'production' },
     { entityType: 'qc_waiver', garmentId: qcInspection, rows: (s) => s.qcWaivers, scope: 'production' },
     { entityType: 'release_task', garmentId: direct('garmentId'), rows: (s) => s.releaseTasks, scope: 'production' },
-    { entityType: 'editorial_collection', garmentId: direct('garmentId'), rows: (s) => s.versionEditorial, scope: 'editorial' },
-    { entityType: 'portfolio_project', garmentId: direct('garmentId'), rows: (s) => s.versionPortfolio, scope: 'portfolio' },
+    { entityType: 'editorial_block', garmentId: editorialBlock, rows: (s) => s.editorialBlocks, scope: 'editorial' },
+    { entityType: 'editorial_collection', garmentId: direct('primaryGarmentId'), rows: (s) => s.editorialCollections, scope: 'editorial' },
+    { entityType: 'portfolio_project', garmentId: direct('garmentId'), rows: (s) => s.portfolioProjects, scope: 'portfolio' },
+    { entityType: 'editorial_version_projection', garmentId: direct('garmentId'), rows: (s) => s.versionEditorial, scope: 'editorial' },
+    { entityType: 'portfolio_version_projection', garmentId: direct('garmentId'), rows: (s) => s.versionPortfolio, scope: 'portfolio' },
     { entityType: 'garment_version', garmentId: direct('garmentId'), rows: (s) => s.garmentVersions, scope: 'all' },
   ];
 }

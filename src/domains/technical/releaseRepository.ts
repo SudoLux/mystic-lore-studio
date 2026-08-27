@@ -234,6 +234,28 @@ export function validateRelease(state: CanonicalWorkspaceState, specId: string, 
   return { issues: unique, blocking: unique, waivable: unique.filter((item) => item.waivable && item.domain !== 'privacy') };
 }
 
+/**
+ * Records the same deterministic release-rule evaluation used by the manual
+ * release gate without releasing, waiving, or changing technical records.
+ */
+export function recordTechPackValidationRun(state: CanonicalWorkspaceState, specId: string, actorId: string) {
+  const templateId = state.templates.find((item) => item.templateType === 'tech_pack' && item.status === 'active')?.id ?? '';
+  const preview = validateRelease(state, specId, { checkpointLabel: 'AI validation review', templateId });
+  const hasBlocking = preview.issues.some((item) => item.severity === 'critical' || item.severity === 'error');
+  const hasWarnings = preview.issues.some((item) => item.severity === 'warning');
+  const run: CanonicalValidationRun = {
+    ...record(state.studioId),
+    actorId,
+    garmentVersionId: null,
+    issues: preview.issues,
+    ranAt: new Date().toISOString(),
+    rulesetVersion: releaseRulesetVersion,
+    specId,
+    status: hasBlocking ? 'failed' : hasWarnings ? 'warning' : 'passed',
+  };
+  return { preview, run, state: { ...state, validationRuns: [...state.validationRuns, run] } };
+}
+
 export async function releaseTechnicalSpec(state: CanonicalWorkspaceState, input: ReleaseInput) {
   if (!input.actorId) throw new Error('Release requires an authenticated actor.');
   const preview = validateRelease(state, input.specId, input);

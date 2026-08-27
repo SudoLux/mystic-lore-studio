@@ -1,3 +1,4 @@
+export * from './ai';
 export * from './editorial/contracts';
 export * from './garments/contracts';
 export * from './materials/contracts';

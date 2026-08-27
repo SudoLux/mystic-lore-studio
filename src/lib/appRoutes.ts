@@ -50,6 +50,7 @@ export function parseStudioHashRoute(hash: string): AppRoute {
     section === 'kanban' ||
     section === 'production' ||
     section === 'versions' ||
+    section === 'ai' ||
     section === 'lookbooks' ||
     section === 'portfolio' ||
     section === 'stats' ||

@@ -6,6 +6,7 @@ export type PageId =
   | 'technical'
   | 'production'
   | 'versions'
+  | 'ai'
   | 'kanban'
   | 'lookbooks'
   | 'portfolio'

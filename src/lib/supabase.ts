@@ -11,11 +11,12 @@ type SupabaseConfigStatus = {
   url: string;
 };
 
-function isValidUrl(value: string) {
+export function isValidSupabaseUrl(value: string) {
   try {
     const url = new URL(value);
 
-    return url.protocol === 'https:';
+    return url.protocol === 'https:'
+      || (url.protocol === 'http:' && ['localhost', '127.0.0.1', '::1', '[::1]'].includes(url.hostname));
   } catch {
     return false;
   }
@@ -26,8 +27,8 @@ function getSupabaseConfigStatus(): SupabaseConfigStatus {
 
   if (!supabaseUrl) {
     issues.push('VITE_SUPABASE_URL is missing.');
-  } else if (!isValidUrl(supabaseUrl)) {
-    issues.push('VITE_SUPABASE_URL must be a valid https:// Supabase project URL.');
+  } else if (!isValidSupabaseUrl(supabaseUrl)) {
+    issues.push('VITE_SUPABASE_URL must use https://, except for a local Supabase development URL.');
   }
 
   if (!supabaseAnonKey) {

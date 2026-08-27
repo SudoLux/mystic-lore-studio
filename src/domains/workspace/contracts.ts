@@ -219,6 +219,76 @@ export type CanonicalEntityRevision = CanonicalRecord & { garmentVersionId: stri
 export type CanonicalJsonPatch = { op: 'add' | 'replace' | 'remove'; path: string; value?: unknown };
 export type CanonicalChangeOrigin = 'user' | 'sync' | 'migration' | 'ai_acceptance' | 'restore' | 'publication' | 'system';
 export type CanonicalChangeEvent = CanonicalRecord & { actorId: string | null; baseRevision: number | null; entityId: string; entityType: string; garmentId: string | null; inversePatch: CanonicalJsonPatch[]; jsonPatch: CanonicalJsonPatch[]; occurredAt: string; operation: 'create' | 'update' | 'delete' | 'restore' | 'publish' | 'unpublish' | 'role_change' | 'accept_ai'; operationId: string; origin: CanonicalChangeOrigin; relatedOperationIds: string[]; resultRevision: number | null; scope: FreezeFrameScope };
+export type AiWorkflow = 'technical_flat_generation' | 'pom_assistance' | 'bom_assistance' | 'construction_recommendations' | 'tech_pack_validation' | 'editorial_generation' | 'portfolio_drafting';
+export type AiJobStatus = 'queued' | 'running' | 'candidate' | 'accepted' | 'rejected' | 'failed' | 'cancelled';
+export type AiArtifactDecision = 'pending' | 'accepted' | 'rejected';
+export type AiEntityType = 'garment' | 'garment_version' | 'design_brief' | 'media_asset' | 'technical_spec' | 'technical_flat' | 'technical_template' | 'pom_point' | 'measurement_set' | 'bom_item' | 'construction_step' | 'validation_run' | 'material_variant' | 'component_variant' | 'editorial_collection' | 'portfolio_project';
+export type AiAcceptanceCommandType = 'technical.register-flat' | 'measurement.create-pom' | 'bom.create-item' | 'construction.create-section' | 'construction.add-step' | 'technical.run-validation' | 'editorial.add-block' | 'portfolio.update-project';
+export type AiCandidateField = { key: string; label: string; path: string; safeForPartialAcceptance: boolean; summary: string };
+export type CanonicalAiJob = CanonicalRecord & {
+  attemptNo: number;
+  completedAt: string | null;
+  errorCode: string | null;
+  garmentId: string;
+  idempotencyKey: string;
+  inputRefIds: string[];
+  jobType: AiWorkflow;
+  promptTemplateVersion: string;
+  provider: 'deterministic_fake' | 'configured_provider';
+  requestedBy: string;
+  retryOfJobId: string | null;
+  selectedModel: string;
+  sourceChecksum: string;
+  startedAt: string | null;
+  status: AiJobStatus;
+};
+export type CanonicalAiInputRef = CanonicalRecord & {
+  entityId: string;
+  entityRevision: number;
+  entityType: AiEntityType;
+  fieldPath: string;
+  jobId: string;
+  sortOrder: number;
+  sourceChecksum: string;
+  sourceVersionId: string | null;
+};
+export type CanonicalAiArtifact = CanonicalRecord & {
+  acceptanceOperationId: string | null;
+  acceptedPayloadChecksum: string | null;
+  artifactType: AiWorkflow;
+  candidate: Record<string, unknown>;
+  candidateChecksum: string;
+  confidence: Record<string, { context: string; level: 'low' | 'medium' | 'high' }>;
+  decidedAt: string | null;
+  decidedBy: string | null;
+  decision: AiArtifactDecision;
+  decisionReason: string;
+  fields: AiCandidateField[];
+  generatedAt: string;
+  jobId: string;
+  provenance: Record<string, unknown>;
+  sourceChecksum: string;
+};
+export type CanonicalAiAcceptance = CanonicalRecord & {
+  acceptedAt: string;
+  acceptedPayloadChecksum: string;
+  actorId: string;
+  artifactId: string;
+  candidateChecksum: string;
+  decisionNote: string;
+  operationId: string;
+  sourceChecksum: string;
+};
+export type CanonicalAiAcceptanceCommand = CanonicalRecord & {
+  acceptanceId: string;
+  changeEventId: string;
+  commandType: AiAcceptanceCommandType;
+  fieldKey: string;
+  sortOrder: number;
+  targetEntityId: string;
+  targetEntityType: string;
+};
+export type AiCandidatePanelState = AiJobStatus | 'modified_after_generation';
 export type VersionDependencyKind = 'release' | 'export' | 'order' | 'publication';
 export type CanonicalVersionDependency = { artifactId: string; kind: VersionDependencyKind; label: string; versionId: string };
 export type CanonicalConflict = CanonicalRecord & { baseValue: unknown; entityId: string; entityType: string; field: string; garmentId: string; localOperationId: string; localValue: unknown; remoteOperationId: string; remoteValue: unknown; resolution: 'pending' | 'local' | 'remote' | 'custom'; resolvedValue?: unknown };
@@ -342,6 +412,11 @@ export type CanonicalReleaseTask = CanonicalRecord & { garmentId: string; title:
 export type CanonicalValidationWaiver = CanonicalRecord & { specId: string; validationRunId: string; ruleCode: string; domain: Exclude<ValidationDomain, 'privacy'>; reason: string; actorId: string; followUpTaskId: string; waivedAt: string };
 
 export type CanonicalWorkspaceState = {
+  aiAcceptanceCommands: CanonicalAiAcceptanceCommand[];
+  aiAcceptances: CanonicalAiAcceptance[];
+  aiArtifacts: CanonicalAiArtifact[];
+  aiInputRefs: CanonicalAiInputRef[];
+  aiJobs: CanonicalAiJob[];
   annotations: CanonicalAnnotation[];
   bomItems: CanonicalBomItem[];
   changeEvents: CanonicalChangeEvent[];
@@ -402,7 +477,7 @@ export type CanonicalWorkspaceState = {
   sampleRoundMedia: CanonicalSampleRoundMedia[];
   sampleRounds: CanonicalSampleRound[];
   fitMeasurements: CanonicalFitMeasurement[];
-  schemaVersion: 9;
+  schemaVersion: 10;
   studioId: string;
   suppliers: CanonicalSupplier[];
   supplierItems: CanonicalSupplierItem[];

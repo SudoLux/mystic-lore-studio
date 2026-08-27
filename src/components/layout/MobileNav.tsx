@@ -28,7 +28,7 @@ export function MobileNav({ activePage, navItems, onNavigate }: MobileNavProps) 
   );
   const overflowNavItems = useMemo(
     () =>
-      ['production', 'versions', 'kanban', 'portfolio', 'stats', 'settings']
+      ['production', 'versions', 'ai', 'kanban', 'portfolio', 'stats', 'settings']
         .map((pageId) => navItems.find((item) => item.id === pageId))
         .filter((item): item is NavItem => Boolean(item)),
     [navItems],
@@ -80,10 +80,11 @@ export function MobileNav({ activePage, navItems, onNavigate }: MobileNavProps) 
               const isActive = activePage === item.id;
               const positions = [
                 'left-0 bottom-1',
-                'left-[17%] bottom-9 -translate-x-1/2',
-                'left-[38%] bottom-[4.5rem] -translate-x-1/2',
-                'right-[38%] bottom-[4.5rem] translate-x-1/2',
-                'right-[17%] bottom-9 translate-x-1/2',
+                'left-[12%] bottom-8 -translate-x-1/2',
+                'left-[30%] bottom-[4.4rem] -translate-x-1/2',
+                'left-1/2 bottom-[5.3rem] -translate-x-1/2',
+                'right-[30%] bottom-[4.4rem] translate-x-1/2',
+                'right-[12%] bottom-8 translate-x-1/2',
                 'right-0 bottom-1',
               ];
 

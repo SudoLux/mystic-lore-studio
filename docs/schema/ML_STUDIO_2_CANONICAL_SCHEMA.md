@@ -1,12 +1,11 @@
 # Mystic Lore Studio 2.0 Canonical Schema
 
-Status: WP6 complete through version-pinned sourcing, sampling, fit, quantity
-costing, production orders, milestones, QC, and timeline; append-only history,
-named Freeze Frames, scoped restore, and release/publication protection remain
-in force
+Status: WP9 complete through governed, reviewable AI candidates and typed,
+auditable designer acceptance; all earlier domain, versioning, production,
+editorial, and Public Cut boundaries remain in force
 
-Source specification: Product Bible pages 18, 28, 31, 33-35, 40, 56, and
-59-60. The ordered SQL
+Source specification: Product Bible pages 28, 31-32, 34-35, 40-41, 56-57,
+and 59-60, together with the earlier domain sections. The ordered SQL
 migrations are authoritative for exact types, checks, foreign keys, indexes,
 grants, triggers, and policies.
 
@@ -65,11 +64,12 @@ erDiagram
 | POM and grading | `pom_points`, `measurement_sets`, `measurement_values`, `grade_rules`, `grade_rule_values`, `fit_measurements` |
 | BOM and construction | `bom_items`, `construction_sections`, `construction_steps`, `construction_details`, `technical_templates`, `template_applications` |
 | Production | `suppliers`, `factories`, `sample_rounds`, `sample_round_media`, `fit_sessions`, `fit_session_media`, `fit_issues`, `fit_issue_promotions`, `cost_sheets`, `cost_items`, `production_orders`, `production_milestones`, `qc_templates`, `qc_template_checks`, `qc_inspections`, `qc_results`, `qc_waivers` |
-| Story and portfolio | `editorial_collections`, `editorial_scenes`, `editorial_blocks`, `editorial_assets`, `portfolio_profiles`, `portfolio_projects`, `portfolio_editorials` |
-| Versioning, workflow, AI, sync | `garment_versions`, `entity_revisions`, `change_events`, `restore_operations`, `tasks`, `calendar_events`, `ai_jobs`, `ai_artifacts`, `sync_tombstones` |
+| Story and portfolio | `editorial_collections`, `editorial_scenes`, `editorial_blocks`, `editorial_assets`, `editorial_collection_garments`, `editorial_exports`, `portfolio_profiles`, `portfolio_projects`, `portfolio_project_assets`, `portfolio_editorials`, `portfolio_editorial_scenes`, `portfolio_editorial_assets`, `portfolio_technical_excerpts` |
+| Versioning and workflow | `garment_versions`, `entity_revisions`, `change_events`, `restore_operations`, `tasks`, `calendar_events`, `sync_tombstones` |
+| Governed AI | `ai_jobs`, `ai_job_input_refs`, `ai_artifacts`, `ai_artifact_media`, `ai_artifact_acceptances`, `ai_acceptance_commands` |
 | Public projection | `ml_public.publications`, `ml_public.publication_assets` |
 
-There are 75 canonical private tables and two public projection tables.
+There are 85 canonical private tables and two public projection tables.
 
 ## Design, Library, and Media Relationships
 
@@ -172,7 +172,6 @@ erDiagram
   GARMENT_VERSIONS ||--o{ ENTITY_REVISIONS : contains
   GARMENTS ||--o{ CHANGE_EVENTS : audits
   GARMENT_VERSIONS ||--o{ RESTORE_OPERATIONS : sources
-  AI_JOBS ||--o{ AI_ARTIFACTS : proposes
   PORTFOLIO_PROFILES ||--o{ PUBLICATIONS : publishes
   PUBLICATIONS ||--o{ PUBLICATION_ASSETS : copies
 ```
@@ -191,8 +190,37 @@ and records an immutable change event.
 The public payload trigger recursively rejects private-only keys including
 costs, supplier/factory identifiers, technical source files, fit evidence,
 model profiles, raw AI input references/prompts, private notes, and private
-storage paths. A later WP8 allowlisted publication builder remains responsible
-for constructing the positive public contract.
+storage paths. The WP8 allowlisted publication builder constructs the positive
+public contract and never queries the governed AI graph.
+
+## Governed AI Relationships and Commit Boundary
+
+```mermaid
+erDiagram
+  GARMENTS ||--o{ AI_JOBS : scopes
+  AI_JOBS ||--o{ AI_JOB_INPUT_REFS : pins
+  AI_JOBS ||--o{ AI_ARTIFACTS : proposes
+  GARMENT_VERSIONS o|--o{ AI_JOB_INPUT_REFS : versions
+  MEDIA_ASSETS ||--o{ AI_ARTIFACT_MEDIA : keeps_private
+  AI_ARTIFACTS ||--o{ AI_ARTIFACT_MEDIA : evidences
+  AI_ARTIFACTS ||--o| AI_ARTIFACT_ACCEPTANCES : decided_as
+  AI_ARTIFACT_ACCEPTANCES ||--o{ AI_ACCEPTANCE_COMMANDS : dispatches
+  CHANGE_EVENTS ||--o{ AI_ACCEPTANCE_COMMANDS : proves
+```
+
+AI input references are normalized and revision-pinned. Candidate payload,
+review-field manifest, provenance, contextual confidence, and checksums are
+immutable provider evidence. An owner or editor may accept only a fresh candidate. Acceptance
+calls the same typed domain command used by the manual surface, then records
+one receipt per selected field against the resulting append-only change event.
+The database rejects acceptance without those normal domain events. Rejection
+is audited and creates no domain mutation.
+
+Authenticated browser clients may enqueue jobs and inspect private candidates,
+but provider artifact creation, provider-status transitions, acceptance rows,
+and command receipts are not browser-writable. Generated media must use
+`studios/{studio_id}/...`; public storage paths are rejected. The normal test
+suite uses a deterministic fake provider and makes no paid model call.
 
 ## Storage Contract
 
@@ -225,6 +253,10 @@ Ordered migrations:
 7. `20260825184506_complete_wp4_bom_construction_release_pack.sql`
 8. `20260825203246_implement_wp5_freeze_frames_restore.sql`
 9. `20260826061816_implement_wp6_production_sampling_fit.sql`
+10. `20260826080100_complete_wp6_costing_orders_qc.sql`
+11. `20260826103000_normalize_editorial_story_from_system.sql`
+12. `20260826121000_implement_wp8_public_cuts.sql`
+13. `20260827213019_implement_wp9_governed_ai_candidates.sql`
 
 Verification commands:
 
@@ -239,8 +271,8 @@ npm run build
 
 `validate:schema` is deterministic and verifies the table inventory, tenant
 columns, allowed JSONB fields, RLS/storage coverage, migration order, pgTAP
-plan, WP3/WP4/WP5/WP6 canonical route boundaries, and checksums of all six legacy
-migrations plus the WP0 fixture. `test:db` executes the 68-assertion pgTAP
+plan, WP3-WP9 canonical route boundaries, and checksums of all six legacy
+migrations plus the WP0 fixture. `test:db` executes the 131-assertion pgTAP
 matrix on a local or explicit test database.
 
 ## WP2B Transition Contract

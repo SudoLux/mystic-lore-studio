@@ -1,6 +1,6 @@
 # Mystic Lore Studio 2.0 Implementation Ledger
 
-Last updated: 2026-08-26
+Last updated: 2026-08-27
 
 This ledger records the reproducible baseline and bounded implementation work
 for Mystic Lore Studio 2.0. WP2 establishes the additive canonical schema,
@@ -18,7 +18,10 @@ chain from supplier/sample/fit evidence through quantity costing, factory
 orders, milestones, QC results, waivers, and final decision.
 WP7 normalizes private Editorial Collections and Story from System. WP8 now
 cuts Portfolio Studio and anonymous routes over to immutable, allowlisted
-Public Cuts with copied rights-cleared media derivatives.
+Public Cuts with copied rights-cleared media derivatives. WP9 adds the
+candidate-only AI control plane: versioned private inputs, immutable artifacts,
+staleness detection, designer decisions, typed acceptance commands, and
+append-only attribution.
 
 ## Work-package Status
 
@@ -36,7 +39,8 @@ Public Cuts with copied rights-cleared media derivatives.
 | WP6b | Quantity costing, released-version production orders, milestones, QC templates/results/waivers, decisions, and integrated timeline | Complete | Sample, fit, cost, order, milestone, and QC decisions reference the correct released garment version |
 | WP7 | Editorial Collection normalization, Story from System, private export manifests, and canonical route cutover | Complete | Canonical collections preserve legacy editorial/lookbook evidence, sync-ready records remain private, and approved exports are checksum reproducible |
 | WP8 | Portfolio profile/project/editorial curation, Public Cut preview, immutable publication history, copied media, and anonymous route cutover | Complete | Anonymous access exposes only selected immutable payloads and copied public-safe derivatives, proven by application and database privacy tests |
-| WP9-WP10 | Remaining Product Bible sequence | Not started | WP9 begins candidate-only AI workflows; WP8 intentionally adds no AI writes |
+| WP9 | Governed AI jobs, normalized source references, reviewable candidates, deterministic test provider, and typed/audited acceptance | Complete | AI cannot bypass domain validation or directly write private/public production records; every accepted field is attributable to its source, actor, command, and change event |
+| WP10 | Hardening, accessibility, performance, resilience, and release readiness | Not started | Begins only after the governed AI boundary is accepted |
 
 ## Verification
 
@@ -110,6 +114,34 @@ WP8 evidence:
   history, fresh-state gates, and payload-size regression.
 - `tests/wp8PortfolioUiContract.test.ts`: manager tabs, preview parity,
   anonymous loader isolation, keyboard controls, and narrow-screen contracts.
+
+Latest WP9 completion verification:
+
+| Command | Result |
+| --- | --- |
+| `npm run validate:schema` | Passed: 85 private tables, 2 public projection tables, 131 pgTAP assertions, and 7 protected legacy inputs |
+| `npm run db:reset` | Passed: every migration, including additive `20260827213019_implement_wp9_governed_ai_candidates.sql`, applies to an empty local database |
+| `npm run test:db` | Passed: 131 pgTAP assertions, including same-Studio/reviewer reads, cross-Studio and anonymous denial, direct-write prevention, stale-source denial, command-receipt enforcement, append-only acceptance, and private AI media paths |
+| `npm test` | Passed: 26 test files, 122 tests, including all seven candidate workflows, partial acceptance, rejection, modified-after-generation, offline and permission denial, retry/idempotency, provenance, privacy, first-run hydration, local Supabase configuration, and audit receipts |
+| `npm run build` | Passed: TypeScript and Vite production build; the existing bundle-size advisory remains non-blocking |
+
+WP9 evidence:
+
+- [ADR-0018: governed AI candidates and typed acceptance](../adr/ADR-0018-wp9-governed-ai-candidates.md)
+- `tests/wp9GovernedAi.test.ts`: seven deterministic workflows, no direct
+  domain mutation before acceptance, typed partial commit, stale/offline/role
+  denial, rejection, retry idempotency, source provenance, and private paths.
+- `tests/wp9AiUiContract.test.ts`: complete candidate lifecycle, source and
+  confidence inspection, keyboard-safe field selection, decision notes,
+  conflict/offline/empty/failure feedback, and narrow-screen contracts.
+- `supabase/tests/wp9_ai_governance_test.sql`: RLS/grants, direct-write denial,
+  fresh-source enforcement, domain-event receipts, immutable evidence, and
+  same-Studio private generated-media provenance.
+- Live authenticated local review completed a portfolio-drafting job through
+  queued, running, candidate, and accepted states. Three selected fields
+  produced one normal portfolio domain event and an attributed acceptance
+  operation. Desktop and 390 px layouts had no horizontal overflow; a clean
+  reload had no console warnings or errors.
 
 WP6 completion evidence:
 
@@ -403,6 +435,7 @@ These are observed current behaviors, not WP0 fixes:
 - [ADR-0015: released-version orders, QC decisions, and production timeline](../adr/ADR-0015-wp6-orders-qc-timeline.md)
 - [ADR-0016: canonical Editorial Collections and Story from System](../adr/ADR-0016-wp7-editorial-story-from-system.md)
 - [ADR-0017: immutable Public Cuts and anonymous route isolation](../adr/ADR-0017-wp8-immutable-public-cuts.md)
+- [ADR-0018: governed AI candidates and typed acceptance](../adr/ADR-0018-wp9-governed-ai-candidates.md)
 - Vitest is the WP0 automated test harness. It adds no browser runtime behavior.
 - Existing repository screenshots are the signed-in visual baseline. WP0 does
   not add an authentication bypass merely to create new captures.
@@ -412,8 +445,6 @@ These are observed current behaviors, not WP0 fixes:
 
 ## Open Decisions
 
-- Define the server orchestration and user-review queues for WP9 AI candidates;
-  WP8 rejects raw AI inputs and adds no direct AI writes.
 - Define the final retirement window for preserved legacy portfolio publication
   tables after canonical Public Cuts have production telemetry and backups.
 
