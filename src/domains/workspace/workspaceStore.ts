@@ -34,6 +34,9 @@ import type {
   CanonicalMediaDerivative,
   CanonicalMoodboard,
   CanonicalMoodboardItem,
+  CanonicalPortfolioEditorial,
+  CanonicalPortfolioProfile,
+  CanonicalPortfolioProject,
   CanonicalProductionMilestone,
   CanonicalProductionOrder,
   CanonicalQcInspection,
@@ -54,7 +57,7 @@ import type {
   RelationshipOption,
 } from './contracts';
 
-const workspaceVersion = 8 as const;
+const workspaceVersion = 9 as const;
 
 export type CanonicalWorkspaceSeed = {
   data: StudioData;
@@ -203,6 +206,21 @@ export async function createCanonicalWorkspace(seed: CanonicalWorkspaceSeed) {
     measurementSets: [],
     measurementValues: [],
     pomPoints: [],
+    portfolioEditorials: rows('portfolio_editorials').map((row) => {
+      const value = row as { collection_id: string; created_at: string; profile_id: string; revision?: number; slug: string; sort_order: number; studio_id: string; updated_at: string; visibility: CanonicalPortfolioEditorial['visibility'] };
+      return { ...base({ ...value, id: `${value.profile_id}:${value.collection_id}` }), collectionId: value.collection_id, profileId: value.profile_id, selectedAssetIds: [], selectedSceneIds: [], slug: value.slug, sortOrder: value.sort_order, sourceVersionId: null, visibility: value.visibility } satisfies CanonicalPortfolioEditorial;
+    }),
+    portfolioProfiles: rows('portfolio_profiles').map((row) => {
+      const value = row as { bio: string; created_at: string; headline: string; id: string; status: CanonicalPortfolioProfile['status']; studio_id: string; updated_at: string; username_slug: string };
+      return { ...base(value), avatarAssetId: seed.data.portfolioProfile.avatarImageId || null, bio: value.bio ?? '', displayName: seed.data.portfolioProfile.displayName || 'Mystic Lore Portfolio', email: seed.data.portfolioProfile.email ?? '', headline: value.headline ?? '', location: seed.data.portfolioProfile.location ?? '', resumePublicUrl: seed.data.portfolioProfile.resumeUrl ?? '', status: value.status, usernameSlug: value.username_slug } satisfies CanonicalPortfolioProfile;
+    }),
+    portfolioProjects: rows('portfolio_projects').map((row) => {
+      const value = row as { case_study_json: { legacyPortfolioSettings?: Record<string, unknown> }; created_at: string; garment_id: string; id: string; profile_id: string; slug: string; sort_order: number; studio_id: string; updated_at: string; visibility: CanonicalPortfolioProject['visibility'] };
+      const settings = value.case_study_json.legacyPortfolioSettings ?? {};
+      return { ...base(value), caseStudy: { challenge: String(settings.portfolioChallenge ?? ''), outcome: String(settings.portfolioOutcome ?? ''), overview: String(settings.portfolioOverview ?? ''), processSummary: String(settings.portfolioProcessSummary ?? ''), role: String(settings.portfolioRole ?? ''), skills: Array.isArray(settings.portfolioSkills) ? settings.portfolioSkills.map(String) : [], solution: String(settings.portfolioSolution ?? ''), tools: Array.isArray(settings.portfolioTools) ? settings.portfolioTools.map(String) : [] }, featured: Boolean(settings.featured), garmentId: value.garment_id, includeTechnicalExcerpt: false, profileId: value.profile_id, selectedAssetIds: Array.isArray(settings.featuredPortfolioImageIds) ? settings.featuredPortfolioImageIds.map(String) : [], slug: value.slug, sortOrder: value.sort_order, sourceVersionId: null, visibility: value.visibility } satisfies CanonicalPortfolioProject;
+    }),
+    portfolioTechnicalExcerpts: [],
+    publications: [],
     productionMilestones: [] as CanonicalProductionMilestone[],
     productionOrders: [] as CanonicalProductionOrder[],
     qcInspections: [] as CanonicalQcInspection[],
@@ -279,6 +297,11 @@ export function normalizeWorkspace(state: CanonicalWorkspaceState): CanonicalWor
     measurementSets: [...state.measurementSets],
     measurementValues: [...state.measurementValues],
     pomPoints: [...state.pomPoints].sort((a, b) => a.sortOrder - b.sortOrder),
+    portfolioEditorials: [...state.portfolioEditorials].sort((a, b) => a.sortOrder - b.sortOrder || a.slug.localeCompare(b.slug)),
+    portfolioProfiles: [...state.portfolioProfiles],
+    portfolioProjects: [...state.portfolioProjects].sort((a, b) => a.sortOrder - b.sortOrder || a.slug.localeCompare(b.slug)),
+    portfolioTechnicalExcerpts: [...state.portfolioTechnicalExcerpts],
+    publications: [...state.publications].sort((a, b) => b.publishedAt.localeCompare(a.publishedAt)),
     productionMilestones: [...state.productionMilestones].sort((a, b) => a.sortOrder - b.sortOrder || a.id.localeCompare(b.id)),
     productionOrders: [...state.productionOrders].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt)),
     qcInspections: [...state.qcInspections].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt)),

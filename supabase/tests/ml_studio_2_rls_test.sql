@@ -3,7 +3,7 @@ begin;
 create extension if not exists pgtap with schema extensions;
 set local search_path = extensions, public, ml_private, ml_public;
 
-select plan(87);
+select plan(100);
 
 insert into auth.users (id, email) values
   ('10000000-0000-4000-8000-000000000001', 'wp2-owner-a@example.test'),
@@ -382,8 +382,8 @@ insert into ml_public.publications (
     '20000000-0000-4000-8000-000000000001',
     '50000000-0000-4000-8000-000000000001', 'profile',
     '50000000-0000-4000-8000-000000000001', '/wp2-designer',
-    '{"display_name":"WP2 Designer"}'::jsonb,
-    '[{"role":"hero"}]'::jsonb, repeat('a', 64),
+    '{"profile":{"usernameSlug":"wp2-designer","displayName":"WP2 Designer"},"projects":[],"editorials":[],"generatedAt":"2026-08-26T00:00:00Z"}'::jsonb,
+    '[]'::jsonb, repeat('a', 64),
     false, false, null, null,
     '10000000-0000-4000-8000-000000000001'
   ),
@@ -392,7 +392,7 @@ insert into ml_public.publications (
     '20000000-0000-4000-8000-000000000001',
     '50000000-0000-4000-8000-000000000001', 'profile',
     '50000000-0000-4000-8000-000000000001', '/wp2-designer',
-    '{"display_name":"Draft"}'::jsonb, '[]'::jsonb, repeat('b', 64),
+    '{"profile":{"usernameSlug":"wp2-designer","displayName":"WP2 Designer"},"projects":[],"editorials":[],"generatedAt":"2026-08-26T00:00:00Z"}'::jsonb, '[]'::jsonb, repeat('b', 64),
     false, false, null, null,
     '10000000-0000-4000-8000-000000000001'
   ),
@@ -401,7 +401,7 @@ insert into ml_public.publications (
     '20000000-0000-4000-8000-000000000001',
     '50000000-0000-4000-8000-000000000001', 'profile',
     '50000000-0000-4000-8000-000000000001', '/wp2-designer',
-    '{"display_name":"Old public cut"}'::jsonb, '[]'::jsonb, repeat('c', 64),
+    '{"profile":{"usernameSlug":"wp2-designer","displayName":"WP2 Designer"},"projects":[],"editorials":[],"generatedAt":"2026-08-26T00:00:00Z"}'::jsonb, '[]'::jsonb, repeat('c', 64),
     true, false, now() - interval '1 day', null,
     '10000000-0000-4000-8000-000000000001'
   ),
@@ -410,21 +410,42 @@ insert into ml_public.publications (
     '20000000-0000-4000-8000-000000000001',
     '50000000-0000-4000-8000-000000000001', 'profile',
     '50000000-0000-4000-8000-000000000001', '/wp2-designer',
-    '{"display_name":"Unpublished"}'::jsonb, '[]'::jsonb, repeat('d', 64),
+    '{"profile":{"usernameSlug":"wp2-designer","displayName":"WP2 Designer"},"projects":[],"editorials":[],"generatedAt":"2026-08-26T00:00:00Z"}'::jsonb, '[]'::jsonb, repeat('d', 64),
     false, false, now() - interval '2 days', now() - interval '1 day',
     '10000000-0000-4000-8000-000000000001'
   );
 
+insert into ml_private.media_assets (
+  id, studio_id, storage_path, original_filename, mime_type, size_bytes, checksum, rights_json
+) values (
+  '71000000-0000-4000-8000-000000000001',
+  '20000000-0000-4000-8000-000000000001',
+  'studios/20000000-0000-4000-8000-000000000001/assets/source/hero.webp',
+  'hero.webp', 'image/webp', 1024, repeat('f', 64), '{"license":"owned"}'::jsonb
+);
+insert into ml_private.media_derivatives (
+  id, studio_id, source_asset_id, variant, storage_path, mime_type, size_bytes, checksum
+) values (
+  '72000000-0000-4000-8000-000000000001',
+  '20000000-0000-4000-8000-000000000001',
+  '71000000-0000-4000-8000-000000000001', 'portfolio',
+  'studios/20000000-0000-4000-8000-000000000001/assets/derivatives/hero.webp',
+  'image/webp', 1024, repeat('f', 64)
+);
+
 insert into ml_public.publication_assets (
   id, studio_id, publication_id, role, storage_path, mime_type,
-  size_bytes, checksum, copied_from_checksum, width, height, alt_text
+  size_bytes, checksum, copied_from_checksum, width, height, alt_text,
+  source_asset_id, source_derivative_id, rights_checked_at
 ) values (
   '70000000-0000-4000-8000-000000000001',
   '20000000-0000-4000-8000-000000000001',
   '60000000-0000-4000-8000-000000000001', 'hero',
   'publications/60000000-0000-4000-8000-000000000001/70000000-0000-4000-8000-000000000001/hero.webp',
   'image/webp', 1024, repeat('e', 64), repeat('f', 64),
-  800, 1000, 'Public-safe test derivative'
+  800, 1000, 'Public-safe test derivative',
+  '71000000-0000-4000-8000-000000000001',
+  '72000000-0000-4000-8000-000000000001', now()
 );
 
 update ml_public.publications
@@ -733,7 +754,7 @@ insert into ml_public.publications (
   '51000000-0000-4000-8000-000000000001',
   (select id from ml_private.garment_versions where label = 'Owner design review'),
   '51000000-0000-4000-8000-000000000001',
-  '/wp2-designer/studio-a-garment', '{"display_name":"Stale cut"}'::jsonb,
+  '/wp2-designer/studio-a-garment', '{"profile":{"usernameSlug":"wp2-designer","displayName":"WP2 Designer"},"projects":[],"editorials":[],"generatedAt":"2026-08-26T00:00:00Z"}'::jsonb,
   '[]'::jsonb, repeat('6', 64), false, false,
   '10000000-0000-4000-8000-000000000001'
 );
@@ -752,7 +773,7 @@ select throws_ok(
       '20000000-0000-4000-8000-000000000001',
       '50000000-0000-4000-8000-000000000001', 'profile',
       '50000000-0000-4000-8000-000000000001', '/wp2-private-key',
-      '{"unit_cost":45}'::jsonb, repeat('9', 64)
+      '{"profile":{"usernameSlug":"wp2-designer","unit_cost":45},"projects":[],"editorials":[],"generatedAt":"2026-08-26T00:00:00Z"}'::jsonb, repeat('9', 64)
     )$$,
   '23514',
   'Publication snapshot contains a private-only key.',
@@ -760,7 +781,7 @@ select throws_ok(
 );
 select throws_ok(
   $$update ml_public.publications
-    set snapshot_json = '{"display_name":"Mutated"}'::jsonb
+    set snapshot_json = '{"profile":{"usernameSlug":"wp2-designer","displayName":"Mutated"},"projects":[],"editorials":[],"generatedAt":"2026-08-26T00:00:00Z"}'::jsonb
     where id = '60000000-0000-4000-8000-000000000001'$$,
   '23514',
   'Publication payloads are immutable; create a new publication snapshot.',
@@ -850,6 +871,88 @@ select is(
     where namespace.nspname = 'ml_private' and trigger.tgname in ('editorial_blocks_assert_live_source', 'editorial_exports_append_only')),
   2::bigint,
   'Story from System provenance and immutable export evidence triggers are installed'
+);
+
+select is(
+  (select count(*) from information_schema.tables where table_schema = 'ml_private' and table_name in (
+    'portfolio_project_assets', 'portfolio_editorial_scenes', 'portfolio_editorial_assets', 'portfolio_technical_excerpts'
+  )),
+  4::bigint,
+  'WP8 stores public selections and technical excerpts as normalized private relationships'
+);
+select is(
+  (select count(*) from pg_class relation join pg_namespace namespace on namespace.oid = relation.relnamespace
+    where namespace.nspname = 'ml_private' and relation.relname in (
+      'portfolio_project_assets', 'portfolio_editorial_scenes', 'portfolio_editorial_assets', 'portfolio_technical_excerpts'
+    ) and relation.relrowsecurity and relation.relforcerowsecurity),
+  4::bigint,
+  'every WP8 private curation table enables and forces RLS'
+);
+select is(
+  (select count(*) from pg_policies where schemaname = 'ml_private' and tablename in (
+    'portfolio_project_assets', 'portfolio_editorial_scenes', 'portfolio_editorial_assets', 'portfolio_technical_excerpts'
+  ) and policyname in ('studio_select', 'studio_insert', 'studio_update', 'studio_delete')),
+  16::bigint,
+  'WP8 curation relationships use operation-specific same-studio policies'
+);
+select is(
+  (select count(*) from information_schema.role_table_grants where grantee = 'anon' and table_schema = 'ml_private' and table_name in (
+    'portfolio_project_assets', 'portfolio_editorial_scenes', 'portfolio_editorial_assets', 'portfolio_technical_excerpts'
+  )),
+  0::bigint,
+  'anonymous users receive no grants on WP8 curation sources'
+);
+select ok(
+  ml_internal.publication_root_keys_allowed('{"profile":{},"projects":[],"editorials":[],"generatedAt":"2026-08-26T00:00:00Z"}'::jsonb),
+  'the exact Public Cut root contract passes its database allowlist'
+);
+select isnt(
+  ml_internal.publication_root_keys_allowed('{"profile":{},"projects":[],"editorials":[],"generatedAt":"2026-08-26T00:00:00Z","privateGraph":{}}'::jsonb),
+  true,
+  'an unexpected Public Cut root key fails closed'
+);
+select ok(
+  ml_internal.jsonb_has_private_key('{"profile":{"nested":{"tasks":[],"costSheets":[],"rawAiInputs":[]}},"projects":[],"editorials":[],"generatedAt":"2026-08-26T00:00:00Z"}'::jsonb),
+  'nested tasks, costs, and raw AI inputs are denied by the database privacy scan'
+);
+select ok(
+  ml_internal.jsonb_has_unknown_public_key('{"profile":{"displayName":"Mystic Lore","surprisePrivateField":"blocked"},"projects":[],"editorials":[],"generatedAt":"2026-08-26T00:00:00Z"}'::jsonb),
+  'nested publication keys must be explicitly allowlisted before anonymous use'
+);
+select is(
+  (select count(*) from information_schema.columns where table_schema = 'ml_public' and table_name = 'publication_assets' and column_name in ('source_asset_id', 'source_derivative_id', 'rights_checked_at')),
+  3::bigint,
+  'copied public media retains source derivative and rights-check provenance'
+);
+select is(
+  (select count(*) from pg_trigger trigger join pg_class relation on relation.oid = trigger.tgrelid
+    join pg_namespace namespace on namespace.oid = relation.relnamespace
+    where namespace.nspname in ('ml_private', 'ml_public') and trigger.tgname in (
+      'portfolio_projects_assert_source_version', 'portfolio_editorials_assert_source_version',
+      'portfolio_technical_excerpts_assert_source', 'publications_enforce_wp8_public_cut',
+      'publication_assets_enforce_provenance'
+    )),
+  5::bigint,
+  'WP8 validates source versions, excerpt releases, payload privacy, and copied media provenance'
+);
+select is(
+  (select count(*) from pg_indexes where schemaname in ('ml_private', 'ml_public') and indexname in (
+    'ml_portfolio_projects_source_version_idx', 'ml_portfolio_editorials_source_version_idx',
+    'ml_portfolio_project_assets_project_idx', 'ml_portfolio_editorial_scenes_scene_idx',
+    'ml_portfolio_technical_excerpts_version_idx', 'ml_publications_public_path_lookup_idx'
+  )),
+  6::bigint,
+  'WP8 source, ordering, and anonymous path lookups are indexed'
+);
+select is(
+  (select count(*) from information_schema.columns where table_schema = 'ml_private' and table_name = 'portfolio_profiles' and column_name in ('display_name', 'location', 'public_email', 'resume_public_url', 'avatar_asset_id')),
+  5::bigint,
+  'portfolio profile owns the complete public identity editor contract'
+);
+select is(
+  (select count(*) from information_schema.columns where table_schema = 'ml_public' and table_name = 'publications' and column_name in ('source_revision', 'source_version_id', 'snapshot_json', 'media_manifest', 'checksum', 'is_current', 'unpublished_at')),
+  7::bigint,
+  'publication history retains source, immutable payload, checksum, and current-state evidence'
 );
 
 select * from finish();

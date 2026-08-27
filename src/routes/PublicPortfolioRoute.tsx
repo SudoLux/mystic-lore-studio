@@ -5,7 +5,7 @@ import {
   fetchPublishedEditorial,
   fetchPublishedPortfolioProject,
   fetchPublicPortfolio,
-} from '../lib/publicPortfolioPublication';
+} from '../lib/canonicalPublications';
 import { PublicPortfolioPage } from '../pages/PublicPortfolio';
 import type { PublicPortfolioRoute as PublicPortfolioRouteValue } from '../lib/appRoutes';
 import {

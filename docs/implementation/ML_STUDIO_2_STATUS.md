@@ -16,6 +16,9 @@ comparison, consequence-aware scoped restore, conflict handling, and protected
 release/publication lineage. WP6 completes the released-version production
 chain from supplier/sample/fit evidence through quantity costing, factory
 orders, milestones, QC results, waivers, and final decision.
+WP7 normalizes private Editorial Collections and Story from System. WP8 now
+cuts Portfolio Studio and anonymous routes over to immutable, allowlisted
+Public Cuts with copied rights-cleared media derivatives.
 
 ## Work-package Status
 
@@ -32,7 +35,8 @@ orders, milestones, QC results, waivers, and final decision.
 | WP6a | Supplier/factory capabilities, pinned sample rounds, fit sessions, measurements, issues, private evidence, decisions, and provenance-preserving promotions | Complete | Sample and fit decisions are reproducible, version-pinned, and traceable to stable POM and media evidence; costing, orders, and QC remain deferred |
 | WP6b | Quantity costing, released-version production orders, milestones, QC templates/results/waivers, decisions, and integrated timeline | Complete | Sample, fit, cost, order, milestone, and QC decisions reference the correct released garment version |
 | WP7 | Editorial Collection normalization, Story from System, private export manifests, and canonical route cutover | Complete | Canonical collections preserve legacy editorial/lookbook evidence, sync-ready records remain private, and approved exports are checksum reproducible |
-| WP8-WP10 | Remaining Product Bible sequence | Not started | WP8 begins Portfolio work; WP7 intentionally leaves Portfolio and public publication routes unchanged |
+| WP8 | Portfolio profile/project/editorial curation, Public Cut preview, immutable publication history, copied media, and anonymous route cutover | Complete | Anonymous access exposes only selected immutable payloads and copied public-safe derivatives, proven by application and database privacy tests |
+| WP9-WP10 | Remaining Product Bible sequence | Not started | WP9 begins candidate-only AI workflows; WP8 intentionally adds no AI writes |
 
 ## Verification
 
@@ -87,6 +91,25 @@ WP7 evidence:
 - `tests/wp7Editorial.test.ts`: legacy normalization report, one primary plus
   supporting garments, keyboard-safe scene order, source checksum staleness,
   asset-rights export gate, and deterministic private export identity.
+
+Latest WP8 completion verification:
+
+| Command | Result |
+| --- | --- |
+| `npm run validate:schema` | Passed: 81 private tables, 2 public projection tables, 100 pgTAP assertions, and 7 protected legacy inputs |
+| `npm run db:reset` | Passed: every migration, including additive `20260826121000_implement_wp8_public_cuts.sql`, applies to an empty local database |
+| `npm run test:db` | Passed: 100 pgTAP assertions, including same-Studio RLS, cross-Studio and anonymous denial, recursive root/nested allowlists and denylist, immutable history, unpublish, source-version gates, and copied-derivative provenance |
+| `npm test` | Passed: 23 test files, 109 tests, including privacy regression fixtures, nested editorial allowlisting, selected relationships, staleness, public media copying, immutable republish history, offline release denial, route isolation, responsive controls, and exact-preview reuse |
+| `npm run build` | Passed: TypeScript and Vite production build; the existing bundle-size advisory remains non-blocking |
+
+WP8 evidence:
+
+- [ADR-0017: immutable Public Cuts and anonymous route isolation](../adr/ADR-0017-wp8-immutable-public-cuts.md)
+- `tests/wp8PublicCuts.test.ts`: payload allowlist/denylist, source version
+  staleness, rights-cleared media manifest, copied paths, publish/unpublish
+  history, fresh-state gates, and payload-size regression.
+- `tests/wp8PortfolioUiContract.test.ts`: manager tabs, preview parity,
+  anonymous loader isolation, keyboard controls, and narrow-screen contracts.
 
 WP6 completion evidence:
 
@@ -257,7 +280,7 @@ continue to load sanitized published snapshots rather than in-memory `StudioData
 | Image variants | `src/lib/localImages.ts`, `src/lib/imageCompression.ts` | Master, display, and compact preview variants; browser cache avoids storing signed URLs in localStorage |
 | Browser recovery | `src/lib/pwa.ts`, `public/sw.js` | Development worker cleanup and production app-shell behavior |
 | Cloud merge | `src/lib/supabaseStudio.ts` | Newest `updatedAt` record wins, with tombstones protecting deleted IDs |
-| Public data | `src/utils/portfolioSnapshot.ts`, `src/lib/publicPortfolioPublication.ts` | Public routes render sanitized snapshots, never the private in-memory studio aggregate |
+| Public data | `src/domains/portfolio/publicCutRepository.ts`, `src/lib/canonicalPublications.ts` | Studio builds immutable Public Cuts; anonymous routes query only current `ml_public` snapshot rows and copied public media |
 
 ## Supabase and Storage Inventory
 
@@ -334,6 +357,8 @@ rows marked public; they do not grant anonymous access to private Studio tables.
 | `20260825203246_implement_wp5_freeze_frames_restore.sql` | Freeze Frame scope/parent identity, append-only replay evidence, fresh-revision commands, restore audit, protected dependencies, and stale publication rejection | WP5 added; no legacy mutation |
 | `20260826061816_implement_wp6_production_sampling_fit.sql` | Supplier/factory capability, version-pinned sample and fit evidence, private media queue/retry, and provenance-preserving issue promotion | WP6a added; no legacy mutation |
 | `20260826080100_complete_wp6_costing_orders_qc.sql` | Quantity costing, immutable released-version order pin, normalized milestones, versioned QC templates/results, append-only waivers, change events, RLS, grants, and indexes | WP6b added; Editorial remains untouched |
+| `20260826103000_normalize_editorial_story_from_system.sql` | Normalized private editorial garments, scenes/blocks/assets, Story from System provenance, and immutable export evidence | WP7 added; no public draft exposure |
+| `20260826121000_implement_wp8_public_cuts.sql` | Normalized portfolio selections, optional released technical excerpts, publication allowlist/denylist, source revisions, copied-media provenance, RLS, and anonymous path index | WP8 added; legacy public tables retained for recovery |
 
 No legacy migration or table was edited or removed. The safe, sanitized input
 artifact remains `tests/fixtures/legacy-studio-data-v5.json`; WP2 retains it as
@@ -355,10 +380,9 @@ These are observed current behaviors, not WP0 fixes:
    legacy IDs until their own route cutover.
 5. Legacy `lookbook_pages` and newer Editorial Collections coexist by explicit
    `preserve-both-until-wp7` policy; overlap is reported, never silently merged.
-6. The migration ledger includes both aggregate `portfolio_publications` and
-   granular published portfolio tables. Current public routes use the aggregate
-   publication loader. Selecting one canonical publication projection is an
-   explicit future migration decision.
+6. Legacy aggregate and granular portfolio publication tables remain for
+   recovery, but signed-out routes now read only canonical
+   `ml_public.publications`; no UI hydrates the legacy public graph.
 
 ## Accepted Decisions
 
@@ -377,6 +401,8 @@ These are observed current behaviors, not WP0 fixes:
 - [ADR-0013: version-pinned sampling and fit provenance](../adr/ADR-0013-wp6-sampling-fit-provenance.md)
 - [ADR-0014: quantity-scenario costing and currency integrity](../adr/ADR-0014-wp6-quantity-costing.md)
 - [ADR-0015: released-version orders, QC decisions, and production timeline](../adr/ADR-0015-wp6-orders-qc-timeline.md)
+- [ADR-0016: canonical Editorial Collections and Story from System](../adr/ADR-0016-wp7-editorial-story-from-system.md)
+- [ADR-0017: immutable Public Cuts and anonymous route isolation](../adr/ADR-0017-wp8-immutable-public-cuts.md)
 - Vitest is the WP0 automated test harness. It adds no browser runtime behavior.
 - Existing repository screenshots are the signed-in visual baseline. WP0 does
   not add an authentication bypass merely to create new captures.
@@ -386,10 +412,10 @@ These are observed current behaviors, not WP0 fixes:
 
 ## Open Decisions
 
-- Define one primary garment plus optional supporting garments for an Editorial
-  Collection before WP7.
-- Define retention and migration behavior for legacy `lookbook_pages` before
-  retiring that representation.
+- Define the server orchestration and user-review queues for WP9 AI candidates;
+  WP8 rejects raw AI inputs and adds no direct AI writes.
+- Define the final retirement window for preserved legacy portfolio publication
+  tables after canonical Public Cuts have production telemetry and backups.
 
 WP2A resolves three former schema decisions:
 

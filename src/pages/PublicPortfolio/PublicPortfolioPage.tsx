@@ -505,10 +505,23 @@ function PublicProjectPage({
           </ProjectSection>
         ) : null}
 
-        {project.visibleSections.notes && project.notes.length ? (
+        {project.visibleSections.downloads && project.technicalExcerpt ? (
+          <ProjectSection eyebrow="Approved technical excerpt" id="technical-excerpt" title={project.technicalExcerpt.title}>
+            <div className="grid gap-5 rounded-xl border border-bronze/22 bg-[linear-gradient(145deg,rgba(45,92,107,0.12),rgba(17,17,17,0.82))] p-6 sm:p-8 lg:grid-cols-[auto_minmax(0,1fr)_auto] lg:items-center">
+              <span className="flex h-12 w-12 items-center justify-center rounded-full border border-ember/35 text-ember"><Ruler aria-hidden="true" size={21} /></span>
+              <div>
+                <p className="text-sm leading-7 text-stardust/64">{project.technicalExcerpt.summary}</p>
+                <p className="mt-2 text-[0.65rem] uppercase tracking-[0.16em] text-stardust/38">Approved source {project.technicalExcerpt.approvedVersionId.slice(0, 8)}</p>
+              </div>
+              {project.technicalExcerpt.downloadUrl ? <PublicAction href={project.technicalExcerpt.downloadUrl} icon={<Download size={17} />} label="Download excerpt" /> : null}
+            </div>
+          </ProjectSection>
+        ) : null}
+
+        {project.visibleSections.notes && project.notes?.length ? (
           <ProjectSection eyebrow="Published notes" title="Reflections">
             <div className="grid gap-4 md:grid-cols-2">
-              {project.notes.map((note, index) => <article className="rounded-xl border border-bronze/20 bg-[rgba(17,17,17,0.76)] p-6" key={`${note.title}-${index}`}><p className="text-xs uppercase tracking-[0.17em] text-ember">{note.category}</p><h3 className="mt-3 text-xl font-semibold text-stardust">{note.title}</h3><p className="mt-4 text-sm leading-7 text-stardust/58">{note.body}</p></article>)}
+              {project.notes?.map((note, index) => <article className="rounded-xl border border-bronze/20 bg-[rgba(17,17,17,0.76)] p-6" key={`${note.title}-${index}`}><p className="text-xs uppercase tracking-[0.17em] text-ember">{note.category}</p><h3 className="mt-3 text-xl font-semibold text-stardust">{note.title}</h3><p className="mt-4 text-sm leading-7 text-stardust/58">{note.body}</p></article>)}
             </div>
           </ProjectSection>
         ) : null}
@@ -552,6 +565,7 @@ function ProjectQuickNav({ project }: { project: PortfolioProjectSnapshot }) {
     project.visibleSections.materials && project.materials.length ? { href: '#materials', label: 'Materials' } : null,
     project.visibleSections.skills && (project.caseStudy?.skills.length || project.caseStudy?.tools.length || project.skills.length) ? { href: '#skills', label: 'Skills' } : null,
     project.visibleSections.process && (project.caseStudy?.processSummary || project.process) ? { href: '#process', label: 'Process' } : null,
+    project.visibleSections.downloads && project.technicalExcerpt ? { href: '#technical-excerpt', label: 'Technical excerpt' } : null,
     project.visibleSections.editorials && project.editorials.length ? { href: '#editorials', label: 'Editorials' } : null,
   ].filter((link): link is { href: string; label: string } => Boolean(link));
 

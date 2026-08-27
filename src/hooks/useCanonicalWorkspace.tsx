@@ -76,7 +76,7 @@ export function CanonicalWorkspaceProvider({ children, userId }: { children: Rea
         const stored = window.localStorage.getItem(key);
         const parsed = stored ? JSON.parse(stored) as CanonicalWorkspaceState : null;
         const next = parsed?.studioId && Array.isArray(parsed.designBriefs)
-          ? hydrateTechnicalState(parsed)
+          ? hydrateTechnicalState(parsed, rawData)
           : await createCanonicalWorkspace({ data: rawData, ownerUserId: userId });
         if (cancelled) return;
         window.localStorage.setItem(key, JSON.stringify(next));
@@ -136,7 +136,24 @@ export function CanonicalWorkspaceProvider({ children, userId }: { children: Rea
   return <CanonicalWorkspaceContext.Provider value={value}>{children}</CanonicalWorkspaceContext.Provider>;
 }
 
-function hydrateTechnicalState(state: CanonicalWorkspaceState): CanonicalWorkspaceState {
+function hydrateTechnicalState(state: CanonicalWorkspaceState, rawData: ReturnType<typeof useStudioData>['rawData']): CanonicalWorkspaceState {
+  const now = new Date().toISOString();
+  const migratedProfile = state.portfolioProfiles?.length ? state.portfolioProfiles : [{
+    avatarAssetId: null,
+    bio: rawData.portfolioProfile.bio,
+    createdAt: now,
+    displayName: rawData.portfolioProfile.displayName || 'Mystic Lore Portfolio',
+    email: rawData.portfolioProfile.email ?? '',
+    headline: rawData.portfolioProfile.headline,
+    id: crypto.randomUUID(),
+    location: rawData.portfolioProfile.location ?? '',
+    resumePublicUrl: rawData.portfolioProfile.resumeUrl ?? '',
+    revision: 1,
+    status: 'ready' as const,
+    studioId: state.studioId,
+    updatedAt: now,
+    usernameSlug: rawData.portfolioProfile.usernameSlug || 'designer',
+  }];
   return {
     ...state,
     bomItems: state.bomItems ?? [],
@@ -254,7 +271,12 @@ function hydrateTechnicalState(state: CanonicalWorkspaceState): CanonicalWorkspa
       fitSessionId: item.fitSessionId ?? null,
       garmentVersionId: item.garmentVersionId ?? null,
     })),
-    schemaVersion: 8,
+    portfolioEditorials: state.portfolioEditorials ?? [],
+    portfolioProfiles: migratedProfile,
+    portfolioProjects: state.portfolioProjects ?? [],
+    portfolioTechnicalExcerpts: state.portfolioTechnicalExcerpts ?? [],
+    publications: state.publications ?? [],
+    schemaVersion: 9,
     techPackExports: (state.techPackExports ?? []).map((item) => ({
       ...item,
       approvedAt: item.approvedAt ?? null,

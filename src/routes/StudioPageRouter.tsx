@@ -4,7 +4,7 @@ import { CanonicalGarmentWorkspacePage } from '../pages/GarmentWorkspace';
 import { LibraryVaultPage } from '../pages/LibraryVault';
 import { KanbanPage } from '../pages/Kanban';
 import { EditorialStudioPage } from '../pages/EditorialStudio';
-import { PortfolioPage } from '../pages/Portfolio';
+import { PortfolioStudioPage } from '../pages/PortfolioStudio';
 import { SettingsPage } from '../pages/Settings';
 import { StatsPage } from '../pages/Stats';
 import { TechnicalStudioPage } from '../pages/TechnicalStudio';
@@ -79,7 +79,7 @@ export function StudioPageRouter({
 
   if (route.page === 'kanban') return <KanbanPage />;
   if (route.page === 'lookbooks') return <EditorialStudioPage />;
-  if (route.page === 'portfolio') return <PortfolioPage />;
+  if (route.page === 'portfolio') return <PortfolioStudioPage />;
   if (route.page === 'stats') return <StatsPage />;
   return <SettingsPage />;
 }
