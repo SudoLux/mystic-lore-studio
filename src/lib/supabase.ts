@@ -72,6 +72,14 @@ export function createRequestBoundCanonicalSupabase(accessToken: string): Supaba
       detectSessionInUrl: false,
       persistSession: false,
     },
+    // This client never owns Auth state. Binding the already-validated session
+    // header here prevents a canonical REST request from falling back to the
+    // publishable-key role while Safari restores a private browsing session.
+    global: {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
+    },
   });
 }
 
