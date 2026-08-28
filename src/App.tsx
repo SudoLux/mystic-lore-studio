@@ -25,7 +25,7 @@ function App() {
   if (requiresStudioSetup) return <FirstStudioSetupScreen />;
 
   return (
-    <CanonicalWorkspaceProvider userId={session.user.id}>
+    <CanonicalWorkspaceProvider accessToken={session.access_token} userId={session.user.id}>
       <StudioAppRoute />
     </CanonicalWorkspaceProvider>
   );

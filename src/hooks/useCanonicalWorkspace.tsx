@@ -50,8 +50,10 @@ import {
   type CanonicalWorkspaceRepository,
 } from '../domains/persistence';
 import { recordClientEvent } from '../lib/observability';
-import { canonicalSupabase } from '../lib/supabase';
+import { createRequestBoundCanonicalSupabase } from '../lib/supabase';
 import { getStudioData, type StudioData } from '../lib/studioStorage';
+import type { SupabaseClient } from '@supabase/supabase-js';
+import type { Database } from '../types/database.generated';
 
 type CanonicalWorkspaceContextValue = {
   addCollection: (name: string, season?: string) => string;
@@ -115,7 +117,15 @@ function errorMessage(reason: unknown, fallback: string) {
   return fallback;
 }
 
-export function CanonicalWorkspaceProvider({ children, userId }: { children: ReactNode; userId: string }) {
+export function CanonicalWorkspaceProvider({
+  accessToken,
+  children,
+  userId,
+}: {
+  accessToken: string;
+  children: ReactNode;
+  userId: string;
+}) {
   // Legacy storage is read once as migration/recovery input. Its provider and
   // cloud-sync effects are intentionally absent from normal authenticated UI.
   const rawData = useMemo(() => getStudioData(userId), [userId]);
@@ -128,9 +138,18 @@ export function CanonicalWorkspaceProvider({ children, userId }: { children: Rea
   const [error, setError] = useState<string | null>(null);
   const [attempt, setAttempt] = useState(0);
   const cacheRef = useRef(new CanonicalIndexedDb());
-  const repositoryRef = useRef(
-    canonicalSupabase ? new SupabaseCanonicalWorkspaceRepository(canonicalSupabase, cacheRef.current) : null,
+  const requestBoundSupabase = useMemo(
+    () => createRequestBoundCanonicalSupabase(accessToken),
+    [accessToken],
   );
+  const repositoryRef = useRef<SupabaseCanonicalWorkspaceRepository | null>(null);
+  const repositoryClientRef = useRef<SupabaseClient<Database> | null>(null);
+  if (repositoryClientRef.current !== requestBoundSupabase) {
+    repositoryClientRef.current = requestBoundSupabase;
+    repositoryRef.current = requestBoundSupabase
+      ? new SupabaseCanonicalWorkspaceRepository(requestBoundSupabase, cacheRef.current)
+      : null;
+  }
   const key = `mystic-lore-studio:canonical-wp3:${userId}`;
 
   useEffect(() => {
@@ -150,7 +169,7 @@ export function CanonicalWorkspaceProvider({ children, userId }: { children: Rea
           usedOfflineIdentity = true;
         } else {
           try {
-            canonicalStudioId = await currentCanonicalStudioId();
+            canonicalStudioId = await currentCanonicalStudioId(requestBoundSupabase);
           } catch (reason) {
             if (!rememberedStudioId) throw reason;
             canonicalStudioId = rememberedStudioId;
@@ -173,7 +192,7 @@ export function CanonicalWorkspaceProvider({ children, userId }: { children: Rea
         let next: CanonicalWorkspaceState;
         let mode: CanonicalPersistenceMode = 'local-recovery';
 
-        if (!canonicalSupabase || !studioId || !repositoryRef.current) {
+        if (!requestBoundSupabase || !studioId || !repositoryRef.current) {
           next = recoveryState ?? cachedState ?? await createCanonicalWorkspace({
             data: rawData, ownerUserId: userId, studioId: studioId ?? undefined,
           });
@@ -187,7 +206,7 @@ export function CanonicalWorkspaceProvider({ children, userId }: { children: Rea
           } else {
             try {
               mode = await withStartupRequestTimeout(
-                loadCanonicalPersistenceMode(canonicalSupabase, studioId),
+                loadCanonicalPersistenceMode(requestBoundSupabase, studioId),
                 'ml_private.studio_settings',
               );
               await cacheRef.current.putSetting(`persistence-mode:${studioId}`, mode);
@@ -252,7 +271,7 @@ export function CanonicalWorkspaceProvider({ children, userId }: { children: Rea
     };
     void initialise();
     return () => { cancelled = true; };
-  }, [attempt, key, rawData, userId]);
+  }, [attempt, key, rawData, requestBoundSupabase, userId]);
 
   const reconcileCommit = useCallback(async (
     current: CanonicalWorkspaceState,
@@ -620,10 +639,10 @@ function operationResultHasParity(operation: CanonicalOperation, result: Canonic
   });
 }
 
-async function currentCanonicalStudioId() {
-  if (!canonicalSupabase) return null;
+async function currentCanonicalStudioId(client: SupabaseClient<Database> | null) {
+  if (!client) return null;
   const response = await withStartupRequestTimeout(
-    canonicalSupabase.schema('ml_private').from('studios')
+    client.schema('ml_private').from('studios')
       .select('id').order('created_at', { ascending: true }).limit(1).maybeSingle(),
     'ml_private.studios',
   );

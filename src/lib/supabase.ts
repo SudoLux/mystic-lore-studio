@@ -56,6 +56,26 @@ export const canonicalSupabase: SupabaseClient<Database> | null = supabaseConfig
   : null;
 
 /**
+ * Creates the short-lived client used for a signed-in workspace request.
+ *
+ * The auth singleton above continues to own sign-in, refresh, and persisted
+ * browser sessions. Workspace data requests receive the active React session
+ * explicitly, which prevents a startup race from falling back to the
+ * publishable-key (anonymous) role while the auth store is hydrating.
+ */
+export function createRequestBoundCanonicalSupabase(accessToken: string): SupabaseClient<Database> | null {
+  if (!supabaseConfigStatus.isConfigured || !accessToken) return null;
+  return createClient<Database>(supabaseConfigStatus.url, supabaseConfigStatus.anonKey, {
+    accessToken: async () => accessToken,
+    auth: {
+      autoRefreshToken: false,
+      detectSessionInUrl: false,
+      persistSession: false,
+    },
+  });
+}
+
+/**
  * Compatibility client for the legacy migration/recovery boundary. It remains
  * intentionally unparameterized until that adapter is removed after beta.
  */
