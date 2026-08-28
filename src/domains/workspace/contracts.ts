@@ -53,8 +53,12 @@ export type CanonicalMediaAsset = CanonicalRecord & {
 export type CanonicalMediaDerivative = CanonicalRecord & {
   assetId: string;
   checksum: string;
+  height: number | null;
+  mimeType: string;
+  sizeBytes: number;
   storagePath: string;
   variant: 'thumbnail' | 'display' | 'editorial' | 'portfolio' | 'technical' | 'export';
+  width: number | null;
 };
 
 export type CanonicalGarmentMedia = CanonicalRecord & {
@@ -409,6 +413,7 @@ export type CanonicalConstructionStep = CanonicalRecord & { sectionId: string; s
 export type CanonicalConstructionDetail = CanonicalRecord & { stepId: string; assetId: string | null; anchor: { x: number; y: number } | null; callout: string; severity: 'info' | 'warning' | 'critical'; status: 'open' | 'resolved' | 'dismissed'; sortOrder: number };
 export type CanonicalTemplateApplication = CanonicalRecord & { templateId: string; garmentId: string; appliedBy: string | null; appliedAt: string; mapping: { copiedIds: string[]; sourceVersion: number } };
 export type CanonicalReleaseTask = CanonicalRecord & { garmentId: string; title: string; description: string; status: 'todo' | 'in_progress' | 'blocked' | 'done' | 'cancelled'; priority: 'low' | 'medium' | 'high' | 'urgent'; dueAt: string | null; assigneeId: string | null; sortOrder: number };
+export type CanonicalCalendarEvent = CanonicalRecord & { assigneeId: string | null; endsAt: string | null; eventType: string; garmentId: string | null; startsAt: string; title: string };
 export type CanonicalValidationWaiver = CanonicalRecord & { specId: string; validationRunId: string; ruleCode: string; domain: Exclude<ValidationDomain, 'privacy'>; reason: string; actorId: string; followUpTaskId: string; waivedAt: string };
 
 export type CanonicalWorkspaceState = {
@@ -419,6 +424,7 @@ export type CanonicalWorkspaceState = {
   aiJobs: CanonicalAiJob[];
   annotations: CanonicalAnnotation[];
   bomItems: CanonicalBomItem[];
+  calendarEvents: CanonicalCalendarEvent[];
   changeEvents: CanonicalChangeEvent[];
   collections: CanonicalCollection[];
   componentVariants: CanonicalComponentVariant[];

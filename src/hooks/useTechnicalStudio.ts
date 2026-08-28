@@ -13,9 +13,14 @@ import type { CanonicalTechnicalFile, TechnicalFlatView } from '../domains/works
 import { getImageBlob, saveImageBlob } from '../lib/imageBlobStore';
 import { storeTechnicalSource } from '../lib/technicalFiles';
 import { recordClientEvent } from '../lib/observability';
+import {
+  loadCanonicalMediaBlob,
+  recordTechPackExportCommand,
+  stageCanonicalMediaBlob,
+} from '../domains/persistence';
 
 export function useTechnicalStudio() {
-  const { commitWorkspace, currentActorId, state } = useCanonicalWorkspace();
+  const { commitWorkspace, commitWorkspaceAsync, currentActorId, requireFreshWorkspace, state } = useCanonicalWorkspace();
   const execute = (command: TechnicalCommand) => commitWorkspace((current) => executeTechnicalCommand(current, command));
 
   const createSpecification = (garmentId: string, baseSize = 'M', unit: 'mm' | 'cm' | 'in' = 'cm') => {
@@ -59,18 +64,19 @@ export function useTechnicalStudio() {
   };
 
   const createExport = async (specId: string, selectedTemplateId?: string) => {
-    if (!state) throw new Error('The workspace is not ready.');
-    const spec = state.technicalSpecs.find((item) => item.id === specId)!;
+    const fresh = await requireFreshWorkspace();
+    const spec = fresh.technicalSpecs.find((item) => item.id === specId)!;
     if (!spec?.releaseVersionId || spec.status !== 'released') throw new Error('Release the validated specification before generating its tech pack.');
-    const garment = state.garments.find((item) => item.id === spec.garmentId)!;
-    const templateRecord = state.templates.find((item) => item.id === selectedTemplateId && item.templateType === 'tech_pack' && item.status === 'active') ?? state.templates.find((item) => item.templateType === 'tech_pack' && item.status === 'active');
+    const garment = fresh.garments.find((item) => item.id === spec.garmentId)!;
+    const templateRecord = fresh.templates.find((item) => item.id === selectedTemplateId && item.templateType === 'tech_pack' && item.status === 'active') ?? fresh.templates.find((item) => item.templateType === 'tech_pack' && item.status === 'active');
     if (!templateRecord) throw new Error('Select an active tech-pack template.');
-    const version = state.garmentVersions.find((item) => item.id === spec.releaseVersionId)!;
+    const version = fresh.garmentVersions.find((item) => item.id === spec.releaseVersionId)!;
     let generated;
     try {
-      generated = await generateDeterministicTechPack(state, specId, version.id, templateRecord.id, async (assetId) => {
-        const asset = state.mediaAssets.find((item) => item.id === assetId);
-        return asset?.localBlobKey ? (await getImageBlob(asset.localBlobKey) ?? null) : null;
+      generated = await generateDeterministicTechPack(fresh, specId, version.id, templateRecord.id, async (assetId) => {
+        const asset = fresh.mediaAssets.find((item) => item.id === assetId);
+        if (!asset) return null;
+        return asset.localBlobKey ? (await getImageBlob(asset.localBlobKey) ?? await loadCanonicalMediaBlob(asset)) : await loadCanonicalMediaBlob(asset);
       });
     } catch (error) {
       recordClientEvent({ context: { format: 'zip', stage: 'generate_tech_pack' }, kind: 'export_failure' });
@@ -83,12 +89,17 @@ export function useTechnicalStudio() {
     const blobKey = `technical-export:${assetId}`;
     await saveImageBlob(blobKey, blob);
     const now = new Date().toISOString();
-    const storagePath = `studios/${state.studioId}/technical/exports/${assetId}/${filename}`;
-    const asset = { createdAt: now, id: assetId, revision: 1, studioId: state.studioId, updatedAt: now, checksum, height: null, localBlobKey: blobKey, mimeType: 'application/zip', name: filename, rights: { source: 'private deterministic structured technical export' }, sizeBytes: blob.size, storagePath, storageState: 'stored' as const, width: null };
-    commitWorkspace((current) => {
-      const next = { ...current, mediaAssets: [...current.mediaAssets, asset] };
-      return registerExport(next, { approvedAt: now, approvedBy: currentActorId, deterministicFilename: filename, exportAssetId: asset.id, format: 'zip', garmentVersionId: version.id, generatedAt: now, checksum, rulesetVersion: releaseRulesetVersion, sectionManifest: generated.sectionManifest, sourceRevisionLabel: spec.revisionLabel, specId, storagePath, templateId: templateRecord.id, templateVersion: templateRecord.version }).state;
+    const storagePath = `studios/${fresh.studioId}/technical/exports/${assetId}/${filename}`;
+    const asset = { createdAt: now, id: assetId, revision: 1, studioId: fresh.studioId, updatedAt: now, checksum, height: null, localBlobKey: blobKey, mimeType: 'application/zip', name: filename, rights: { source: 'private deterministic structured technical export' }, sizeBytes: blob.size, storagePath, storageState: 'queued' as const, width: null };
+    await stageCanonicalMediaBlob(asset, blob);
+    const registered = registerExport({ ...fresh, mediaAssets: [...fresh.mediaAssets, asset] }, { approvedAt: now, approvedBy: currentActorId, deterministicFilename: filename, exportAssetId: asset.id, format: 'zip', garmentVersionId: version.id, generatedAt: now, checksum, rulesetVersion: releaseRulesetVersion, sectionManifest: generated.sectionManifest, sourceRevisionLabel: spec.revisionLabel, specId, storagePath, templateId: templateRecord.id, templateVersion: templateRecord.version });
+    await commitWorkspaceAsync(() => ({ ...fresh, mediaAssets: [...fresh.mediaAssets, asset] }), { skipAutoLedger: true });
+    await recordTechPackExportCommand({
+      expectedSpecRevision: spec.revision,
+      exportRecord: registered.exportRecord,
+      operationId: crypto.randomUUID(),
     });
+    await requireFreshWorkspace();
     return { blob, checksum, filename, sectionManifest: generated.sectionManifest };
   };
 

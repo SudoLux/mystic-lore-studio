@@ -1,5 +1,6 @@
 import type { CanonicalMediaAsset } from '../domains/workspace';
 import { getImageBlob, saveImageBlob } from './imageBlobStore';
+import { stageCanonicalMediaBlob } from '../domains/persistence/canonicalMedia';
 
 export async function storeTechnicalSource(file: File, studioId: string): Promise<CanonicalMediaAsset> {
   if (!file.size) throw new Error('The selected source file is empty.');
@@ -8,7 +9,9 @@ export async function storeTechnicalSource(file: File, studioId: string): Promis
   const checksum = await sha256(file);
   await saveImageBlob(localBlobKey, file);
   const now = new Date().toISOString();
-  return { createdAt: now, id, revision: 1, studioId, updatedAt: now, checksum, height: null, localBlobKey, mimeType: file.type || 'application/octet-stream', name: file.name, rights: { source: 'private studio upload' }, sizeBytes: file.size, storagePath: `studios/${studioId}/technical/${id}/${sanitize(file.name)}`, storageState: 'stored', width: null };
+  const asset = { createdAt: now, id, revision: 1, studioId, updatedAt: now, checksum, height: null, localBlobKey, mimeType: file.type || 'application/octet-stream', name: file.name, rights: { source: 'private studio upload' }, sizeBytes: file.size, storagePath: `studios/${studioId}/technical/${id}/${sanitize(file.name)}`, storageState: 'queued' as const, width: null };
+  await stageCanonicalMediaBlob(asset, file);
+  return asset;
 }
 
 export async function technicalPreviewUrl(asset: CanonicalMediaAsset) {

@@ -29,9 +29,10 @@ import {
 import { storeProductionEvidence } from '../lib/productionEvidence';
 import { useCanonicalWorkspace } from './useCanonicalWorkspace';
 import type { CanonicalWorkspaceState } from '../domains/workspace';
+import { commitQcWaiverCommand, decideQcInspectionCommand } from '../domains/persistence';
 
 export function useProductionStudio() {
-  const { commitWorkspace, currentActorId, state } = useCanonicalWorkspace();
+  const { commitWorkspace, currentActorId, requireFreshWorkspace, state } = useCanonicalWorkspace();
   const commit = <T extends { state: CanonicalWorkspaceState },>(operation: (current: CanonicalWorkspaceState) => T): T => {
     let result: T | undefined;
     commitWorkspace((current) => { const next = operation(current); result = next; return next.state; });
@@ -64,7 +65,20 @@ export function useProductionStudio() {
     createSupplier: (input: Parameters<typeof createSupplier>[1]) => commit((current) => createSupplier(current, input)),
     createProductionOrder: (input: Parameters<typeof createProductionOrder>[2]) => commit((current) => createProductionOrder(current, currentActorId, input)),
     createQcTemplate: (input: Parameters<typeof createQcTemplate>[1]) => commit((current) => createQcTemplate(current, input)),
-    decideQcInspection: (input: Parameters<typeof decideQcInspection>[2]) => commit((current) => decideQcInspection(current, currentActorId, input)),
+    decideQcInspection: async (input: Parameters<typeof decideQcInspection>[2]) => {
+      const fresh = await requireFreshWorkspace();
+      const current = fresh.qcInspections.find((item) => item.id === input.inspectionId);
+      if (!current) throw new Error('QC inspection not found.');
+      const result = decideQcInspection(fresh, currentActorId, input);
+      await decideQcInspectionCommand({
+        decision: input.decision,
+        expectedRevision: current.revision,
+        inspectionId: input.inspectionId,
+        operationId: crypto.randomUUID(),
+      });
+      await requireFreshWorkspace();
+      return result;
+    },
     decideFitSession: (input: Parameters<typeof decideFitSession>[1]) => commit((current) => decideFitSession(current, input)),
     promoteFitIssue: (input: PromotionInput) => commit((current) => promoteFitIssue(current, currentActorId, input)),
     receiveSampleRound: (sampleRoundId: string) => commit((current) => receiveSampleRound(current, sampleRoundId)),
@@ -77,6 +91,19 @@ export function useProductionStudio() {
     updateProductionOrderStatus: (productionOrderId: string, status: Parameters<typeof updateProductionOrderStatus>[2]) => commit((current) => updateProductionOrderStatus(current, productionOrderId, status)),
     updateProductionMilestone: (milestoneId: string, status: Parameters<typeof updateProductionMilestone>[2]) => commit((current) => updateProductionMilestone(current, milestoneId, status)),
     uploadEvidence,
-    waiveQcResult: (input: Parameters<typeof waiveQcResult>[2]) => commit((current) => waiveQcResult(current, currentActorId, input)),
+    waiveQcResult: async (input: Parameters<typeof waiveQcResult>[2]) => {
+      const fresh = await requireFreshWorkspace();
+      const current = fresh.qcResults.find((item) => item.id === input.qcResultId);
+      if (!current) throw new Error('QC result not found.');
+      const result = waiveQcResult(fresh, currentActorId, input);
+      await commitQcWaiverCommand({
+        expectedRevision: current.revision,
+        operationId: crypto.randomUUID(),
+        task: result.task,
+        waiver: result.waiver,
+      });
+      await requireFreshWorkspace();
+      return result;
+    },
   };
 }

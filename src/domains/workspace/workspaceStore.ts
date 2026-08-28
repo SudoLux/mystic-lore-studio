@@ -8,6 +8,7 @@ import type {
   CanonicalAiJob,
   CanonicalAnnotation,
   CanonicalBomItem,
+  CanonicalCalendarEvent,
   CanonicalCollection,
   CanonicalComponent,
   CanonicalComponentVariant,
@@ -67,6 +68,7 @@ const workspaceVersion = 10 as const;
 export type CanonicalWorkspaceSeed = {
   data: StudioData;
   ownerUserId: string;
+  studioId?: string;
   studioName?: string;
   studioSlug?: string;
 };
@@ -94,6 +96,7 @@ export async function createCanonicalWorkspace(seed: CanonicalWorkspaceSeed) {
     generatedAt: deterministicGeneratedAt(seed.data),
     ownerUserId: seed.ownerUserId,
     sourceId: 'wp3-browser-canonical-import',
+    studioId: seed.studioId,
     studioName: seed.studioName ?? 'Mystic Lore Studio',
     studioSlug: seed.studioSlug ?? 'mystic-lore-studio',
   });
@@ -123,6 +126,7 @@ export async function createCanonicalWorkspace(seed: CanonicalWorkspaceSeed) {
       return { ...base(value), assetId: value.asset_id, body: value.body, garmentId: value.garment_id, status: value.status };
     }),
     bomItems: [] as CanonicalBomItem[],
+    calendarEvents: [] as CanonicalCalendarEvent[],
     changeEvents: [],
     collections: rows('collections').map((row) => {
       const value = row as { created_at: string; id: string; name: string; season: string | null; sort_order: number; status: CanonicalCollection['status']; studio_id: string; updated_at: string };
@@ -202,8 +206,8 @@ export async function createCanonicalWorkspace(seed: CanonicalWorkspaceSeed) {
       return { ...base(value), checksum: value.checksum, height: value.height, mimeType: value.mime_type, name: value.original_filename, rights: value.rights_json, sizeBytes: value.size_bytes, storagePath: value.storage_path, width: value.width };
     }),
     mediaDerivatives: rows('media_derivatives').map((row) => {
-      const value = row as { checksum: string; created_at: string; id: string; source_asset_id: string; storage_path: string; studio_id: string; updated_at: string; variant: CanonicalMediaDerivative['variant'] };
-      return { ...base(value), assetId: value.source_asset_id, checksum: value.checksum, storagePath: value.storage_path, variant: value.variant };
+      const value = row as { checksum: string; created_at: string; height: number | null; id: string; mime_type: string; size_bytes: number; source_asset_id: string; storage_path: string; studio_id: string; updated_at: string; variant: CanonicalMediaDerivative['variant']; width: number | null };
+      return { ...base(value), assetId: value.source_asset_id, checksum: value.checksum, height: value.height, mimeType: value.mime_type, sizeBytes: value.size_bytes, storagePath: value.storage_path, variant: value.variant, width: value.width };
     }),
     moodboardItems: rows('inspiration_items').map((row) => {
       const value = row as { asset_id: string; board_id: string; caption: string; created_at: string; id: string; position_json: Record<string, unknown>; sort_order: number; studio_id: string; updated_at: string };
@@ -239,7 +243,10 @@ export async function createCanonicalWorkspace(seed: CanonicalWorkspaceSeed) {
     qcTemplates: [] as CanonicalQcTemplate[],
     qcWaivers: [] as CanonicalQcWaiver[],
     restoreOperations: [],
-    releaseTasks: [] as CanonicalReleaseTask[],
+    releaseTasks: rows('tasks').map((row) => {
+      const value = row as { assignee_id?: string | null; created_at: string; description: string; due_at: string | null; garment_id: string | null; id: string; priority: CanonicalReleaseTask['priority']; sort_order: number; status: CanonicalReleaseTask['status']; studio_id: string; title: string; updated_at: string };
+      return { ...base(value), assigneeId: value.assignee_id ?? null, description: value.description, dueAt: value.due_at, garmentId: value.garment_id ?? '', priority: value.priority, sortOrder: value.sort_order, status: value.status, title: value.title } satisfies CanonicalReleaseTask;
+    }),
     sampleRoundMedia: [] as CanonicalSampleRoundMedia[],
     sampleRounds: [],
     fitMeasurements: [],
@@ -271,6 +278,7 @@ export function normalizeWorkspace(state: CanonicalWorkspaceState): CanonicalWor
     aiJobs: [...state.aiJobs].sort((a, b) => b.createdAt.localeCompare(a.createdAt)),
     annotations: [...state.annotations],
     bomItems: [...state.bomItems].sort((a, b) => a.sortOrder - b.sortOrder || a.id.localeCompare(b.id)),
+    calendarEvents: [...state.calendarEvents].sort((a, b) => a.startsAt.localeCompare(b.startsAt) || a.id.localeCompare(b.id)),
     changeEvents: [...state.changeEvents].sort((a, b) => a.occurredAt.localeCompare(b.occurredAt) || a.id.localeCompare(b.id)),
     collections: [...state.collections].sort((a, b) => a.sortOrder - b.sortOrder || a.name.localeCompare(b.name)),
     componentVariants: [...state.componentVariants],
@@ -351,6 +359,56 @@ export function addCollection(state: CanonicalWorkspaceState, name: string, seas
     sortOrder: state.collections.length, status: 'draft',
   };
   return { state: normalizeWorkspace({ ...state, collections: [...state.collections, record] }), record };
+}
+
+export function addTask(
+  state: CanonicalWorkspaceState,
+  input: Pick<CanonicalReleaseTask, 'description' | 'dueAt' | 'garmentId' | 'priority' | 'title'>,
+) {
+  const record: CanonicalReleaseTask = {
+    ...newRecord(state.studioId),
+    assigneeId: null,
+    description: input.description.trim(),
+    dueAt: input.dueAt,
+    garmentId: input.garmentId,
+    priority: input.priority,
+    sortOrder: state.releaseTasks.length,
+    status: 'todo',
+    title: input.title.trim(),
+  };
+  return { record, state: normalizeWorkspace({ ...state, releaseTasks: [...state.releaseTasks, record] }) };
+}
+
+export function updateTaskStatus(
+  state: CanonicalWorkspaceState,
+  taskId: string,
+  status: CanonicalReleaseTask['status'],
+) {
+  return normalizeWorkspace({
+    ...state,
+    releaseTasks: state.releaseTasks.map((task) => (
+      task.id === taskId ? touch({ ...task, status }) : task
+    )),
+  });
+}
+
+export function addCalendarEvent(
+  state: CanonicalWorkspaceState,
+  input: Pick<CanonicalCalendarEvent, 'endsAt' | 'eventType' | 'garmentId' | 'startsAt' | 'title'>,
+) {
+  if (input.endsAt && input.endsAt < input.startsAt) {
+    throw new Error('Calendar event end must be after its start.');
+  }
+  const record: CanonicalCalendarEvent = {
+    ...newRecord(state.studioId),
+    assigneeId: null,
+    endsAt: input.endsAt,
+    eventType: input.eventType.trim() || 'studio',
+    garmentId: input.garmentId,
+    startsAt: input.startsAt,
+    title: input.title.trim(),
+  };
+  return { record, state: normalizeWorkspace({ ...state, calendarEvents: [...state.calendarEvents, record] }) };
 }
 
 export function addGarment(state: CanonicalWorkspaceState, input: GarmentInput) {
@@ -479,6 +537,7 @@ export function deleteGarment(state: CanonicalWorkspaceState, garmentId: string)
     ...state,
     annotations: state.annotations.filter((item) => item.garmentId !== garmentId),
     bomItems: state.bomItems.filter((item) => !specIds.has(item.specId)),
+    calendarEvents: state.calendarEvents.filter((item) => item.garmentId !== garmentId),
     constructionDetails: state.constructionDetails.filter((item) => !stepIds.has(item.stepId)),
     constructionSections: state.constructionSections.filter((item) => !specIds.has(item.specId)),
     constructionSteps: state.constructionSteps.filter((item) => !sectionIds.has(item.sectionId)),

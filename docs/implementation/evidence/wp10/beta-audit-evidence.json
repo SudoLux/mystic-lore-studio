@@ -1,0 +1,13 @@
+{
+  "auditedAt": "2026-08-28T06:29:27.135Z",
+  "decision": "BLOCKED",
+  "gates": [
+    {
+      "evidence": "configuration/evidence preflight",
+      "gate": "Isolated beta audit",
+      "issue": "ML_BETA_SUPABASE_URL is required. audit:beta never defaults to the configured hosted project.",
+      "severity": "High",
+      "status": "blocked"
+    }
+  ]
+}

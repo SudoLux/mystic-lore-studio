@@ -1,10 +1,11 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
-import { useStudioData } from './useStudioData';
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import {
   addCollection,
+  addCalendarEvent,
   addComponent,
   addGarment,
   addMaterial,
+  addTask,
   addTemplate,
   attachAsset,
   attachMoodboardItem,
@@ -17,26 +18,48 @@ import {
   relationshipOptions,
   updateBrief,
   updateGarment,
+  updateTaskStatus,
   type ComponentInput,
   type GarmentInput,
   type MaterialInput,
 } from '../domains/workspace';
 import type {
+  CanonicalCalendarEvent,
   CanonicalGarmentMedia,
   CanonicalWorkspaceState,
   InventoryEntryType,
   RelationshipOption,
   WorkspaceChangeContext,
   WorkspaceSyncState,
+  CanonicalReleaseTask,
 } from '../domains/workspace';
 import { recordWorkspaceChangeEvents } from '../domains/versioning';
+import {
+  authoritativeRowsToWorkspace,
+  buildCanonicalMutations,
+  canonicalMutableSnapshot,
+  canonicalValueChecksum,
+  CanonicalIndexedDb,
+  emptyCanonicalWorkspaceState,
+  loadCanonicalPersistenceMode,
+  SupabaseCanonicalWorkspaceRepository,
+  type CanonicalMigrationReport,
+  type CanonicalCommitResult,
+  type CanonicalOperation,
+  type CanonicalPersistenceMode,
+  type CanonicalWorkspaceRepository,
+} from '../domains/persistence';
 import { recordClientEvent } from '../lib/observability';
+import { canonicalSupabase } from '../lib/supabase';
+import { getStudioData, type StudioData } from '../lib/studioStorage';
 
 type CanonicalWorkspaceContextValue = {
   addCollection: (name: string, season?: string) => string;
+  addCalendarEvent: (input: Pick<CanonicalCalendarEvent, 'endsAt' | 'eventType' | 'garmentId' | 'startsAt' | 'title'>) => string;
   addComponent: (input: ComponentInput) => { componentId: string; variantId: string };
   addGarment: (input: GarmentInput) => string;
   addMaterial: (input: MaterialInput) => { materialId: string; variantId: string };
+  addTask: (input: Pick<CanonicalReleaseTask, 'description' | 'dueAt' | 'garmentId' | 'priority' | 'title'>) => string;
   addTemplate: (input: { name: string; templateType: 'pom' | 'measurement' | 'grading' | 'bom' | 'construction' | 'validation' | 'tech_pack' }) => string;
   attachAsset: (garmentId: string, assetId: string, role: CanonicalGarmentMedia['role']) => void;
   attachMoodboardItem: (boardId: string, assetId: string, caption?: string) => void;
@@ -45,26 +68,51 @@ type CanonicalWorkspaceContextValue = {
   createMoodboard: (garmentId: string, title?: string) => string;
   deleteGarment: (garmentId: string) => void;
   commitWorkspace: (change: (current: CanonicalWorkspaceState) => CanonicalWorkspaceState, context?: Omit<WorkspaceChangeContext, 'actorId'>) => void;
+  commitWorkspaceAsync: (change: (current: CanonicalWorkspaceState) => CanonicalWorkspaceState, context?: Omit<WorkspaceChangeContext, 'actorId'> & { excludeEntities?: string[] }) => Promise<CanonicalCommitResult | null>;
   currentActorId: string;
   error: string | null;
   isReady: boolean;
+  pendingCount: number;
   recordInventory: (variantId: string, entryType: InventoryEntryType, quantity: number, note?: string) => void;
+  persistenceMode: CanonicalPersistenceMode;
+  refresh: () => Promise<void>;
+  requireFreshWorkspace: () => Promise<CanonicalWorkspaceState>;
+  resolveTransportConflict: (conflictId: string, resolution: 'local' | 'remote') => Promise<void>;
   relationshipOptions: (kind: 'material' | 'component' | 'asset') => RelationshipOption[];
   retry: () => void;
   state: CanonicalWorkspaceState | null;
   syncState: WorkspaceSyncState;
   updateBrief: (garmentId: string, patch: Parameters<typeof updateBrief>[2]) => void;
   updateGarment: (garmentId: string, patch: Partial<GarmentInput>) => void;
+  updateTaskStatus: (taskId: string, status: CanonicalReleaseTask['status']) => void;
 };
 
 const CanonicalWorkspaceContext = createContext<CanonicalWorkspaceContextValue | null>(null);
 
+function errorMessage(reason: unknown, fallback: string) {
+  if (reason instanceof Error && reason.message) return reason.message;
+  if (reason && typeof reason === 'object' && 'message' in reason && typeof reason.message === 'string') {
+    return reason.message;
+  }
+  return fallback;
+}
+
 export function CanonicalWorkspaceProvider({ children, userId }: { children: ReactNode; userId: string }) {
-  const { rawData } = useStudioData();
+  // Legacy storage is read once as migration/recovery input. Its provider and
+  // cloud-sync effects are intentionally absent from normal authenticated UI.
+  const rawData = useMemo(() => getStudioData(userId), [userId]);
   const [state, setState] = useState<CanonicalWorkspaceState | null>(null);
+  const stateRef = useRef<CanonicalWorkspaceState | null>(null);
   const [syncState, setSyncState] = useState<WorkspaceSyncState>('loading');
+  const [persistenceMode, setPersistenceMode] = useState<CanonicalPersistenceMode>('local-recovery');
+  const [pendingCount, setPendingCount] = useState(0);
+  const persistenceModeRef = useRef<CanonicalPersistenceMode>('local-recovery');
   const [error, setError] = useState<string | null>(null);
   const [attempt, setAttempt] = useState(0);
+  const cacheRef = useRef(new CanonicalIndexedDb());
+  const repositoryRef = useRef(
+    canonicalSupabase ? new SupabaseCanonicalWorkspaceRepository(canonicalSupabase, cacheRef.current) : null,
+  );
   const key = `mystic-lore-studio:canonical-wp3:${userId}`;
 
   useEffect(() => {
@@ -76,17 +124,108 @@ export function CanonicalWorkspaceProvider({ children, userId }: { children: Rea
       try {
         const stored = window.localStorage.getItem(key);
         const parsed = stored ? JSON.parse(stored) as CanonicalWorkspaceState : null;
-        const next = parsed?.studioId && Array.isArray(parsed.designBriefs)
+        const rememberedStudioId = await cacheRef.current.getSetting<string>(`last-studio:${userId}`);
+        let canonicalStudioId: string | null;
+        let usedOfflineIdentity = false;
+        if (navigator.onLine === false) {
+          canonicalStudioId = rememberedStudioId;
+          usedOfflineIdentity = true;
+        } else {
+          try {
+            canonicalStudioId = await currentCanonicalStudioId();
+          } catch (reason) {
+            if (!rememberedStudioId) throw reason;
+            canonicalStudioId = rememberedStudioId;
+            usedOfflineIdentity = true;
+          }
+        }
+        const recoveryState = parsed?.studioId
+          && Array.isArray(parsed.designBriefs)
+          && (!canonicalStudioId || parsed.studioId === canonicalStudioId)
           ? hydrateTechnicalState(parsed, rawData)
-          : await createCanonicalWorkspace({ data: rawData, ownerUserId: userId });
+          : null;
+        if (recoveryState) {
+          const recoveryKey = `canonical-localstorage:${userId}:${new Date().toISOString()}`;
+          await cacheRef.current.preserveRecoveryCopy(recoveryKey, recoveryState);
+          window.localStorage.removeItem(key);
+        }
+
+        const studioId = canonicalStudioId ?? recoveryState?.studioId;
+        const cachedState = studioId ? await cacheRef.current.getWorkspace(studioId) : null;
+        let next: CanonicalWorkspaceState;
+        let mode: CanonicalPersistenceMode = 'local-recovery';
+
+        if (!canonicalSupabase || !studioId || !repositoryRef.current) {
+          next = recoveryState ?? cachedState ?? await createCanonicalWorkspace({
+            data: rawData, ownerUserId: userId, studioId: studioId ?? undefined,
+          });
+          await cacheRef.current.putWorkspace(next);
+        } else {
+          if (navigator.onLine === false) {
+            const rememberedMode = await cacheRef.current.getSetting<CanonicalPersistenceMode>(`persistence-mode:${studioId}`);
+            if (!cachedState || !rememberedMode) throw new Error('This device has no cached rollout policy for offline startup.');
+            mode = rememberedMode;
+            usedOfflineIdentity = true;
+          } else {
+            try {
+              mode = await loadCanonicalPersistenceMode(canonicalSupabase, studioId);
+              await cacheRef.current.putSetting(`persistence-mode:${studioId}`, mode);
+            } catch (reason) {
+              const rememberedMode = await cacheRef.current.getSetting<CanonicalPersistenceMode>(`persistence-mode:${studioId}`);
+              if (!cachedState || !rememberedMode) throw reason;
+              mode = rememberedMode;
+              usedOfflineIdentity = true;
+            }
+          }
+          const cloudState = await repositoryRef.current.hydrate(studioId);
+          if (mode === 'cloud') {
+            next = cloudState;
+          } else {
+            next = recoveryState ?? cachedState ?? (
+              hasCanonicalRecords(cloudState)
+                ? cloudState
+                : await createCanonicalWorkspace({ data: rawData, ownerUserId: userId, studioId })
+            );
+            await cacheRef.current.putWorkspace(next);
+            if (!usedOfflineIdentity && mode === 'shadow' && !hasCanonicalRecords(cloudState) && hasCanonicalRecords(next)) {
+              const report = await importShadowWorkspace(repositoryRef.current, next);
+              await cacheRef.current.preserveRecoveryCopy(report.recoveryCopyKey, next, report);
+              if (report.relationshipWarnings.some((warning) => warning.startsWith('trusted_import_required:'))) {
+                setError('The mutable graph was shadowed, but protected release evidence remains in the recovery copy. Run the trusted isolated-beta importer before cloud cutover.');
+                setSyncState('conflict');
+              }
+            }
+            if (mode === 'shadow' && hasCanonicalRecords(cloudState)) {
+              const [localChecksum, cloudChecksum] = await Promise.all([
+                canonicalValueChecksum(canonicalMutableSnapshot(next)),
+                canonicalValueChecksum(canonicalMutableSnapshot(cloudState)),
+              ]);
+              if (localChecksum !== cloudChecksum) {
+                setError('Shadow comparison found a local/cloud difference. The local recovery copy was preserved and cloud mode remains blocked.');
+                setSyncState('conflict');
+              }
+            }
+          }
+        }
         if (cancelled) return;
-        window.localStorage.setItem(key, JSON.stringify(next));
+        if (studioId) {
+          await cacheRef.current.putSetting(`last-studio:${userId}`, studioId);
+          await cacheRef.current.putSetting(`persistence-mode:${studioId}`, mode);
+        }
+        next = withTransportConflicts(
+          next,
+          studioId ? await cacheRef.current.listTransportConflicts(studioId) : [],
+        );
+        persistenceModeRef.current = mode;
+        setPersistenceMode(mode);
+        stateRef.current = next;
         setState(next);
-        setSyncState(navigator.onLine === false ? 'offline' : 'ready');
+        setPendingCount(studioId ? (await cacheRef.current.listOutbox(studioId)).length : 0);
+        setSyncState((current) => current === 'conflict' ? current : usedOfflineIdentity || navigator.onLine === false ? 'offline' : 'ready');
       } catch (reason) {
         if (cancelled) return;
         recordClientEvent({ context: { stage: 'hydrate' }, kind: 'migration_warning' });
-        setError(reason instanceof Error ? reason.message : 'The canonical workspace could not be prepared.');
+        setError(errorMessage(reason, 'The canonical workspace could not be prepared.'));
         setSyncState('error');
       }
     };
@@ -94,28 +233,197 @@ export function CanonicalWorkspaceProvider({ children, userId }: { children: Rea
     return () => { cancelled = true; };
   }, [attempt, key, rawData, userId]);
 
-  const commit = useCallback((change: (current: CanonicalWorkspaceState) => CanonicalWorkspaceState, context: Omit<WorkspaceChangeContext, 'actorId'> = {}) => {
-    setState((current) => {
-      if (!current) return current;
-      const next = recordWorkspaceChangeEvents(current, change(current), { actorId: userId, ...context });
-      try {
-        window.localStorage.setItem(key, JSON.stringify(next));
+  const reconcileCommit = useCallback(async (
+    current: CanonicalWorkspaceState,
+    next: CanonicalWorkspaceState,
+    context: Omit<WorkspaceChangeContext, 'actorId'> & { excludeEntities?: string[] },
+  ) => {
+    try {
+      const persisted = await persistCanonicalChange({ before: current, context, next, repository: repositoryRef.current, mode: persistenceModeRef.current }, cacheRef.current);
+      setPendingCount((await cacheRef.current.listOutbox(next.studioId)).length);
+      if (!persisted) {
         setError(null);
         setSyncState(navigator.onLine === false ? 'offline' : 'ready');
-      } catch (reason) {
-        recordClientEvent({ context: { stage: 'local_commit' }, kind: 'client_error' });
-        setError(reason instanceof Error ? reason.message : 'Changes remain in this tab but could not be saved locally.');
-        setSyncState('error');
+        return null;
       }
-      return next;
-    });
-  }, [key, userId]);
+      if (persisted.result.status === 'conflict') {
+        const conflicted = withTransportConflicts(
+          next,
+          await cacheRef.current.listTransportConflicts(next.studioId),
+        );
+        stateRef.current = conflicted;
+        setState(conflicted);
+        setError('This edit conflicts with a newer server revision. It remains queued for Conflict Resolver.');
+        setSyncState('conflict');
+        return persisted.result;
+      }
+      if (!operationResultHasParity(persisted.operation, persisted.result)) {
+        setError('The server accepted this edit but returned a different authoritative value. Cloud cutover remains blocked.');
+        setSyncState('conflict');
+        return persisted.result;
+      }
+      if (persistenceModeRef.current === 'cloud') {
+        const latest = stateRef.current;
+        if (latest) {
+          const reconciled = authoritativeRowsToWorkspace(latest, persisted.result);
+          stateRef.current = reconciled;
+          setState(reconciled);
+          await cacheRef.current.putWorkspace(reconciled);
+        }
+      }
+      setError(null);
+      setSyncState('ready');
+      setPendingCount((await cacheRef.current.listOutbox(next.studioId)).length);
+      return persisted.result;
+    } catch (reason) {
+      recordClientEvent({ context: { stage: 'canonical_commit' }, kind: 'client_error' });
+      setError(errorMessage(reason, 'The edit is cached but could not reach the canonical repository.'));
+      setSyncState(navigator.onLine === false ? 'offline' : 'error');
+      setPendingCount((await cacheRef.current.listOutbox(next.studioId)).length);
+      throw reason;
+    }
+  }, []);
+
+  const prepareChange = useCallback((
+    change: (current: CanonicalWorkspaceState) => CanonicalWorkspaceState,
+    context: Omit<WorkspaceChangeContext, 'actorId'> & { excludeEntities?: string[] } = {},
+  ) => {
+    const current = stateRef.current;
+    if (!current) throw new Error('The canonical workspace is not ready.');
+    if (persistenceModeRef.current === 'local-recovery') {
+      throw new Error('Local recovery mode is read-only. Connect the isolated canonical repository before editing Studio records.');
+    }
+    const next = recordWorkspaceChangeEvents(current, change(current), { actorId: userId, ...context });
+    stateRef.current = next;
+    setState(next);
+    setSyncState(navigator.onLine === false ? 'offline' : 'ready');
+    return { context, current, next };
+  }, [userId]);
+
+  const commitAsync = useCallback(async (
+    change: (current: CanonicalWorkspaceState) => CanonicalWorkspaceState,
+    context: Omit<WorkspaceChangeContext, 'actorId'> & { excludeEntities?: string[] } = {},
+  ) => {
+    const prepared = prepareChange(change, context);
+    return await reconcileCommit(prepared.current, prepared.next, prepared.context);
+  }, [prepareChange, reconcileCommit]);
+
+  const commit = useCallback((
+    change: (current: CanonicalWorkspaceState) => CanonicalWorkspaceState,
+    context: Omit<WorkspaceChangeContext, 'actorId'> = {},
+  ) => {
+    const prepared = prepareChange(change, context);
+    void reconcileCommit(prepared.current, prepared.next, prepared.context).catch(() => undefined);
+  }, [prepareChange, reconcileCommit]);
+
+  const refresh = useCallback(async () => {
+    const repository = repositoryRef.current;
+    if (!repository) return;
+    await repository.flush();
+    const studioId = stateRef.current?.studioId;
+    if (!studioId) return;
+    const pending = await cacheRef.current.listOutbox(studioId);
+    setPendingCount(pending.length);
+    if (pending.length > 0) {
+      const current = stateRef.current;
+      if (current) {
+        const conflicted = withTransportConflicts(
+          current,
+          await cacheRef.current.listTransportConflicts(studioId),
+        );
+        stateRef.current = conflicted;
+        setState(conflicted);
+      }
+      setSyncState(pending.some((entry) => entry.status === 'conflict') ? 'conflict' : navigator.onLine === false ? 'offline' : 'ready');
+      return;
+    }
+    const refreshed = await repository.refresh();
+    // Once the outbox is empty, the freshly loaded database graph is the only
+    // acceptable basis for protected commands in both shadow and cloud mode.
+    // Shadow still controls rollout, not per-domain authority.
+    if (persistenceModeRef.current !== 'local-recovery') {
+      stateRef.current = refreshed;
+      setState(refreshed);
+    }
+    await cacheRef.current.putWorkspace(stateRef.current ?? refreshed);
+    setError(null);
+    setSyncState('ready');
+    setPendingCount(0);
+  }, []);
+
+  const requireFreshWorkspace = useCallback(async () => {
+    if (persistenceModeRef.current === 'local-recovery' || !repositoryRef.current) {
+      throw new Error('This protected action requires the canonical cloud repository. Local recovery mode is read-only for release evidence.');
+    }
+    if (navigator.onLine === false) throw new Error('This protected action requires a live server connection.');
+    await repositoryRef.current.flush();
+    const studioId = stateRef.current?.studioId;
+    if (!studioId) throw new Error('The canonical Studio is unavailable.');
+    const pending = await cacheRef.current.listOutbox(studioId);
+    setPendingCount(pending.length);
+    if (pending.length) throw new Error('Finish or resolve queued canonical edits before this protected action.');
+    const fresh = await repositoryRef.current.refresh();
+    stateRef.current = fresh;
+    setState(fresh);
+    await cacheRef.current.putWorkspace(fresh);
+    setError(null);
+    setSyncState('ready');
+    setPendingCount(0);
+    return fresh;
+  }, []);
+
+  const resolveTransportConflict = useCallback(async (conflictId: string, resolution: 'local' | 'remote') => {
+    const studioId = stateRef.current?.studioId;
+    if (!studioId || !repositoryRef.current) throw new Error('The canonical conflict queue is unavailable.');
+    await cacheRef.current.resolveTransportConflict(studioId, conflictId, resolution);
+    setSyncState('loading');
+    await repositoryRef.current.flush();
+    const pending = await cacheRef.current.listOutbox(studioId);
+    setPendingCount(pending.length);
+    if (pending.length === 0) {
+      const fresh = await repositoryRef.current.refresh();
+      stateRef.current = fresh;
+      setState(fresh);
+      await cacheRef.current.putWorkspace(fresh);
+      setError(null);
+      setSyncState('ready');
+      return;
+    }
+    const current = stateRef.current;
+    if (current) {
+      const conflicted = withTransportConflicts(
+        current,
+        await cacheRef.current.listTransportConflicts(studioId),
+      );
+      stateRef.current = conflicted;
+      setState(conflicted);
+    }
+    setSyncState(pending.some((entry) => entry.status === 'conflict') ? 'conflict' : 'error');
+  }, []);
+
+  useEffect(() => {
+    const handleOnline = () => { void refresh(); };
+    const handleOffline = () => setSyncState('offline');
+    const handleFocus = () => { if (document.visibilityState === 'visible') void refresh(); };
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+    window.addEventListener('focus', handleFocus);
+    document.addEventListener('visibilitychange', handleFocus);
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+      window.removeEventListener('focus', handleFocus);
+      document.removeEventListener('visibilitychange', handleFocus);
+    };
+  }, [refresh]);
 
   const value = useMemo<CanonicalWorkspaceContextValue>(() => ({
     addCollection: (name, season) => { let id = ''; commit((current) => { const result = addCollection(current, name, season); id = result.record.id; return result.state; }); return id; },
+    addCalendarEvent: (input) => { let id = ''; commit((current) => { const result = addCalendarEvent(current, input); id = result.record.id; return result.state; }); return id; },
     addComponent: (input) => { let componentId = ''; let variantId = ''; commit((current) => { const result = addComponent(current, input); componentId = result.component.id; variantId = result.variant.id; return result.state; }); return { componentId, variantId }; },
     addGarment: (input) => { let id = ''; commit((current) => { const result = addGarment(current, input); id = result.record.id; return result.state; }); return id; },
     addMaterial: (input) => { let materialId = ''; let variantId = ''; commit((current) => { const result = addMaterial(current, input); materialId = result.material.id; variantId = result.variant.id; return result.state; }); return { materialId, variantId }; },
+    addTask: (input) => { let id = ''; commit((current) => { const result = addTask(current, input); id = result.record.id; return result.state; }); return id; },
     addTemplate: (input) => { let id = ''; commit((current) => { const result = addTemplate(current, input); id = result.record.id; return result.state; }); return id; },
     attachAsset: (garmentId, assetId, role) => commit((current) => attachAsset(current, garmentId, assetId, role).state),
     attachMoodboardItem: (boardId, assetId, caption) => commit((current) => attachMoodboardItem(current, boardId, assetId, caption).state),
@@ -124,22 +432,182 @@ export function CanonicalWorkspaceProvider({ children, userId }: { children: Rea
     createMoodboard: (garmentId, title) => { let id = ''; commit((current) => { const result = createMoodboard(current, garmentId, title); id = result.board.id; return result.state; }); return id; },
     deleteGarment: (garmentId) => commit((current) => deleteGarment(current, garmentId)),
     commitWorkspace: commit,
+    commitWorkspaceAsync: commitAsync,
     currentActorId: userId,
     error,
     isReady: Boolean(state),
+    pendingCount,
+    persistenceMode,
     recordInventory: (variantId, entryType, quantity, note) => commit((current) => recordInventory(current, variantId, entryType, quantity, note).state),
     relationshipOptions: (kind) => state ? relationshipOptions(state, kind) : [],
-    retry: () => setAttempt((current) => current + 1),
+    refresh,
+    requireFreshWorkspace,
+    resolveTransportConflict,
+    retry: () => { setAttempt((current) => current + 1); void refresh(); },
     state,
     syncState,
     updateBrief: (garmentId, patch) => commit((current) => updateBrief(current, garmentId, patch)),
     updateGarment: (garmentId, patch) => commit((current) => updateGarment(current, garmentId, patch)),
-  }), [commit, error, state, syncState, userId]);
+    updateTaskStatus: (taskId, status) => commit((current) => updateTaskStatus(current, taskId, status)),
+  }), [commit, commitAsync, error, pendingCount, persistenceMode, refresh, requireFreshWorkspace, resolveTransportConflict, state, syncState, userId]);
 
   return <CanonicalWorkspaceContext.Provider value={value}>{children}</CanonicalWorkspaceContext.Provider>;
 }
 
-function hydrateTechnicalState(state: CanonicalWorkspaceState, rawData: ReturnType<typeof useStudioData>['rawData']): CanonicalWorkspaceState {
+async function persistCanonicalChange(
+  input: {
+    before: CanonicalWorkspaceState;
+    context: Omit<WorkspaceChangeContext, 'actorId'> & { excludeEntities?: string[] };
+    mode: CanonicalPersistenceMode;
+    next: CanonicalWorkspaceState;
+    repository: CanonicalWorkspaceRepository | null;
+  },
+  cache: CanonicalIndexedDb,
+) {
+  await cache.putWorkspace(input.next);
+  if (!input.repository || input.mode === 'local-recovery') return null;
+  const excluded = new Set(input.context.excludeEntities ?? []);
+  const mutations = buildCanonicalMutations(input.before, input.next)
+    .filter((mutation) => !excluded.has(mutation.entityType));
+  if (mutations.length === 0) return null;
+  if (mutations.length > 2_000) {
+    throw new Error('This command changes more than 2,000 normalized rows. Split it at a product-defined command boundary.');
+  }
+  const operation: CanonicalOperation = {
+    garmentId: inferOperationGarmentId(mutations),
+    mutations,
+    operationId: input.context.operationId ?? crypto.randomUUID(),
+    origin: input.context.origin ?? 'user',
+    queuedAt: new Date().toISOString(),
+    studioId: input.next.studioId,
+  };
+  const result = await input.repository.dispatch(operation).committed;
+  return { operation, result };
+}
+
+async function importShadowWorkspace(
+  repository: CanonicalWorkspaceRepository,
+  state: CanonicalWorkspaceState,
+): Promise<CanonicalMigrationReport> {
+  const mutations = buildCanonicalMutations(emptyCanonicalWorkspaceState(state.studioId), state)
+    .filter((mutation) => mutation.action === 'insert');
+  const operationIds: string[] = [];
+  for (let offset = 0; offset < mutations.length; offset += 200) {
+    const operationId = crypto.randomUUID();
+    operationIds.push(operationId);
+    const operation: CanonicalOperation = {
+      garmentId: inferOperationGarmentId(mutations.slice(offset, offset + 200)),
+      mutations: mutations.slice(offset, offset + 200),
+      operationId,
+      origin: 'sync',
+      queuedAt: new Date(Date.now() + offset).toISOString(),
+      studioId: state.studioId,
+    };
+    const result = await repository.dispatch(operation).committed;
+    if (result.status === 'conflict') {
+      throw new Error(`Device-local canonical import conflicted in operation ${operationId}.`);
+    }
+  }
+  const relationshipWarnings = relationshipWarningsFor(state);
+  return {
+    collectionCounts: Object.fromEntries(Object.entries(state)
+      .filter(([, value]) => Array.isArray(value))
+      .map(([name, value]) => [name, (value as unknown[]).length])),
+    createdAt: new Date().toISOString(),
+    localStorageRemoved: true,
+    operationIds,
+    recoveryCopyKey: `canonical-device-import:${state.studioId}:${new Date().toISOString()}`,
+    relationshipWarnings,
+    sourceChecksum: await canonicalValueChecksum(canonicalMutableSnapshot(state)),
+    sourceKey: 'mystic-lore-studio:canonical-wp3',
+    studioId: state.studioId,
+  };
+}
+
+function inferOperationGarmentId(mutations: ReturnType<typeof buildCanonicalMutations>) {
+  const ids = new Set<string>();
+  for (const mutation of mutations) {
+    if (mutation.entityType === 'garments') ids.add(mutation.entityId);
+    const garmentId = mutation.row?.garment_id;
+    if (typeof garmentId === 'string') ids.add(garmentId);
+  }
+  return ids.size === 1 ? [...ids][0] : null;
+}
+
+function hasCanonicalRecords(state: CanonicalWorkspaceState) {
+  return state.garments.length > 0
+    || state.materials.length > 0
+    || state.editorialCollections.length > 0
+    || state.portfolioProfiles.length > 0;
+}
+
+function relationshipWarningsFor(state: CanonicalWorkspaceState) {
+  const garmentIds = new Set(state.garments.map((item) => item.id));
+  const assetIds = new Set(state.mediaAssets.map((item) => item.id));
+  const warnings: string[] = [];
+  for (const item of state.garmentMedia) {
+    if (!garmentIds.has(item.garmentId)) warnings.push(`garment_media:${item.id}:missing_garment`);
+    if (!assetIds.has(item.assetId)) warnings.push(`garment_media:${item.id}:missing_asset`);
+  }
+  for (const item of state.portfolioProjects) {
+    if (!garmentIds.has(item.garmentId)) warnings.push(`portfolio_project:${item.id}:missing_garment`);
+    for (const assetId of item.selectedAssetIds) {
+      if (!assetIds.has(assetId)) warnings.push(`portfolio_project:${item.id}:missing_asset:${assetId}`);
+    }
+  }
+  const protectedCollections: Array<keyof CanonicalWorkspaceState> = [
+    'aiAcceptanceCommands', 'aiAcceptances', 'aiArtifacts', 'changeEvents',
+    'editorialExports', 'entityRevisions', 'garmentVersions', 'qcWaivers',
+    'restoreOperations', 'techPackExports', 'templateApplications',
+    'validationRuns', 'validationWaivers',
+  ];
+  for (const key of protectedCollections) {
+    const records = state[key];
+    if (Array.isArray(records) && records.length > 0) {
+      warnings.push(`trusted_import_required:${String(key)}:${records.length}`);
+    }
+  }
+  return warnings;
+}
+
+function withTransportConflicts(
+  state: CanonicalWorkspaceState,
+  transportConflicts: CanonicalWorkspaceState['conflicts'],
+): CanonicalWorkspaceState {
+  return {
+    ...state,
+    conflicts: [
+      ...state.conflicts.filter((conflict) => !conflict.id.startsWith('transport:')),
+      ...transportConflicts,
+    ],
+  };
+}
+
+function operationResultHasParity(operation: CanonicalOperation, result: CanonicalCommitResult) {
+  if (result.status === 'conflict') return false;
+  return operation.mutations.every((mutation) => {
+    const authoritative = result.authoritativeRows.find((item) =>
+      item.entityType === mutation.entityType && item.entityId === mutation.entityId,
+    );
+    if (!authoritative) return false;
+    if (mutation.action === 'delete') return authoritative.row === null;
+    if (!mutation.row || !authoritative.row) return false;
+    return Object.entries(mutation.row).every(([key, value]) => {
+      if (key === 'created_at' || key === 'updated_at' || key === 'revision') return true;
+      return JSON.stringify(authoritative.row?.[key]) === JSON.stringify(value);
+    });
+  });
+}
+
+async function currentCanonicalStudioId() {
+  if (!canonicalSupabase) return null;
+  const response = await canonicalSupabase.schema('ml_private').from('studios')
+    .select('id').order('created_at', { ascending: true }).limit(1).maybeSingle();
+  if (response.error) throw response.error;
+  return (response.data as { id?: string } | null)?.id ?? null;
+}
+
+function hydrateTechnicalState(state: CanonicalWorkspaceState, rawData: StudioData): CanonicalWorkspaceState {
   const now = new Date().toISOString();
   const migratedProfile = state.portfolioProfiles?.length ? state.portfolioProfiles : [{
     avatarAssetId: null,
@@ -171,6 +639,7 @@ function hydrateTechnicalState(state: CanonicalWorkspaceState, rawData: ReturnTy
     aiInputRefs: state.aiInputRefs ?? [],
     aiJobs: state.aiJobs ?? [],
     bomItems: state.bomItems ?? [],
+    calendarEvents: state.calendarEvents ?? [],
     changeEvents: (state.changeEvents ?? []).map((item) => ({ ...item, relatedOperationIds: item.relatedOperationIds ?? [] })),
     constructionDetails: state.constructionDetails ?? [],
     constructionSections: state.constructionSections ?? [],

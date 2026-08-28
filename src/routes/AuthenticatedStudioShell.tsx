@@ -1,43 +1,38 @@
 import type { ReactNode } from 'react';
 import { AppShell } from '../components/layout/AppShell';
-import { GlobalSearch } from '../components/layout/GlobalSearch';
+import { CanonicalGlobalSearch } from '../components/layout/CanonicalGlobalSearch';
 import { SyncStatusIndicator } from '../components/layout/SyncStatusIndicator';
 import { navigationItems } from '../data/navigation';
 import type { AppRoute } from '../lib/appRoutes';
-import type { SyncStatus } from '../lib/studioSyncStorage';
 import type { PageId } from '../types/navigation';
-import type { Fabric, ApparelProject } from '../types/studio';
+import type { CanonicalWorkspaceState, WorkspaceSyncState } from '../domains/workspace';
 
 type AuthenticatedStudioShellProps = {
   children: ReactNode;
   email?: string;
-  fabrics: Fabric[];
   localCacheWarning: string | null;
   onNavigate: (page: PageId) => void;
-  onOpenFabric: (fabricId: string) => void;
-  onOpenProject: (projectId: string) => void;
+  onOpenProject: (garmentId: string) => void;
   onSignOut: () => void;
   onSyncDetails: () => void;
   pendingCount: number;
-  projects: ApparelProject[];
+  state: CanonicalWorkspaceState;
   route: AppRoute;
   syncError: string | null;
-  syncStatus: SyncStatus;
+  syncStatus: WorkspaceSyncState;
 };
 
 /** The private shell owns only chrome; page and dialog ownership stays in route modules. */
 export function AuthenticatedStudioShell({
   children,
   email,
-  fabrics,
   localCacheWarning,
   onNavigate,
-  onOpenFabric,
   onOpenProject,
   onSignOut,
   onSyncDetails,
   pendingCount,
-  projects,
+  state,
   route,
   syncError,
   syncStatus,
@@ -46,11 +41,10 @@ export function AuthenticatedStudioShell({
     <AppShell
       activePage={route.page}
       globalSearch={
-        <GlobalSearch
-          fabrics={fabrics}
-          onOpenFabric={onOpenFabric}
-          onOpenProject={onOpenProject}
-          projects={projects}
+        <CanonicalGlobalSearch
+          onNavigate={onNavigate}
+          onOpenGarment={onOpenProject}
+          state={state}
         />
       }
       navItems={navigationItems}
@@ -61,7 +55,7 @@ export function AuthenticatedStudioShell({
           error={syncError}
           onOpen={onSyncDetails}
           pendingCount={pendingCount}
-          status={syncStatus}
+          status={syncStatus === 'ready' ? 'synced' : syncStatus === 'loading' ? 'syncing' : syncStatus === 'offline' ? 'offline' : 'error'}
           warning={localCacheWarning}
         />
       }

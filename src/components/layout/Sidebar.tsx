@@ -91,7 +91,7 @@ export function Sidebar({
           ) : null}
           {onSignOut ? (
             <button
-              className="mt-3 inline-flex min-h-10 w-full items-center justify-center gap-2 rounded-xl border border-bronze/30 bg-midnight/42 px-3 text-sm font-medium text-stardust/68 transition hover:border-ember/42 hover:bg-stardust/[0.07] hover:text-stardust"
+              className="mt-3 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border border-bronze/30 bg-midnight/42 px-3 text-sm font-medium text-stardust/68 transition hover:border-ember/42 hover:bg-stardust/[0.07] hover:text-stardust"
               onClick={onSignOut}
               type="button"
             >

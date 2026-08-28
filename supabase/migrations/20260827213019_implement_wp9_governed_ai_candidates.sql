@@ -40,7 +40,7 @@ end
 $$;
 
 update ml_private.ai_jobs
-set source_checksum = encode(digest(input_refs_json::text, 'sha256'), 'hex')
+set source_checksum = encode(extensions.digest(input_refs_json::text, 'sha256'), 'hex')
 where source_checksum is null;
 
 alter table ml_private.ai_jobs
@@ -94,7 +94,7 @@ alter table ml_private.ai_artifacts
 
 update ml_private.ai_artifacts artifact
 set source_checksum = job.source_checksum,
-    candidate_checksum = encode(digest(artifact.candidate_json::text, 'sha256'), 'hex')
+    candidate_checksum = encode(extensions.digest(artifact.candidate_json::text, 'sha256'), 'hex')
 from ml_private.ai_jobs job
 where job.studio_id = artifact.studio_id
   and job.id = artifact.ai_job_id

@@ -38,9 +38,19 @@ const productionPath = 'supabase/migrations/20260826061816_implement_wp6_product
 const productionCompletionPath = 'supabase/migrations/20260826080100_complete_wp6_costing_orders_qc.sql';
 const editorialPath = 'supabase/migrations/20260826103000_normalize_editorial_story_from_system.sql';
 const portfolioPath = 'supabase/migrations/20260826121000_implement_wp8_public_cuts.sql';
+const rcMigrationRolePath = 'supabase/migrations/20260827170000_enable_trusted_rc_migration_role.sql';
 const aiPath = 'supabase/migrations/20260827213019_implement_wp9_governed_ai_candidates.sql';
+const canonicalTransportPath = 'supabase/migrations/20260828014454_canonical_operation_transport.sql';
+const publicCutBatchPath = 'supabase/migrations/20260828021002_atomic_public_cut_batch.sql';
+const protectedCommandsPath = 'supabase/migrations/20260828033000_protected_canonical_commands.sql';
+const trustedDeviceFinalizePath = 'supabase/migrations/20260828050000_trusted_device_import_finalize.sql';
 const testPath = 'supabase/tests/ml_studio_2_rls_test.sql';
+const rcTestPath = 'supabase/tests/wp10_rc_migration_role_test.sql';
 const aiTestPath = 'supabase/tests/wp9_ai_governance_test.sql';
+const canonicalTransportTestPath = 'supabase/tests/wp10_canonical_operation_transport_test.sql';
+const publicCutBatchTestPath = 'supabase/tests/wp10_atomic_public_cut_batch_test.sql';
+const protectedCommandsTestPath = 'supabase/tests/wp10_protected_canonical_commands_test.sql';
+const trustedDeviceFinalizeTestPath = 'supabase/tests/wp10_trusted_device_import_test.sql';
 const foundation = read(foundationPath);
 const rls = read(rlsPath);
 const storage = read(storagePath);
@@ -53,9 +63,19 @@ const production = read(productionPath);
 const productionCompletion = read(productionCompletionPath);
 const editorial = read(editorialPath);
 const portfolio = read(portfolioPath);
+const rcMigrationRole = read(rcMigrationRolePath);
 const ai = read(aiPath);
+const canonicalTransport = read(canonicalTransportPath);
+const publicCutBatch = read(publicCutBatchPath);
+const protectedCommands = read(protectedCommandsPath);
+const trustedDeviceFinalize = read(trustedDeviceFinalizePath);
 const rlsTest = read(testPath);
+const rcRlsTest = read(rcTestPath);
 const aiRlsTest = read(aiTestPath);
+const canonicalTransportTest = read(canonicalTransportTestPath);
+const publicCutBatchTest = read(publicCutBatchTestPath);
+const protectedCommandsTest = read(protectedCommandsTestPath);
+const trustedDeviceFinalizeTest = read(trustedDeviceFinalizeTestPath);
 
 const structurallyBalanced = (sql) => {
   let depth = 0;
@@ -120,9 +140,19 @@ for (const [path, sql] of [
   [productionCompletionPath, productionCompletion],
   [editorialPath, editorial],
   [portfolioPath, portfolio],
+  [rcMigrationRolePath, rcMigrationRole],
   [aiPath, ai],
+  [canonicalTransportPath, canonicalTransport],
+  [publicCutBatchPath, publicCutBatch],
+  [protectedCommandsPath, protectedCommands],
+  [trustedDeviceFinalizePath, trustedDeviceFinalize],
   [testPath, rlsTest],
+  [rcTestPath, rcRlsTest],
   [aiTestPath, aiRlsTest],
+  [canonicalTransportTestPath, canonicalTransportTest],
+  [publicCutBatchTestPath, publicCutBatchTest],
+  [protectedCommandsTestPath, protectedCommandsTest],
+  [trustedDeviceFinalizeTestPath, trustedDeviceFinalizeTest],
 ]) {
   check(structurallyBalanced(sql), `Unbalanced SQL delimiters in ${path}.`);
 }
@@ -154,9 +184,10 @@ const expectedPrivateTables = [
   'portfolio_project_assets', 'portfolio_editorial_scenes',
   'portfolio_editorial_assets', 'portfolio_technical_excerpts',
   'sync_tombstones',
+  'canonical_operation_receipts', 'public_cut_batches',
 ].sort();
 
-const canonicalTableSql = foundation + '\n' + release + '\n' + production + '\n' + productionCompletion + '\n' + editorial + '\n' + portfolio + '\n' + ai;
+const canonicalTableSql = foundation + '\n' + release + '\n' + production + '\n' + productionCompletion + '\n' + editorial + '\n' + portfolio + '\n' + ai + '\n' + canonicalTransport + '\n' + publicCutBatch;
 const actualPrivateTables = [...canonicalTableSql.matchAll(/create table ml_private\.([a-z_]+)/g)]
   .map((match) => match[1])
   .sort();
@@ -188,7 +219,7 @@ for (const table of expectedPrivateTables) {
     check(/\bstudio_id uuid\b/.test(block), `Tenant table lacks studio_id: ${table}`);
   }
   check(
-    rls.includes(`'${table}'`) || rls.includes(`ml_private.${table}`) || release.includes(`ml_private.${table}`) || production.includes(`ml_private.${table}`) || productionCompletion.includes(`ml_private.${table}`) || editorial.includes(`ml_private.${table}`) || portfolio.includes(`ml_private.${table}`) || ai.includes(`ml_private.${table}`),
+    rls.includes(`'${table}'`) || rls.includes(`ml_private.${table}`) || release.includes(`ml_private.${table}`) || production.includes(`ml_private.${table}`) || productionCompletion.includes(`ml_private.${table}`) || editorial.includes(`ml_private.${table}`) || portfolio.includes(`ml_private.${table}`) || ai.includes(`ml_private.${table}`) || canonicalTransport.includes(`ml_private.${table}`) || publicCutBatch.includes(`ml_private.${table}`),
     `Canonical table is missing from RLS coverage: ${table}`,
   );
 }
@@ -197,6 +228,7 @@ const immutableOrJoinTables = new Set([
   'garment_tags', 'inventory_entries', 'garment_versions', 'tech_pack_exports',
   'validation_runs', 'template_applications', 'entity_revisions', 'change_events',
   'restore_operations', 'validation_waivers',
+  'canonical_operation_receipts', 'public_cut_batches',
 ]);
 for (const table of expectedPrivateTables) {
   if (immutableOrJoinTables.has(table)) continue;
@@ -217,6 +249,7 @@ const allowedJsonbColumns = new Set([
   'field_manifest_json',
   'section_manifest_json',
   'manifest_json',
+  'source_manifest_json',
 ]);
 const jsonbColumns = expectedPrivateTables.flatMap((table) =>
   [...tableBlock(table).matchAll(/^\s+([a-z_]+) jsonb\b/gm)].map((match) => match[1]),
@@ -228,7 +261,7 @@ for (const column of jsonbColumns) {
 
 check((foundation.match(/references /g) ?? []).length >= 80, 'Expected explicit canonical foreign keys are missing.');
 check((foundation.match(/create (?:unique )?index /g) ?? []).length >= 55, 'Expected canonical indexes are missing.');
-const canonicalSql = foundation + rls + storage + bootstrap + technical + measurement + release + versioning + production + productionCompletion + editorial + portfolio + ai;
+const canonicalSql = foundation + rls + storage + bootstrap + technical + measurement + release + versioning + production + productionCompletion + editorial + portfolio + rcMigrationRole + ai + canonicalTransport + publicCutBatch + protectedCommands + trustedDeviceFinalize;
 check(!/\b(create|alter|drop) table public\./i.test(canonicalSql), 'WP2 must not create, alter, or drop legacy public tables.');
 check(!/\bdrop table\b/i.test(canonicalSql), 'WP2 migrations may not drop tables.');
 check(!/\brename\s+(?:table|column)\b/i.test(canonicalSql), 'WP2 migrations may not rename legacy structures.');
@@ -373,6 +406,34 @@ for (const contract of ['AI acceptance receipt must reference a normal domain ch
 check(ai.includes('revoke insert, update, delete on table ml_private.ai_artifacts from authenticated'), 'WP9 browser clients must not write candidate artifacts directly.');
 check(ai.includes('grant select on table ml_private.ai_artifacts to authenticated'), 'WP9 reviewers need read-only candidate access.');
 
+for (const contract of [
+  'canonical_operation_receipts', 'canonical_client_columns',
+  'commit_canonical_operation', 'request_checksum', 'ml.canonical_operation',
+]) {
+  check(canonicalTransport.includes(contract), `WP10 canonical transaction contract is missing: ${contract}`);
+}
+check(canonicalTransport.includes('revoke insert, update, delete on table ml_private.canonical_operation_receipts'), 'WP10 operation receipts must be browser read-only.');
+check(canonicalTransport.includes("perform set_config('ml.operation_id'"), 'WP10 canonical writes must establish a transaction-scoped direct-write guard.');
+check(!/format\([^)]*p_entity_type/i.test(canonicalTransport), 'WP10 canonical operation must never interpolate a client entity type as a table identifier.');
+
+for (const command of ['begin_public_cut_batch', 'stage_public_cut_asset', 'commit_public_cut_batch', 'unpublish_public_cut_batch']) {
+  check(publicCutBatch.includes(`function ml_private.${command}`), `WP10 atomic Public Cut command is missing: ${command}`);
+}
+check(publicCutBatch.includes('create table ml_private.public_cut_batches'), 'WP10 Public Cut requires private, retryable batch evidence.');
+check(publicCutBatch.includes("status in ('draft', 'copying', 'ready', 'published', 'failed', 'unpublished')"), 'WP10 Public Cut batch lifecycle is incomplete.');
+check(publicCutBatch.includes('update ml_public.publications') && publicCutBatch.includes('is_current = false'), 'WP10 Public Cut commit must retire the former set atomically.');
+
+for (const command of [
+  'commit_canonical_restore', 'create_canonical_freeze_frame', 'release_technical_spec',
+  'record_tech_pack_export', 'record_editorial_export', 'commit_qc_waiver',
+  'decide_qc_inspection', 'transition_ai_job', 'record_ai_validation_candidate',
+]) {
+  check(protectedCommands.includes(`function ml_private.${command}`), `WP10 protected command is missing: ${command}`);
+}
+check(trustedDeviceFinalize.includes('finalize_trusted_device_import'), 'WP10 trusted device import finalizer is missing.');
+check(trustedDeviceFinalize.includes('to service_role'), 'WP10 trusted device import finalizer must be service-role only.');
+check(trustedDeviceFinalize.includes('isolated-beta-device-import-v1'), 'WP10 trusted device import requires an explicit isolated-beta confirmation.');
+
 const srcFiles = [];
 const walk = (directory) => {
   for (const entry of readdirSync(directory, { withFileTypes: true })) {
@@ -385,11 +446,27 @@ for (const uiDirectory of ['src/components/', 'src/hooks/', 'src/pages/', 'src/r
   walk(fileURLToPath(new URL(uiDirectory, root)));
 }
 srcFiles.push(fileURLToPath(new URL('src/App.tsx', root)));
+const reviewedCanonicalIdentityPaths = new Set([
+  fileURLToPath(new URL('src/hooks/useAuth.tsx', root)),
+  fileURLToPath(new URL('src/hooks/useCanonicalWorkspace.tsx', root)),
+]);
 for (const path of srcFiles) {
   const contents = readFileSync(path, 'utf8');
   check(
-    !/ml_private|ml_public|studio-assets|portfolio-assets/.test(contents),
-    `Current UI was switched to a WP2 canonical path: ${path}`,
+    reviewedCanonicalIdentityPaths.has(path)
+      || !/ml_private|ml_public|studio-assets|portfolio-assets/.test(contents),
+    `UI contains an unreviewed direct canonical/storage path: ${path}`,
+  );
+}
+for (const path of reviewedCanonicalIdentityPaths) {
+  const contents = readFileSync(path, 'utf8');
+  check(
+    !/ml_public|studio-assets|portfolio-assets/.test(contents),
+    `Reviewed identity path crossed into public or Storage data: ${path}`,
+  );
+  check(
+    !/\.from\(['"](?!profiles|studios|studio_settings)[^'"]+['"]\)/.test(contents),
+    `Reviewed identity path queries a non-identity canonical table: ${path}`,
   );
 }
 
@@ -502,11 +579,17 @@ for (const contract of ['Inspect sources', 'Candidate fields', 'Contextual confi
 
 const pgTapCount = (contents, path) => {
   const plan = Number(contents.match(/select plan\((\d+)\)/)?.[1] ?? 0);
-  const assertionCount = (contents.match(/^select (?:is|isnt|ok|results_eq|throws_like|throws_ok|lives_ok)\(/gm) ?? []).length;
+  const assertionCount = (contents.match(/^select (?:is|isnt|ok|results_eq|throws_like|throws_ok|lives_ok|has_table|has_function)\(/gm) ?? []).length;
   check(plan === assertionCount, `${path} pgTAP plan (${plan}) does not match assertion count (${assertionCount}).`);
   return assertionCount;
 };
-const assertions = pgTapCount(rlsTest, testPath) + pgTapCount(aiRlsTest, aiTestPath);
+const assertions = pgTapCount(rlsTest, testPath)
+  + pgTapCount(rcRlsTest, rcTestPath)
+  + pgTapCount(aiRlsTest, aiTestPath)
+  + pgTapCount(canonicalTransportTest, canonicalTransportTestPath)
+  + pgTapCount(publicCutBatchTest, publicCutBatchTestPath)
+  + pgTapCount(protectedCommandsTest, protectedCommandsTestPath)
+  + pgTapCount(trustedDeviceFinalizeTest, trustedDeviceFinalizeTestPath);
 check(rlsTest.includes('set local role anon'), 'pgTAP suite lacks anonymous access tests.');
 check(rlsTest.includes('Cross-studio'), 'pgTAP suite lacks cross-studio denial tests.');
 check(rlsTest.includes('unpublish_publication'), 'pgTAP suite lacks unpublication tests.');
@@ -514,11 +597,20 @@ check(aiRlsTest.includes('browser members cannot directly accept a candidate'), 
 check(aiRlsTest.includes('acceptance fails when a source revision changed after generation'), 'WP9 pgTAP suite lacks stale-source denial.');
 check(aiRlsTest.includes('reviewers cannot decide AI candidates'), 'WP9 pgTAP suite lacks decision permission denial.');
 check(aiRlsTest.includes('generated media cannot cross Studio storage prefixes'), 'WP9 pgTAP suite lacks private media enforcement.');
+check(rcRlsTest.includes('trusted migration role cannot delete canonical garment data'), 'WP10 pgTAP suite lacks non-destructive service-role enforcement.');
+check(rcMigrationRole.includes('grant select, insert, update on all tables in schema ml_private to service_role'), 'WP10 trusted migration role lacks scoped private-table privileges.');
+check(!rcMigrationRole.includes('delete on all tables'), 'WP10 trusted migration role must not receive bulk delete privileges.');
+check(canonicalTransportTest.includes('ordinary browser writes cannot bypass the operation transaction'), 'WP10 pgTAP suite lacks canonical direct-write rejection.');
+check(canonicalTransportTest.includes('an identical operation ID is treated as completed without replay'), 'WP10 pgTAP suite lacks idempotent retry evidence.');
+check(publicCutBatchTest.includes('a media-stage failure cannot partially publish the batch'), 'WP10 pgTAP suite lacks partial Public Cut failure privacy evidence.');
+check(publicCutBatchTest.includes('unpublish removes database visibility before cleanup'), 'WP10 pgTAP suite lacks visibility-first unpublish evidence.');
+check(protectedCommandsTest.includes('restore advances the garment revision without rewriting earlier versions'), 'WP10 pgTAP suite lacks protected restore evidence.');
+check(trustedDeviceFinalizeTest.includes('browser roles cannot execute the trusted device finalizer'), 'WP10 pgTAP suite lacks trusted-import browser denial.');
 
 const migrationNames = readdirSync(new URL('supabase/migrations/', root))
   .filter((name) => name.endsWith('.sql'))
   .sort();
-for (const path of [foundationPath, rlsPath, storagePath, bootstrapPath, technicalPath, measurementPath, releasePath, versioningPath, productionPath, productionCompletionPath, editorialPath, portfolioPath, aiPath]) {
+for (const path of [foundationPath, rlsPath, storagePath, bootstrapPath, technicalPath, measurementPath, releasePath, versioningPath, productionPath, productionCompletionPath, editorialPath, portfolioPath, aiPath, rcMigrationRolePath, canonicalTransportPath, publicCutBatchPath, protectedCommandsPath, trustedDeviceFinalizePath]) {
   check(migrationNames.includes(path.split('/').at(-1)), `Named migration missing: ${path}`);
 }
 check(
@@ -553,6 +645,14 @@ check(
 check(
   migrationNames.indexOf(portfolioPath.split('/').at(-1)) < migrationNames.indexOf(aiPath.split('/').at(-1)),
   'WP9 governed AI migration must run after the WP8 Public Cut boundary.',
+);
+check(
+  migrationNames.indexOf(rcMigrationRolePath.split('/').at(-1)) < migrationNames.indexOf(aiPath.split('/').at(-1))
+    && migrationNames.indexOf(aiPath.split('/').at(-1)) < migrationNames.indexOf(canonicalTransportPath.split('/').at(-1))
+    && migrationNames.indexOf(canonicalTransportPath.split('/').at(-1)) < migrationNames.indexOf(publicCutBatchPath.split('/').at(-1))
+    && migrationNames.indexOf(publicCutBatchPath.split('/').at(-1)) < migrationNames.indexOf(protectedCommandsPath.split('/').at(-1))
+    && migrationNames.indexOf(protectedCommandsPath.split('/').at(-1)) < migrationNames.indexOf(trustedDeviceFinalizePath.split('/').at(-1)),
+  'WP10 cutover migrations must run migration role -> governed AI -> canonical transport -> Public Cut batch -> protected commands -> trusted finalizer.',
 );
 
 if (failures.length > 0) {

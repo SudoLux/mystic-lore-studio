@@ -31,9 +31,9 @@ export const navigationItems: NavItem[] = [
   },
   {
     id: 'kanban',
-    label: 'Kanban',
-    shortLabel: 'Flow',
-    description: 'Workflow board',
+    label: 'Plan',
+    shortLabel: 'Plan',
+    description: 'Flow, tasks, and calendar',
     icon: Columns3,
   },
   {

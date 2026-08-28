@@ -1,0 +1,410 @@
+import type { SupabaseClient } from '@supabase/supabase-js';
+import type { Database, Json } from '../../types/database.generated';
+import { normalizeWorkspace, type CanonicalPublication, type CanonicalWorkspaceState } from '../workspace';
+import {
+  applyPortfolioJoins,
+  canonicalCodecRegistry,
+  decodeCanonicalRecord,
+  encodeCanonicalRecord,
+  materializeMutableRows,
+  privateHydrationCodecs,
+} from './canonicalCodecRegistry';
+import { CanonicalIndexedDb } from './canonicalIndexedDb';
+import { uploadStagedCanonicalMedia } from './canonicalMedia';
+import type {
+  CanonicalCommitHandle,
+  CanonicalCommitResult,
+  CanonicalOperation,
+  CanonicalOutboxEntry,
+  CanonicalPersistenceMode,
+  CanonicalServerConflict,
+  CanonicalWorkspaceRepository,
+} from './contracts';
+
+const pageSize = 500;
+
+function transportErrorMessage(reason: unknown) {
+  if (reason instanceof Error && reason.message) return reason.message;
+  if (reason && typeof reason === 'object' && 'message' in reason && typeof reason.message === 'string') {
+    return reason.message;
+  }
+  return 'Canonical transport failed.';
+}
+
+type DynamicQueryResult = {
+  data: Record<string, unknown>[] | null;
+  error: { message: string } | null;
+};
+
+type DynamicQuery = PromiseLike<DynamicQueryResult> & {
+  eq(column: string, value: unknown): DynamicQuery;
+  order(column: string, options?: { ascending?: boolean }): DynamicQuery;
+  range(from: number, to: number): DynamicQuery;
+  select(columns?: string): DynamicQuery;
+};
+
+type DynamicSchema = {
+  from(table: string): DynamicQuery;
+};
+
+export class SupabaseCanonicalWorkspaceRepository implements CanonicalWorkspaceRepository {
+  private studioId: string | null = null;
+  private flushPromise: Promise<void> | null = null;
+  private readonly projectedRows = new Map<string, Record<string, unknown>>();
+  private readonly pending = new Map<string, {
+    reject: (reason: unknown) => void;
+    resolve: (result: CanonicalCommitResult) => void;
+  }>();
+
+  constructor(
+    private readonly client: SupabaseClient<Database>,
+    private readonly cache = new CanonicalIndexedDb(),
+  ) {}
+
+  async hydrate(studioId: string) {
+    this.studioId = studioId;
+    if (typeof navigator !== 'undefined' && navigator.onLine === false) {
+      const cached = await this.cache.getWorkspace(studioId);
+      if (!cached) throw new Error('This device has no cached canonical workspace for offline startup.');
+      this.resetProjection(cached);
+      return cached;
+    }
+    try {
+      const state = await this.loadCloudState(studioId);
+      this.resetProjection(state);
+      await this.cache.putWorkspace(state);
+      return state;
+    } catch (reason) {
+      const cached = await this.cache.getWorkspace(studioId);
+      if (cached) {
+        this.resetProjection(cached);
+        return cached;
+      }
+      throw reason;
+    }
+  }
+
+  dispatch(operation: CanonicalOperation): CanonicalCommitHandle {
+    const committed = new Promise<CanonicalCommitResult>((resolve, reject) => {
+      this.pending.set(operation.operationId, { reject, resolve });
+    });
+    void this.enqueue(operation).then(() => {
+      if (typeof navigator === 'undefined' || navigator.onLine !== false) void this.flush();
+    }).catch((reason) => this.pending.get(operation.operationId)?.reject(reason));
+    return { committed, operationId: operation.operationId };
+  }
+
+  async flush() {
+    if (!this.studioId || (typeof navigator !== 'undefined' && navigator.onLine === false)) return;
+    if (this.flushPromise) return await this.flushPromise;
+    this.flushPromise = this.flushEntries();
+    try {
+      await this.flushPromise;
+    } finally {
+      this.flushPromise = null;
+    }
+  }
+
+  async refresh() {
+    if (!this.studioId) throw new Error('The canonical repository has not been hydrated.');
+    return await this.hydrate(this.studioId);
+  }
+
+  private async enqueue(operation: CanonicalOperation) {
+    const queued = await this.cache.listOutbox(operation.studioId);
+    const baseRows: Record<string, Record<string, unknown> | null> = {};
+    const localRows: Record<string, Record<string, unknown> | null> = {};
+    for (const mutation of operation.mutations) {
+      const key = `${mutation.entityType}:${mutation.entityId}`;
+      const base = this.projectedRows.get(key) ?? null;
+      baseRows[key] = base ? { ...base } : null;
+      const local = mutation.action === 'delete'
+        ? null
+        : mutation.action === 'insert'
+          ? { ...(mutation.row ?? {}) }
+          : { ...(base ?? {}), ...(mutation.row ?? {}) };
+      localRows[key] = local;
+      if (local) this.projectedRows.set(key, local);
+      else this.projectedRows.delete(key);
+    }
+    await this.cache.putOutbox({
+      attempts: 0,
+      baseRows,
+      conflicts: [],
+      dependencyIds: queued.map((entry) => entry.operation.operationId),
+      lastError: null,
+      localRows,
+      operation,
+      status: 'pending',
+    });
+  }
+
+  private async flushEntries() {
+    const entries = await this.cache.listOutbox(this.studioId!);
+    for (const entry of entries) {
+      if (entry.status === 'conflict') break;
+      try {
+        const result = await this.send(entry.operation);
+        if (result.status === 'conflict') {
+          const merged = tryMergeDisjoint(entry, result.conflicts);
+          if (merged) {
+            await this.cache.putOutbox(merged);
+            const retryResult = await this.send(merged.operation);
+            if (retryResult.status === 'conflict') {
+              await this.keepConflict(merged, retryResult.conflicts);
+              this.pending.get(entry.operation.operationId)?.resolve(retryResult);
+              continue;
+            }
+            await this.complete(entry.operation.operationId, retryResult);
+            continue;
+          }
+          await this.keepConflict(entry, result.conflicts);
+          this.pending.get(entry.operation.operationId)?.resolve(result);
+          continue;
+        }
+        await this.complete(entry.operation.operationId, result);
+      } catch (reason) {
+        await this.cache.putOutbox({
+          ...entry,
+          attempts: entry.attempts + 1,
+          lastError: transportErrorMessage(reason),
+          status: 'failed',
+        });
+        this.pending.get(entry.operation.operationId)?.reject(reason);
+        break;
+      }
+    }
+  }
+
+  private async complete(operationId: string, result: CanonicalCommitResult) {
+    if (result.status !== 'conflict') {
+      for (const authoritative of result.authoritativeRows) {
+        const key = `${authoritative.entityType}:${authoritative.entityId}`;
+        if (!authoritative.row) {
+          this.projectedRows.delete(key);
+          continue;
+        }
+        const entry = canonicalCodecRegistry.find((candidate) => candidate.entityType === authoritative.entityType);
+        if (entry) this.projectedRows.set(key, encodeCanonicalRecord(entry, decodeCanonicalRecord(entry, authoritative.row)));
+      }
+    }
+    await this.cache.deleteOutbox(operationId);
+    this.pending.get(operationId)?.resolve(result);
+    this.pending.delete(operationId);
+  }
+
+  private async keepConflict(entry: CanonicalOutboxEntry, conflicts: CanonicalServerConflict[]) {
+    await this.cache.putOutbox({
+      ...entry,
+      attempts: entry.attempts + 1,
+      conflicts,
+      lastError: 'The server changed the same record. Designer review is required.',
+      status: 'conflict',
+    });
+  }
+
+  private async send(operation: CanonicalOperation): Promise<CanonicalCommitResult> {
+    // Media bytes are a dependency of their metadata row. Upload first, then
+    // let the idempotent RPC commit metadata and relationships atomically.
+    for (const mutation of operation.mutations) {
+      if (mutation.entityType !== 'media_assets' || mutation.action === 'delete' || !mutation.row) continue;
+      await uploadStagedCanonicalMedia({
+        checksum: String(mutation.row.checksum),
+        id: mutation.entityId,
+        mimeType: String(mutation.row.mime_type),
+        storagePath: String(mutation.row.storage_path),
+      }, this.cache);
+    }
+    const response = await this.client.schema('ml_private').rpc('commit_canonical_operation', {
+      p_garment_id: operation.garmentId as string,
+      p_mutations: operation.mutations as unknown as Json,
+      p_operation_id: operation.operationId,
+      p_origin: operation.origin,
+      p_studio_id: operation.studioId,
+    });
+    if (response.error) throw response.error;
+    return response.data as unknown as CanonicalCommitResult;
+  }
+
+  private async loadCloudState(studioId: string) {
+    const state = emptyCanonicalWorkspaceState(studioId);
+    const joins: Record<string, Record<string, unknown>[]> = {};
+    const results = await Promise.all(privateHydrationCodecs.map(async (entry) => ({
+      entry,
+      rows: await this.loadAllPages('ml_private', entry.table, studioId),
+    })));
+    for (const { entry, rows } of results) {
+      if (!entry.stateKey) {
+        joins[entry.table] = rows;
+        continue;
+      }
+      (state[entry.stateKey] as unknown[]) = rows.map((row) => decodeCanonicalRecord(entry, row));
+    }
+
+    const publicationRows = await this.loadAllPages('ml_public', 'publications', studioId);
+    state.publications = publicationRows.map(decodePublication);
+    return normalizeWorkspace(applyPortfolioJoins(state, joins));
+  }
+
+  private resetProjection(state: CanonicalWorkspaceState) {
+    this.projectedRows.clear();
+    for (const [key, value] of materializeMutableRows(state)) {
+      this.projectedRows.set(key, encodeCanonicalRecord(value.codec, value.record));
+    }
+  }
+
+  private async loadAllPages(schema: 'ml_private' | 'ml_public', table: string, studioId: string) {
+    const rows: Record<string, unknown>[] = [];
+    const dynamicSchema = this.client.schema(schema) as unknown as DynamicSchema;
+    for (let from = 0; ; from += pageSize) {
+      const response = await dynamicSchema.from(table).select('*')
+        .eq('studio_id', studioId).order('id', { ascending: true })
+        .range(from, from + pageSize - 1);
+      if (response.error) throw new Error(`${schema}.${table}: ${response.error.message}`);
+      const page = response.data ?? [];
+      rows.push(...page);
+      if (page.length < pageSize) return rows;
+    }
+  }
+}
+
+export async function loadCanonicalPersistenceMode(
+  client: SupabaseClient<Database>,
+  studioId: string,
+): Promise<CanonicalPersistenceMode> {
+  const response = await client.schema('ml_private').from('studio_settings')
+    .select('version_policy').eq('studio_id', studioId).maybeSingle();
+  if (response.error) throw response.error;
+  const policy = response.data?.version_policy;
+  const object = policy && typeof policy === 'object' && !Array.isArray(policy)
+    ? policy as Record<string, unknown>
+    : {};
+  const value = object.canonicalPersistence ?? object.canonical_persistence;
+  return value === 'cloud' || value === 'local-recovery' || value === 'shadow'
+    ? value
+    : 'shadow';
+}
+
+export function emptyCanonicalWorkspaceState(studioId: string): CanonicalWorkspaceState {
+  return {
+    aiAcceptanceCommands: [], aiAcceptances: [], aiArtifacts: [], aiInputRefs: [], aiJobs: [],
+    annotations: [], bomItems: [], calendarEvents: [], changeEvents: [], collections: [],
+    componentVariants: [], components: [], constructionDetails: [], constructionSections: [],
+    constructionSteps: [], costItems: [], costSheets: [], designBriefs: [], entityRevisions: [],
+    editorialAssets: [], editorialBlocks: [], editorialCollectionGarments: [], editorialCollections: [],
+    editorialExports: [], editorialScenes: [], factories: [], fitIssuePromotions: [], fitIssues: [],
+    garmentComponents: [], garmentMaterials: [], garmentMedia: [], garments: [], conflicts: [],
+    inventoryEntries: [], materialVariants: [], materials: [], mediaAssets: [], mediaDerivatives: [],
+    moodboardItems: [], moodboards: [], flatAnnotations: [], fitSessionMedia: [], fitSessions: [],
+    garmentVersions: [], gradeRuleValues: [], gradeRules: [], measurementSets: [], measurementValues: [],
+    pomPoints: [], portfolioEditorials: [], portfolioProfiles: [], portfolioProjects: [],
+    portfolioTechnicalExcerpts: [], publications: [], productionMilestones: [], productionOrders: [],
+    qcInspections: [], qcResults: [], qcTemplateChecks: [], qcTemplates: [], qcWaivers: [],
+    restoreOperations: [], releaseTasks: [], sampleRoundMedia: [], sampleRounds: [], fitMeasurements: [],
+    schemaVersion: 10, studioId, suppliers: [], supplierItems: [], templates: [], templateApplications: [],
+    technicalFiles: [], technicalFlats: [], technicalSpecs: [], techPackExports: [], validationRuns: [],
+    validationWaivers: [], versionDependencies: [], versionEditorial: [], versionPortfolio: [],
+  };
+}
+
+function decodePublication(row: Record<string, unknown>): CanonicalPublication {
+  const createdAt = String(row.created_at ?? row.published_at ?? new Date(0).toISOString());
+  return {
+    checksum: String(row.checksum),
+    createdAt,
+    createdBy: String(row.created_by ?? ''),
+    id: String(row.id),
+    isCurrent: Boolean(row.is_current),
+    isPublic: Boolean(row.is_public),
+    mediaManifest: Array.isArray(row.media_manifest) ? row.media_manifest as CanonicalPublication['mediaManifest'] : [],
+    profileId: String(row.profile_id),
+    publicPath: String(row.public_path),
+    publicationType: row.publication_type as CanonicalPublication['publicationType'],
+    publishedAt: String(row.published_at ?? createdAt),
+    revision: Number(row.source_revision ?? 1),
+    snapshot: row.snapshot_json as Record<string, unknown>,
+    sourceId: String(row.source_id),
+    sourceRevision: Number(row.source_revision ?? 1),
+    sourceVersionId: row.source_version_id ? String(row.source_version_id) : null,
+    studioId: String(row.studio_id),
+    unpublishedAt: row.unpublished_at ? String(row.unpublished_at) : null,
+    updatedAt: String(row.unpublished_at ?? row.published_at ?? createdAt),
+  };
+}
+
+export function tryMergeDisjoint(
+  entry: CanonicalOutboxEntry,
+  conflicts: CanonicalServerConflict[],
+): CanonicalOutboxEntry | null {
+  const nextMutations = [...entry.operation.mutations];
+  for (const conflict of conflicts) {
+    const index = nextMutations.findIndex((mutation) =>
+      mutation.entityType === conflict.entityType && mutation.entityId === conflict.entityId,
+    );
+    const mutation = nextMutations[index];
+    if (!mutation || mutation.action !== 'update' || !mutation.row || !conflict.currentRow) return null;
+    const key = `${mutation.entityType}:${mutation.entityId}`;
+    const base = entry.baseRows[key] ?? {};
+    const localChanged = new Set(Object.keys(mutation.row));
+    const serverChanged = changedKeys(base, conflict.currentRow, Object.keys(base));
+    if ([...localChanged].some((field) => serverChanged.has(field))) return null;
+    nextMutations[index] = {
+      ...mutation,
+      baseRevision: conflict.currentRevision,
+      row: mutation.row,
+    };
+  }
+  return {
+    ...entry,
+    attempts: entry.attempts + 1,
+    baseRows: Object.fromEntries(conflicts.map((conflict) => [
+      `${conflict.entityType}:${conflict.entityId}`, conflict.currentRow,
+    ])),
+    conflicts: [],
+    lastError: null,
+    operation: { ...entry.operation, mutations: nextMutations },
+    status: 'pending',
+  };
+}
+
+function changedKeys(base: Record<string, unknown>, value: Record<string, unknown>, keys = Object.keys(value)) {
+  const ignored = new Set(['created_at', 'updated_at', 'revision']);
+  return new Set(keys.filter((key) => !ignored.has(key) && stableJson(base[key]) !== stableJson(value[key])));
+}
+
+function stableJson(value: unknown): string {
+  if (Array.isArray(value)) return `[${value.map(stableJson).join(',')}]`;
+  if (value && typeof value === 'object') return JSON.stringify(Object.fromEntries(Object.entries(value as Record<string, unknown>).sort(([a], [b]) => a.localeCompare(b))));
+  return JSON.stringify(value);
+}
+
+export function authoritativeRowsToWorkspace(
+  current: CanonicalWorkspaceState,
+  result: CanonicalCommitResult,
+) {
+  if (result.status === 'conflict') return current;
+  const next = { ...current };
+  for (const authoritative of result.authoritativeRows) {
+    const entry = canonicalCodecRegistry.find((item) => item.entityType === authoritative.entityType);
+    if (!entry?.stateKey) continue;
+    const records = [...(next[entry.stateKey] as unknown[])] as Record<string, unknown>[];
+    const index = records.findIndex((record) => record.id === authoritative.entityId);
+    if (!authoritative.row) {
+      if (index >= 0) records.splice(index, 1);
+    } else {
+      const decoded = decodeCanonicalRecord(entry, authoritative.row);
+      if (index >= 0) records[index] = decoded;
+      else records.push(decoded);
+    }
+    (next[entry.stateKey] as unknown[]) = records;
+  }
+  return normalizeWorkspace(next);
+}
+
+export function encodedWorkspaceRows(state: CanonicalWorkspaceState) {
+  return Object.fromEntries(canonicalCodecRegistry.flatMap((entry) => {
+    if (!entry.stateKey) return [];
+    return [[entry.table, (state[entry.stateKey] as unknown[]).map((record) =>
+      encodeCanonicalRecord(entry, record as Record<string, unknown>))]];
+  }));
+}

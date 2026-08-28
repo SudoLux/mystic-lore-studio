@@ -3,6 +3,7 @@ import { AlertTriangle, ArrowDown, ArrowUp, Check, Eye, EyeOff, Globe2, LoaderCi
 import { useCanonicalWorkspace } from '../../hooks/useCanonicalWorkspace';
 import {
   buildPublicCutPreview,
+  buildFreshPublicCutPreview,
   commitPublicCutToSupabase,
   createTechnicalExcerpt,
   movePortfolioItem,
@@ -10,7 +11,6 @@ import {
   publishPublicCut,
   selectPortfolioEditorial,
   selectPortfolioProject,
-  unpublishPublicCut,
   unpublishPublicCutFromSupabase,
   updatePortfolioEditorial,
   updatePortfolioProfile,
@@ -24,7 +24,7 @@ import { recordClientEvent } from '../../lib/observability';
 type Tab = 'projects' | 'editorials' | 'profile' | 'publish';
 
 export function PortfolioStudioPage() {
-  const { commitWorkspace, currentActorId, state, syncState } = useCanonicalWorkspace();
+  const { commitWorkspace, currentActorId, persistenceMode, refresh, state, syncState } = useCanonicalWorkspace();
   const [tab, setTab] = useState<Tab>('projects');
   const [preview, setPreview] = useState<Preview | null>(null);
   const [showPreview, setShowPreview] = useState(false);
@@ -35,9 +35,18 @@ export function PortfolioStudioPage() {
   useEffect(() => {
     let active = true;
     if (!state || !profile) return;
-    void buildPublicCutPreview(state, profile.id).then((result) => { if (active) setPreview(result); });
+    const loadPreview = persistenceMode === 'local-recovery'
+      ? buildPublicCutPreview(state, profile.id)
+      : buildFreshPublicCutPreview(state.studioId, profile.id);
+    void loadPreview
+      .then((result) => { if (active) setPreview(result); })
+      .catch((reason) => {
+        if (!active) return;
+        setPreview(null);
+        setMessage(reason instanceof Error ? reason.message : 'The exact public preview could not be loaded.');
+      });
     return () => { active = false; };
-  }, [profile, state]);
+  }, [persistenceMode, profile, state]);
 
   const history = useMemo(() => state && profile ? publicationHistory(state, profile.id) : [], [profile, state]);
   if (!state || !profile) return <LoadingState />;
@@ -46,15 +55,15 @@ export function PortfolioStudioPage() {
   const selectedProjects = state.portfolioProjects.filter((item) => item.profileId === profile.id).sort((a, b) => a.sortOrder - b.sortOrder);
   const selectedEditorials = state.portfolioEditorials.filter((item) => item.profileId === profile.id).sort((a, b) => a.sortOrder - b.sortOrder);
   const current = history.find((item) => item.isCurrent && item.publicationType === 'profile');
-  const canPublish = Boolean(preview && !preview.findings.length && !preview.warnings.length && !preview.isStale && syncState === 'ready');
+  const canPublish = Boolean(preview && !preview.findings.length && !preview.warnings.length && !preview.isStale && syncState === 'ready' && persistenceMode !== 'local-recovery');
 
   const publish = async () => {
     setBusy(true); setMessage(null);
     try {
       const result = await publishPublicCut(state, profile.id, currentActorId, syncState === 'ready');
       const committed = await commitPublicCutToSupabase(state, result.publications);
-      commitWorkspace(() => result.state, { origin: 'publication' });
-      setMessage(`Published immutable Public Cut ${result.preview.checksum.slice(0, 12)} (${committed.mode}).`);
+      await refresh();
+      setMessage(`Published atomic Public Cut ${committed.checksum.slice(0, 12)} (${committed.publishedIds.length} snapshots).`);
     } catch (error) { recordClientEvent({ context: { action: 'publish' }, kind: 'publication_failure' }); setMessage(error instanceof Error ? error.message : 'The Public Cut could not be published.'); }
     finally { setBusy(false); }
   };
@@ -63,8 +72,8 @@ export function PortfolioStudioPage() {
     setBusy(true); setMessage(null);
     try {
       const committed = await unpublishPublicCutFromSupabase(profile.id);
-      commitWorkspace((currentState) => unpublishPublicCut(currentState, profile.id, syncState === 'ready'), { origin: 'publication' });
-      setMessage(`Unpublished ${committed.unpublishedIds.length || history.filter((item) => item.isCurrent).length} current Public Cut(s).`);
+      await refresh();
+      setMessage(committed.cleanupWarning ?? `Unpublished ${committed.unpublishedIds.length || history.filter((item) => item.isCurrent).length} current Public Cut(s).`);
     } catch (error) { recordClientEvent({ context: { action: 'unpublish' }, kind: 'publication_failure' }); setMessage(error instanceof Error ? error.message : 'The Public Cut could not be unpublished.'); }
     finally { setBusy(false); }
   };

@@ -24,7 +24,11 @@ staleness detection, designer decisions, typed acceptance commands, and
 append-only attribution. WP10 hardens those accepted flows with responsive
 Field Mode, consistent dialog and keyboard behavior, narrow-workbench
 alternatives, reduced-motion support, measurable local scale fixtures, and
-private-safe client observability.
+private-safe client observability. The blocker-removal pass now makes Supabase
+the private WP3–WP9 authority, with IndexedDB cache/outbox/recovery, protected
+command boundaries, and atomic Public Cuts. Local engineering gates pass; the
+release remains blocked on isolated hosted-beta recovery, assistive-technology,
+physical-device, and deployed-performance evidence.
 
 ## Work-package Status
 
@@ -43,7 +47,7 @@ private-safe client observability.
 | WP7 | Editorial Collection normalization, Story from System, private export manifests, and canonical route cutover | Complete | Canonical collections preserve legacy editorial/lookbook evidence, sync-ready records remain private, and approved exports are checksum reproducible |
 | WP8 | Portfolio profile/project/editorial curation, Public Cut preview, immutable publication history, copied media, and anonymous route cutover | Complete | Anonymous access exposes only selected immutable payloads and copied public-safe derivatives, proven by application and database privacy tests |
 | WP9 | Governed AI jobs, normalized source references, reviewable candidates, deterministic test provider, and typed/audited acceptance | Complete | AI cannot bypass domain validation or directly write private/public production records; every accepted field is attributable to its source, actor, command, and change event |
-| WP10 | Hardening, accessibility, performance, resilience, and release readiness | Complete locally | Local responsive/accessibility/reliability/performance gates pass; beta-only device and assistive-technology checks are explicitly listed |
+| WP10 | Hardening, canonical cloud authority, transactional sync, atomic publication, migration rehearsal, and release readiness | External validation blocked | Local schema, application cutover, cross-device, privacy, accessibility automation, migration, and bundle gates pass; hosted recovery/device/performance evidence remains |
 
 ## Verification
 
@@ -71,6 +75,46 @@ Characterization coverage:
   the six-lens garment-workspace contract.
 - `tests/shellContract.test.ts`: fixed desktop/compact responsive shell modes
   and semantic native-button navigation for keyboard access.
+
+## Final 2.0 release-candidate audit
+
+Decision: **BLOCKED — local engineering blockers removed; do not promote until external beta gates pass.**
+
+| Command | Result |
+| --- | --- |
+| `npm run validate:schema` | Passed: 87 private tables, 2 public projection tables, 230 pgTAP assertions, and 7 protected legacy inputs |
+| `npm run db:reset` | Passed: all ordered migrations apply to an empty local database |
+| `npm run test:db` | Passed: 7 pgTAP files and 230 assertions, including canonical operation, atomic publication, protected commands, and trusted import boundaries |
+| `npm run test:rc:migration` | Passed: five-batch interruption recovery, exact round trip, stable database checksum, valid relationships, zero publications, and duplicate retry with 0 inserts / 0 updates / 27 unchanged |
+| `npm run test:canonical:integration` | Passed: 9 codec, pagination, IndexedDB, outbox, conflict, and 1,000-row operation tests |
+| `npm test -- --run` | Passed: 30 files, 143 tests, 1 skipped external-integration test |
+| `npm run test:e2e` | Passed: real UI RLS write, Supabase outage/reload/replay, second device, unauthorized Studio, and anonymous isolation |
+| `npm run test:a11y` | Passed: authenticated desktop/mobile and anonymous axe scenarios |
+| `npm run build` + `npm run test:bundle` | Passed: 36 route/lazy chunks; largest JavaScript chunk 378,463 bytes under the 500 KiB budget |
+| `npm audit` | Passed: 0 known vulnerabilities |
+| `git diff --check` | Passed |
+
+RC evidence and decision records:
+
+- [Release report](RC_RELEASE_REPORT.md)
+- [Page 41 screen audit](RC_SCREEN_AUDIT.md)
+- [Schema and repository audit](RC_SCHEMA_AUDIT.md)
+- [Beta checklist](BETA_CHECKLIST.md)
+- [Known limitations](KNOWN_LIMITATIONS.md)
+- [Migration runbook](MIGRATION_RUNBOOK.md)
+- [Backup and recovery runbook](BACKUP_RECOVERY_RUNBOOK.md)
+- [2.0 release notes](RELEASE_NOTES_2.0.md)
+- [ADR index](../adr/README.md)
+- `docs/implementation/evidence/wp10/rc-migration-evidence.json`
+
+Local blocker status: authenticated routing now uses the Supabase-backed
+canonical provider; localStorage is migration input only, IndexedDB is
+cache/outbox/recovery, and the browser journey proves cross-device convergence.
+The earlier Portfolio wording was stale: its adapter was wired but published
+from browser-local state without an atomic batch. Fresh-source, two-phase Public
+Cut commands now correct that boundary. Hosted beta, database plus Storage
+recovery, assistive-technology, physical-device, and deployed-performance proof
+remain release blockers.
 
 Latest WP6 completion verification:
 
@@ -150,10 +194,11 @@ Latest WP10 hardening verification:
 
 | Command | Result |
 | --- | --- |
-| `npm run validate:schema` | Passed: 85 private tables, 2 public projection tables, 131 pgTAP assertions, and 7 preserved legacy inputs |
-| `npm run test:db` | Passed: 131 pgTAP assertions, including existing RLS, tenant, publication, and governed-AI privacy coverage; WP10 adds no new persistence surface |
-| `npm test -- --run` | Passed: 27 files, 126 tests, including WP10 focus/skip/reduced-motion, Field Mode, narrow-table/canvas alternatives, private-observability, and scale-fixture checks |
-| `npm run build` | Passed: TypeScript and Vite production build. Main app asset is 1,240.98 kB / 326.62 kB gzip; the existing code-splitting advisory remains recorded as a beta follow-up. |
+| `npm run validate:schema` | Passed: 87 private tables, 2 public projection tables, 230 pgTAP assertions, and 7 preserved legacy inputs |
+| `npm run test:db` | Passed: 230 pgTAP assertions, including operation receipts, direct-write rejection, atomic Public Cut, protected commands, and service-only import completion |
+| `npm test -- --run` | Passed: 30 files, 143 tests, plus 1 intentionally skipped external integration test |
+| `npm run test:e2e` / `npm run test:a11y` | Passed: canonical RLS UI write, outage/replay/second-device privacy journey, and authenticated/mobile/anonymous axe scans |
+| `npm run build` / `npm run test:bundle` | Passed: 36 JavaScript chunks; largest is 378,463 bytes under the 500 KiB budget |
 | `git diff --check` | Passed |
 
 WP10 evidence:
@@ -403,6 +448,7 @@ rows marked public; they do not grant anonymous access to private Studio tables.
 | `20260824051228_ml_studio_2_canonical_schema.sql` | Additive canonical schemas, types, 66 private tables, two public projection tables, foreign keys, indexes, revision and identity guards | WP2A added; no legacy mutation |
 | `20260824051237_ml_studio_2_rls_and_publication_boundary.sql` | Membership RLS, least-privilege grants, public payload immutability/privacy, publication commands, audit triggers | WP2A added; 28-assertion pgTAP runtime gate passed in WP2B |
 | `20260824051247_ml_studio_2_storage_policies.sql` | Canonical private/public buckets, paths, and Storage object policies | WP2A added; legacy buckets preserved |
+| `20260824070629_enable_canonical_migration_bootstrap.sql` | Narrow, authenticated migration bootstrap for stable Studio membership and canonical ownership | WP2B added; migration remains additive and retryable |
 | `20260825035858_add_technical_foundation_contracts.sql` | Flat source/revision, annotation severity/status, export-template evidence, and critical-callout index | WP4a added; additive technical foundation |
 | `20260825051344_enforce_pom_measurement_integrity.sql` | Stable POM anchors, decimal measurement/fit constraints, and grading lookup indexes | WP4b added; canonical technical rows retained |
 | `20260825184506_complete_wp4_bom_construction_release_pack.sql` | Linked/free-text BOM semantics, construction requirements, immutable waiver evidence, release lineage, and deterministic export manifest | WP4c added; versioning work deferred |
@@ -411,6 +457,8 @@ rows marked public; they do not grant anonymous access to private Studio tables.
 | `20260826080100_complete_wp6_costing_orders_qc.sql` | Quantity costing, immutable released-version order pin, normalized milestones, versioned QC templates/results, append-only waivers, change events, RLS, grants, and indexes | WP6b added; Editorial remains untouched |
 | `20260826103000_normalize_editorial_story_from_system.sql` | Normalized private editorial garments, scenes/blocks/assets, Story from System provenance, and immutable export evidence | WP7 added; no public draft exposure |
 | `20260826121000_implement_wp8_public_cuts.sql` | Normalized portfolio selections, optional released technical excerpts, publication allowlist/denylist, source revisions, copied-media provenance, RLS, and anonymous path index | WP8 added; legacy public tables retained for recovery |
+| `20260827170000_enable_trusted_rc_migration_role.sql` | Least-privilege trusted migration access: private read/upsert without delete, public read only, no internal schema access | WP10 RC added; 10-assertion pgTAP policy gate passed |
+| `20260827213019_implement_wp9_governed_ai_candidates.sql` | Governed AI jobs, version-pinned inputs, reviewable artifacts, acceptance receipts, typed-command audit links, RLS, grants, and direct-write prevention | WP9 added; no paid-provider dependency in tests |
 
 No legacy migration or table was edited or removed. The safe, sanitized input
 artifact remains `tests/fixtures/legacy-studio-data-v5.json`; WP2 retains it as

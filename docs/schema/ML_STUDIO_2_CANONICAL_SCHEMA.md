@@ -1,8 +1,8 @@
 # Mystic Lore Studio 2.0 Canonical Schema
 
-Status: WP9 complete through governed, reviewable AI candidates and typed,
-auditable designer acceptance; all earlier domain, versioning, production,
-editorial, and Public Cut boundaries remain in force
+Status: 2.0 release-candidate schema audited. The migrations and database
+policy suites pass locally; release remains blocked on the application-layer
+canonical persistence cutover documented in the RC release report.
 
 Source specification: Product Bible pages 28, 31-32, 34-35, 40-41, 56-57,
 and 59-60, together with the earlier domain sections. The ordered SQL
@@ -67,9 +67,10 @@ erDiagram
 | Story and portfolio | `editorial_collections`, `editorial_scenes`, `editorial_blocks`, `editorial_assets`, `editorial_collection_garments`, `editorial_exports`, `portfolio_profiles`, `portfolio_projects`, `portfolio_project_assets`, `portfolio_editorials`, `portfolio_editorial_scenes`, `portfolio_editorial_assets`, `portfolio_technical_excerpts` |
 | Versioning and workflow | `garment_versions`, `entity_revisions`, `change_events`, `restore_operations`, `tasks`, `calendar_events`, `sync_tombstones` |
 | Governed AI | `ai_jobs`, `ai_job_input_refs`, `ai_artifacts`, `ai_artifact_media`, `ai_artifact_acceptances`, `ai_acceptance_commands` |
+| Canonical transport and publication batches | `canonical_operation_receipts`, `public_cut_batches` |
 | Public projection | `ml_public.publications`, `ml_public.publication_assets` |
 
-There are 85 canonical private tables and two public projection tables.
+There are 87 canonical private tables and two public projection tables.
 
 ## Design, Library, and Media Relationships
 
@@ -256,7 +257,17 @@ Ordered migrations:
 10. `20260826080100_complete_wp6_costing_orders_qc.sql`
 11. `20260826103000_normalize_editorial_story_from_system.sql`
 12. `20260826121000_implement_wp8_public_cuts.sql`
-13. `20260827213019_implement_wp9_governed_ai_candidates.sql`
+13. `20260827170000_enable_trusted_rc_migration_role.sql`
+14. `20260827213019_implement_wp9_governed_ai_candidates.sql`
+15. `20260828014454_canonical_operation_transport.sql`
+16. `20260828021002_atomic_public_cut_batch.sql`
+17. `20260828033000_protected_canonical_commands.sql`
+18. `20260828050000_trusted_device_import_finalize.sql`
+
+The release-candidate migration role is deliberately narrower than an
+application role: it can read and upsert canonical private rows for a trusted,
+server-side migration, cannot delete those rows, can only read public
+projections, and has no access to `ml_internal`.
 
 Verification commands:
 
@@ -265,15 +276,41 @@ npm run validate:schema
 npm run db:start
 npm run db:reset
 npm run test:db
+npm run test:rc:migration
+npm run test:canonical:integration
+npm run test:e2e
+npm run test:a11y
 npm test
 npm run build
+npm run test:bundle
 ```
 
 `validate:schema` is deterministic and verifies the table inventory, tenant
 columns, allowed JSONB fields, RLS/storage coverage, migration order, pgTAP
 plan, WP3-WP9 canonical route boundaries, and checksums of all six legacy
-migrations plus the WP0 fixture. `test:db` executes the 131-assertion pgTAP
+migrations plus the WP0 fixture. `test:db` executes the 230-assertion pgTAP
 matrix on a local or explicit test database.
+
+## Studio 2.0 Canonical Transport and Public Batch Contract
+
+The browser does not issue arbitrary table writes in shadow or cloud mode.
+Pure domain commands produce a `CanonicalOperation`; the
+`commit_canonical_operation` security-invoker RPC maps each entity through a
+static table/column allowlist, preflights every expected revision, applies the
+complete group, records database-derived before/after events and deletion
+tombstones, and stores an append-only request-checksummed receipt. Reusing an
+operation ID with the same request is a duplicate success; reusing it with a
+different request is rejected.
+
+The private `public_cut_batches` table records an anonymous-invisible draft and
+its expected derivative paths. Fresh source validation precedes the batch;
+copied rights-cleared objects are staged before one transaction promotes the
+entire snapshot set and retires its predecessor. Unpublish removes anonymous
+row visibility before returning paths for retryable Storage cleanup.
+
+Dedicated commands own Freeze Frame/restore, release/export, QC, and governed
+AI transitions. The service-only trusted device finalizer exists solely to
+restore circular version/validation pins after an isolated beta import.
 
 ## WP2B Transition Contract
 
@@ -295,18 +332,16 @@ tests, preventing stale row counts, mappings, warnings, or checksums.
 
 ## WP3 Route Cutover
 
-`CanonicalWorkspaceProvider` consumes the accepted deterministic migration
-graph and persists a user-scoped canonical browser workspace. The Garment
-Library, garment overview/Design Studio, Material Vault, and Component Library
-call this repository instead of reading legacy project, fabric, or linked
-material arrays. The same typed records mirror `ml_private` table ownership and
-relationship rules, while the browser cache remains recoverable independently
-of the legacy aggregate.
+`CanonicalWorkspaceProvider` coordinates the accepted migration graph with the
+Supabase-backed canonical repository. The Garment Library, garment
+overview/Design Studio, Material Vault, Component Library, and later WP4–WP9
+surfaces call this repository instead of reading legacy project, fabric, or
+linked-material arrays. IndexedDB is cache/outbox/recovery only; the normalized
+private graph is no longer stored in localStorage.
 
-Legacy project/fabric routes remain as compatibility hash aliases only. Their
-old page components are not mounted by the route router. Dashboard, workflow,
-editorial, portfolio, settings, cloud sync, and public routes remain outside
-WP3 scope and continue to use the accepted legacy/read-through boundary.
+Legacy project/fabric routes remain compatibility aliases only. Their old page
+components and `StudioDataProvider` are not mounted by normal authenticated
+routing. Legacy records remain available only to migration and recovery tools.
 
 ## WP4a Technical Studio Contract
 

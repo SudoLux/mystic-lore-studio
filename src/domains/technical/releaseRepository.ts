@@ -224,7 +224,7 @@ export function validateRelease(state: CanonicalWorkspaceState, specId: string, 
   if (!sourceFiles.length) issues.push(issue('files.missing_source', 'files', 'technicalFiles', 'At least one stored source file is required.', 'error'));
   for (const source of sourceFiles) {
     const asset = state.mediaAssets.find((item) => item.id === source.assetId);
-    if (!asset?.checksum || !asset.localBlobKey) issues.push(issue('files.source_unavailable', 'files', source.id, `${source.versionLabel || 'Source file'} is not durably available.`, 'error', source.id));
+    if (!asset?.checksum || !asset.storagePath) issues.push(issue('files.source_unavailable', 'files', source.id, `${source.versionLabel || 'Source file'} is not durably available.`, 'error', source.id));
     if (asset && !asset.rights.source && !asset.rights.license) issues.push(issue('privacy.source_rights_missing', 'privacy', asset.id, `${asset.name} needs rights or provenance before release.`, 'critical', asset.id, false));
   }
   if (!options.checkpointLabel.trim()) issues.push(issue('release.checkpoint_label', 'release', 'checkpointLabel', 'Name the release checkpoint.', 'error'));

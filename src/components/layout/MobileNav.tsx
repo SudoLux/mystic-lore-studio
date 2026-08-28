@@ -28,7 +28,7 @@ export function MobileNav({ activePage, navItems, onNavigate }: MobileNavProps) 
   );
   const overflowNavItems = useMemo(
     () =>
-      ['production', 'versions', 'ai', 'kanban', 'portfolio', 'stats', 'settings']
+      ['technical', 'production', 'versions', 'ai', 'kanban', 'portfolio', 'settings']
         .map((pageId) => navItems.find((item) => item.id === pageId))
         .filter((item): item is NavItem => Boolean(item)),
     [navItems],
@@ -72,28 +72,17 @@ export function MobileNav({ activePage, navItems, onNavigate }: MobileNavProps) 
       />
 
       {isMenuOpen ? (
-        <div className="pointer-events-none absolute left-1/2 bottom-[5.9rem] flex -translate-x-1/2 translate-y-0 items-end justify-center opacity-100 transition duration-300">
-          <div className="relative h-32 w-80">
-            <div className="absolute inset-x-7 bottom-0 h-28 rounded-t-full border border-b-0 border-bronze/22 bg-[radial-gradient(circle_at_50%_100%,rgba(200,155,60,0.16),rgba(10,10,10,0.78)_58%,transparent_72%)] shadow-[0_-20px_55px_rgba(0,0,0,0.36)] backdrop-blur-xl" />
-            {overflowNavItems.map((item, index) => {
+        <div className="absolute inset-x-3 bottom-[5.9rem] grid grid-cols-4 gap-2 rounded-3xl border border-bronze/28 bg-midnight/94 p-3 shadow-[0_-20px_55px_rgba(0,0,0,0.42)] backdrop-blur-xl transition duration-300">
+            {overflowNavItems.map((item) => {
               const Icon = item.icon;
               const isActive = activePage === item.id;
-              const positions = [
-                'left-0 bottom-1',
-                'left-[12%] bottom-8 -translate-x-1/2',
-                'left-[30%] bottom-[4.4rem] -translate-x-1/2',
-                'left-1/2 bottom-[5.3rem] -translate-x-1/2',
-                'right-[30%] bottom-[4.4rem] translate-x-1/2',
-                'right-[12%] bottom-8 translate-x-1/2',
-                'right-0 bottom-1',
-              ];
 
               return (
                 <button
                   aria-current={isActive ? 'page' : undefined}
                   className={cn(
-                    'pointer-events-auto absolute flex min-w-16 flex-col items-center gap-1 text-[0.64rem] font-medium text-stardust/68 transition duration-200',
-                    positions[index],
+                    'flex min-h-[4.5rem] min-w-0 flex-col items-center justify-center gap-1 rounded-2xl border text-[0.64rem] font-medium text-stardust/68 transition duration-200',
+                    isActive ? 'border-ember/50 bg-ember/12' : 'border-transparent hover:border-bronze/32 hover:bg-stardust/[0.05]',
                     isActive && 'text-stardust',
                   )}
                   key={item.id}
@@ -102,7 +91,7 @@ export function MobileNav({ activePage, navItems, onNavigate }: MobileNavProps) 
                 >
                   <span
                     className={cn(
-                      'flex h-12 w-12 items-center justify-center rounded-2xl border bg-midnight/88 shadow-[0_12px_34px_rgba(0,0,0,0.34)] backdrop-blur-xl transition duration-200',
+                      'flex h-10 w-10 items-center justify-center rounded-xl border bg-midnight/88 transition duration-200',
                       isActive
                         ? 'border-ember/62 bg-ember/18 text-ember'
                         : 'border-bronze/30 text-stardust/70 hover:border-ember/45 hover:text-ember',
@@ -114,7 +103,6 @@ export function MobileNav({ activePage, navItems, onNavigate }: MobileNavProps) 
                 </button>
               );
             })}
-          </div>
         </div>
       ) : null}
 

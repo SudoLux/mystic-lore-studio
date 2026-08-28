@@ -1,4 +1,5 @@
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
+import type { Database } from '../types/database.generated';
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL?.trim() ?? '';
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY?.trim() ?? '';
@@ -49,6 +50,13 @@ function getSupabaseConfigStatus(): SupabaseConfigStatus {
 
 export const supabaseConfigStatus = getSupabaseConfigStatus();
 
-export const supabase: SupabaseClient | null = supabaseConfigStatus.isConfigured
-  ? createClient(supabaseConfigStatus.url, supabaseConfigStatus.anonKey)
+/** Canonical schemas use the checked-in generated Database contract. */
+export const canonicalSupabase: SupabaseClient<Database> | null = supabaseConfigStatus.isConfigured
+  ? createClient<Database>(supabaseConfigStatus.url, supabaseConfigStatus.anonKey)
   : null;
+
+/**
+ * Compatibility client for the legacy migration/recovery boundary. It remains
+ * intentionally unparameterized until that adapter is removed after beta.
+ */
+export const supabase: SupabaseClient | null = canonicalSupabase as SupabaseClient | null;

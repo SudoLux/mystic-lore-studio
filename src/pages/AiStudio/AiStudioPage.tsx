@@ -11,13 +11,19 @@ import { acceptAiArtifact, aiWorkflowLabels, completeAiJobWithFakeProvider, defa
 import type { AiWorkflow } from '../../domains/workspace';
 import { useCanonicalWorkspace } from '../../hooks/useCanonicalWorkspace';
 import { recordClientEvent } from '../../lib/observability';
+import {
+  acceptAiArtifactCommand,
+  recordAiValidationCandidateCommand,
+  rejectAiArtifactCommand,
+  transitionAiJobCommand,
+} from '../../domains/persistence';
 
 const workflows = Object.keys(aiWorkflowLabels) as AiWorkflow[];
 
 export function AiStudioPage() { return <CanonicalWorkspaceState><AiStudioWorkspace /></CanonicalWorkspaceState>; }
 
 function AiStudioWorkspace() {
-  const { commitWorkspace, currentActorId, state } = useCanonicalWorkspace();
+  const { commitWorkspaceAsync, currentActorId, requireFreshWorkspace, state } = useCanonicalWorkspace();
   const [garmentId, setGarmentId] = useState(state?.garments[0]?.id ?? '');
   const [workflow, setWorkflow] = useState<AiWorkflow>('pom_assistance');
   const [busyId, setBusyId] = useState('');
@@ -28,23 +34,95 @@ function AiStudioWorkspace() {
   const conflicts = state.conflicts.filter((item) => item.garmentId === garmentId && item.resolution === 'pending').length;
   const offline = navigator.onLine === false;
 
-  const queue = () => run('queue', () => {
+  const queue = () => run('queue', async () => {
     let jobId = '';
-    commitWorkspace((current) => { const result = queueAiJob(current, { actorId: currentActorId, garmentId, inputRefs: defaultAiInputRefs(current, garmentId, workflow), promptTemplateVersion: `wp9-${workflow}-v1`, selectedModel: 'deterministic-fake-v1', workflow }); jobId = result.job.id; return result.state; }, { skipAutoLedger: true });
+    await commitWorkspaceAsync((current) => { const result = queueAiJob(current, { actorId: currentActorId, garmentId, inputRefs: defaultAiInputRefs(current, garmentId, workflow), promptTemplateVersion: `wp9-${workflow}-v1`, selectedModel: 'deterministic-fake-v1', workflow }); jobId = result.job.id; return result.state; }, { skipAutoLedger: true });
     setNotice(jobId ? 'Candidate request queued with version-pinned private inputs.' : 'Candidate request is already queued.');
   });
-  const start = (jobId: string) => run(jobId, () => commitWorkspace((current) => startAiJob(current, jobId).state, { skipAutoLedger: true }));
-  const generate = (jobId: string) => run(jobId, () => commitWorkspace((current) => { try { return completeAiJobWithFakeProvider(current, jobId).state; } catch (error) { recordClientEvent({ context: { stage: 'candidate_generation' }, kind: 'ai_job' }); queueMicrotask(() => setNotice(message(error))); return failAiJob(current, jobId, 'candidate_generation_failed').state; } }, { skipAutoLedger: true }));
-  const retry = (jobId: string) => run(jobId, () => commitWorkspace((current) => retryAiJob(current, jobId, currentActorId).state, { skipAutoLedger: true }));
-  const accept = (artifactId: string, selectedFieldKeys: string[], decisionNote: string) => run(artifactId, () => commitWorkspace((current) => {
-    if (current.conflicts.some((item) => item.garmentId === garmentId && item.resolution === 'pending')) throw new Error('Resolve garment conflicts before AI acceptance.');
-    const result = acceptAiArtifact(current, { actorId: currentActorId, actorRole: 'owner', artifactId, decisionNote, online: navigator.onLine !== false, selectedFieldKeys });
-    queueMicrotask(() => setNotice(`Accepted ${selectedFieldKeys.length} candidate field${selectedFieldKeys.length === 1 ? '' : 's'} through ${result.domainChangeEventIds.length} normal domain change event${result.domainChangeEventIds.length === 1 ? '' : 's'}.`));
-    return result.state;
-  }, { skipAutoLedger: true }));
-  const reject = (artifactId: string, decisionNote: string) => run(artifactId, () => commitWorkspace((current) => rejectAiArtifact(current, { actorId: currentActorId, actorRole: 'owner', artifactId, decisionNote }).state, { skipAutoLedger: true }));
+  const start = (jobId: string) => run(jobId, async () => {
+    const fresh = await requireFreshWorkspace();
+    const current = fresh.aiJobs.find((item) => item.id === jobId);
+    if (!current) throw new Error('AI job not found.');
+    startAiJob(fresh, jobId);
+    await transitionAiJobCommand({ expectedRevision: current.revision, jobId, status: 'running' });
+    await requireFreshWorkspace();
+  });
+  const generate = (jobId: string) => run(jobId, async () => {
+    const fresh = await requireFreshWorkspace();
+    const current = fresh.aiJobs.find((item) => item.id === jobId);
+    if (!current) throw new Error('AI job not found.');
+    try {
+      const generated = completeAiJobWithFakeProvider(fresh, jobId);
+      await transitionAiJobCommand({ artifact: generated.artifact, expectedRevision: current.revision, jobId, status: 'candidate' });
+    } catch (error) {
+      recordClientEvent({ context: { stage: 'candidate_generation' }, kind: 'ai_job' });
+      failAiJob(fresh, jobId, 'candidate_generation_failed');
+      await transitionAiJobCommand({ errorCode: 'candidate_generation_failed', expectedRevision: current.revision, jobId, status: 'failed' });
+      throw error;
+    }
+    await requireFreshWorkspace();
+  });
+  const retry = (jobId: string) => run(jobId, async () => {
+    await requireFreshWorkspace();
+    await commitWorkspaceAsync((current) => retryAiJob(current, jobId, currentActorId).state, { skipAutoLedger: true });
+  });
+  const accept = (artifactId: string, selectedFieldKeys: string[], decisionNote: string) => run(artifactId, async () => {
+    const fresh = await requireFreshWorkspace();
+    if (fresh.conflicts.some((item) => item.garmentId === garmentId && item.resolution === 'pending')) throw new Error('Resolve garment conflicts before AI acceptance.');
+    const artifact = fresh.aiArtifacts.find((item) => item.id === artifactId);
+    if (!artifact) throw new Error('AI artifact not found.');
+    const operationId = stableAcceptanceOperationId(artifactId, selectedFieldKeys, decisionNote);
+    const result = acceptAiArtifact(fresh, { actorId: currentActorId, actorRole: 'owner', artifactId, decisionNote, online: true, operationId, selectedFieldKeys });
+    const domainOnly = {
+      ...result.state,
+      aiAcceptanceCommands: fresh.aiAcceptanceCommands,
+      aiAcceptances: fresh.aiAcceptances,
+      aiArtifacts: fresh.aiArtifacts,
+      aiJobs: fresh.aiJobs,
+      changeEvents: fresh.changeEvents,
+    };
+    let eventIds: string[];
+    if (artifact.artifactType === 'tech_pack_validation') {
+      const runRecord = result.state.validationRuns.find((item) => !fresh.validationRuns.some((current) => current.id === item.id));
+      if (!runRecord) throw new Error('AI validation acceptance did not produce a validation run.');
+      const validationReceipt = await recordAiValidationCandidateCommand({ artifactId, operationId, run: runRecord });
+      eventIds = [String(validationReceipt.eventId)];
+    } else {
+      const commitResult = await commitWorkspaceAsync(() => domainOnly, {
+        excludeEntities: ['ai_jobs'],
+        operationId,
+        origin: 'ai_acceptance',
+        skipAutoLedger: true,
+      });
+      if (!commitResult || commitResult.status === 'conflict' || !commitResult.eventIds.length) {
+        throw new Error('AI acceptance domain commands did not produce server change receipts.');
+      }
+      eventIds = commitResult.eventIds;
+    }
+    const commandType = acceptanceCommandType(artifact.artifactType);
+    await acceptAiArtifactCommand({
+      acceptedPayloadChecksum: result.acceptance.acceptedPayloadChecksum,
+      artifactId,
+      commandReceipts: selectedFieldKeys.map((fieldKey, index) => ({
+        changeEventId: eventIds[Math.min(index, eventIds.length - 1)],
+        commandType,
+        fieldKey,
+      })),
+      decisionNote,
+      expectedSourceChecksum: artifact.sourceChecksum,
+      operationId,
+    });
+    await requireFreshWorkspace();
+    setNotice(`Accepted ${selectedFieldKeys.length} candidate field${selectedFieldKeys.length === 1 ? '' : 's'} through ${eventIds.length} normal server command receipt${eventIds.length === 1 ? '' : 's'}.`);
+  });
+  const reject = (artifactId: string, decisionNote: string) => run(artifactId, async () => {
+    const fresh = await requireFreshWorkspace();
+    rejectAiArtifact(fresh, { actorId: currentActorId, actorRole: 'owner', artifactId, decisionNote });
+    await rejectAiArtifactCommand(artifactId, decisionNote);
+    await requireFreshWorkspace();
+  });
 
-  function run(id: string, action: () => void) { setBusyId(id); setNotice(''); try { action(); } catch (error) { recordClientEvent({ context: { stage: 'ai_command' }, kind: 'ai_job' }); setNotice(message(error)); } finally { setBusyId(''); } }
+  async function run(id: string, action: () => void | Promise<void>) { setBusyId(id); setNotice(''); try { await action(); } catch (error) { recordClientEvent({ context: { stage: 'ai_command' }, kind: 'ai_job' }); setNotice(message(error)); } finally { setBusyId(''); } }
 
   return <section className="space-y-5">
     <MobilePageHeader badge="AI Jobs" kicker="Private candidates, human decisions" title="Governed AI" />
@@ -76,3 +154,28 @@ function AiStudioWorkspace() {
 }
 
 function message(error: unknown) { return error instanceof Error ? error.message : 'The AI workflow could not be completed.'; }
+
+function acceptanceCommandType(workflow: AiWorkflow) {
+  const types: Record<AiWorkflow, string> = {
+    bom_assistance: 'bom.create-item',
+    construction_recommendations: 'construction.add-step',
+    editorial_generation: 'editorial.add-block',
+    pom_assistance: 'measurement.create-pom',
+    portfolio_drafting: 'portfolio.update-project',
+    tech_pack_validation: 'technical.run-validation',
+    technical_flat_generation: 'technical.register-flat',
+  };
+  return types[workflow];
+}
+
+function stableAcceptanceOperationId(artifactId: string, selectedFieldKeys: string[], decisionNote: string) {
+  const input = `${artifactId}:${[...selectedFieldKeys].sort().join(',')}:${decisionNote.trim()}`;
+  let a = 0x811c9dc5;
+  let b = 0x9e3779b9;
+  for (let index = 0; index < input.length; index += 1) {
+    a = Math.imul(a ^ input.charCodeAt(index), 0x01000193);
+    b = Math.imul(b ^ input.charCodeAt(index), 0x85ebca6b);
+  }
+  const hex = `${(a >>> 0).toString(16).padStart(8, '0')}${(b >>> 0).toString(16).padStart(8, '0')}`.repeat(2);
+  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-4${hex.slice(13, 16)}-a${hex.slice(17, 20)}-${hex.slice(20, 32)}`;
+}

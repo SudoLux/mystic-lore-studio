@@ -22,6 +22,7 @@ lib-cov
 # Coverage directory used by tools like istanbul
 coverage
 *.lcov
+test-results/
 
 # nyc test coverage
 .nyc_output
@@ -78,6 +79,8 @@ web_modules/
 .env.test.local
 .env.production.local
 .env.local
+.env.beta.local
+.env.beta.import.local
 
 # Editor and OS files
 .DS_Store
@@ -138,3 +141,6 @@ dist
 .yarn/build-state.yml
 .yarn/install-state.gz
 .pnp.*
+
+# Local Netlify folder
+.netlify

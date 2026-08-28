@@ -81,6 +81,7 @@ export function snapshotGarmentScope(state: CanonicalWorkspaceState, garmentId: 
     technicalSpecs: stableRows(state.technicalSpecs.filter((item) => item.garmentId === garmentId)),
   };
   if (scope === 'all' || scope === 'production') domains.production = {
+    calendarEvents: stableRows(state.calendarEvents.filter((item) => item.garmentId === garmentId)),
     costItems: stableRows(state.costItems.filter((item) => costSheetIds.has(item.costSheetId))),
     costSheets: stableRows(state.costSheets.filter((item) => item.garmentId === garmentId)),
     fitMeasurements: stableRows(state.fitMeasurements.filter((item) => roundIds.has(item.sampleRoundId))),
@@ -474,6 +475,7 @@ function auditDescriptors(): Array<{ entityType: string; garmentId: (after: Cano
     { entityType: 'qc_result', garmentId: qcInspection, rows: (s) => s.qcResults, scope: 'production' },
     { entityType: 'qc_waiver', garmentId: qcInspection, rows: (s) => s.qcWaivers, scope: 'production' },
     { entityType: 'release_task', garmentId: direct('garmentId'), rows: (s) => s.releaseTasks, scope: 'production' },
+    { entityType: 'calendar_event', garmentId: direct('garmentId'), rows: (s) => s.calendarEvents, scope: 'production' },
     { entityType: 'editorial_block', garmentId: editorialBlock, rows: (s) => s.editorialBlocks, scope: 'editorial' },
     { entityType: 'editorial_collection', garmentId: direct('primaryGarmentId'), rows: (s) => s.editorialCollections, scope: 'editorial' },
     { entityType: 'portfolio_project', garmentId: direct('garmentId'), rows: (s) => s.portfolioProjects, scope: 'portfolio' },
