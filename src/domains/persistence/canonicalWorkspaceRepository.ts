@@ -22,6 +22,8 @@ import type {
 } from './contracts';
 
 const pageSize = 500;
+const hydrationConcurrency = 6;
+const hydrationRequestTimeoutMs = 20_000;
 
 function transportErrorMessage(reason: unknown) {
   if (reason instanceof Error && reason.message) return reason.message;
@@ -46,6 +48,42 @@ type DynamicQuery = PromiseLike<DynamicQueryResult> & {
 type DynamicSchema = {
   from(table: string): DynamicQuery;
 };
+
+async function mapWithConcurrency<T, Result>(
+  items: readonly T[],
+  worker: (item: T) => Promise<Result>,
+): Promise<Result[]> {
+  const results = new Array<Result>(items.length);
+  let nextIndex = 0;
+  const workerCount = Math.min(hydrationConcurrency, items.length);
+
+  await Promise.all(Array.from({ length: workerCount }, async () => {
+    for (;;) {
+      const index = nextIndex;
+      nextIndex += 1;
+      if (index >= items.length) return;
+      results[index] = await worker(items[index]);
+    }
+  }));
+
+  return results;
+}
+
+async function withHydrationTimeout<T>(request: Promise<T>, label: string): Promise<T> {
+  let timer: number | undefined;
+  try {
+    return await Promise.race([
+      request,
+      new Promise<T>((_, reject) => {
+        timer = window.setTimeout(() => {
+          reject(new Error(`${label} did not respond. Check the beta Data API schema allowlist, then try again.`));
+        }, hydrationRequestTimeoutMs);
+      }),
+    ]);
+  } finally {
+    if (timer !== undefined) window.clearTimeout(timer);
+  }
+}
 
 export class SupabaseCanonicalWorkspaceRepository implements CanonicalWorkspaceRepository {
   private studioId: string | null = null;
@@ -229,10 +267,15 @@ export class SupabaseCanonicalWorkspaceRepository implements CanonicalWorkspaceR
   private async loadCloudState(studioId: string) {
     const state = emptyCanonicalWorkspaceState(studioId);
     const joins: Record<string, Record<string, unknown>[]> = {};
-    const results = await Promise.all(privateHydrationCodecs.map(async (entry) => ({
+    // A first-time Studio has many collections. Bounded hydration avoids
+    // exhausting a browser's request pool and makes startup deterministic.
+    const results = await mapWithConcurrency(privateHydrationCodecs, async (entry) => ({
       entry,
-      rows: await this.loadAllPages('ml_private', entry.table, studioId),
-    })));
+      rows: await withHydrationTimeout(
+        this.loadAllPages('ml_private', entry.table, studioId),
+        `ml_private.${entry.table}`,
+      ),
+    }));
     for (const { entry, rows } of results) {
       if (!entry.stateKey) {
         joins[entry.table] = rows;
@@ -241,7 +284,10 @@ export class SupabaseCanonicalWorkspaceRepository implements CanonicalWorkspaceR
       (state[entry.stateKey] as unknown[]) = rows.map((row) => decodeCanonicalRecord(entry, row));
     }
 
-    const publicationRows = await this.loadAllPages('ml_public', 'publications', studioId);
+    const publicationRows = await withHydrationTimeout(
+      this.loadAllPages('ml_public', 'publications', studioId),
+      'ml_public.publications',
+    );
     state.publications = publicationRows.map(decodePublication);
     return normalizeWorkspace(applyPortfolioJoins(state, joins));
   }

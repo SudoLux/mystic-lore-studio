@@ -87,6 +87,24 @@ type CanonicalWorkspaceContextValue = {
   updateTaskStatus: (taskId: string, status: CanonicalReleaseTask['status']) => void;
 };
 
+const startupRequestTimeoutMs = 20_000;
+
+async function withStartupRequestTimeout<T>(request: PromiseLike<T>, label: string): Promise<T> {
+  let timer: number | undefined;
+  try {
+    return await Promise.race([
+      Promise.resolve(request),
+      new Promise<T>((_, reject) => {
+        timer = window.setTimeout(() => {
+          reject(new Error(`${label} did not respond. Check the beta Data API schema allowlist, then try again.`));
+        }, startupRequestTimeoutMs);
+      }),
+    ]);
+  } finally {
+    if (timer !== undefined) window.clearTimeout(timer);
+  }
+}
+
 const CanonicalWorkspaceContext = createContext<CanonicalWorkspaceContextValue | null>(null);
 
 function errorMessage(reason: unknown, fallback: string) {
@@ -168,7 +186,10 @@ export function CanonicalWorkspaceProvider({ children, userId }: { children: Rea
             usedOfflineIdentity = true;
           } else {
             try {
-              mode = await loadCanonicalPersistenceMode(canonicalSupabase, studioId);
+              mode = await withStartupRequestTimeout(
+                loadCanonicalPersistenceMode(canonicalSupabase, studioId),
+                'ml_private.studio_settings',
+              );
               await cacheRef.current.putSetting(`persistence-mode:${studioId}`, mode);
             } catch (reason) {
               const rememberedMode = await cacheRef.current.getSetting<CanonicalPersistenceMode>(`persistence-mode:${studioId}`);
@@ -601,8 +622,11 @@ function operationResultHasParity(operation: CanonicalOperation, result: Canonic
 
 async function currentCanonicalStudioId() {
   if (!canonicalSupabase) return null;
-  const response = await canonicalSupabase.schema('ml_private').from('studios')
-    .select('id').order('created_at', { ascending: true }).limit(1).maybeSingle();
+  const response = await withStartupRequestTimeout(
+    canonicalSupabase.schema('ml_private').from('studios')
+      .select('id').order('created_at', { ascending: true }).limit(1).maybeSingle(),
+    'ml_private.studios',
+  );
   if (response.error) throw response.error;
   return (response.data as { id?: string } | null)?.id ?? null;
 }

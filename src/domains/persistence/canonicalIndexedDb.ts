@@ -7,6 +7,7 @@ import type { CanonicalConflict } from '../workspace';
 
 const databaseName = 'mystic-lore-studio-canonical-v1';
 const databaseVersion = 2;
+const databaseOpenTimeoutMs = 8_000;
 
 type StoredOutbox = CanonicalOutboxEntry & { id: string; studioId: string };
 type StoredWorkspace = { id: string; state: CanonicalWorkspaceState; updatedAt: string };
@@ -166,14 +167,27 @@ async function openCanonicalDatabase() {
   if (typeof indexedDB === 'undefined') return null;
   return await new Promise<IDBDatabase>((resolve, reject) => {
     const request = indexedDB.open(databaseName, databaseVersion);
+    let settled = false;
+    const finish = (callback: () => void) => {
+      if (settled) return;
+      settled = true;
+      window.clearTimeout(timeout);
+      callback();
+    };
+    const timeout = window.setTimeout(() => {
+      finish(() => reject(new Error('The Studio cache is still preparing. Close other Mystic Lore beta tabs, then reload this page.')));
+    }, databaseOpenTimeoutMs);
     request.onupgradeneeded = () => {
       const database = request.result;
       for (const store of ['workspaces', 'outbox', 'recovery', 'media', 'settings']) {
         if (!database.objectStoreNames.contains(store)) database.createObjectStore(store, { keyPath: 'id' });
       }
     };
-    request.onerror = () => reject(request.error ?? new Error('Canonical IndexedDB could not be opened.'));
-    request.onsuccess = () => resolve(request.result);
+    request.onblocked = () => {
+      finish(() => reject(new Error('The Studio cache is in use by another beta tab. Close other Mystic Lore beta tabs, then reload this page.')));
+    };
+    request.onerror = () => finish(() => reject(request.error ?? new Error('Canonical IndexedDB could not be opened.')));
+    request.onsuccess = () => finish(() => resolve(request.result));
   });
 }
 

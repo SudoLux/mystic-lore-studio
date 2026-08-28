@@ -226,7 +226,15 @@ async function authenticate(
   const response =
     mode === 'signin'
       ? await supabase.auth.signInWithPassword({ email, password })
-      : await supabase.auth.signUp({ email, password });
+      : await supabase.auth.signUp({
+          email,
+          password,
+          options: {
+            // The confirmation link must return to the same deployed Studio
+            // that initiated signup, rather than relying on a dashboard default.
+            emailRedirectTo: window.location.origin,
+          },
+        });
 
   if (response.error) {
     setLastError(response.error.message);
