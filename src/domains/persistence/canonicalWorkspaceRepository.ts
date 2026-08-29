@@ -473,6 +473,7 @@ export function reconcileSyncImportRetry(
     || operation.mutations.some((mutation) => mutation.action !== 'insert' || !mutation.row)) return undefined;
 
   const snapshot = canonicalMutableSnapshot(cloudState);
+  const materialized = materializeMutableRows(cloudState);
   const cloudProfiles = Object.entries(snapshot)
     .filter(([key]) => key.startsWith('portfolio_profiles:'))
     .map(([key, row]) => ({ id: key.slice('portfolio_profiles:'.length), row }));
@@ -494,20 +495,25 @@ export function reconcileSyncImportRetry(
     const current = snapshot[key];
     if (current && rowContainsExpected(current, expected)) continue;
 
-    const authoritativeProfileId = original.entityType === 'portfolio_profiles'
-      ? aliases.get(original.entityId)
-      : undefined;
-    if (!authoritativeProfileId || !current) return undefined;
+    if (!current) {
+      mutations.push({ ...original, entityId, row: expected });
+      baseRows[key] = null;
+      localRows[key] = expected;
+      continue;
+    }
+    const revision = Number(materialized.get(key)?.record.revision ?? 0);
+    if (revision !== 1 || original.entityType === 'inventory_entries') return undefined;
+    const stableColumns = canonicalStableColumns[original.entityType] ?? [];
+    if (stableColumns.some((column) =>
+      column in expected && stableJson(current[column]) !== stableJson(expected[column]))) return undefined;
     const changed = Object.fromEntries(Object.entries(expected)
-      .filter(([column, value]) => column !== 'username_slug' && stableJson(current[column]) !== stableJson(value)));
+      .filter(([column, value]) => !stableColumns.includes(column) && stableJson(current[column]) !== stableJson(value)));
     if (Object.keys(changed).length === 0) continue;
-    const revision = cloudState.portfolioProfiles.find((profile) => profile.id === authoritativeProfileId)?.revision;
-    if (!revision) return undefined;
     mutations.push({
       action: 'update',
       baseRevision: revision,
-      entityId: authoritativeProfileId,
-      entityType: 'portfolio_profiles',
+      entityId,
+      entityType: original.entityType,
       row: changed,
     });
     baseRows[key] = current;
@@ -525,6 +531,15 @@ export function reconcileSyncImportRetry(
     status: 'pending',
   };
 }
+
+const canonicalStableColumns: Partial<Record<CanonicalOperation['mutations'][number]['entityType'], string[]>> = {
+  components: ['component_code'],
+  garments: ['garment_code'],
+  materials: ['material_code'],
+  portfolio_editorials: ['slug'],
+  portfolio_profiles: ['username_slug'],
+  portfolio_projects: ['slug'],
+};
 
 function replaceAliasedIdentity(value: unknown, aliases: Map<string, string>): unknown {
   if (typeof value === 'string') {
