@@ -42,6 +42,7 @@ import {
   CanonicalIndexedDb,
   emptyCanonicalWorkspaceState,
   loadCanonicalPersistenceMode,
+  reconcileSyncImportRetry,
   syncImportOperationAlreadyReflected,
   SupabaseCanonicalWorkspaceRepository,
   type CanonicalMigrationReport,
@@ -225,13 +226,17 @@ export function CanonicalWorkspaceProvider({
             ? await cacheRef.current.listOutbox(studioId)
             : [];
           for (const entry of queuedBeforeRecovery) {
-            if (entry.status === 'conflict' || !syncImportOperationAlreadyReflected(entry.operation, cloudState)) continue;
+            if (entry.status === 'conflict') continue;
+            const reconciled = reconcileSyncImportRetry(entry, cloudState);
+            const alreadyReflected = syncImportOperationAlreadyReflected(entry.operation, cloudState);
+            if (reconciled === undefined && !alreadyReflected) continue;
             await cacheRef.current.putSetting(`recovered-operation:${entry.operation.operationId}`, {
               operationId: entry.operation.operationId,
               recoveredAt: new Date().toISOString(),
-              reason: 'fresh_cloud_parity',
+              reason: reconciled ? 'singleton_identity_rebase' : 'fresh_cloud_parity',
             });
-            await cacheRef.current.deleteOutbox(entry.operation.operationId);
+            if (reconciled) await cacheRef.current.putOutbox(reconciled);
+            else await cacheRef.current.deleteOutbox(entry.operation.operationId);
           }
           const queuedBeforeImport = !usedOfflineIdentity && navigator.onLine !== false
             ? await cacheRef.current.listOutbox(studioId)

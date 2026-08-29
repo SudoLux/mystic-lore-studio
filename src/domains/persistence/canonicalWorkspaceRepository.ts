@@ -456,6 +456,90 @@ export function syncImportOperationAlreadyReflected(
   });
 }
 
+/**
+ * Two devices may race while adopting an older browser-local Studio. Stable
+ * domain ids converge, but a pre-WP8 portfolio profile used a random id. When
+ * the database already owns that one-per-Studio profile, rebase the losing
+ * import onto the authoritative id, discard rows already proven identical,
+ * and retain only a safe profile update for actual field differences.
+ */
+export function reconcileSyncImportRetry(
+  entry: CanonicalOutboxEntry,
+  cloudState: CanonicalWorkspaceState,
+): CanonicalOutboxEntry | null | undefined {
+  const { operation } = entry;
+  if (operation.origin !== 'sync'
+    || operation.mutations.length === 0
+    || operation.mutations.some((mutation) => mutation.action !== 'insert' || !mutation.row)) return undefined;
+
+  const snapshot = canonicalMutableSnapshot(cloudState);
+  const cloudProfiles = Object.entries(snapshot)
+    .filter(([key]) => key.startsWith('portfolio_profiles:'))
+    .map(([key, row]) => ({ id: key.slice('portfolio_profiles:'.length), row }));
+  const aliases = new Map<string, string>();
+  for (const mutation of operation.mutations) {
+    if (mutation.entityType !== 'portfolio_profiles') continue;
+    const profile = cloudProfiles.find((candidate) =>
+      candidate.row.username_slug === mutation.row?.username_slug);
+    if (profile && profile.id !== mutation.entityId) aliases.set(mutation.entityId, profile.id);
+  }
+
+  const mutations: CanonicalOperation['mutations'] = [];
+  const baseRows: CanonicalOutboxEntry['baseRows'] = {};
+  const localRows: CanonicalOutboxEntry['localRows'] = {};
+  for (const original of operation.mutations) {
+    const entityId = replaceAliasedIdentity(original.entityId, aliases) as string;
+    const expected = replaceAliasedIdentity(original.row!, aliases) as Record<string, unknown>;
+    const key = `${original.entityType}:${entityId}`;
+    const current = snapshot[key];
+    if (current && rowContainsExpected(current, expected)) continue;
+
+    const authoritativeProfileId = original.entityType === 'portfolio_profiles'
+      ? aliases.get(original.entityId)
+      : undefined;
+    if (!authoritativeProfileId || !current) return undefined;
+    const changed = Object.fromEntries(Object.entries(expected)
+      .filter(([column, value]) => column !== 'username_slug' && stableJson(current[column]) !== stableJson(value)));
+    if (Object.keys(changed).length === 0) continue;
+    const revision = cloudState.portfolioProfiles.find((profile) => profile.id === authoritativeProfileId)?.revision;
+    if (!revision) return undefined;
+    mutations.push({
+      action: 'update',
+      baseRevision: revision,
+      entityId: authoritativeProfileId,
+      entityType: 'portfolio_profiles',
+      row: changed,
+    });
+    baseRows[key] = current;
+    localRows[key] = { ...current, ...changed };
+  }
+
+  if (mutations.length === 0) return null;
+  return {
+    ...entry,
+    baseRows,
+    conflicts: [],
+    lastError: null,
+    localRows,
+    operation: { ...operation, garmentId: null, mutations },
+    status: 'pending',
+  };
+}
+
+function replaceAliasedIdentity(value: unknown, aliases: Map<string, string>): unknown {
+  if (typeof value === 'string') {
+    let next = value;
+    for (const [from, to] of aliases) next = next.replaceAll(from, to);
+    return next;
+  }
+  if (Array.isArray(value)) return value.map((item) => replaceAliasedIdentity(item, aliases));
+  if (value && typeof value === 'object') {
+    return Object.fromEntries(Object.entries(value as Record<string, unknown>)
+      .map(([key, item]) => [key, replaceAliasedIdentity(item, aliases)]));
+  }
+  return value;
+}
+
 function rowContainsExpected(current: Record<string, unknown>, expected: Record<string, unknown>) {
   return Object.entries(expected).every(([key, value]) => stableJson(current[key]) === stableJson(value));
 }
