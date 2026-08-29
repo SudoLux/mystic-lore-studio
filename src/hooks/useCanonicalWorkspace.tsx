@@ -191,6 +191,8 @@ export function CanonicalWorkspaceProvider({
         const cachedState = studioId ? await cacheRef.current.getWorkspace(studioId) : null;
         let next: CanonicalWorkspaceState;
         let mode: CanonicalPersistenceMode = 'local-recovery';
+        let startupQueueError: string | null = null;
+        let startupQueueHasConflict = false;
 
         if (!requestBoundSupabase || !studioId || !repositoryRef.current) {
           next = recoveryState ?? cachedState ?? await createCanonicalWorkspace({
@@ -217,7 +219,26 @@ export function CanonicalWorkspaceProvider({
               usedOfflineIdentity = true;
             }
           }
-          const cloudState = await repositoryRef.current.hydrate(studioId);
+          let cloudState = await repositoryRef.current.hydrate(studioId);
+          const queuedBeforeImport = !usedOfflineIdentity && navigator.onLine !== false
+            ? await cacheRef.current.listOutbox(studioId)
+            : [];
+          if (queuedBeforeImport.length > 0) {
+            // A failed first-device import or offline edit is already the
+            // canonical retry unit. Replay it before deciding whether the
+            // database still needs a new import operation.
+            await repositoryRef.current.flush();
+            const queuedAfterReplay = await cacheRef.current.listOutbox(studioId);
+            if (queuedAfterReplay.length === 0) {
+              cloudState = await repositoryRef.current.refresh();
+            } else {
+              startupQueueHasConflict = queuedAfterReplay.some((entry) => entry.status === 'conflict');
+              startupQueueError = startupQueueHasConflict
+                ? 'A previously interrupted canonical operation conflicts with server data. Review the queued conflict before continuing.'
+                : queuedAfterReplay.find((entry) => entry.lastError)?.lastError
+                  ?? 'A previously interrupted canonical operation is still queued. Check the connection, then try again.';
+            }
+          }
           if (mode === 'cloud') {
             next = cloudState;
           } else {
@@ -227,7 +248,7 @@ export function CanonicalWorkspaceProvider({
                 : await createCanonicalWorkspace({ data: rawData, ownerUserId: userId, studioId })
             );
             await cacheRef.current.putWorkspace(next);
-            if (!usedOfflineIdentity && mode === 'shadow' && !hasCanonicalRecords(cloudState) && hasCanonicalRecords(next)) {
+            if (!usedOfflineIdentity && !startupQueueError && mode === 'shadow' && !hasCanonicalRecords(cloudState) && hasCanonicalRecords(next)) {
               const report = await importShadowWorkspace(repositoryRef.current, next);
               await cacheRef.current.preserveRecoveryCopy(report.recoveryCopyKey, next, report);
               if (report.relationshipWarnings.some((warning) => warning.startsWith('trusted_import_required:'))) {
@@ -260,8 +281,14 @@ export function CanonicalWorkspaceProvider({
         setPersistenceMode(mode);
         stateRef.current = next;
         setState(next);
-        setPendingCount(studioId ? (await cacheRef.current.listOutbox(studioId)).length : 0);
-        setSyncState((current) => current === 'conflict' ? current : usedOfflineIdentity || navigator.onLine === false ? 'offline' : 'ready');
+        const pending = studioId ? await cacheRef.current.listOutbox(studioId) : [];
+        setPendingCount(pending.length);
+        if (startupQueueError) {
+          setError(startupQueueError);
+          setSyncState(startupQueueHasConflict ? 'conflict' : 'error');
+        } else {
+          setSyncState((current) => current === 'conflict' ? current : usedOfflineIdentity || navigator.onLine === false ? 'offline' : 'ready');
+        }
       } catch (reason) {
         if (cancelled) return;
         recordClientEvent({ context: { stage: 'hydrate' }, kind: 'migration_warning' });

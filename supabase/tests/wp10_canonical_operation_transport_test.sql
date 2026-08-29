@@ -3,7 +3,7 @@ begin;
 create extension if not exists pgtap with schema extensions;
 set local search_path = extensions, public, ml_private, ml_public;
 
-select plan(31);
+select plan(36);
 
 select has_table(
   'ml_private', 'canonical_operation_receipts',
@@ -79,12 +79,49 @@ insert into ml_private.garments (id, studio_id, garment_code, title) values
 insert into ml_private.tasks (id, studio_id, garment_id, title) values
   ('52000000-0000-4000-8000-000000000001', '22000000-0000-4000-8000-000000000001', '42000000-0000-4000-8000-000000000001', 'First transport task'),
   ('52000000-0000-4000-8000-000000000002', '22000000-0000-4000-8000-000000000001', '42000000-0000-4000-8000-000000000001', 'Second transport task');
+insert into ml_private.materials (id, studio_id, material_code, name, category) values
+  ('43000000-0000-4000-8000-000000000001', '22000000-0000-4000-8000-000000000001', 'TX-MAT-001', 'Transport material', 'woven');
+insert into ml_private.material_variants (id, studio_id, material_id, sku) values
+  ('44000000-0000-4000-8000-000000000001', '22000000-0000-4000-8000-000000000001', '43000000-0000-4000-8000-000000000001', 'TX-MAT-001-BLK');
 update ml_private.studio_settings
 set version_policy = '{"canonicalPersistence":"cloud"}'
 where studio_id = '22000000-0000-4000-8000-000000000001';
 
 set local role authenticated;
 set local request.jwt.claim.sub = '12000000-0000-4000-8000-000000000001';
+
+select ok(
+  has_column_privilege('authenticated', 'ml_private.inventory_entries', 'id', 'update'),
+  'the atomic command can acquire its inventory preflight row lock'
+);
+select ok(
+  not has_column_privilege('authenticated', 'ml_private.inventory_entries', 'note', 'update'),
+  'inventory business fields remain non-updatable for authenticated clients'
+);
+select is(
+  ml_private.commit_canonical_operation(
+    '61000000-0000-4000-8000-000000000001',
+    '22000000-0000-4000-8000-000000000001',
+    null,
+    'sync',
+    '[{"entityType":"inventory_entries","entityId":"45000000-0000-4000-8000-000000000001","action":"insert","baseRevision":null,"row":{"variant_id":"44000000-0000-4000-8000-000000000001","entry_type":"receive","quantity":1,"unit":"m","note":"First shadow import"}}]'::jsonb
+  ) ->> 'status',
+  'applied',
+  'a first shadow import can append inventory through the atomic command'
+);
+select is(
+  (select count(*) from ml_private.inventory_entries
+   where id = '45000000-0000-4000-8000-000000000001'),
+  1::bigint,
+  'the inventory append is persisted once'
+);
+select throws_like(
+  $$update ml_private.inventory_entries
+    set note = 'Forbidden direct rewrite'
+    where id = '45000000-0000-4000-8000-000000000001'$$,
+  '%permission denied for table inventory_entries%',
+  'direct authenticated updates still cannot reach append-only inventory rows'
+);
 
 select throws_ok(
   $$update ml_private.tasks set title = 'Forbidden direct edit' where id = '52000000-0000-4000-8000-000000000001'$$,

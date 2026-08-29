@@ -104,6 +104,12 @@ describe('canonical cloud repository cutover', () => {
     expect(provider).toContain("mode === 'shadow'");
     expect(provider).toContain("window.addEventListener('online'");
     expect(provider).toContain("window.addEventListener('focus'");
+    const replay = provider.indexOf('const queuedBeforeImport');
+    const importStart = provider.indexOf('const report = await importShadowWorkspace');
+    expect(replay).toBeGreaterThan(-1);
+    expect(importStart).toBeGreaterThan(replay);
+    expect(provider).toContain('cloudState = await repositoryRef.current.refresh()');
+    expect(provider).toContain('!startupQueueError');
   });
 
   it('uses stable pagination and the transactional operation RPC', () => {
