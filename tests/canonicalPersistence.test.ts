@@ -222,6 +222,40 @@ describe('canonical cloud repository cutover', () => {
     expect(reconcileSyncImportRetry(entry, cloud)).toBeNull();
   });
 
+  it('can restart recovery after a prior pass normalized part of the retry', async () => {
+    const cloud = await fixtureWorkspace();
+    const profile = cloud.portfolioProfiles[0];
+    const entry: CanonicalOutboxEntry = {
+      attempts: 2,
+      baseRows: {},
+      conflicts: [],
+      dependencyIds: [],
+      lastError: 'duplicate portfolio username',
+      localRows: {},
+      operation: {
+        garmentId: null,
+        mutations: [{
+          action: 'update',
+          baseRevision: 1,
+          entityId: profile.id,
+          entityType: 'portfolio_profiles',
+          row: { headline: 'Recovered after retry' },
+        }],
+        operationId: '86000000-0000-4000-8000-000000000005',
+        origin: 'sync',
+        queuedAt: '2026-08-27T12:00:00.000Z',
+        studioId: cloud.studioId,
+      },
+      status: 'failed',
+    };
+    expect(reconcileSyncImportRetry(entry, cloud)?.operation.mutations[0]).toMatchObject({
+      action: 'update',
+      baseRevision: 1,
+      entityId: profile.id,
+      row: { headline: 'Recovered after retry' },
+    });
+  });
+
   it('removes browser-local authority and exposes explicit shadow/cloud coordination', () => {
     const provider = readFileSync(new URL('../src/hooks/useCanonicalWorkspace.tsx', import.meta.url), 'utf8');
     expect(provider).toContain('window.localStorage.removeItem(key)');

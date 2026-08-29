@@ -470,7 +470,7 @@ export function reconcileSyncImportRetry(
   const { operation } = entry;
   if (operation.origin !== 'sync'
     || operation.mutations.length === 0
-    || operation.mutations.some((mutation) => mutation.action !== 'insert' || !mutation.row)) return undefined;
+    || operation.mutations.some((mutation) => mutation.action === 'delete' || !mutation.row)) return undefined;
 
   const snapshot = canonicalMutableSnapshot(cloudState);
   const materialized = materializeMutableRows(cloudState);
@@ -497,6 +497,7 @@ export function reconcileSyncImportRetry(
     if (current && rowContainsExpected(current, expected)) continue;
 
     if (!current) {
+      if (original.action === 'update') return undefined;
       mutations.push({ ...original, entityId, row: expected });
       baseRows[key] = null;
       localRows[key] = expected;
