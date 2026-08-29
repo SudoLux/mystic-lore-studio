@@ -6,6 +6,7 @@ import {
   CanonicalIndexedDb,
   emptyCanonicalWorkspaceState,
   materializeMutableRows,
+  syncImportOperationAlreadyReflected,
   tryMergeDisjoint,
 } from '../src/domains/persistence';
 import type { CanonicalOutboxEntry } from '../src/domains/persistence';
@@ -96,6 +97,33 @@ describe('canonical cloud repository cutover', () => {
     expect(await cache.listOutbox(state.studioId)).toHaveLength(0);
   });
 
+  it('retires only insert retries already proven present in the fresh cloud graph', async () => {
+    const state = await fixtureWorkspace();
+    const inserts = buildCanonicalMutations(emptyCanonicalWorkspaceState(state.studioId), state);
+    const operation = {
+      garmentId: null,
+      mutations: inserts,
+      operationId: '86000000-0000-4000-8000-000000000001',
+      origin: 'sync' as const,
+      queuedAt: '2026-08-27T12:00:00.000Z',
+      studioId: state.studioId,
+    };
+    expect(syncImportOperationAlreadyReflected(operation, state)).toBe(true);
+    expect(syncImportOperationAlreadyReflected({
+      ...operation,
+      mutations: operation.mutations.map((mutation, index) => index === 0
+        ? { ...mutation, row: { ...mutation.row, name: 'Unmatched retry value' } }
+        : mutation),
+    }, state)).toBe(false);
+
+    const profileMutation = operation.mutations.find((mutation) => mutation.entityType === 'portfolio_profiles');
+    expect(profileMutation).toBeTruthy();
+    expect(syncImportOperationAlreadyReflected({
+      ...operation,
+      mutations: [{ ...profileMutation!, entityId: '86000000-0000-4000-8000-000000000099' }],
+    }, state)).toBe(true);
+  });
+
   it('removes browser-local authority and exposes explicit shadow/cloud coordination', () => {
     const provider = readFileSync(new URL('../src/hooks/useCanonicalWorkspace.tsx', import.meta.url), 'utf8');
     expect(provider).toContain('window.localStorage.removeItem(key)');
@@ -110,6 +138,8 @@ describe('canonical cloud repository cutover', () => {
     expect(importStart).toBeGreaterThan(replay);
     expect(provider).toContain('cloudState = await repositoryRef.current.refresh()');
     expect(provider).toContain('!startupQueueError');
+    expect(provider).toContain('recovered-operation:');
+    expect(provider).toContain('syncImportOperationAlreadyReflected');
   });
 
   it('uses stable pagination and the transactional operation RPC', () => {

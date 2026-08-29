@@ -42,6 +42,7 @@ import {
   CanonicalIndexedDb,
   emptyCanonicalWorkspaceState,
   loadCanonicalPersistenceMode,
+  syncImportOperationAlreadyReflected,
   SupabaseCanonicalWorkspaceRepository,
   type CanonicalMigrationReport,
   type CanonicalCommitResult,
@@ -220,6 +221,18 @@ export function CanonicalWorkspaceProvider({
             }
           }
           let cloudState = await repositoryRef.current.hydrate(studioId);
+          const queuedBeforeRecovery = !usedOfflineIdentity && navigator.onLine !== false
+            ? await cacheRef.current.listOutbox(studioId)
+            : [];
+          for (const entry of queuedBeforeRecovery) {
+            if (entry.status === 'conflict' || !syncImportOperationAlreadyReflected(entry.operation, cloudState)) continue;
+            await cacheRef.current.putSetting(`recovered-operation:${entry.operation.operationId}`, {
+              operationId: entry.operation.operationId,
+              recoveredAt: new Date().toISOString(),
+              reason: 'fresh_cloud_parity',
+            });
+            await cacheRef.current.deleteOutbox(entry.operation.operationId);
+          }
           const queuedBeforeImport = !usedOfflineIdentity && navigator.onLine !== false
             ? await cacheRef.current.listOutbox(studioId)
             : [];

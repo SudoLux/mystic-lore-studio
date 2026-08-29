@@ -4,6 +4,7 @@ import { normalizeWorkspace, type CanonicalPublication, type CanonicalWorkspaceS
 import {
   applyPortfolioJoins,
   canonicalCodecRegistry,
+  canonicalMutableSnapshot,
   decodeCanonicalRecord,
   encodeCanonicalRecord,
   materializeMutableRows,
@@ -422,6 +423,41 @@ function stableJson(value: unknown): string {
   if (Array.isArray(value)) return `[${value.map(stableJson).join(',')}]`;
   if (value && typeof value === 'object') return JSON.stringify(Object.fromEntries(Object.entries(value as Record<string, unknown>).sort(([a], [b]) => a.localeCompare(b))));
   return JSON.stringify(value);
+}
+
+/**
+ * A browser can lose the response after the server committed an initial
+ * shadow import. Before replaying that insert-only operation, prove that every
+ * requested value is already represented by the freshly hydrated graph. The
+ * portfolio profile is a Studio singleton, so an older device-local profile
+ * id may be equivalent when its stable username and complete payload match.
+ */
+export function syncImportOperationAlreadyReflected(
+  operation: CanonicalOperation,
+  cloudState: CanonicalWorkspaceState,
+) {
+  if (operation.origin !== 'sync'
+    || operation.mutations.length === 0
+    || operation.mutations.some((mutation) => mutation.action !== 'insert' || !mutation.row)) return false;
+
+  const snapshot = canonicalMutableSnapshot(cloudState);
+  const portfolioProfiles = Object.entries(snapshot)
+    .filter(([key]) => key.startsWith('portfolio_profiles:'))
+    .map(([, row]) => row);
+
+  return operation.mutations.every((mutation) => {
+    const expected = mutation.row!;
+    const current = snapshot[`${mutation.entityType}:${mutation.entityId}`];
+    if (current && rowContainsExpected(current, expected)) return true;
+    if (mutation.entityType !== 'portfolio_profiles') return false;
+    return portfolioProfiles.some((profile) =>
+      profile.username_slug === expected.username_slug
+      && rowContainsExpected(profile, expected));
+  });
+}
+
+function rowContainsExpected(current: Record<string, unknown>, expected: Record<string, unknown>) {
+  return Object.entries(expected).every(([key, value]) => stableJson(current[key]) === stableJson(value));
 }
 
 export function authoritativeRowsToWorkspace(
