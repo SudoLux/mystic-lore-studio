@@ -20,4 +20,5 @@ export type NavItem = {
   shortLabel: string;
   description: string;
   icon: LucideIcon;
+  group: 'studio' | 'make' | 'present' | 'tools';
 };

@@ -127,7 +127,7 @@ export function ImageSlot({
   return (
     <div
       className={cn(
-        'group/image-slot relative isolate overflow-hidden rounded-2xl border border-bronze/24 bg-espresso/35 shadow-[inset_0_1px_0_rgba(237,227,207,0.035)]',
+        'atelier-image-frame group/image-slot relative isolate overflow-hidden rounded-2xl bg-espresso/35',
         aspectClassName,
         className,
       )}

@@ -2,7 +2,7 @@
 
 @layer components {
   .field {
-    @apply h-11 w-full rounded-xl border border-bronze/30 bg-midnight/60 px-3 text-sm text-stardust outline-none transition placeholder:text-stardust/38 focus:border-ember/70 focus:ring-2 focus:ring-ember/25;
+    @apply h-11 w-full rounded-xl border border-bronze/26 bg-midnight/48 px-3 text-sm text-stardust outline-none transition placeholder:text-stardust/38 hover:border-bronze/42 focus:border-ember/70 focus:ring-2 focus:ring-ember/20;
   }
 
   .field-label {
@@ -31,6 +31,9 @@
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  --atelier-page-space: clamp(1rem, 2.5vw, 3rem);
+  --atelier-section-space: clamp(1.25rem, 2vw, 2rem);
+  --atelier-panel-border: rgba(154, 108, 60, 0.2);
 }
 
 html { scroll-behavior: smooth; }
@@ -59,6 +62,68 @@ button, a, input, select, textarea, [role="button"] { -webkit-tap-highlight-colo
 .skip-link:focus { transform: translateY(0); }
 
 .workbench-table { font-variant-numeric: tabular-nums; }
+
+.atelier-shell {
+  background-color: #0a0a0a;
+  background-image:
+    radial-gradient(circle at 15% -10%, rgba(200, 155, 60, 0.06), transparent 28rem),
+    radial-gradient(circle at 88% 0%, rgba(27, 58, 99, 0.13), transparent 32rem);
+}
+
+.atelier-main > div { display: grid; gap: var(--atelier-section-space); }
+
+.atelier-mobile-bar,
+.atelier-panel {
+  border: 1px solid var(--atelier-panel-border);
+  background: linear-gradient(150deg, rgba(237, 227, 207, 0.055), rgba(237, 227, 207, 0.025));
+  box-shadow: inset 0 1px 0 rgba(237, 227, 207, 0.035), 0 16px 45px rgba(0, 0, 0, 0.16);
+  backdrop-filter: blur(16px);
+}
+
+.atelier-page-header { border-bottom: 1px solid rgba(154, 108, 60, 0.18); }
+
+.atelier-image-frame {
+  border: 1px solid rgba(154, 108, 60, 0.22);
+  background: radial-gradient(circle at 20% 10%, rgba(200, 155, 60, 0.17), transparent 32%), #12110f;
+  box-shadow: inset 0 1px 0 rgba(237, 227, 207, 0.05);
+}
+
+.atelier-image-frame--hero { border-radius: 1.35rem; }
+.atelier-image-frame--library { border-radius: 1rem; }
+.atelier-image-frame--thumbnail { border-radius: 0.75rem; }
+
+.atelier-empty-state {
+  border: 1px dashed rgba(154, 108, 60, 0.32);
+  border-radius: 1.25rem;
+  background: rgba(237, 227, 207, 0.018);
+  padding: clamp(1.5rem, 4vw, 3rem);
+  text-align: center;
+}
+
+.atelier-tablist {
+  display: flex;
+  gap: 0.4rem;
+  overflow-x: auto;
+  padding: 0.35rem;
+  border: 1px solid rgba(154, 108, 60, 0.2);
+  border-radius: 1rem;
+  background: rgba(237, 227, 207, 0.025);
+}
+
+.atelier-table-shell {
+  overflow: hidden;
+  border: 1px solid rgba(154, 108, 60, 0.2);
+  border-radius: 1.25rem;
+  background: rgba(10, 10, 10, 0.22);
+}
+
+.atelier-drawer,
+.atelier-modal {
+  border: 1px solid rgba(154, 108, 60, 0.28);
+  background: rgba(16, 15, 13, 0.96);
+  box-shadow: 0 28px 80px rgba(0, 0, 0, 0.42);
+  backdrop-filter: blur(20px);
+}
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {

@@ -14,9 +14,9 @@ export function Card({
   return (
     <div
       className={cn(
-        'rounded-[1.35rem] border border-bronze/28 bg-[linear-gradient(145deg,rgba(237,227,207,0.07),rgba(237,227,207,0.035))] p-5 text-stardust shadow-[0_22px_70px_rgba(0,0,0,0.24),inset_0_1px_0_rgba(237,227,207,0.045)] backdrop-blur-xl',
+        'atelier-panel rounded-[1.35rem] p-5 text-stardust',
         elevated &&
-          'border-ember/36 bg-[linear-gradient(145deg,rgba(237,227,207,0.09),rgba(61,43,31,0.18))] shadow-[0_28px_90px_rgba(0,0,0,0.3),inset_0_1px_0_rgba(237,227,207,0.07)]',
+          'border-ember/32 bg-[linear-gradient(145deg,rgba(27,58,99,0.18),rgba(61,43,31,0.13))] shadow-[0_24px_70px_rgba(0,0,0,0.25)]',
         className,
       )}
       {...props}

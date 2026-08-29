@@ -4,6 +4,7 @@ import { Badge } from '../shared/Badge';
 import { BrandLockup } from './BrandLockup';
 import { LogOut } from 'lucide-react';
 import type { ReactNode } from 'react';
+import { navigationGroups } from '../../data/navigation';
 
 type SidebarProps = {
   activePage: PageId;
@@ -32,44 +33,56 @@ export function Sidebar({
         <Badge className="lg:max-xl:hidden" variant="ember">Studio</Badge>
       </div>
 
-      <nav aria-label="Primary navigation" className="flex shrink-0 flex-col gap-1.5">
-        {navItems.map((item) => {
-          const Icon = item.icon;
-          const isActive = activePage === item.id;
+      <nav aria-label="Primary navigation" className="flex shrink-0 flex-col gap-5">
+        {navigationGroups.map((group) => {
+          const items = navItems.filter((item) => item.group === group.id);
+          if (!items.length) return null;
 
           return (
-            <button
-              aria-current={isActive ? 'page' : undefined}
-              aria-label={item.label}
-              className={cn(
-                'group flex w-full items-center gap-3 rounded-2xl border px-3.5 py-2.5 text-left transition duration-200 lg:max-xl:justify-center lg:max-xl:px-2.5',
-                isActive
-                  ? 'border-ember/55 bg-ember/12 text-stardust shadow-[0_16px_40px_rgba(0,0,0,0.24)]'
-                  : 'border-transparent text-stardust/68 hover:border-bronze/40 hover:bg-stardust/6 hover:text-stardust',
-              )}
-              key={item.id}
-              onClick={() => onNavigate(item.id)}
-              type="button"
-            >
-              <span
-                className={cn(
-                  'flex h-8 w-8 items-center justify-center rounded-xl border transition duration-200',
-                  isActive
-                    ? 'border-ember/45 bg-midnight/70 text-ember'
-                    : 'border-stardust/10 bg-stardust/5 text-stardust/58 group-hover:border-ember/25 group-hover:text-ember',
-                )}
-              >
-                <Icon aria-hidden="true" size={18} strokeWidth={1.8} />
-              </span>
-              <span className="min-w-0 lg:max-xl:hidden">
-                <span className="block truncate text-sm font-medium">
-                  {item.label}
-                </span>
-                <span className="block truncate text-xs text-stardust/46">
-                  {item.description}
-                </span>
-              </span>
-            </button>
+            <section aria-label={group.label} className="space-y-1.5" key={group.id}>
+              <p className="px-3 text-[0.62rem] font-semibold uppercase tracking-[0.2em] text-stardust/34 lg:max-xl:hidden">
+                {group.label}
+              </p>
+              {items.map((item) => {
+                const Icon = item.icon;
+                const isActive = activePage === item.id;
+
+                return (
+                  <button
+                    aria-current={isActive ? 'page' : undefined}
+                    aria-label={item.label}
+                    className={cn(
+                      'group flex w-full items-center gap-3 rounded-xl border px-3 py-2.5 text-left transition duration-200 lg:max-xl:justify-center lg:max-xl:px-2.5',
+                      isActive
+                        ? 'border-ember/42 bg-ember/[0.11] text-stardust shadow-[0_12px_30px_rgba(0,0,0,0.18)]'
+                        : 'border-transparent text-stardust/62 hover:bg-stardust/[0.055] hover:text-stardust',
+                    )}
+                    key={item.id}
+                    onClick={() => onNavigate(item.id)}
+                    type="button"
+                  >
+                    <span
+                      className={cn(
+                        'flex h-8 w-8 items-center justify-center rounded-lg border transition duration-200',
+                        isActive
+                          ? 'border-ember/38 bg-midnight/72 text-ember'
+                          : 'border-stardust/[0.08] bg-stardust/[0.035] text-stardust/52 group-hover:text-ember',
+                      )}
+                    >
+                      <Icon aria-hidden="true" size={18} strokeWidth={1.8} />
+                    </span>
+                    <span className="min-w-0 lg:max-xl:hidden">
+                      <span className="block truncate text-sm font-medium">
+                        {item.label}
+                      </span>
+                      <span className="block truncate text-xs text-stardust/42">
+                        {item.description}
+                      </span>
+                    </span>
+                  </button>
+                );
+              })}
+            </section>
           );
         })}
       </nav>

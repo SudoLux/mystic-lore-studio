@@ -2,6 +2,7 @@ import { cn } from '../../lib/classes';
 import { getImageDisplay, getImageOrientation } from '../../lib/imageAssets';
 import type { LocalImageAsset } from '../../types/studio';
 import { StoredImage } from './StoredImage';
+import { AtelierImageFrame } from './AtelierImageFrame';
 
 type AdaptiveStoredImageProps = {
   asset: LocalImageAsset;
@@ -40,11 +41,12 @@ export function AdaptiveStoredImage({
         };
 
   return (
-    <div
+    <AtelierImageFrame
       className={cn(
-        'relative h-full w-full overflow-hidden bg-[radial-gradient(circle_at_20%_12%,rgba(200,155,60,0.18),transparent_30%),linear-gradient(145deg,rgba(27,58,99,0.52),rgba(10,10,10,0.78),rgba(61,43,31,0.62))]',
+        'bg-[radial-gradient(circle_at_20%_12%,rgba(200,155,60,0.18),transparent_30%),linear-gradient(145deg,rgba(27,58,99,0.52),rgba(10,10,10,0.78),rgba(61,43,31,0.62))]',
         className,
       )}
+      emphasis={mode === 'primary' ? 'hero' : mode === 'thumbnail' ? 'thumbnail' : 'library'}
     >
       {useAmbientPortrait ? (
         <>
@@ -79,6 +81,6 @@ export function AdaptiveStoredImage({
           quality={mode === 'thumbnail' ? 'thumbnail' : mode === 'compact' ? 'display' : 'master'}
         />
       )}
-    </div>
+    </AtelierImageFrame>
   );
 }

@@ -21,6 +21,7 @@ export const navigationItems: NavItem[] = [
     shortLabel: 'Home',
     description: 'Studio overview',
     icon: LayoutDashboard,
+    group: 'studio',
   },
   {
     id: 'projects',
@@ -28,6 +29,7 @@ export const navigationItems: NavItem[] = [
     shortLabel: 'Proj',
     description: 'Garment library',
     icon: Folder,
+    group: 'studio',
   },
   {
     id: 'kanban',
@@ -35,6 +37,7 @@ export const navigationItems: NavItem[] = [
     shortLabel: 'Plan',
     description: 'Flow, tasks, and calendar',
     icon: Columns3,
+    group: 'studio',
   },
   {
     id: 'technical',
@@ -42,6 +45,7 @@ export const navigationItems: NavItem[] = [
     shortLabel: 'Tech',
     description: 'Flats and release evidence',
     icon: Ruler,
+    group: 'make',
   },
   {
     id: 'production',
@@ -49,6 +53,7 @@ export const navigationItems: NavItem[] = [
     shortLabel: 'Production',
     description: 'Samples and fit evidence',
     icon: Factory,
+    group: 'make',
   },
   {
     id: 'versions',
@@ -56,6 +61,7 @@ export const navigationItems: NavItem[] = [
     shortLabel: 'Versions',
     description: 'Freeze Frames and restore',
     icon: GitCompareArrows,
+    group: 'tools',
   },
   {
     id: 'ai',
@@ -63,6 +69,7 @@ export const navigationItems: NavItem[] = [
     shortLabel: 'AI',
     description: 'Governed candidates',
     icon: Sparkles,
+    group: 'tools',
   },
   {
     id: 'lookbooks',
@@ -70,6 +77,7 @@ export const navigationItems: NavItem[] = [
     shortLabel: 'Editorial',
     description: 'Editorial presentation studio',
     icon: BookOpen,
+    group: 'present',
   },
   {
     id: 'portfolio',
@@ -77,6 +85,7 @@ export const navigationItems: NavItem[] = [
     shortLabel: 'Portfolio',
     description: 'Recruiter presentation',
     icon: BriefcaseBusiness,
+    group: 'present',
   },
   {
     id: 'fabrics',
@@ -84,6 +93,7 @@ export const navigationItems: NavItem[] = [
     shortLabel: 'Fabric',
     description: 'Materials archive',
     icon: Archive,
+    group: 'studio',
   },
   {
     id: 'stats',
@@ -91,6 +101,7 @@ export const navigationItems: NavItem[] = [
     shortLabel: 'Stats',
     description: 'Studio signals',
     icon: BarChart3,
+    group: 'tools',
   },
   {
     id: 'settings',
@@ -98,5 +109,13 @@ export const navigationItems: NavItem[] = [
     shortLabel: 'Prefs',
     description: 'App controls',
     icon: Settings,
+    group: 'tools',
   },
 ];
+
+export const navigationGroups = [
+  { id: 'studio', label: 'Studio' },
+  { id: 'make', label: 'Make' },
+  { id: 'present', label: 'Present' },
+  { id: 'tools', label: 'Studio tools' },
+] as const;
