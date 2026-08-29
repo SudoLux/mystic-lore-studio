@@ -481,7 +481,8 @@ export function reconcileSyncImportRetry(
   for (const mutation of operation.mutations) {
     if (mutation.entityType !== 'portfolio_profiles') continue;
     const profile = cloudProfiles.find((candidate) =>
-      candidate.row.username_slug === mutation.row?.username_slug);
+      candidate.row.username_slug === mutation.row?.username_slug)
+      ?? (cloudProfiles.length === 1 ? cloudProfiles[0] : undefined);
     if (profile && profile.id !== mutation.entityId) aliases.set(mutation.entityId, profile.id);
   }
 

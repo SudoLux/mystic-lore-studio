@@ -179,6 +179,7 @@ describe('canonical cloud repository cutover', () => {
         garmentId: null,
         mutations: [{
           ...profileInsert,
+          entityId: '86000000-0000-4000-8000-000000000098',
           row: { ...profileInsert.row, headline: 'Recovered headline', username_slug: 'older-device-slug' },
         }],
         operationId: '86000000-0000-4000-8000-000000000003',
