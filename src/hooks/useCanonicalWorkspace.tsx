@@ -43,6 +43,7 @@ import {
   emptyCanonicalWorkspaceState,
   loadCanonicalPersistenceMode,
   reconcileSyncImportRetry,
+  repairPlaceholderPortfolioSlug,
   syncImportOperationAlreadyReflected,
   SupabaseCanonicalWorkspaceRepository,
   type CanonicalMigrationReport,
@@ -195,6 +196,7 @@ export function CanonicalWorkspaceProvider({
         let mode: CanonicalPersistenceMode = 'local-recovery';
         let startupQueueError: string | null = null;
         let startupQueueHasConflict = false;
+        let adoptedRecoveredCloud = false;
 
         if (!requestBoundSupabase || !studioId || !repositoryRef.current) {
           next = recoveryState ?? cachedState ?? await createCanonicalWorkspace({
@@ -225,7 +227,8 @@ export function CanonicalWorkspaceProvider({
           const queuedBeforeRecovery = !usedOfflineIdentity && navigator.onLine !== false
             ? await cacheRef.current.listOutbox(studioId)
             : [];
-          for (const entry of queuedBeforeRecovery) {
+          for (const originalEntry of queuedBeforeRecovery) {
+            const entry = repairPlaceholderPortfolioSlug(originalEntry, cloudState) ?? originalEntry;
             if (entry.status === 'conflict') continue;
             const reconciled = reconcileSyncImportRetry(entry, cloudState);
             const alreadyReflected = syncImportOperationAlreadyReflected(entry.operation, cloudState);
@@ -255,6 +258,7 @@ export function CanonicalWorkspaceProvider({
             const queuedAfterReplay = await cacheRef.current.listOutbox(studioId);
             if (queuedAfterReplay.length === 0) {
               cloudState = await repositoryRef.current.refresh();
+              adoptedRecoveredCloud = true;
             } else {
               startupQueueHasConflict = queuedAfterReplay.some((entry) => entry.status === 'conflict');
               startupQueueError = startupQueueHasConflict
@@ -266,7 +270,7 @@ export function CanonicalWorkspaceProvider({
           if (mode === 'cloud') {
             next = cloudState;
           } else {
-            next = recoveryState ?? cachedState ?? (
+            next = adoptedRecoveredCloud ? cloudState : recoveryState ?? cachedState ?? (
               hasCanonicalRecords(cloudState)
                 ? cloudState
                 : await createCanonicalWorkspace({ data: rawData, ownerUserId: userId, studioId })

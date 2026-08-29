@@ -7,6 +7,7 @@ import {
   emptyCanonicalWorkspaceState,
   materializeMutableRows,
   reconcileSyncImportRetry,
+  repairPlaceholderPortfolioSlug,
   syncImportOperationAlreadyReflected,
   tryMergeDisjoint,
 } from '../src/domains/persistence';
@@ -256,6 +257,40 @@ describe('canonical cloud repository cutover', () => {
     });
   });
 
+  it('repairs only the legacy placeholder portfolio slug after a cross-Studio collision', async () => {
+    const local = await fixtureWorkspace();
+    const cloud = { ...emptyCanonicalWorkspaceState(local.studioId), portfolioProfiles: [] };
+    const profileInsert = buildCanonicalMutations(emptyCanonicalWorkspaceState(local.studioId), local)
+      .find((mutation) => mutation.entityType === 'portfolio_profiles')!;
+    const entry: CanonicalOutboxEntry = {
+      attempts: 1,
+      baseRows: {},
+      conflicts: [],
+      dependencyIds: [],
+      lastError: 'duplicate key value violates unique constraint "portfolio_profiles_username_slug_key"',
+      localRows: {},
+      operation: {
+        garmentId: null,
+        mutations: [{ ...profileInsert, row: { ...profileInsert.row, username_slug: 'designer' } }],
+        operationId: '86000000-0000-4000-8000-000000000006',
+        origin: 'sync',
+        queuedAt: '2026-08-27T12:00:00.000Z',
+        studioId: local.studioId,
+      },
+      status: 'failed',
+    };
+    const repaired = repairPlaceholderPortfolioSlug(entry, cloud);
+    expect(repaired?.operation.mutations[0].row?.username_slug).toBe('designer-25000000');
+    expect(repaired?.status).toBe('pending');
+    expect(repairPlaceholderPortfolioSlug({
+      ...entry,
+      operation: {
+        ...entry.operation,
+        mutations: [{ ...profileInsert, row: { ...profileInsert.row, username_slug: 'chosen-name' } }],
+      },
+    }, cloud)).toBeUndefined();
+  });
+
   it('removes browser-local authority and exposes explicit shadow/cloud coordination', () => {
     const provider = readFileSync(new URL('../src/hooks/useCanonicalWorkspace.tsx', import.meta.url), 'utf8');
     expect(provider).toContain('window.localStorage.removeItem(key)');
@@ -273,6 +308,7 @@ describe('canonical cloud repository cutover', () => {
     expect(provider).toContain('recovered-operation:');
     expect(provider).toContain('syncImportOperationAlreadyReflected');
     expect(provider).toContain('singleton_identity_rebase');
+    expect(provider).toContain('adoptedRecoveredCloud');
   });
 
   it('uses stable pagination and the transactional operation RPC', () => {

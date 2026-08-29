@@ -536,6 +536,41 @@ export function reconcileSyncImportRetry(
   };
 }
 
+/** The legacy placeholder was never a public identity choice. Portfolio routes
+ * are globally unique, so give only that placeholder a deterministic Studio
+ * suffix when another isolated beta account already claimed it. */
+export function repairPlaceholderPortfolioSlug(
+  entry: CanonicalOutboxEntry,
+  cloudState: CanonicalWorkspaceState,
+): CanonicalOutboxEntry | undefined {
+  if (entry.operation.origin !== 'sync'
+    || cloudState.portfolioProfiles.length > 0
+    || !entry.lastError?.includes('portfolio_profiles_username_slug_key')) return undefined;
+  let repaired = false;
+  const usernameSlug = `designer-${entry.operation.studioId.slice(0, 8)}`;
+  const mutations = entry.operation.mutations.map((mutation) => {
+    if (mutation.entityType !== 'portfolio_profiles'
+      || !mutation.row
+      || mutation.row.username_slug !== 'designer') return mutation;
+    repaired = true;
+    return { ...mutation, row: { ...mutation.row, username_slug: usernameSlug } };
+  });
+  if (!repaired) return undefined;
+  const localRows = Object.fromEntries(Object.entries(entry.localRows).map(([key, row]) => [
+    key,
+    key.startsWith('portfolio_profiles:') && row
+      ? { ...row, username_slug: usernameSlug }
+      : row,
+  ]));
+  return {
+    ...entry,
+    lastError: null,
+    localRows,
+    operation: { ...entry.operation, mutations },
+    status: 'pending',
+  };
+}
+
 const canonicalStableColumns: Partial<Record<CanonicalOperation['mutations'][number]['entityType'], string[]>> = {
   components: ['component_code'],
   garments: ['garment_code'],
