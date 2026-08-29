@@ -163,6 +163,40 @@ describe('canonical cloud repository cutover', () => {
     expect(reconciled?.status).toBe('pending');
   });
 
+  it('keeps cloud-stable slugs during a revision-one race while retaining editable changes', async () => {
+    const cloud = await fixtureWorkspace();
+    const profile = cloud.portfolioProfiles[0];
+    const profileInsert = buildCanonicalMutations(emptyCanonicalWorkspaceState(cloud.studioId), cloud)
+      .find((mutation) => mutation.entityType === 'portfolio_profiles')!;
+    const entry: CanonicalOutboxEntry = {
+      attempts: 1,
+      baseRows: {},
+      conflicts: [],
+      dependencyIds: [],
+      lastError: 'raced import',
+      localRows: {},
+      operation: {
+        garmentId: null,
+        mutations: [{
+          ...profileInsert,
+          row: { ...profileInsert.row, headline: 'Recovered headline', username_slug: 'older-device-slug' },
+        }],
+        operationId: '86000000-0000-4000-8000-000000000003',
+        origin: 'sync',
+        queuedAt: '2026-08-27T12:00:00.000Z',
+        studioId: cloud.studioId,
+      },
+      status: 'failed',
+    };
+    const reconciled = reconcileSyncImportRetry(entry, cloud);
+    expect(reconciled?.operation.mutations[0]).toMatchObject({
+      action: 'update',
+      entityId: profile.id,
+      row: { headline: 'Recovered headline' },
+    });
+    expect(reconciled?.operation.mutations[0].row).not.toHaveProperty('username_slug');
+  });
+
   it('removes browser-local authority and exposes explicit shadow/cloud coordination', () => {
     const provider = readFileSync(new URL('../src/hooks/useCanonicalWorkspace.tsx', import.meta.url), 'utf8');
     expect(provider).toContain('window.localStorage.removeItem(key)');

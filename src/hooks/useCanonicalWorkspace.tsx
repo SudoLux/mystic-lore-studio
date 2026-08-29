@@ -230,6 +230,12 @@ export function CanonicalWorkspaceProvider({
             const reconciled = reconcileSyncImportRetry(entry, cloudState);
             const alreadyReflected = syncImportOperationAlreadyReflected(entry.operation, cloudState);
             if (reconciled === undefined && !alreadyReflected) continue;
+            if (cachedState) {
+              await cacheRef.current.preserveRecoveryCopy(
+                `canonical-raced-import:${entry.operation.operationId}:${new Date().toISOString()}`,
+                cachedState,
+              );
+            }
             await cacheRef.current.putSetting(`recovered-operation:${entry.operation.operationId}`, {
               operationId: entry.operation.operationId,
               recoveredAt: new Date().toISOString(),

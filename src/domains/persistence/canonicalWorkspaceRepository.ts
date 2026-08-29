@@ -504,8 +504,6 @@ export function reconcileSyncImportRetry(
     const revision = Number(materialized.get(key)?.record.revision ?? 0);
     if (revision !== 1 || original.entityType === 'inventory_entries') return undefined;
     const stableColumns = canonicalStableColumns[original.entityType] ?? [];
-    if (stableColumns.some((column) =>
-      column in expected && stableJson(current[column]) !== stableJson(expected[column]))) return undefined;
     const changed = Object.fromEntries(Object.entries(expected)
       .filter(([column, value]) => !stableColumns.includes(column) && stableJson(current[column]) !== stableJson(value)));
     if (Object.keys(changed).length === 0) continue;
