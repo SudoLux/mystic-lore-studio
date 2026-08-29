@@ -197,6 +197,30 @@ describe('canonical cloud repository cutover', () => {
     expect(reconciled?.operation.mutations[0].row).not.toHaveProperty('username_slug');
   });
 
+  it('retains committed append-only inventory when initial imports race', async () => {
+    const cloud = await fixtureWorkspace();
+    const inventoryInsert = buildCanonicalMutations(emptyCanonicalWorkspaceState(cloud.studioId), cloud)
+      .find((mutation) => mutation.entityType === 'inventory_entries')!;
+    const entry: CanonicalOutboxEntry = {
+      attempts: 1,
+      baseRows: {},
+      conflicts: [],
+      dependencyIds: [],
+      lastError: 'raced inventory import',
+      localRows: {},
+      operation: {
+        garmentId: null,
+        mutations: [{ ...inventoryInsert, row: { ...inventoryInsert.row, note: 'Older device note' } }],
+        operationId: '86000000-0000-4000-8000-000000000004',
+        origin: 'sync',
+        queuedAt: '2026-08-27T12:00:00.000Z',
+        studioId: cloud.studioId,
+      },
+      status: 'failed',
+    };
+    expect(reconcileSyncImportRetry(entry, cloud)).toBeNull();
+  });
+
   it('removes browser-local authority and exposes explicit shadow/cloud coordination', () => {
     const provider = readFileSync(new URL('../src/hooks/useCanonicalWorkspace.tsx', import.meta.url), 'utf8');
     expect(provider).toContain('window.localStorage.removeItem(key)');

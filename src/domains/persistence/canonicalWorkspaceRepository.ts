@@ -502,7 +502,11 @@ export function reconcileSyncImportRetry(
       continue;
     }
     const revision = Number(materialized.get(key)?.record.revision ?? 0);
-    if (revision !== 1 || original.entityType === 'inventory_entries') return undefined;
+    if (revision !== 1) return undefined;
+    // Inventory is append-only. When two initial imports race on the same
+    // stable entry id, retain the committed cloud evidence and preserve the
+    // losing device snapshot instead of attempting an illegal rewrite.
+    if (original.entityType === 'inventory_entries') continue;
     const stableColumns = canonicalStableColumns[original.entityType] ?? [];
     const changed = Object.fromEntries(Object.entries(expected)
       .filter(([column, value]) => !stableColumns.includes(column) && stableJson(current[column]) !== stableJson(value)));
