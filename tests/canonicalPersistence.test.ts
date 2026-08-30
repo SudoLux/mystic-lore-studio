@@ -309,6 +309,8 @@ describe('canonical cloud repository cutover', () => {
     expect(provider).toContain('syncImportOperationAlreadyReflected');
     expect(provider).toContain('singleton_identity_rebase');
     expect(provider).toContain('adoptedRecoveredCloud');
+    expect(provider).toContain('const cloudIsCurrent = hasCanonicalRecords(cloudState) && !startupQueueError');
+    expect(provider).toContain('adoptedRecoveredCloud || cloudIsCurrent ? cloudState');
   });
 
   it('uses stable pagination and the transactional operation RPC', () => {

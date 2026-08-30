@@ -31,6 +31,16 @@ export function LibraryVaultPage() {
     return state.materialVariants.filter((variant) => {
       const material = state.materials.find((item) => item.id === variant.materialId);
       return `${material?.name ?? ''} ${material?.category ?? ''} ${material?.composition ?? ''} ${variant.colorName} ${variant.sku}`.toLowerCase().includes(needle);
+    }).sort((left, right) => {
+      const leftVisual = canonicalMaterialVariantCover(state, left.id) ? 1 : 0;
+      const rightVisual = canonicalMaterialVariantCover(state, right.id) ? 1 : 0;
+      if (leftVisual !== rightVisual) return rightVisual - leftVisual;
+      const leftProfile = state.materialVariantProfiles.some((profile) => profile.variantId === left.id) ? 1 : 0;
+      const rightProfile = state.materialVariantProfiles.some((profile) => profile.variantId === right.id) ? 1 : 0;
+      if (leftProfile !== rightProfile) return rightProfile - leftProfile;
+      const leftName = state.materials.find((item) => item.id === left.materialId)?.name ?? '';
+      const rightName = state.materials.find((item) => item.id === right.materialId)?.name ?? '';
+      return leftName.localeCompare(rightName);
     });
   }, [query, state]);
   const genericOptions = (tab === 'templates'
@@ -69,8 +79,8 @@ function MaterialArchive({ onSelect, selectedId, state, variants }: { onSelect: 
 }
 
 function MaterialCard({ active, onSelect, state, variant }: { active: boolean; onSelect: () => void; state: WorkspaceState; variant: CanonicalMaterialVariant }) {
-  const material = state.materials.find((item) => item.id === variant.materialId)!; const garments = garmentsUsingVariant(state, variant.id); const contextAsset = canonicalMaterialVariantCover(state, variant.id) ?? garments.map((garment) => canonicalGarmentCover(state, garment.id)).find(Boolean) ?? null; const available = materialAvailableQuantity(state, variant.id);
-  return <button aria-pressed={active} className={active ? 'group overflow-hidden rounded-[1.35rem] bg-stardust/[0.055] text-left ring-1 ring-ember/62' : 'group overflow-hidden rounded-[1.35rem] bg-stardust/[0.025] text-left transition hover:-translate-y-1 hover:bg-stardust/[0.045]'} onClick={onSelect} type="button"><div className="relative aspect-[5/3] overflow-hidden">{contextAsset ? <CanonicalMediaImage alt={`${material.name} used on ${garments[0]?.title}`} asset={contextAsset} className="h-full w-full rounded-b-none border-0 transition duration-500 group-hover:scale-[1.02]" derivatives={state.mediaDerivatives} fit="cover" mode="library" /> : <TextileSwatch className="h-full" color={variant.colorHex} />}<span className="absolute inset-x-0 bottom-0 h-5" style={{ background: swatchBackground(variant.colorHex) }} /></div><div className="p-5"><p className="text-[0.63rem] uppercase tracking-[0.16em] text-ember/70">{material.category}</p><h3 className="font-display mt-2 text-2xl leading-tight text-stardust">{material.name}</h3><p className="mt-2 text-sm text-stardust/48">{variant.colorName || 'Natural'} · {material.composition || 'Composition open'}</p><div className="mt-5 flex items-center justify-between gap-4 text-xs"><span className="text-stardust/42">{garments.length ? `Used in ${garments.length} garment${garments.length === 1 ? '' : 's'}` : 'Awaiting a garment'}</span><span className="text-teal">{available.toFixed(1)} yd</span></div></div></button>;
+  const material = state.materials.find((item) => item.id === variant.materialId)!; const garments = garmentsUsingVariant(state, variant.id); const materialAsset = canonicalMaterialVariantCover(state, variant.id); const available = materialAvailableQuantity(state, variant.id);
+  return <button aria-pressed={active} className={active ? 'group overflow-hidden rounded-[1.35rem] bg-stardust/[0.055] text-left ring-1 ring-ember/62' : 'group overflow-hidden rounded-[1.35rem] bg-stardust/[0.025] text-left transition hover:-translate-y-1 hover:bg-stardust/[0.045]'} onClick={onSelect} type="button"><div className="relative aspect-[5/3] overflow-hidden">{materialAsset ? <CanonicalMediaImage alt={`${material.name} fabric`} asset={materialAsset} className="h-full w-full rounded-b-none border-0 transition duration-500 group-hover:scale-[1.02]" derivatives={state.mediaDerivatives} fit="cover" mode="library" /> : <TextileSwatch className="h-full" color={variant.colorHex} />}<span className="absolute inset-x-0 bottom-0 h-5" style={{ background: swatchBackground(variant.colorHex) }} /></div><div className="p-5"><p className="text-[0.63rem] uppercase tracking-[0.16em] text-ember/70">{material.category}</p><h3 className="font-display mt-2 text-2xl leading-tight text-stardust">{material.name}</h3><p className="mt-2 text-sm text-stardust/48">{variant.colorName || 'Natural'} · {material.composition || 'Composition open'}</p><div className="mt-5 flex items-center justify-between gap-4 text-xs"><span className="text-stardust/42">{garments.length ? `Used in ${garments.length} garment${garments.length === 1 ? '' : 's'}` : 'Awaiting a garment'}</span><span className="text-teal">{available.toFixed(1)} yd</span></div></div></button>;
 }
 
 function MaterialDetail({ beginContextUpload, logInventory, state, uploading, variant }: { beginContextUpload: (garmentId: string) => void; logInventory: (event: FormEvent<HTMLFormElement>) => void; state: WorkspaceState; uploading: boolean; variant: CanonicalMaterialVariant }) {

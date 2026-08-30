@@ -278,10 +278,16 @@ export function CanonicalWorkspaceProvider({
           if (mode === 'cloud') {
             next = cloudState;
           } else {
-            next = adoptedRecoveredCloud ? cloudState : recoveryState ?? cachedState ?? (
-              hasCanonicalRecords(cloudState)
-                ? cloudState
-                : await createCanonicalWorkspace({ data: rawData, ownerUserId: userId, studioId })
+            // Shadow mode compares the optimistic client experience with the
+            // canonical graph, but an old IndexedDB snapshot must not hide a
+            // newer trusted import. Once the outbox has converged, display the
+            // freshly hydrated cloud graph and retain the older cache only as
+            // recovery evidence. If replay is still blocked, keep the cached
+            // optimistic result visible so queued edits and media are never
+            // discarded.
+            const cloudIsCurrent = hasCanonicalRecords(cloudState) && !startupQueueError;
+            next = adoptedRecoveredCloud || cloudIsCurrent ? cloudState : recoveryState ?? cachedState ?? (
+              await createCanonicalWorkspace({ data: rawData, ownerUserId: userId, studioId })
             );
             await cacheRef.current.putWorkspace(next);
             if (!usedOfflineIdentity && !startupQueueError && mode === 'shadow' && !hasCanonicalRecords(cloudState) && hasCanonicalRecords(next)) {

@@ -60,6 +60,14 @@ describe('WP11C image-first garment experience', () => {
     expect(media).toContain("client.storage.from('studio-assets').download");
     expect(repository).toContain('}, this.cache, this.client)');
   });
+
+  it('uses only canonical fabric photography as the Material Vault cover', () => {
+    const vault = readFileSync(new URL('../src/pages/LibraryVault/LibraryVaultPage.tsx', import.meta.url), 'utf8');
+    const materialCard = vault.slice(vault.indexOf('function MaterialCard'), vault.indexOf('function MaterialDetail'));
+    expect(materialCard).toContain('canonicalMaterialVariantCover(state, variant.id)');
+    expect(materialCard).toContain('alt={`${material.name} fabric`}');
+    expect(materialCard).not.toContain('canonicalGarmentCover');
+  });
 });
 
 function media(role: CanonicalGarmentMedia['role'], assetId: string) {
