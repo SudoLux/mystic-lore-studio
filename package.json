@@ -19,6 +19,7 @@
     "test:canonical:integration": "vitest run tests/canonicalPersistence.test.ts",
     "test:e2e": "playwright test tests/e2e/studio.spec.ts",
     "test:a11y": "playwright test tests/e2e/accessibility.spec.ts",
+    "test:visual": "playwright test tests/e2e/wp11-visual.spec.ts",
     "check:scripts": "tsc -p tsconfig.scripts.json --pretty false",
     "beta:import-device": "sh scripts/run-beta-import.sh",
     "audit:beta": "tsx scripts/audit-beta.ts",

@@ -5,6 +5,7 @@ import { StoredImage } from './StoredImage';
 import { AtelierImageFrame } from './AtelierImageFrame';
 
 type AdaptiveStoredImageProps = {
+  alt?: string;
   asset: LocalImageAsset;
   className?: string;
   displayFit?: 'cover' | 'contain';
@@ -14,6 +15,7 @@ type AdaptiveStoredImageProps = {
 };
 
 export function AdaptiveStoredImage({
+  alt,
   asset,
   className,
   displayFit,
@@ -51,6 +53,7 @@ export function AdaptiveStoredImage({
       {useAmbientPortrait ? (
         <>
           <StoredImage
+            alt={alt}
             asset={asset}
             className="absolute inset-0 scale-110 blur-2xl saturate-75 opacity-52"
             decorative
@@ -74,6 +77,7 @@ export function AdaptiveStoredImage({
         </>
       ) : (
         <StoredImage
+          alt={alt}
           asset={asset}
           className={cn('absolute inset-0', foregroundClassName)}
           displayOverride={compactDisplay}

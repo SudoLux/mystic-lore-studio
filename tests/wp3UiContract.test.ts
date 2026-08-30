@@ -33,7 +33,8 @@ describe('WP3 canonical UI accessibility and state contracts', () => {
     const library = read('../src/pages/GarmentLibrary/GarmentLibraryPage.tsx');
     const vault = read('../src/pages/LibraryVault/LibraryVaultPage.tsx');
     expect(library).toContain('sm:grid-cols-2');
-    expect(library).toContain('overflow-x-auto');
+    expect(library).toContain('aria-label="Garment filters"');
+    expect(library).toContain('flex-col gap-3 sm:flex-row');
     expect(vault).toContain('xl:grid-cols');
   });
 });

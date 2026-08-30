@@ -39,8 +39,8 @@ describe('WP10 release-candidate UI corrections', () => {
     expect(sidebar).toContain('mt-3 inline-flex min-h-11');
   });
 
-  it('cuts Today over to canonical activity/inbox and exposes a keyboard command palette', () => {
-    for (const contract of ['Activity & inbox', 'Recent authored change', 'Command palette', 'Offline: today']) {
+  it('keeps Today on canonical activity and preserves global keyboard search', () => {
+    for (const contract of ['Recent activity', 'Featured garment', 'Offline: your visual workspace']) {
       expect(today).toContain(contract);
     }
     expect(today).toContain('useCanonicalWorkspace');

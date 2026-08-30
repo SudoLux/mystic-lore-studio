@@ -73,7 +73,7 @@ function adminHeaders(serviceRoleKey: string, privateSchema = false) {
 
 export async function createGarment(page: Page, title: string) {
   await page.goto('/#/projects');
-  await expect(page.getByRole('heading', { name: 'Garment Library' })).toBeVisible();
+  await expect(page.getByRole('heading', { exact: true, name: 'Garment Library' })).toBeVisible();
   await page.getByRole('button', { name: 'New garment' }).click();
   await page.getByLabel('Garment title').fill(title);
   await page.getByRole('button', { name: 'Create garment' }).click();
