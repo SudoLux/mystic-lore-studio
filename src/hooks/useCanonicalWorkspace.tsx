@@ -57,6 +57,7 @@ import { createRequestBoundCanonicalSupabase } from '../lib/supabase';
 import { getStudioData, type StudioData } from '../lib/studioStorage';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Database } from '../types/database.generated';
+import { prepareCanonicalGarmentImage } from '../lib/canonicalMediaUpload';
 
 type CanonicalWorkspaceContextValue = {
   addCollection: (name: string, season?: string) => string;
@@ -90,6 +91,7 @@ type CanonicalWorkspaceContextValue = {
   updateBrief: (garmentId: string, patch: Parameters<typeof updateBrief>[2]) => void;
   updateGarment: (garmentId: string, patch: Partial<GarmentInput>) => void;
   updateTaskStatus: (taskId: string, status: CanonicalReleaseTask['status']) => void;
+  uploadGarmentMedia: (garmentId: string, file: File, role: CanonicalGarmentMedia['role']) => Promise<string>;
 };
 
 const startupRequestTimeoutMs = 20_000;
@@ -544,6 +546,18 @@ export function CanonicalWorkspaceProvider({
     updateBrief: (garmentId, patch) => commit((current) => updateBrief(current, garmentId, patch)),
     updateGarment: (garmentId, patch) => commit((current) => updateGarment(current, garmentId, patch)),
     updateTaskStatus: (taskId, status) => commit((current) => updateTaskStatus(current, taskId, status)),
+    uploadGarmentMedia: async (garmentId, file, role) => {
+      const current = stateRef.current;
+      if (!current) throw new Error('The garment workspace is not ready.');
+      if (persistenceModeRef.current === 'local-recovery') throw new Error('Connect the canonical Studio before uploading imagery.');
+      if (!current.garments.some((garment) => garment.id === garmentId)) throw new Error('Garment not found.');
+      const asset = await prepareCanonicalGarmentImage(file, current.studioId, garmentId);
+      await commitAsync((workspace) => {
+        const withAsset = { ...workspace, mediaAssets: [...workspace.mediaAssets, asset] };
+        return attachAsset(withAsset, garmentId, asset.id, role).state;
+      });
+      return asset.id;
+    },
   }), [commit, commitAsync, error, pendingCount, persistenceMode, refresh, requireFreshWorkspace, resolveTransportConflict, state, syncState, userId]);
 
   return <CanonicalWorkspaceContext.Provider value={value}>{children}</CanonicalWorkspaceContext.Provider>;
