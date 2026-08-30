@@ -33,7 +33,7 @@ export function StudioAppRoute() {
 
   useEffect(() => {
     window.scrollTo({ left: 0, top: 0 });
-  }, [route.page, route.productionGarmentId, route.projectId, route.technicalGarmentId]);
+  }, [route.fabricId, route.page, route.productionGarmentId, route.projectId, route.technicalGarmentId]);
 
   const navigateToPage = (page: PageId) => {
     window.history.pushState(null, '', page === 'dashboard' ? '#' : `#/${page}`);

@@ -1,5 +1,6 @@
 import type { CanonicalMediaAsset } from '../domains/workspace';
 import { stageCanonicalMediaBlob } from '../domains/persistence/canonicalMedia';
+import { compressImageForApp } from './imageCompression';
 
 const maxGarmentImageBytes = 25 * 1024 * 1024;
 
@@ -40,7 +41,12 @@ export async function prepareCanonicalMaterialImage(
   studioId: string,
   variantId: string,
 ): Promise<CanonicalMediaAsset> {
-  return prepareCanonicalImage(file, studioId, `assets/materials/${variantId}`, 'private material upload');
+  const compressed = await compressImageForApp(file, {
+    maxDimension: 2000,
+    maxSizeBytes: 2 * 1024 * 1024,
+    previewDimension: 640,
+  });
+  return prepareCanonicalImage(compressed.file, studioId, `assets/materials/${variantId}`, 'private material upload');
 }
 
 async function prepareCanonicalImage(

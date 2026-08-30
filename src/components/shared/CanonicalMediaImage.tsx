@@ -6,6 +6,7 @@ import { useAuth } from '../../hooks/useAuth';
 import { cn } from '../../lib/classes';
 import { createRequestBoundCanonicalSupabase } from '../../lib/supabase';
 import type { LocalImageAsset } from '../../types/studio';
+import type { CanonicalMaterialImageFraming } from '../../lib/canonicalMaterialPresentation';
 import { AdaptiveProjectImage } from '../projects/AdaptiveProjectImage';
 import { AtelierImageFrame } from './AtelierImageFrame';
 
@@ -15,6 +16,7 @@ type CanonicalMediaImageProps = {
   className?: string;
   derivatives?: CanonicalMediaDerivative[];
   fit?: 'cover' | 'contain';
+  framing?: Partial<CanonicalMaterialImageFraming>;
   mode?: 'hero' | 'library' | 'thumbnail';
   priority?: boolean;
 };
@@ -29,6 +31,7 @@ export function CanonicalMediaImage({
   className,
   derivatives = [],
   fit,
+  framing,
   mode = 'library',
   priority = false,
 }: CanonicalMediaImageProps) {
@@ -98,11 +101,14 @@ export function CanonicalMediaImage({
     id: delivery.id,
     mimeType: delivery.mimeType,
     name: asset.name,
-    objectFit: fit ?? (mode === 'hero' && (asset.height ?? 0) > (asset.width ?? 0) ? 'contain' : 'cover'),
+    objectFit: fit ?? framing?.objectFit ?? (mode === 'hero' && (asset.height ?? 0) > (asset.width ?? 0) ? 'contain' : 'cover'),
+    objectPositionX: framing?.objectPositionX ?? 50,
+    objectPositionY: framing?.objectPositionY ?? 50,
     remoteUrl: source,
     size: delivery.sizeBytes,
     updatedAt: asset.updatedAt,
     width: delivery.width ?? asset.width ?? undefined,
+    zoom: framing?.zoom ?? 1,
   };
 
   return (

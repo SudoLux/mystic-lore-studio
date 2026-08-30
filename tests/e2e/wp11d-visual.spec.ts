@@ -21,21 +21,23 @@ test('WP11D keeps garment inspiration and the textile archive visually dominant'
   });
 
   await page.goto('/#/fabrics');
-  await expect(page.getByRole('heading', { exact: true, name: 'Material Vault' })).toBeVisible();
+  await expect(page.getByRole('heading', { exact: true, name: 'Fabric Vault' })).toBeVisible();
   for (const material of [
     { color: '#273754', colorName: 'Midnight indigo', composition: 'Washed linen', name: 'Washed Indigo Linen' },
     { color: '#8f6842', colorName: 'Weathered bronze', composition: 'Silk and cotton', name: 'Bronze Cloud Satin' },
     { color: '#c3b8a4', colorName: 'Warm stone', composition: 'Brushed wool', name: 'Atelier Brushed Wool' },
   ]) {
     if (await page.getByText(material.name, { exact: true }).count()) continue;
-    await page.getByRole('button', { name: 'New material' }).click();
-    await page.getByPlaceholder('Material name').fill(material.name);
-    await page.getByPlaceholder('Wool, linen, silk…').fill(material.composition);
-    await page.getByPlaceholder('Midnight indigo').fill(material.colorName);
+    await page.getByRole('button', { name: 'New fabric' }).click();
+    await page.getByLabel('Name', { exact: true }).fill(material.name);
+    await page.getByLabel('Composition').fill(material.composition);
+    await page.getByLabel('Color name').fill(material.colorName);
     await page.locator('input[name="colorHex"]').fill(material.color);
     await page.getByRole('button', { name: 'Add to the Studio' }).click();
+    await expect(page.getByText('Fabric detail', { exact: true })).toBeVisible();
+    await page.goto('/#/fabrics');
   }
-  await expect(page.getByTestId('material-story')).toBeVisible();
+  await expect(page.getByRole('heading', { exact: true, name: 'Browse by feel and color' })).toBeVisible();
   await expect(page.locator('main')).toHaveScreenshot('wp11d-material-vault-desktop.png', {
     animations: 'disabled',
     maxDiffPixelRatio: 0.015,

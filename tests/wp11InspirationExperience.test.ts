@@ -20,12 +20,12 @@ describe('WP11D inspiration-first Studio experience', () => {
   it('presents materials as a visual textile archive with technical depth secondary', () => {
     expect(materialVault).toContain('Textile archive');
     expect(materialVault).toContain('Browse by feel and color');
-    expect(materialVault).toContain('Material personality');
-    expect(materialVault).toContain('Garments using this fabric');
-    expect(materialVault).toContain('Supplier details');
-    expect(materialVault).toContain('Technical specifications');
-    expect(materialVault).toContain('<details className="rounded-[1.2rem]');
-    expect(materialVault).not.toContain('<details className="rounded-[1.2rem] bg-stardust/[0.025] p-5" open>');
+    expect(materialVault).toContain('Where this fabric is working');
+    expect(materialVault).toContain('Composition & construction');
+    expect(materialVault).toContain('Supplier');
+    expect(materialVault).toContain('Inventory');
+    expect(materialVault).toContain('Media & references');
+    expect(materialVault).toContain('profile?.loreNote');
   });
 
   it('keeps all new imagery in canonical private media and garment relationships', () => {

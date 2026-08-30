@@ -45,7 +45,7 @@ function StudioPage({
       : <GarmentLibraryPage onOpenGarment={onOpenProject} />;
   }
 
-  if (route.page === 'fabrics') return <LibraryVaultPage />;
+  if (route.page === 'fabrics') return <LibraryVaultPage fabricId={route.fabricId} onBack={() => onNavigate('fabrics')} onOpenGarment={onOpenProject} />;
   if (route.page === 'technical') return <TechnicalStudioPage garmentId={route.technicalGarmentId} onOpenGarment={onOpenTechnicalGarment} />;
   if (route.page === 'production') return <ProductionPage garmentId={route.productionGarmentId} onOpenGarment={onOpenProductionGarment} />;
   if (route.page === 'versions') return <VersionsPage />;

@@ -32,6 +32,7 @@ import type {
   WorkspaceChangeContext,
   WorkspaceSyncState,
   CanonicalReleaseTask,
+  CanonicalMaterialVariantMedia,
 } from '../domains/workspace';
 import { recordWorkspaceChangeEvents } from '../domains/versioning';
 import {
@@ -58,6 +59,7 @@ import { getStudioData, type StudioData } from '../lib/studioStorage';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Database } from '../types/database.generated';
 import { prepareCanonicalGarmentImage, prepareCanonicalMaterialImage } from '../lib/canonicalMediaUpload';
+import type { CanonicalMaterialImageFraming } from '../lib/canonicalMaterialPresentation';
 
 type CanonicalWorkspaceContextValue = {
   addCollection: (name: string, season?: string) => string;
@@ -71,6 +73,7 @@ type CanonicalWorkspaceContextValue = {
   attachMoodboardItem: (boardId: string, assetId: string, caption?: string) => void;
   attachComponent: (garmentId: string, variantId: string, placement?: string) => void;
   attachMaterial: (garmentId: string, variantId: string, role: string, placement?: string) => void;
+  linkMaterialToGarment: (garmentId: string, variantId: string, role: string, placement: string, requiredQuantity: number) => void;
   createMoodboard: (garmentId: string, title?: string) => string;
   deleteGarment: (garmentId: string) => void;
   commitWorkspace: (change: (current: CanonicalWorkspaceState) => CanonicalWorkspaceState, context?: Omit<WorkspaceChangeContext, 'actorId'>) => void;
@@ -93,6 +96,9 @@ type CanonicalWorkspaceContextValue = {
   updateTaskStatus: (taskId: string, status: CanonicalReleaseTask['status']) => void;
   uploadGarmentMedia: (garmentId: string, file: File, role: CanonicalGarmentMedia['role']) => Promise<string>;
   uploadMaterialMedia: (variantId: string, file: File) => Promise<string>;
+  replaceMaterialMedia: (variantId: string, file: File, framing?: CanonicalMaterialImageFraming) => Promise<string>;
+  removeMaterialMedia: (variantId: string) => void;
+  updateMaterialMediaFraming: (variantId: string, framing: CanonicalMaterialImageFraming) => void;
 };
 
 const startupRequestTimeoutMs = 20_000;
@@ -538,6 +544,16 @@ export function CanonicalWorkspaceProvider({
     attachMoodboardItem: (boardId, assetId, caption) => commit((current) => attachMoodboardItem(current, boardId, assetId, caption).state),
     attachComponent: (garmentId, variantId, placement) => commit((current) => attachComponent(current, garmentId, variantId, placement).state),
     attachMaterial: (garmentId, variantId, role, placement) => commit((current) => attachMaterial(current, garmentId, variantId, role, placement).state),
+    linkMaterialToGarment: (garmentId, variantId, role, placement, requiredQuantity) => commit((current) => {
+      const result = attachMaterial(current, garmentId, variantId, role, placement);
+      const now = new Date().toISOString();
+      return {
+        ...result.state,
+        garmentMaterials: result.state.garmentMaterials.map((relationship) => relationship.id === result.relationship.id
+          ? { ...relationship, requiredQuantity, revision: relationship.revision + 1, updatedAt: now }
+          : relationship),
+      };
+    }),
     createMoodboard: (garmentId, title) => { let id = ''; commit((current) => { const result = createMoodboard(current, garmentId, title); id = result.board.id; return result.state; }); return id; },
     deleteGarment: (garmentId) => commit((current) => deleteGarment(current, garmentId)),
     commitWorkspace: commit,
@@ -571,33 +587,63 @@ export function CanonicalWorkspaceProvider({
       return asset.id;
     },
     uploadMaterialMedia: async (variantId, file) => {
-      const current = stateRef.current;
-      if (!current) throw new Error('The material workspace is not ready.');
-      if (persistenceModeRef.current === 'local-recovery') throw new Error('Connect the canonical Studio before uploading imagery.');
-      if (!current.materialVariants.some((variant) => variant.id === variantId)) throw new Error('Material variant not found.');
-      const asset = await prepareCanonicalMaterialImage(file, current.studioId, variantId);
-      const now = new Date().toISOString();
-      await commitAsync((workspace) => ({
-        ...workspace,
-        mediaAssets: [...workspace.mediaAssets, asset],
-        materialVariantMedia: [...workspace.materialVariantMedia, {
-          assetId: asset.id,
-          createdAt: now,
-          framing: { objectFit: 'cover', objectPositionX: 50, objectPositionY: 50, zoom: 1 },
-          id: crypto.randomUUID(),
-          revision: 1,
-          role: 'swatch',
-          sortOrder: workspace.materialVariantMedia.filter((item) => item.variantId === variantId).length,
-          studioId: workspace.studioId,
-          updatedAt: now,
-          variantId,
-        }],
-      }));
-      return asset.id;
+      return await replaceMaterialMedia(stateRef, persistenceModeRef, commitAsync, variantId, file);
     },
+    replaceMaterialMedia: async (variantId, file, framing) => {
+      return await replaceMaterialMedia(stateRef, persistenceModeRef, commitAsync, variantId, file, framing);
+    },
+    removeMaterialMedia: (variantId) => commit((workspace) => ({
+      ...workspace,
+      materialVariantMedia: workspace.materialVariantMedia.filter((relation) => relation.variantId !== variantId || relation.role !== 'swatch'),
+    })),
+    updateMaterialMediaFraming: (variantId, framing) => commit((workspace) => {
+      const now = new Date().toISOString();
+      return {
+        ...workspace,
+        materialVariantMedia: workspace.materialVariantMedia.map((relation) => relation.variantId === variantId && relation.role === 'swatch'
+          ? { ...relation, framing, revision: relation.revision + 1, updatedAt: now }
+          : relation),
+      };
+    }),
   }), [commit, commitAsync, error, pendingCount, persistenceMode, refresh, requireFreshWorkspace, resolveTransportConflict, state, syncState, userId]);
 
   return <CanonicalWorkspaceContext.Provider value={value}>{children}</CanonicalWorkspaceContext.Provider>;
+}
+
+async function replaceMaterialMedia(
+  stateRef: { current: CanonicalWorkspaceState | null },
+  persistenceModeRef: { current: CanonicalPersistenceMode },
+  commitAsync: CanonicalWorkspaceContextValue['commitWorkspaceAsync'],
+  variantId: string,
+  file: File,
+  framing: CanonicalMaterialImageFraming = { objectFit: 'cover', objectPositionX: 50, objectPositionY: 50, zoom: 1 },
+) {
+  const current = stateRef.current;
+  if (!current) throw new Error('The material workspace is not ready.');
+  if (persistenceModeRef.current === 'local-recovery') throw new Error('Connect the canonical Studio before uploading imagery.');
+  if (!current.materialVariants.some((variant) => variant.id === variantId)) throw new Error('Material variant not found.');
+  const asset = await prepareCanonicalMaterialImage(file, current.studioId, variantId);
+  const now = new Date().toISOString();
+  await commitAsync((workspace) => {
+    const existing = workspace.materialVariantMedia
+      .filter((item) => item.variantId === variantId && item.role === 'swatch')
+      .sort((left, right) => left.sortOrder - right.sortOrder)[0];
+    const relation: CanonicalMaterialVariantMedia = existing
+      ? { ...existing, assetId: asset.id, framing, revision: existing.revision + 1, updatedAt: now }
+      : {
+          assetId: asset.id, createdAt: now, framing, id: crypto.randomUUID(), revision: 1,
+          role: 'swatch', sortOrder: 0, studioId: workspace.studioId, updatedAt: now, variantId,
+        };
+    return {
+      ...workspace,
+      mediaAssets: [...workspace.mediaAssets, asset],
+      materialVariantMedia: [
+        ...workspace.materialVariantMedia.filter((item) => item.variantId !== variantId || item.role !== 'swatch'),
+        relation,
+      ],
+    };
+  });
+  return asset.id;
 }
 
 async function persistCanonicalChange(

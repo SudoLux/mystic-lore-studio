@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { emptyCanonicalWorkspaceState } from '../src/domains/persistence/canonicalWorkspaceRepository';
 import type { CanonicalGarment, CanonicalGarmentMaterial, CanonicalGarmentMedia, CanonicalMaterial, CanonicalMaterialVariant, CanonicalMediaAsset } from '../src/domains/workspace';
 import { canonicalGarmentCover, canonicalGarmentSwatches, recommendedGarmentAction } from '../src/lib/canonicalGarmentPresentation';
-import { canonicalMaterialVariantCover } from '../src/lib/canonicalMaterialPresentation';
+import { canonicalMaterialImageFraming, canonicalMaterialVariantCover } from '../src/lib/canonicalMaterialPresentation';
 
 const studioId = '20000000-0000-4000-8000-000000000001';
 const timestamp = '2026-08-29T12:00:00.000Z';
@@ -63,10 +63,46 @@ describe('WP11C image-first garment experience', () => {
 
   it('uses only canonical fabric photography as the Material Vault cover', () => {
     const vault = readFileSync(new URL('../src/pages/LibraryVault/LibraryVaultPage.tsx', import.meta.url), 'utf8');
-    const materialCard = vault.slice(vault.indexOf('function MaterialCard'), vault.indexOf('function MaterialDetail'));
+    const materialCard = vault.slice(vault.indexOf('function MaterialCard'), vault.indexOf('function FabricDetail'));
     expect(materialCard).toContain('canonicalMaterialVariantCover(state, variant.id)');
     expect(materialCard).toContain('alt={`${material.name} fabric`}');
     expect(materialCard).not.toContain('canonicalGarmentCover');
+  });
+
+  it('persists bounded fabric focal point, fit, and zoom through the canonical media relation', () => {
+    const state = emptyCanonicalWorkspaceState(studioId);
+    state.materialVariantMedia = [{
+      ...record,
+      assetId: 'fabric-asset',
+      framing: { objectFit: 'contain', objectPositionX: -20, objectPositionY: 140, zoom: 3 },
+      id: 'fabric-media-1',
+      role: 'swatch',
+      sortOrder: 0,
+      variantId: 'variant-1',
+    }];
+    expect(canonicalMaterialImageFraming(state.materialVariantMedia[0])).toEqual({
+      objectFit: 'contain', objectPositionX: 0, objectPositionY: 100, zoom: 2.5,
+    });
+  });
+
+  it('provides the complete Fabric Vault browse, detail, edit, image, and garment-link workflow', () => {
+    const vault = readFileSync(new URL('../src/pages/LibraryVault/LibraryVaultPage.tsx', import.meta.url), 'utf8');
+    const imageEditor = readFileSync(new URL('../src/components/fabrics/FabricImageEditorDialog.tsx', import.meta.url), 'utf8');
+    const editor = readFileSync(new URL('../src/components/fabrics/CanonicalFabricEditorModal.tsx', import.meta.url), 'utf8');
+    const upload = readFileSync(new URL('../src/lib/canonicalMediaUpload.ts', import.meta.url), 'utf8');
+    expect(vault).toContain('FabricDetail');
+    expect(vault).toContain('Gallery view');
+    expect(vault).toContain('Compact list view');
+    expect(vault).toContain('LinkGarmentDialog');
+    expect(vault).toContain('Where this fabric is working');
+    expect(imageEditor).toContain('Horizontal focus');
+    expect(imageEditor).toContain('Vertical focus');
+    expect(imageEditor).toContain('Replace image');
+    expect(imageEditor).toContain('Remove image');
+    expect(editor).toContain('Technical properties');
+    expect(editor).toContain('Supplier & storage');
+    expect(upload).toContain('compressImageForApp');
+    expect(upload).toContain('maxSizeBytes: 2 * 1024 * 1024');
   });
 });
 
