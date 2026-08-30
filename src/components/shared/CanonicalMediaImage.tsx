@@ -2,7 +2,9 @@ import { ImageIcon, LoaderCircle } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import type { CanonicalMediaAsset, CanonicalMediaDerivative } from '../../domains/workspace';
 import { loadCanonicalStoredBlob } from '../../domains/persistence/canonicalMedia';
+import { useAuth } from '../../hooks/useAuth';
 import { cn } from '../../lib/classes';
+import { createRequestBoundCanonicalSupabase } from '../../lib/supabase';
 import type { LocalImageAsset } from '../../types/studio';
 import { AdaptiveProjectImage } from '../projects/AdaptiveProjectImage';
 import { AtelierImageFrame } from './AtelierImageFrame';
@@ -30,9 +32,14 @@ export function CanonicalMediaImage({
   mode = 'library',
   priority = false,
 }: CanonicalMediaImageProps) {
+  const { session } = useAuth();
   const [source, setSource] = useState<string | null>(null);
   const [status, setStatus] = useState<'empty' | 'loading' | 'ready' | 'error'>(asset ? 'loading' : 'empty');
   const delivery = useMemo(() => selectDelivery(asset, derivatives, mode), [asset, derivatives, mode]);
+  const mediaClient = useMemo(
+    () => createRequestBoundCanonicalSupabase(session?.access_token ?? ''),
+    [session?.access_token],
+  );
 
   useEffect(() => {
     let active = true;
@@ -45,10 +52,10 @@ export function CanonicalMediaImage({
     }
     setSource(null);
     setStatus('loading');
-    void loadCanonicalStoredBlob(delivery)
+    void loadCanonicalStoredBlob(delivery, mediaClient)
       .catch((error) => {
         if (delivery.id === master.id) throw error;
-        return loadCanonicalStoredBlob(master);
+        return loadCanonicalStoredBlob(master, mediaClient);
       })
       .then((blob) => {
         if (!active) return;
@@ -67,7 +74,7 @@ export function CanonicalMediaImage({
       active = false;
       if (objectUrl) URL.revokeObjectURL(objectUrl);
     };
-  }, [delivery]);
+  }, [delivery, mediaClient]);
 
   if (!asset || !delivery || !source || status !== 'ready') {
     return (

@@ -252,7 +252,7 @@ export class SupabaseCanonicalWorkspaceRepository implements CanonicalWorkspaceR
         id: mutation.entityId,
         mimeType: String(mutation.row.mime_type),
         storagePath: String(mutation.row.storage_path),
-      }, this.cache);
+      }, this.cache, this.client);
     }
     const response = await this.client.schema('ml_private').rpc('commit_canonical_operation', {
       p_garment_id: operation.garmentId as string,

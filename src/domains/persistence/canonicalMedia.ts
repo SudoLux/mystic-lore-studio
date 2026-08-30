@@ -1,4 +1,6 @@
+import type { SupabaseClient } from '@supabase/supabase-js';
 import { canonicalSupabase } from '../../lib/supabase';
+import type { Database } from '../../types/database.generated';
 import type { CanonicalMediaAsset } from '../workspace';
 import { CanonicalIndexedDb } from './canonicalIndexedDb';
 import { canonicalValueChecksum } from './canonicalIndexedDb';
@@ -21,11 +23,11 @@ export async function loadCanonicalStoredBlob(asset: {
   id: string;
   name?: string;
   storagePath: string;
-}) {
+}, client: SupabaseClient<Database> | null = canonicalSupabase) {
   const staged = await cache.getMediaBlob(asset.id);
   if (staged) return staged.blob;
-  if (!canonicalSupabase) return null;
-  const response = await canonicalSupabase.storage.from('studio-assets').download(asset.storagePath);
+  if (!client) return null;
+  const response = await client.storage.from('studio-assets').download(asset.storagePath);
   if (response.error) throw new Error(response.error.message);
   const checksum = await sha256(response.data);
   if (checksum !== asset.checksum) throw new Error(`Stored media checksum mismatch for ${asset.name ?? asset.id}.`);
@@ -36,18 +38,19 @@ export async function loadCanonicalStoredBlob(asset: {
 export async function uploadStagedCanonicalMedia(
   asset: Pick<CanonicalMediaAsset, 'checksum' | 'id' | 'mimeType' | 'storagePath'>,
   store = cache,
+  client: SupabaseClient<Database> | null = canonicalSupabase,
 ) {
-  if (!canonicalSupabase) throw new Error('Canonical Storage is unavailable.');
+  if (!client) throw new Error('Canonical Storage is unavailable.');
   const staged = await store.getMediaBlob(asset.id);
   if (!staged) return false;
   if (staged.checksum !== asset.checksum) throw new Error('Staged media checksum changed before upload.');
-  const upload = await canonicalSupabase.storage.from('studio-assets').upload(asset.storagePath, staged.blob, {
+  const upload = await client.storage.from('studio-assets').upload(asset.storagePath, staged.blob, {
     cacheControl: '31536000',
     contentType: asset.mimeType,
     upsert: false,
   });
   if (!upload.error) return true;
-  const existing = await canonicalSupabase.storage.from('studio-assets').download(asset.storagePath);
+  const existing = await client.storage.from('studio-assets').download(asset.storagePath);
   if (existing.error) throw new Error(upload.error.message);
   if (await sha256(existing.data) !== asset.checksum) {
     throw new Error('A different object already exists at the canonical media path.');

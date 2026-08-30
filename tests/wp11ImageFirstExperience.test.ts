@@ -49,6 +49,17 @@ describe('WP11C image-first garment experience', () => {
     expect(library).toContain('>Continue</Button>');
     expect(library).toContain('aria-expanded={filtersOpen}');
   });
+
+  it('downloads private canonical imagery with the active workspace session', () => {
+    const image = readFileSync(new URL('../src/components/shared/CanonicalMediaImage.tsx', import.meta.url), 'utf8');
+    const media = readFileSync(new URL('../src/domains/persistence/canonicalMedia.ts', import.meta.url), 'utf8');
+    const repository = readFileSync(new URL('../src/domains/persistence/canonicalWorkspaceRepository.ts', import.meta.url), 'utf8');
+    expect(image).toContain("session?.access_token");
+    expect(image).toContain('createRequestBoundCanonicalSupabase');
+    expect(image).toContain('loadCanonicalStoredBlob(delivery, mediaClient)');
+    expect(media).toContain("client.storage.from('studio-assets').download");
+    expect(repository).toContain('}, this.cache, this.client)');
+  });
 });
 
 function media(role: CanonicalGarmentMedia['role'], assetId: string) {
