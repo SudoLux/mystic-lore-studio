@@ -7,6 +7,7 @@ import { CanonicalWorkspaceState } from '../../components/shared/CanonicalWorksp
 import { MobilePageHeader } from '../../components/shared/MobilePageHeader';
 import { PageHeader } from '../../components/shared/PageHeader';
 import { FieldModePanel } from '../../components/shared/FieldModePanel';
+import { GarmentWorkbenchContext, SpecialistWorkbench } from '../../components/shared/SpecialistWorkbench';
 import { recordClientEvent } from '../../lib/observability';
 
 export function EditorialStudioPage() {
@@ -30,13 +31,14 @@ export function EditorialStudioPage() {
     catch (error) { recordClientEvent({ context: { format, surface: 'editorial' }, kind: 'export_failure' }); setNotice(error instanceof Error ? error.message : 'Export could not be committed.'); }
   };
   return <CanonicalWorkspaceState>
-    <div className="min-w-0">
+    <SpecialistWorkbench className="min-w-0">
       <MobilePageHeader badge="Editorial" kicker="Private story system" title="Editorial Collections" action={<Button aria-label="New editorial collection" className="h-11 w-11 rounded-full p-0" onClick={create}><Plus aria-hidden="true" /></Button>} />
       <PageHeader badge="Editorial" description="Compose private, garment-linked stories from approved studio evidence." title="Editorial Collections"><Button icon={<Plus aria-hidden="true" size={16} />} onClick={create}>New Collection</Button></PageHeader>
       <FieldModePanel captureLabel="Start a new story" description="A shoot-ready capture and next-move view for editorial collection work." moves={[{ detail: `${studio.collections.length} private collection${studio.collections.length === 1 ? '' : 's'} available on this device.`, label: 'Open the current collection', onSelect: () => setSelectedId(selected?.id ?? studio.collections[0]?.id ?? null) }, { detail: 'Refresh approved garment facts before committing an export.', label: 'Refresh story sources', onSelect: () => studio.refreshLiveData() }]} onCapture={create} title="Shoots & story capture" />
+      {garment ? <GarmentWorkbenchContext actions={<button className="workbench-quick-action" onClick={studio.refreshLiveData} type="button">Refresh sources</button>} garmentId={garment.id} label="Editorial" /> : null}
       {notice ? <p aria-live="polite" className="mb-4 rounded-xl border border-bronze/35 bg-midnight/70 px-3 py-2 text-sm text-stardust/75">{notice}</p> : null}
       <div className="grid gap-5 xl:grid-cols-[minmax(16rem,0.8fr)_minmax(0,2fr)]">
-        <aside className="rounded-2xl border border-bronze/25 bg-midnight/65 p-3">
+        <aside className="rounded-2xl bg-stardust/[0.025] p-3">
           <div className="mb-3 flex items-center justify-between"><span className="text-xs uppercase tracking-[0.16em] text-ember">Library</span><Badge variant="bronze">{studio.collections.length}</Badge></div>
           {studio.collections.length ? <div className="space-y-2">{studio.collections.map((collection) => <button className={`w-full rounded-xl border p-3 text-left ${selected?.id === collection.id ? 'border-ember/60 bg-ember/10' : 'border-bronze/20 bg-black/20'}`} key={collection.id} onClick={() => setSelectedId(collection.id)} type="button"><p className="font-medium text-stardust">{collection.title}</p><p className="mt-1 text-xs text-stardust/55">{studio.state?.garments.find((garment) => garment.id === collection.primaryGarmentId)?.title ?? 'Unlinked garment'} · {collection.status}</p></button>)}</div> : <p className="p-4 text-sm text-stardust/55">No private collections yet.</p>}
         </aside>
@@ -46,6 +48,6 @@ export function EditorialStudioPage() {
           <aside className="rounded-2xl border border-bronze/25 bg-midnight/65 p-4"><p className="text-xs uppercase tracking-[.16em] text-ember">Viewer / export</p><div className="mt-3 aspect-[3/4] rounded-xl border border-bronze/20 bg-[radial-gradient(circle_at_top,rgba(200,155,60,.19),transparent_44%),#090909] p-4"><Eye aria-hidden="true" className="text-ember" size={18} /><p className="mt-16 font-display text-2xl text-stardust">{selected.title}</p><p className="mt-2 text-xs text-stardust/55">Private preview. Approved source facts are checked before each export.</p></div><div className="mt-3 grid gap-2"><Button disabled={selected.status !== 'approved'} onClick={() => void exportCollection('pdf')} size="sm" icon={<Download aria-hidden="true" size={14} />}>Commit PDF export</Button><Button disabled={selected.status !== 'approved'} onClick={() => void exportCollection('image')} size="sm" variant="secondary">Commit image export</Button></div></aside></div>
         </section> : <section className="rounded-2xl border border-dashed border-bronze/30 p-8 text-center text-stardust/60">Select or create a collection.</section>}
       </div>
-    </div>
+    </SpecialistWorkbench>
   </CanonicalWorkspaceState>;
 }

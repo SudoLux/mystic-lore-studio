@@ -110,6 +110,83 @@ button, a, input, select, textarea, [role="button"] { -webkit-tap-highlight-colo
   background: rgba(237, 227, 207, 0.025);
 }
 
+.specialist-workbench {
+  --workbench-line: rgba(154, 108, 60, 0.14);
+  --workbench-surface: rgba(237, 227, 207, 0.025);
+}
+
+.workbench-garment-context {
+  position: sticky;
+  top: 0.75rem;
+  z-index: 35;
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.75rem;
+  border: 1px solid rgba(154, 108, 60, 0.22);
+  border-radius: 1.15rem;
+  background: linear-gradient(145deg, rgba(18, 17, 15, 0.94), rgba(10, 10, 10, 0.9));
+  box-shadow: 0 18px 46px rgba(0, 0, 0, 0.28);
+  backdrop-filter: blur(20px);
+}
+
+.workbench-quick-action {
+  display: inline-flex;
+  min-height: 2.5rem;
+  align-items: center;
+  gap: 0.4rem;
+  border-radius: 0.75rem;
+  padding: 0 0.75rem;
+  color: rgba(237, 227, 207, 0.62);
+  font-size: 0.75rem;
+  transition: color 160ms ease, background 160ms ease;
+}
+.workbench-quick-action:hover { background: rgba(237, 227, 207, 0.055); color: #ede3cf; }
+
+.workbench-tabs {
+  display: flex;
+  gap: 0.25rem;
+  overflow-x: auto;
+  padding: 0.25rem;
+  border-bottom: 1px solid var(--workbench-line);
+}
+.workbench-tab {
+  min-height: 2.75rem;
+  flex-shrink: 0;
+  border-radius: 0.75rem;
+  padding: 0 0.9rem;
+  color: rgba(237, 227, 207, 0.5);
+  font-size: 0.82rem;
+  transition: color 160ms ease, background 160ms ease;
+}
+.workbench-tab:hover { background: rgba(237, 227, 207, 0.035); color: rgba(237, 227, 207, 0.8); }
+.workbench-tab--active { background: rgba(200, 155, 60, 0.13); color: #e6bd62; }
+
+.specialist-workbench .atelier-panel {
+  border-color: transparent;
+  background: var(--workbench-surface);
+  box-shadow: none;
+}
+.specialist-workbench .atelier-panel .atelier-panel { background: rgba(10, 10, 10, 0.24); }
+.specialist-workbench table { border-collapse: collapse; font-variant-numeric: tabular-nums; }
+.specialist-workbench table thead { background: rgba(27, 58, 99, 0.18); }
+.specialist-workbench table tbody tr { border-color: var(--workbench-line); }
+.specialist-workbench table tbody tr:hover { background: rgba(237, 227, 207, 0.018); }
+.specialist-workbench .field { background: rgba(10, 10, 10, 0.34); border-color: rgba(154, 108, 60, 0.18); }
+.specialist-workbench [class~="border-bronze/30"],
+.specialist-workbench [class~="border-bronze/25"],
+.specialist-workbench [class~="border-bronze/20"],
+.specialist-workbench [class~="border-bronze/18"] { border-color: var(--workbench-line); }
+.specialist-workbench [class~="bg-midnight/65"],
+.specialist-workbench [class~="bg-charcoal"] { background: var(--workbench-surface); }
+
+@media (max-width: 639px) {
+  .workbench-garment-context { align-items: flex-start; gap: 0.75rem; }
+  .workbench-garment-context > :last-child { position: absolute; right: 0.65rem; top: 0.65rem; }
+  .workbench-garment-context .workbench-quick-action { width: 2.5rem; overflow: hidden; padding: 0 0.72rem; white-space: nowrap; }
+}
+
 .atelier-table-shell {
   overflow: hidden;
   border: 1px solid rgba(154, 108, 60, 0.2);

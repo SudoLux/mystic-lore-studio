@@ -11,6 +11,7 @@ import { CanonicalWorkspaceState } from '../../components/shared/CanonicalWorksp
 import { Card } from '../../components/shared/Card';
 import { MobilePageHeader } from '../../components/shared/MobilePageHeader';
 import { PageHeader } from '../../components/shared/PageHeader';
+import { GarmentWorkbenchContext, SpecialistWorkbench } from '../../components/shared/SpecialistWorkbench';
 import type { RestorePreviewResult } from '../../domains/versioning';
 import { useCanonicalWorkspace } from '../../hooks/useCanonicalWorkspace';
 import { useVersioningStudio } from '../../hooks/useVersioningStudio';
@@ -59,9 +60,10 @@ function VersionsWorkspace() {
     const url = URL.createObjectURL(blob); const anchor = document.createElement('a'); anchor.href = url; anchor.download = `${garment?.garmentCode ?? 'garment'}-structural-diff.json`; anchor.click(); URL.revokeObjectURL(url);
   };
   if (!workspace || !garment) return <Card><h1 className="font-display text-3xl">Versions need a garment</h1><p className="mt-2 text-sm text-stardust/58">Create a garment before capturing a Freeze Frame.</p></Card>;
-  return <section className="space-y-5">
+  return <SpecialistWorkbench>
     <MobilePageHeader badge="Versions" kicker="Freeze Frames, comparison, and scoped restore" title="Change history" />
     <PageHeader badge="WP5 · protected evidence" description="Compare garment structure across time, inspect downstream consequences, and restore selected fields into a new checkpoint without rewriting history." title="Versions & Diff"><Button icon={<Camera size={16} />} onClick={() => setFrameOpen(true)} variant="primary">New Freeze Frame</Button></PageHeader>
+    <GarmentWorkbenchContext actions={<a className="workbench-quick-action" href={`#/technical/${garment.id}`}>Technical</a>} garmentId={garment.id} label="Versions" />
     {notice ? <div aria-live="polite" className="rounded-xl border border-bronze/28 bg-espresso/35 p-3 text-sm text-stardust/72">{notice}</div> : null}
     <div className="grid min-w-0 gap-5 xl:grid-cols-[18rem_minmax(0,1fr)]">
       <aside className="min-w-0 space-y-4"><Card><label className="block min-w-0"><span className="field-label">Garment</span><select className="field min-w-0 max-w-full" onChange={(event) => setGarmentId(event.target.value)} value={garmentId ?? ''}>{workspace.garments.map((item) => <option key={item.id} value={item.id}>{item.garmentCode} · {item.title}</option>)}</select></label><div className="mt-4 flex items-center justify-between"><span className="text-sm text-stardust/52">Working revision</span><Badge variant="teal">r{garment.revision}</Badge></div></Card>
@@ -76,7 +78,7 @@ function VersionsWorkspace() {
       </main>
     </div>
     <FreezeFrameDialog busy={busy} onClose={() => setFrameOpen(false)} onCreate={createFrame} open={frameOpen} />
-  </section>;
+  </SpecialistWorkbench>;
 }
 
 function formatDate(value: string) { const date = new Date(value); return Number.isNaN(date.valueOf()) ? value : new Intl.DateTimeFormat(undefined, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }).format(date); }

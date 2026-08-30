@@ -5,6 +5,7 @@ import {
   buildPublicCutPreview,
   buildFreshPublicCutPreview,
   commitPublicCutToSupabase,
+  createPortfolioProfile,
   createTechnicalExcerpt,
   movePortfolioItem,
   publicationHistory,
@@ -20,6 +21,7 @@ import {
 import type { CanonicalEditorialScene, CanonicalMediaAsset, CanonicalPortfolioEditorial, CanonicalPortfolioProject, CanonicalPortfolioTechnicalExcerpt } from '../../domains/workspace';
 import { PublicCutPreview } from './PublicCutPreview';
 import { recordClientEvent } from '../../lib/observability';
+import { GarmentWorkbenchContext, SpecialistWorkbench, WorkbenchTabs } from '../../components/shared/SpecialistWorkbench';
 
 type Tab = 'projects' | 'editorials' | 'profile' | 'publish';
 
@@ -31,6 +33,7 @@ export function PortfolioStudioPage() {
   const [message, setMessage] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const profile = state?.portfolioProfiles[0];
+  const initialGarmentId = state?.portfolioProjects[0]?.garmentId ?? state?.garments[0]?.id ?? null;
 
   useEffect(() => {
     let active = true;
@@ -49,11 +52,13 @@ export function PortfolioStudioPage() {
   }, [persistenceMode, profile, state]);
 
   const history = useMemo(() => state && profile ? publicationHistory(state, profile.id) : [], [profile, state]);
-  if (!state || !profile) return <LoadingState />;
+  if (!state) return <LoadingState />;
+  if (!profile) return <PortfolioSetup garmentId={initialGarmentId} onCreate={() => commitWorkspace((currentState) => createPortfolioProfile(currentState).state)} />;
   const selectedIds = new Set(state.portfolioProjects.filter((item) => item.profileId === profile.id).map((item) => item.garmentId));
   const selectedEditorialIds = new Set(state.portfolioEditorials.filter((item) => item.profileId === profile.id).map((item) => item.collectionId));
   const selectedProjects = state.portfolioProjects.filter((item) => item.profileId === profile.id).sort((a, b) => a.sortOrder - b.sortOrder);
   const selectedEditorials = state.portfolioEditorials.filter((item) => item.profileId === profile.id).sort((a, b) => a.sortOrder - b.sortOrder);
+  const focusedGarmentId = selectedProjects[0]?.garmentId ?? state.garments[0]?.id ?? null;
   const current = history.find((item) => item.isCurrent && item.publicationType === 'profile');
   const canPublish = Boolean(preview && !preview.findings.length && !preview.warnings.length && !preview.isStale && syncState === 'ready' && persistenceMode !== 'local-recovery');
 
@@ -80,7 +85,7 @@ export function PortfolioStudioPage() {
 
   return (
     <>
-    <main aria-hidden={showPreview || undefined} className="min-h-full bg-midnight px-4 pb-16 pt-6 text-stardust sm:px-7 lg:px-10" inert={showPreview || undefined}>
+    <main aria-hidden={showPreview || undefined} className="specialist-workbench min-h-full bg-midnight px-4 pb-16 pt-6 text-stardust sm:px-7 lg:px-10" inert={showPreview || undefined}>
       <header className="mx-auto max-w-7xl border-b border-bronze/20 pb-7">
         <div className="flex flex-col justify-between gap-5 lg:flex-row lg:items-end">
           <div>
@@ -93,10 +98,10 @@ export function PortfolioStudioPage() {
             <button className="inline-flex min-h-11 items-center gap-2 rounded-md bg-ember px-4 text-sm font-semibold text-midnight disabled:cursor-not-allowed disabled:opacity-45" disabled={!canPublish || busy} onClick={() => void publish()} type="button">{busy ? <LoaderCircle className="animate-spin" size={17} /> : <Globe2 size={17} />} Publish new snapshot</button>
           </div>
         </div>
-        <div className="mt-7 flex gap-1 overflow-x-auto" role="tablist" aria-label="Portfolio manager sections">
-          {(['projects', 'editorials', 'profile', 'publish'] as Tab[]).map((item) => <button aria-selected={tab === item} className={`min-h-11 whitespace-nowrap border-b-2 px-4 text-sm capitalize ${tab === item ? 'border-ember text-ember' : 'border-transparent text-stardust/50 hover:text-stardust'}`} key={item} onClick={() => setTab(item)} role="tab" type="button">{item}</button>)}
-        </div>
+        <div className="mt-7"><WorkbenchTabs active={tab} ariaLabel="Portfolio manager sections" items={portfolioWorkbenchTabs} onChange={setTab} /></div>
       </header>
+
+      {focusedGarmentId ? <div className="mx-auto mt-5 max-w-7xl"><GarmentWorkbenchContext actions={<button className="workbench-quick-action" disabled={!preview} onClick={() => setShowPreview(true)} type="button">Public preview</button>} garmentId={focusedGarmentId} label="Portfolio" /></div> : null}
 
       <section className="mx-auto mt-7 max-w-7xl" role="tabpanel">
         {message ? <p aria-live="polite" className="mb-5 rounded-md border border-bronze/25 bg-charcoal px-4 py-3 text-sm text-stardust/70">{message}</p> : null}
@@ -139,6 +144,27 @@ export function PortfolioStudioPage() {
     {showPreview && preview ? <PublicCutPreview onClose={() => setShowPreview(false)} preview={preview} /> : null}
     </>
   );
+}
+
+const portfolioWorkbenchTabs = [
+  { id: 'projects', label: 'Projects' },
+  { id: 'editorials', label: 'Editorials' },
+  { id: 'profile', label: 'Profile' },
+  { id: 'publish', label: 'Publish' },
+] as const;
+
+function PortfolioSetup({ garmentId, onCreate }: { garmentId: string | null; onCreate: () => void }) {
+  return <main className="min-h-full bg-midnight px-4 pb-16 pt-6 text-stardust sm:px-7 lg:px-10">
+    <SpecialistWorkbench className="mx-auto max-w-7xl">
+      {garmentId ? <GarmentWorkbenchContext garmentId={garmentId} label="Portfolio" /> : null}
+      <section className="atelier-panel max-w-3xl px-6 py-10 sm:px-9 sm:py-12">
+        <p className="atelier-eyebrow">Portfolio</p>
+        <h1 className="font-display mt-3 text-4xl leading-tight sm:text-5xl">Shape your public story</h1>
+        <p className="mt-4 max-w-xl text-sm leading-7 text-stardust/58">Create the private curation space where approved garments, editorials, and technical excerpts can become a Public Cut.</p>
+        <button className="mt-7 min-h-11 rounded-md bg-ember px-5 text-sm font-medium text-midnight transition hover:bg-ember/90" onClick={onCreate} type="button">Set up portfolio</button>
+      </section>
+    </SpecialistWorkbench>
+  </main>;
 }
 
 function ProjectRow({ assets, excerpt, first, last, onCreateExcerpt, onEdit, onMove, onRefreshSource, onToggle, project, stale, title }: { assets: CanonicalMediaAsset[]; excerpt?: CanonicalPortfolioTechnicalExcerpt; first: boolean; last: boolean; onCreateExcerpt: (title: string, summary: string) => void; onEdit: (patch: Parameters<typeof updatePortfolioProject>[2]) => void; onMove: (direction: 'up' | 'down') => void; onRefreshSource: () => void; onToggle: () => void; project: CanonicalPortfolioProject; stale: boolean; title: string }) {

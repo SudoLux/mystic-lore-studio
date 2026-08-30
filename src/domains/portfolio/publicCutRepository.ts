@@ -62,6 +62,27 @@ type ProjectInput = Partial<CanonicalPortfolioProject['caseStudy']> & {
   visibility?: PortfolioVisibility;
 };
 
+export function createPortfolioProfile(
+  state: CanonicalWorkspaceState,
+  input: Partial<Pick<CanonicalPortfolioProfile, 'bio' | 'displayName' | 'email' | 'headline' | 'location' | 'resumePublicUrl' | 'status' | 'usernameSlug'>> = {},
+) {
+  const existing = state.portfolioProfiles[0];
+  if (existing) return { profile: existing, state };
+  const profile: CanonicalPortfolioProfile = {
+    ...newRecord(state.studioId),
+    avatarAssetId: null,
+    bio: input.bio ?? '',
+    displayName: input.displayName?.trim() || 'Mystic Lore Portfolio',
+    email: input.email ?? '',
+    headline: input.headline ?? 'Independent fashion design and garment development',
+    location: input.location ?? '',
+    resumePublicUrl: input.resumePublicUrl ?? '',
+    status: input.status ?? 'draft',
+    usernameSlug: slugify(input.usernameSlug || `designer-${state.studioId.slice(0, 8)}`),
+  };
+  return { profile, state: { ...state, portfolioProfiles: [...state.portfolioProfiles, profile] } };
+}
+
 export function updatePortfolioProfile(
   state: CanonicalWorkspaceState,
   profileId: string,

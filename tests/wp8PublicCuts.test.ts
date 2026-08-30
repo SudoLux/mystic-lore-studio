@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import {
   buildPublicCutPreview,
+  createPortfolioProfile,
   privacyScanPublicCut,
   publicationHistory,
   publishPublicCut,
@@ -46,6 +47,17 @@ async function readyWorkspace() {
 }
 
 describe('WP8 Public Cuts', () => {
+  it('creates an idempotent canonical profile for the first-use portfolio flow', async () => {
+    const { state } = await readyWorkspace();
+    const empty = { ...state, portfolioProfiles: [] };
+    const first = createPortfolioProfile(empty);
+    const retry = createPortfolioProfile(first.state);
+    expect(first.state.portfolioProfiles).toHaveLength(1);
+    expect(first.profile.usernameSlug).toBe(`designer-${state.studioId.slice(0, 8)}`);
+    expect(retry.profile.id).toBe(first.profile.id);
+    expect(retry.state.portfolioProfiles).toHaveLength(1);
+  });
+
   it('uses a recursive denylist and root allowlist for privacy regression fixtures', () => {
     const safe = { profile: { displayName: 'Mystic Lore' }, projects: [], editorials: [], generatedAt: '2026-08-26T00:00:00Z' };
     expect(privacyScanPublicCut(safe)).toEqual([]);

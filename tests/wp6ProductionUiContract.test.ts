@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 
 const page = readFileSync(new URL('../src/pages/Production/ProductionPage.tsx', import.meta.url), 'utf8');
 const mobileNav = readFileSync(new URL('../src/components/layout/MobileNav.tsx', import.meta.url), 'utf8');
+const workbench = readFileSync(new URL('../src/components/shared/SpecialistWorkbench.tsx', import.meta.url), 'utf8');
 
 describe('WP6 Production UI contracts', () => {
   it('contains Production Home, sample round, and Fit Review contracts', () => {
@@ -20,7 +21,8 @@ describe('WP6 Production UI contracts', () => {
 
   it('contains quantity Cost Sheet, pinned order, QC, waiver, release, and Timeline contracts', () => {
     for (const label of ['Quantity-aware costing', 'Cost Sheet', 'COGS / unit', 'Wholesale', 'Margin', 'Production order', 'Source version stale', 'QC checklist', 'Waive', 'Release decision', 'Production chronology']) expect(page).toContain(label);
-    expect(page).toContain('aria-label="Production workspace"');
-    expect(page).toContain('overflow-x-auto');
+    expect(page).toContain('ariaLabel="Production workspace"');
+    expect(page).toContain('<WorkbenchTabs');
+    expect(workbench).toContain('overflow-x-auto');
   });
 });

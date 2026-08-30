@@ -5,6 +5,7 @@ import { Button } from '../../components/shared/Button';
 import { CanonicalWorkspaceState } from '../../components/shared/CanonicalWorkspaceState';
 import { Card } from '../../components/shared/Card';
 import { FieldModePanel } from '../../components/shared/FieldModePanel';
+import { GarmentWorkbenchContext, SpecialistWorkbench, WorkbenchTabs } from '../../components/shared/SpecialistWorkbench';
 import { isProductionOrderStale, productionTimeline } from '../../domains/production';
 import type { CanonicalCostSheet, CanonicalFitIssue, CanonicalMediaAsset } from '../../domains/workspace';
 import { useProductionStudio } from '../../hooks/useProductionStudio';
@@ -13,13 +14,20 @@ import { technicalPreviewUrl } from '../../lib/technicalFiles';
 export function ProductionPage({ garmentId, onOpenGarment }: { garmentId?: string; onOpenGarment: (garmentId: string) => void }) {
   const { state } = useProductionStudio();
   if (!state) return <CanonicalWorkspaceState><Card>Preparing Production…</Card></CanonicalWorkspaceState>;
-  return <CanonicalWorkspaceState>{garmentId ? <ProductionGarmentWorkspace garmentId={garmentId} onOpenGarment={onOpenGarment} /> : <ProductionHome onOpenGarment={onOpenGarment} />}</CanonicalWorkspaceState>;
+  return <CanonicalWorkspaceState><div className="specialist-workbench min-w-0 space-y-6">{!garmentId && state.garments[0] ? <GarmentWorkbenchContext actions={<button className="workbench-quick-action" onClick={() => onOpenGarment(state.garments[0].id)} type="button">Open production</button>} garmentId={state.garments[0].id} label="Production focus" /> : null}{garmentId ? <ProductionGarmentWorkspace garmentId={garmentId} onOpenGarment={onOpenGarment} /> : <ProductionHome onOpenGarment={onOpenGarment} />}</div></CanonicalWorkspaceState>;
 }
 
 function ProductionGarmentWorkspace({ garmentId, onOpenGarment }: { garmentId: string; onOpenGarment: (garmentId: string) => void }) {
   const [view, setView] = useState<'fit' | 'cost' | 'order' | 'timeline'>('fit');
-  return <div className="space-y-4"><nav aria-label="Production workspace" className="flex gap-2 overflow-x-auto pb-1">{([['fit', 'Samples & fit'], ['cost', 'Cost sheet'], ['order', 'Order & QC'], ['timeline', 'Timeline']] as const).map(([id, label]) => <button aria-current={view === id ? 'page' : undefined} className={`min-h-11 shrink-0 rounded-xl border px-4 text-sm ${view === id ? 'border-ember bg-ember text-midnight' : 'border-bronze/30 text-stardust/65'}`} key={id} onClick={() => setView(id)} type="button">{label}</button>)}</nav>{view === 'fit' ? <FitReview garmentId={garmentId} onOpenGarment={onOpenGarment} /> : view === 'cost' ? <CostSheetStudio garmentId={garmentId} /> : view === 'order' ? <OrderQcStudio garmentId={garmentId} /> : <ProductionTimeline garmentId={garmentId} />}</div>;
+  return <SpecialistWorkbench><GarmentWorkbenchContext actions={<a className="workbench-quick-action" href={`#/technical/${garmentId}`}>Technical</a>} garmentId={garmentId} label="Production" /><WorkbenchTabs active={view} ariaLabel="Production workspace" items={productionWorkbenchTabs} onChange={setView} />{view === 'fit' ? <FitReview garmentId={garmentId} onOpenGarment={onOpenGarment} /> : view === 'cost' ? <CostSheetStudio garmentId={garmentId} /> : view === 'order' ? <OrderQcStudio garmentId={garmentId} /> : <ProductionTimeline garmentId={garmentId} />}</SpecialistWorkbench>;
 }
+
+const productionWorkbenchTabs = [
+  { id: 'fit', label: 'Samples & fit' },
+  { id: 'cost', label: 'Cost sheet' },
+  { id: 'order', label: 'Order & QC' },
+  { id: 'timeline', label: 'Timeline' },
+] as const;
 
 function ProductionHome({ onOpenGarment }: { onOpenGarment: (garmentId: string) => void }) {
   const studio = useProductionStudio(); const state = studio.state!;

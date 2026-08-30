@@ -5,6 +5,7 @@ const manager = readFileSync(new URL('../src/pages/PortfolioStudio/PortfolioStud
 const preview = readFileSync(new URL('../src/pages/PortfolioStudio/PublicCutPreview.tsx', import.meta.url), 'utf8');
 const publicRoute = readFileSync(new URL('../src/routes/PublicPortfolioRoute.tsx', import.meta.url), 'utf8');
 const publicLoader = readFileSync(new URL('../src/lib/canonicalPublications.ts', import.meta.url), 'utf8');
+const workbench = readFileSync(new URL('../src/components/shared/SpecialistWorkbench.tsx', import.meta.url), 'utf8');
 
 describe('WP8 portfolio UI and anonymous route contracts', () => {
   it('provides profile, project, editorial, publish, history, privacy, stale, and explicit unpublish controls', () => {
@@ -26,7 +27,8 @@ describe('WP8 portfolio UI and anonymous route contracts', () => {
   });
 
   it('includes narrow-screen and keyboard-safe native controls', () => {
-    expect(manager).toMatch(/overflow-x-auto/);
+    expect(manager).toContain('<WorkbenchTabs');
+    expect(workbench).toMatch(/overflow-x-auto/);
     expect(manager).toMatch(/sm:grid-cols|lg:grid-cols|xl:grid-cols/);
     expect(manager).toContain('Move ${title} up');
     expect(manager).toContain('type="button"');
