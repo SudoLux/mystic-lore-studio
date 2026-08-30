@@ -36,6 +36,8 @@ import type {
   CanonicalInventoryEntry,
   CanonicalMaterial,
   CanonicalMaterialVariant,
+  CanonicalMaterialVariantMedia,
+  CanonicalMaterialVariantProfile,
   CanonicalMediaAsset,
   CanonicalMediaDerivative,
   CanonicalMoodboard,
@@ -197,6 +199,8 @@ export async function createCanonicalWorkspace(seed: CanonicalWorkspaceSeed) {
       const value = row as { color_hex: string | null; color_name: string; created_at: string; id: string; material_id: string; sku: string; status: CanonicalMaterialVariant['status']; studio_id: string; updated_at: string; weight_gsm: number | null; width: number | null; width_unit: CanonicalMaterialVariant['widthUnit'] };
       return { ...base(value), colorHex: value.color_hex, colorName: value.color_name, materialId: value.material_id, sku: value.sku, status: value.status, weightGsm: value.weight_gsm, width: value.width, widthUnit: value.width_unit };
     }),
+    materialVariantMedia: [] as CanonicalMaterialVariantMedia[],
+    materialVariantProfiles: [] as CanonicalMaterialVariantProfile[],
     materials: rows('materials').map((row) => {
       const value = row as { category: string; composition: string; created_at: string; id: string; material_code: string; name: string; status: CanonicalMaterial['status']; studio_id: string; updated_at: string };
       return { ...base(value), category: value.category, composition: value.composition, materialCode: value.material_code, name: value.name, status: value.status };
@@ -312,6 +316,8 @@ export function normalizeWorkspace(state: CanonicalWorkspaceState): CanonicalWor
     conflicts: [...state.conflicts],
     inventoryEntries: [...state.inventoryEntries].sort((a, b) => b.occurredAt.localeCompare(a.occurredAt)),
     materialVariants: [...state.materialVariants],
+    materialVariantMedia: [...(state.materialVariantMedia ?? [])].sort((a, b) => a.sortOrder - b.sortOrder || a.id.localeCompare(b.id)),
+    materialVariantProfiles: [...(state.materialVariantProfiles ?? [])],
     materials: [...state.materials].sort((a, b) => a.name.localeCompare(b.name)),
     mediaAssets: [...state.mediaAssets].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt)),
     mediaDerivatives: [...state.mediaDerivatives],

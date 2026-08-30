@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { emptyCanonicalWorkspaceState } from '../src/domains/persistence/canonicalWorkspaceRepository';
 import type { CanonicalGarment, CanonicalGarmentMaterial, CanonicalGarmentMedia, CanonicalMaterial, CanonicalMaterialVariant, CanonicalMediaAsset } from '../src/domains/workspace';
 import { canonicalGarmentCover, canonicalGarmentSwatches, recommendedGarmentAction } from '../src/lib/canonicalGarmentPresentation';
+import { canonicalMaterialVariantCover } from '../src/lib/canonicalMaterialPresentation';
 
 const studioId = '20000000-0000-4000-8000-000000000001';
 const timestamp = '2026-08-29T12:00:00.000Z';
@@ -24,6 +25,17 @@ describe('WP11C image-first garment experience', () => {
     state.materialVariants = [{ ...record, colorHex: '#182437', colorName: 'Midnight', id: 'variant-1', materialId: 'material-1', sku: 'MAT-1-MID', status: 'active', weightGsm: 320, width: 150, widthUnit: 'cm' } satisfies CanonicalMaterialVariant];
     state.garmentMaterials = [{ ...record, garmentId: 'garment-1', id: 'use-1', placement: 'shell', requiredQuantity: 2, reservedQuantity: 2, role: 'shell', status: 'reserved', unit: 'm', variantId: 'variant-1' } satisfies CanonicalGarmentMaterial];
     expect(canonicalGarmentSwatches(state, 'garment-1')).toEqual([{ colorHex: '#182437', colorName: 'Midnight', id: 'variant-1', materialName: 'Midnight wool' }]);
+  });
+
+  it('resolves a fabric photograph from the canonical material-media relationship', () => {
+    const state = emptyCanonicalWorkspaceState(studioId);
+    const asset = media('detail', 'fabric-asset').asset;
+    state.mediaAssets = [asset];
+    state.materialVariantMedia = [{
+      ...record, assetId: asset.id, framing: { objectFit: 'cover' }, id: 'fabric-media-1',
+      role: 'swatch', sortOrder: 0, variantId: 'variant-1',
+    }];
+    expect(canonicalMaterialVariantCover(state, 'variant-1')?.id).toBe('fabric-asset');
   });
 
   it('keeps one clear phase-aware continuation on garment cards and the dashboard', () => {

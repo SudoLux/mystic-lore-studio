@@ -16,7 +16,9 @@ type Gate = { evidence: string; gate: string; issue: string | null; severity: 'C
 
 try {
 const url = required('ML_BETA_SUPABASE_URL');
-const serviceRoleKey = required('ML_BETA_SUPABASE_SERVICE_ROLE_KEY');
+const serviceRoleKey = process.env.ML_BETA_SERVICE_ROLE_KEY?.trim()
+  || process.env.ML_BETA_SUPABASE_SERVICE_ROLE_KEY?.trim()
+  || required('ML_BETA_SERVICE_ROLE_KEY');
 const anonKey = required('ML_BETA_SUPABASE_ANON_KEY');
 const studioId = required('ML_BETA_STUDIO_ID');
 const projectRef = process.env.ML_BETA_PROJECT_REF || new URL(url).hostname.split('.')[0];

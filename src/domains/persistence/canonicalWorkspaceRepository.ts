@@ -341,7 +341,7 @@ export function emptyCanonicalWorkspaceState(studioId: string): CanonicalWorkspa
     editorialAssets: [], editorialBlocks: [], editorialCollectionGarments: [], editorialCollections: [],
     editorialExports: [], editorialScenes: [], factories: [], fitIssuePromotions: [], fitIssues: [],
     garmentComponents: [], garmentMaterials: [], garmentMedia: [], garments: [], conflicts: [],
-    inventoryEntries: [], materialVariants: [], materials: [], mediaAssets: [], mediaDerivatives: [],
+    inventoryEntries: [], materialVariantMedia: [], materialVariantProfiles: [], materialVariants: [], materials: [], mediaAssets: [], mediaDerivatives: [],
     moodboardItems: [], moodboards: [], flatAnnotations: [], fitSessionMedia: [], fitSessions: [],
     garmentVersions: [], gradeRuleValues: [], gradeRules: [], measurementSets: [], measurementValues: [],
     pomPoints: [], portfolioEditorials: [], portfolioProfiles: [], portfolioProjects: [],

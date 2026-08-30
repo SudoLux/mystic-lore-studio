@@ -77,6 +77,8 @@ export const canonicalCodecRegistry = [
   codec('annotations', 'design_annotations'),
   codec('materials', 'materials'),
   codec('materialVariants', 'material_variants'),
+  codec('materialVariantProfiles', 'material_variant_profiles'),
+  codec('materialVariantMedia', 'material_variant_media', true, { framing: 'framing_json' }),
   codec('inventoryEntries', 'inventory_entries'),
   codec('garmentMaterials', 'garment_materials'),
   codec('components', 'components'),

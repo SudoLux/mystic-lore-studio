@@ -35,6 +35,39 @@ export async function prepareCanonicalGarmentImage(
   return asset;
 }
 
+export async function prepareCanonicalMaterialImage(
+  file: File,
+  studioId: string,
+  variantId: string,
+): Promise<CanonicalMediaAsset> {
+  return prepareCanonicalImage(file, studioId, `assets/materials/${variantId}`, 'private material upload');
+}
+
+async function prepareCanonicalImage(
+  file: File,
+  studioId: string,
+  relativePath: string,
+  source: string,
+): Promise<CanonicalMediaAsset> {
+  if (!file.size) throw new Error('Choose an image that contains data.');
+  if (!file.type.startsWith('image/')) throw new Error('Choose a JPG, PNG, WebP, HEIC, or another image format.');
+  if (file.size > maxGarmentImageBytes) throw new Error('Choose an image smaller than 25 MB.');
+  const id = crypto.randomUUID();
+  const checksum = await sha256(file);
+  const dimensions = await imageDimensions(file);
+  const now = new Date().toISOString();
+  const asset: CanonicalMediaAsset = {
+    checksum, createdAt: now, height: dimensions?.height ?? null, id,
+    mimeType: file.type, name: file.name, revision: 1, rights: { source },
+    sizeBytes: file.size,
+    storagePath: `studios/${studioId}/${relativePath}/${id}/${sanitize(file.name)}`,
+    storageState: 'queued', studioId, updatedAt: now,
+    width: dimensions?.width ?? null,
+  };
+  await stageCanonicalMediaBlob(asset, file);
+  return asset;
+}
+
 async function imageDimensions(file: File) {
   if (typeof createImageBitmap !== 'function') return null;
   try {

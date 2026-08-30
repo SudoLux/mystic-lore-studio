@@ -17,8 +17,10 @@ export function SyncStatusIndicator({
   status: SyncStatus;
   warning?: string | null;
 }) {
-  const config = status === 'synced' && warning
-    ? { icon: AlertTriangle, label: 'Synced · Cache', tone: 'text-ember' }
+  const config = pendingCount > 0
+    ? { icon: AlertTriangle, label: `Saved on this device · ${pendingCount} waiting`, tone: 'text-ember' }
+    : status === 'synced' && warning
+    ? { icon: AlertTriangle, label: 'Saved with a warning', tone: 'text-ember' }
     : ({
     error: { icon: XCircle, label: 'Sync error', tone: 'text-ember' },
     offline: { icon: CloudOff, label: 'Offline / local only', tone: 'text-stardust/58' },

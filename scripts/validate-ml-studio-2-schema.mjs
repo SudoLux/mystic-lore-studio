@@ -44,6 +44,7 @@ const canonicalTransportPath = 'supabase/migrations/20260828014454_canonical_ope
 const publicCutBatchPath = 'supabase/migrations/20260828021002_atomic_public_cut_batch.sql';
 const protectedCommandsPath = 'supabase/migrations/20260828033000_protected_canonical_commands.sql';
 const trustedDeviceFinalizePath = 'supabase/migrations/20260828050000_trusted_device_import_finalize.sql';
+const visualRecoveryPath = 'supabase/migrations/20260830073211_wp11g_material_visual_recovery.sql';
 const testPath = 'supabase/tests/ml_studio_2_rls_test.sql';
 const rcTestPath = 'supabase/tests/wp10_rc_migration_role_test.sql';
 const aiTestPath = 'supabase/tests/wp9_ai_governance_test.sql';
@@ -51,6 +52,7 @@ const canonicalTransportTestPath = 'supabase/tests/wp10_canonical_operation_tran
 const publicCutBatchTestPath = 'supabase/tests/wp10_atomic_public_cut_batch_test.sql';
 const protectedCommandsTestPath = 'supabase/tests/wp10_protected_canonical_commands_test.sql';
 const trustedDeviceFinalizeTestPath = 'supabase/tests/wp10_trusted_device_import_test.sql';
+const visualRecoveryTestPath = 'supabase/tests/wp11g_visual_recovery_test.sql';
 const foundation = read(foundationPath);
 const rls = read(rlsPath);
 const storage = read(storagePath);
@@ -69,6 +71,7 @@ const canonicalTransport = read(canonicalTransportPath);
 const publicCutBatch = read(publicCutBatchPath);
 const protectedCommands = read(protectedCommandsPath);
 const trustedDeviceFinalize = read(trustedDeviceFinalizePath);
+const visualRecovery = read(visualRecoveryPath);
 const rlsTest = read(testPath);
 const rcRlsTest = read(rcTestPath);
 const aiRlsTest = read(aiTestPath);
@@ -76,6 +79,7 @@ const canonicalTransportTest = read(canonicalTransportTestPath);
 const publicCutBatchTest = read(publicCutBatchTestPath);
 const protectedCommandsTest = read(protectedCommandsTestPath);
 const trustedDeviceFinalizeTest = read(trustedDeviceFinalizeTestPath);
+const visualRecoveryTest = read(visualRecoveryTestPath);
 
 const structurallyBalanced = (sql) => {
   let depth = 0;
@@ -146,6 +150,7 @@ for (const [path, sql] of [
   [publicCutBatchPath, publicCutBatch],
   [protectedCommandsPath, protectedCommands],
   [trustedDeviceFinalizePath, trustedDeviceFinalize],
+  [visualRecoveryPath, visualRecovery],
   [testPath, rlsTest],
   [rcTestPath, rcRlsTest],
   [aiTestPath, aiRlsTest],
@@ -153,6 +158,7 @@ for (const [path, sql] of [
   [publicCutBatchTestPath, publicCutBatchTest],
   [protectedCommandsTestPath, protectedCommandsTest],
   [trustedDeviceFinalizeTestPath, trustedDeviceFinalizeTest],
+  [visualRecoveryTestPath, visualRecoveryTest],
 ]) {
   check(structurallyBalanced(sql), `Unbalanced SQL delimiters in ${path}.`);
 }
@@ -161,7 +167,8 @@ const expectedPrivateTables = [
   'profiles', 'studios', 'studio_members', 'studio_settings', 'collections',
   'garments', 'tags', 'garment_tags', 'design_briefs', 'inspiration_boards',
   'inspiration_items', 'media_assets', 'garment_media', 'media_derivatives',
-  'design_annotations', 'materials', 'material_variants', 'inventory_entries',
+  'design_annotations', 'materials', 'material_variants',
+  'material_variant_profiles', 'material_variant_media', 'inventory_entries',
   'garment_materials', 'components', 'component_variants', 'garment_components',
   'supplier_items', 'technical_specs', 'technical_flats', 'flat_annotations',
   'technical_files', 'tech_pack_exports', 'validation_runs', 'pom_points',
@@ -187,7 +194,7 @@ const expectedPrivateTables = [
   'canonical_operation_receipts', 'public_cut_batches',
 ].sort();
 
-const canonicalTableSql = foundation + '\n' + release + '\n' + production + '\n' + productionCompletion + '\n' + editorial + '\n' + portfolio + '\n' + ai + '\n' + canonicalTransport + '\n' + publicCutBatch;
+const canonicalTableSql = foundation + '\n' + release + '\n' + production + '\n' + productionCompletion + '\n' + editorial + '\n' + portfolio + '\n' + ai + '\n' + canonicalTransport + '\n' + publicCutBatch + '\n' + visualRecovery;
 const actualPrivateTables = [...canonicalTableSql.matchAll(/create table ml_private\.([a-z_]+)/g)]
   .map((match) => match[1])
   .sort();
@@ -219,7 +226,7 @@ for (const table of expectedPrivateTables) {
     check(/\bstudio_id uuid\b/.test(block), `Tenant table lacks studio_id: ${table}`);
   }
   check(
-    rls.includes(`'${table}'`) || rls.includes(`ml_private.${table}`) || release.includes(`ml_private.${table}`) || production.includes(`ml_private.${table}`) || productionCompletion.includes(`ml_private.${table}`) || editorial.includes(`ml_private.${table}`) || portfolio.includes(`ml_private.${table}`) || ai.includes(`ml_private.${table}`) || canonicalTransport.includes(`ml_private.${table}`) || publicCutBatch.includes(`ml_private.${table}`),
+    rls.includes(`'${table}'`) || rls.includes(`ml_private.${table}`) || release.includes(`ml_private.${table}`) || production.includes(`ml_private.${table}`) || productionCompletion.includes(`ml_private.${table}`) || editorial.includes(`ml_private.${table}`) || portfolio.includes(`ml_private.${table}`) || ai.includes(`ml_private.${table}`) || canonicalTransport.includes(`ml_private.${table}`) || publicCutBatch.includes(`ml_private.${table}`) || visualRecovery.includes(`ml_private.${table}`),
     `Canonical table is missing from RLS coverage: ${table}`,
   );
 }
@@ -261,7 +268,7 @@ for (const column of jsonbColumns) {
 
 check((foundation.match(/references /g) ?? []).length >= 80, 'Expected explicit canonical foreign keys are missing.');
 check((foundation.match(/create (?:unique )?index /g) ?? []).length >= 55, 'Expected canonical indexes are missing.');
-const canonicalSql = foundation + rls + storage + bootstrap + technical + measurement + release + versioning + production + productionCompletion + editorial + portfolio + rcMigrationRole + ai + canonicalTransport + publicCutBatch + protectedCommands + trustedDeviceFinalize;
+const canonicalSql = foundation + rls + storage + bootstrap + technical + measurement + release + versioning + production + productionCompletion + editorial + portfolio + rcMigrationRole + ai + canonicalTransport + publicCutBatch + protectedCommands + trustedDeviceFinalize + visualRecovery;
 check(!/\b(create|alter|drop) table public\./i.test(canonicalSql), 'WP2 must not create, alter, or drop legacy public tables.');
 check(!/\bdrop table\b/i.test(canonicalSql), 'WP2 migrations may not drop tables.');
 check(!/\brename\s+(?:table|column)\b/i.test(canonicalSql), 'WP2 migrations may not rename legacy structures.');
@@ -589,7 +596,8 @@ const assertions = pgTapCount(rlsTest, testPath)
   + pgTapCount(canonicalTransportTest, canonicalTransportTestPath)
   + pgTapCount(publicCutBatchTest, publicCutBatchTestPath)
   + pgTapCount(protectedCommandsTest, protectedCommandsTestPath)
-  + pgTapCount(trustedDeviceFinalizeTest, trustedDeviceFinalizeTestPath);
+  + pgTapCount(trustedDeviceFinalizeTest, trustedDeviceFinalizeTestPath)
+  + pgTapCount(visualRecoveryTest, visualRecoveryTestPath);
 check(rlsTest.includes('set local role anon'), 'pgTAP suite lacks anonymous access tests.');
 check(rlsTest.includes('Cross-studio'), 'pgTAP suite lacks cross-studio denial tests.');
 check(rlsTest.includes('unpublish_publication'), 'pgTAP suite lacks unpublication tests.');
@@ -606,11 +614,18 @@ check(publicCutBatchTest.includes('a media-stage failure cannot partially publis
 check(publicCutBatchTest.includes('unpublish removes database visibility before cleanup'), 'WP10 pgTAP suite lacks visibility-first unpublish evidence.');
 check(protectedCommandsTest.includes('restore advances the garment revision without rewriting earlier versions'), 'WP10 pgTAP suite lacks protected restore evidence.');
 check(trustedDeviceFinalizeTest.includes('browser roles cannot execute the trusted device finalizer'), 'WP10 pgTAP suite lacks trusted-import browser denial.');
+check(visualRecoveryTest.includes('existing private garment upload path'), 'WP11G pgTAP suite lacks the queued garment upload path repair.');
+check(visualRecoveryTest.includes('anonymous callers cannot read material profiles'), 'WP11G pgTAP suite lacks anonymous material-profile denial.');
+check(visualRecovery.includes("when 'material_variant_media'"), 'WP11G material media is missing from the canonical RPC allowlist.');
+check(visualRecovery.includes("'assets', 'garments', 'derivatives'"), 'WP11G Storage repair does not admit existing canonical garment paths.');
+for (const field of ['country_of_origin', 'secondary_colors', 'weave_or_knit', 'stretch', 'opacity', 'drape', 'hand_feel', 'texture', 'structure', 'rarity', 'best_uses', 'care_notes', 'mood_tags', 'lore_note', 'private_notes', 'purchase_date', 'storage_location', 'bin_number', 'shelf', 'storage_status']) {
+  check(visualRecovery.includes(`${field} `), `WP11G material profile field is missing: ${field}`);
+}
 
 const migrationNames = readdirSync(new URL('supabase/migrations/', root))
   .filter((name) => name.endsWith('.sql'))
   .sort();
-for (const path of [foundationPath, rlsPath, storagePath, bootstrapPath, technicalPath, measurementPath, releasePath, versioningPath, productionPath, productionCompletionPath, editorialPath, portfolioPath, aiPath, rcMigrationRolePath, canonicalTransportPath, publicCutBatchPath, protectedCommandsPath, trustedDeviceFinalizePath]) {
+for (const path of [foundationPath, rlsPath, storagePath, bootstrapPath, technicalPath, measurementPath, releasePath, versioningPath, productionPath, productionCompletionPath, editorialPath, portfolioPath, aiPath, rcMigrationRolePath, canonicalTransportPath, publicCutBatchPath, protectedCommandsPath, trustedDeviceFinalizePath, visualRecoveryPath]) {
   check(migrationNames.includes(path.split('/').at(-1)), `Named migration missing: ${path}`);
 }
 check(
@@ -653,6 +668,10 @@ check(
     && migrationNames.indexOf(publicCutBatchPath.split('/').at(-1)) < migrationNames.indexOf(protectedCommandsPath.split('/').at(-1))
     && migrationNames.indexOf(protectedCommandsPath.split('/').at(-1)) < migrationNames.indexOf(trustedDeviceFinalizePath.split('/').at(-1)),
   'WP10 cutover migrations must run migration role -> governed AI -> canonical transport -> Public Cut batch -> protected commands -> trusted finalizer.',
+);
+check(
+  migrationNames.indexOf(trustedDeviceFinalizePath.split('/').at(-1)) < migrationNames.indexOf(visualRecoveryPath.split('/').at(-1)),
+  'WP11G visual recovery must run after the canonical transport and trusted device finalizer.',
 );
 
 if (failures.length > 0) {

@@ -22,3 +22,4 @@
 | [0018](ADR-0018-wp9-governed-ai-candidates.md) | Governed AI candidates | Accepted |
 | [0019](ADR-0019-release-candidate-migration-and-cutover-gates.md) | RC migration privileges, retry semantics, and cutover gate | Accepted |
 | [0020](ADR-0020-canonical-cloud-authority-and-atomic-public-cuts.md) | Canonical cloud authority, transactional sync, and atomic Public Cuts | Accepted |
+| [0021](ADR-0021-material-visual-recovery.md) | Relational material visuals and non-destructive V1 recovery | Accepted |

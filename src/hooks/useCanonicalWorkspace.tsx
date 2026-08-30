@@ -57,7 +57,7 @@ import { createRequestBoundCanonicalSupabase } from '../lib/supabase';
 import { getStudioData, type StudioData } from '../lib/studioStorage';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Database } from '../types/database.generated';
-import { prepareCanonicalGarmentImage } from '../lib/canonicalMediaUpload';
+import { prepareCanonicalGarmentImage, prepareCanonicalMaterialImage } from '../lib/canonicalMediaUpload';
 
 type CanonicalWorkspaceContextValue = {
   addCollection: (name: string, season?: string) => string;
@@ -92,6 +92,7 @@ type CanonicalWorkspaceContextValue = {
   updateGarment: (garmentId: string, patch: Partial<GarmentInput>) => void;
   updateTaskStatus: (taskId: string, status: CanonicalReleaseTask['status']) => void;
   uploadGarmentMedia: (garmentId: string, file: File, role: CanonicalGarmentMedia['role']) => Promise<string>;
+  uploadMaterialMedia: (variantId: string, file: File) => Promise<string>;
 };
 
 const startupRequestTimeoutMs = 20_000;
@@ -556,6 +557,31 @@ export function CanonicalWorkspaceProvider({
         const withAsset = { ...workspace, mediaAssets: [...workspace.mediaAssets, asset] };
         return attachAsset(withAsset, garmentId, asset.id, role).state;
       });
+      return asset.id;
+    },
+    uploadMaterialMedia: async (variantId, file) => {
+      const current = stateRef.current;
+      if (!current) throw new Error('The material workspace is not ready.');
+      if (persistenceModeRef.current === 'local-recovery') throw new Error('Connect the canonical Studio before uploading imagery.');
+      if (!current.materialVariants.some((variant) => variant.id === variantId)) throw new Error('Material variant not found.');
+      const asset = await prepareCanonicalMaterialImage(file, current.studioId, variantId);
+      const now = new Date().toISOString();
+      await commitAsync((workspace) => ({
+        ...workspace,
+        mediaAssets: [...workspace.mediaAssets, asset],
+        materialVariantMedia: [...workspace.materialVariantMedia, {
+          assetId: asset.id,
+          createdAt: now,
+          framing: { objectFit: 'cover', objectPositionX: 50, objectPositionY: 50, zoom: 1 },
+          id: crypto.randomUUID(),
+          revision: 1,
+          role: 'swatch',
+          sortOrder: workspace.materialVariantMedia.filter((item) => item.variantId === variantId).length,
+          studioId: workspace.studioId,
+          updatedAt: now,
+          variantId,
+        }],
+      }));
       return asset.id;
     },
   }), [commit, commitAsync, error, pendingCount, persistenceMode, refresh, requireFreshWorkspace, resolveTransportConflict, state, syncState, userId]);

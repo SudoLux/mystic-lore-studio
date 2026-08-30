@@ -3116,6 +3116,169 @@ export type Database = {
           },
         ]
       }
+      material_variant_media: {
+        Row: {
+          asset_id: string
+          created_at: string
+          framing_json: Json
+          id: string
+          revision: number
+          role: string
+          sort_order: number
+          studio_id: string
+          updated_at: string
+          variant_id: string
+        }
+        Insert: {
+          asset_id: string
+          created_at?: string
+          framing_json?: Json
+          id?: string
+          revision?: number
+          role?: string
+          sort_order?: number
+          studio_id: string
+          updated_at?: string
+          variant_id: string
+        }
+        Update: {
+          asset_id?: string
+          created_at?: string
+          framing_json?: Json
+          id?: string
+          revision?: number
+          role?: string
+          sort_order?: number
+          studio_id?: string
+          updated_at?: string
+          variant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "material_variant_media_asset_fk"
+            columns: ["studio_id", "asset_id"]
+            isOneToOne: false
+            referencedRelation: "media_assets"
+            referencedColumns: ["studio_id", "id"]
+          },
+          {
+            foreignKeyName: "material_variant_media_studio_id_fkey"
+            columns: ["studio_id"]
+            isOneToOne: false
+            referencedRelation: "studios"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "material_variant_media_variant_fk"
+            columns: ["studio_id", "variant_id"]
+            isOneToOne: false
+            referencedRelation: "material_variants"
+            referencedColumns: ["studio_id", "id"]
+          },
+        ]
+      }
+      material_variant_profiles: {
+        Row: {
+          best_uses: string[]
+          bin_number: string | null
+          care_notes: string | null
+          country_of_origin: string | null
+          created_at: string
+          drape: string | null
+          hand_feel: string | null
+          id: string
+          lore_note: string | null
+          mood_tags: string[]
+          opacity: string | null
+          private_notes: string | null
+          purchase_date: string | null
+          rarity: string | null
+          revision: number
+          secondary_colors: string[]
+          shelf: string | null
+          storage_location: string | null
+          storage_status: string | null
+          stretch: string | null
+          structure: string | null
+          studio_id: string
+          texture: string | null
+          updated_at: string
+          variant_id: string
+          weave_or_knit: string | null
+        }
+        Insert: {
+          best_uses?: string[]
+          bin_number?: string | null
+          care_notes?: string | null
+          country_of_origin?: string | null
+          created_at?: string
+          drape?: string | null
+          hand_feel?: string | null
+          id?: string
+          lore_note?: string | null
+          mood_tags?: string[]
+          opacity?: string | null
+          private_notes?: string | null
+          purchase_date?: string | null
+          rarity?: string | null
+          revision?: number
+          secondary_colors?: string[]
+          shelf?: string | null
+          storage_location?: string | null
+          storage_status?: string | null
+          stretch?: string | null
+          structure?: string | null
+          studio_id: string
+          texture?: string | null
+          updated_at?: string
+          variant_id: string
+          weave_or_knit?: string | null
+        }
+        Update: {
+          best_uses?: string[]
+          bin_number?: string | null
+          care_notes?: string | null
+          country_of_origin?: string | null
+          created_at?: string
+          drape?: string | null
+          hand_feel?: string | null
+          id?: string
+          lore_note?: string | null
+          mood_tags?: string[]
+          opacity?: string | null
+          private_notes?: string | null
+          purchase_date?: string | null
+          rarity?: string | null
+          revision?: number
+          secondary_colors?: string[]
+          shelf?: string | null
+          storage_location?: string | null
+          storage_status?: string | null
+          stretch?: string | null
+          structure?: string | null
+          studio_id?: string
+          texture?: string | null
+          updated_at?: string
+          variant_id?: string
+          weave_or_knit?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "material_variant_profiles_studio_id_fkey"
+            columns: ["studio_id"]
+            isOneToOne: false
+            referencedRelation: "studios"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "material_variant_profiles_variant_fk"
+            columns: ["studio_id", "variant_id"]
+            isOneToOne: true
+            referencedRelation: "material_variants"
+            referencedColumns: ["studio_id", "id"]
+          },
+        ]
+      }
       material_variants: {
         Row: {
           color_hex: string | null

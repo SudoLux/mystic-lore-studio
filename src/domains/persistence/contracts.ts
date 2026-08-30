@@ -8,6 +8,7 @@ export type CanonicalMutableEntity =
   | 'design_briefs' | 'inspiration_boards' | 'inspiration_items'
   | 'media_assets' | 'garment_media' | 'media_derivatives'
   | 'design_annotations' | 'materials' | 'material_variants'
+  | 'material_variant_profiles' | 'material_variant_media'
   | 'inventory_entries' | 'garment_materials' | 'components'
   | 'component_variants' | 'garment_components' | 'supplier_items'
   | 'technical_specs' | 'technical_flats' | 'flat_annotations'

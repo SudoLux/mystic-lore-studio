@@ -49,7 +49,7 @@ trusted operator shell:
 
 ```text
 ML_BETA_SUPABASE_URL=<beta URL>
-ML_BETA_SUPABASE_SERVICE_ROLE_KEY=<beta service-role key>
+ML_BETA_SERVICE_ROLE_KEY=<beta service-role key>
 ML_BETA_PROJECT_REF=<beta project ref>
 ML_BETA_OWNER_USER_ID=<beta owner UUID>
 ML_BETA_DEVICE_EXPORT=<absolute path to .mlstudio.zip>
@@ -65,6 +65,33 @@ target has already accepted cloud authority.
 
 Retain its machine-readable counts, relationships, warnings, and checksums.
 Investigate every warning before continuing.
+
+## V1 visual and textile recovery
+
+Run this only after the WP11G migration is present in the isolated beta. The
+source project is hard-pinned read-only and the destination is hard-pinned to
+the beta project. Keep both service credentials in `.env.beta.import.local` or
+the trusted operator shell; never expose them to Vite or Netlify.
+
+```text
+ML_V1_SUPABASE_URL=https://jsjhqnmlgceunlxgenkg.supabase.co
+ML_V1_SERVICE_ROLE_KEY=<V1 operator credential>
+ML_V1_OWNER_USER_ID=<V1 owner UUID>
+ML_BETA_SUPABASE_URL=https://iahrcupmyjnyyqszrmcx.supabase.co
+ML_BETA_SERVICE_ROLE_KEY=<beta service-role key>
+ML_BETA_PROJECT_REF=iahrcupmyjnyyqszrmcx
+ML_BETA_STUDIO_ID=<canonical beta Studio UUID>
+ML_V1_VISUAL_IMPORT_CONFIRM=read-v1-write-beta
+npm run beta:import-v1-visuals -- --dry-run
+npm run beta:import-v1-visuals
+```
+
+The importer reads only the 7 verified V1 garments, 21 garment images, and 12
+fabric records/images belonging to the named V1 owner. It copies referenced
+bytes to private beta Storage, verifies SHA-256 checksums, creates relational
+garment/material media roles, fills missing textile profile fields, preserves
+newer V2 values, and reports ambiguous or differing matches. Repeating an
+identical run is safe. The Studio returns to `shadow` after completion.
 
 ## Shadow and switch
 

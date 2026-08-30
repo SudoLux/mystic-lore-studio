@@ -22,6 +22,7 @@
     "test:visual": "playwright test tests/e2e/wp11-visual.spec.ts tests/e2e/wp11d-visual.spec.ts tests/e2e/wp11e-visual.spec.ts tests/e2e/wp11f-visual.spec.ts",
     "check:scripts": "tsc -p tsconfig.scripts.json --pretty false",
     "beta:import-device": "sh scripts/run-beta-import.sh",
+    "beta:import-v1-visuals": "sh scripts/run-v1-visual-import.sh",
     "audit:beta": "tsx scripts/audit-beta.ts",
     "test:bundle": "node scripts/check-bundle-budget.mjs",
     "validate:schema": "node scripts/validate-ml-studio-2-schema.mjs",

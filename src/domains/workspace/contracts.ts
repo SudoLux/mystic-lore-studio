@@ -109,6 +109,38 @@ export type CanonicalMaterialVariant = CanonicalRecord & {
   widthUnit: 'mm' | 'cm' | 'in' | null;
 };
 
+export type CanonicalMaterialVariantProfile = CanonicalRecord & {
+  bestUses: string[];
+  binNumber: string;
+  careNotes: string;
+  countryOfOrigin: string;
+  drape: string;
+  handFeel: string;
+  loreNote: string;
+  moodTags: string[];
+  opacity: string;
+  privateNotes: string;
+  purchaseDate: string | null;
+  rarity: string;
+  secondaryColors: string[];
+  shelf: string;
+  storageLocation: string;
+  storageStatus: string;
+  stretch: string;
+  structure: string;
+  texture: string;
+  variantId: string;
+  weaveOrKnit: string;
+};
+
+export type CanonicalMaterialVariantMedia = CanonicalRecord & {
+  assetId: string;
+  framing: Record<string, unknown>;
+  role: 'swatch' | 'detail' | 'reference';
+  sortOrder: number;
+  variantId: string;
+};
+
 export type InventoryEntryType = 'receive' | 'reserve' | 'release' | 'consume' | 'return' | 'adjust';
 export type CanonicalInventoryEntry = CanonicalRecord & {
   entryType: InventoryEntryType;
@@ -452,6 +484,8 @@ export type CanonicalWorkspaceState = {
   conflicts: CanonicalConflict[];
   inventoryEntries: CanonicalInventoryEntry[];
   materialVariants: CanonicalMaterialVariant[];
+  materialVariantMedia: CanonicalMaterialVariantMedia[];
+  materialVariantProfiles: CanonicalMaterialVariantProfile[];
   materials: CanonicalMaterial[];
   mediaAssets: CanonicalMediaAsset[];
   mediaDerivatives: CanonicalMediaDerivative[];

@@ -1,6 +1,6 @@
 # Mystic Lore Studio 2.0 Implementation Ledger
 
-Last updated: 2026-08-29
+Last updated: 2026-08-30
 
 This ledger records the reproducible baseline and bounded implementation work
 for Mystic Lore Studio 2.0. WP2 establishes the additive canonical schema,
@@ -32,7 +32,10 @@ physical-device, and deployed-performance evidence.
 WP11 restores the V1-inspired visual ease at the presentation layer: image-first
 garment browsing, creative garment context, calmer specialist workbenches, and
 a production-polish pass across loading, motion, responsive hierarchy, copy,
-and accessibility. Canonical storage and security boundaries remain unchanged.
+and accessibility. WP11G repairs the queued garment Storage path, adds
+relational fabric imagery and textile profiles, preserves cached work during
+sync failure, and provides a checksum-verifying V1-to-beta visual importer.
+V1 remains read-only and V2-only evidence always wins.
 
 ## Work-package Status
 
@@ -52,7 +55,7 @@ and accessibility. Canonical storage and security boundaries remain unchanged.
 | WP8 | Portfolio profile/project/editorial curation, Public Cut preview, immutable publication history, copied media, and anonymous route cutover | Complete | Anonymous access exposes only selected immutable payloads and copied public-safe derivatives, proven by application and database privacy tests |
 | WP9 | Governed AI jobs, normalized source references, reviewable candidates, deterministic test provider, and typed/audited acceptance | Complete | AI cannot bypass domain validation or directly write private/public production records; every accepted field is attributable to its source, actor, command, and change event |
 | WP10 | Hardening, canonical cloud authority, transactional sync, atomic publication, migration rehearsal, and release readiness | External validation blocked | Local schema, application cutover, cross-device, privacy, accessibility automation, migration, and bundle gates pass; hosted recovery/device/performance evidence remains |
-| WP11 | Studio Experience & Visual Recovery, image-first creative hierarchy, specialist-workbench calm, and production UX polish | Local implementation complete | Major Studio routes pass visual regression at laptop, iPad portrait/landscape, and mobile sizes; automated accessibility, application, sync, schema, RLS, build, and bundle gates pass |
+| WP11 | Studio Experience & Visual Recovery, image-first creative hierarchy, specialist-workbench calm, production UX polish, sync repair, and V1 visual recovery | Hosted import pending | Local gates pass and the isolated-beta Storage/schema migration is applied; credentialed V1 media import and empty-outbox/second-device proof remain |
 
 ## Verification
 
@@ -87,15 +90,15 @@ Decision: **BLOCKED — local engineering blockers removed; do not promote until
 
 | Command | Result |
 | --- | --- |
-| `npm run validate:schema` | Passed: 87 private tables, 2 public projection tables, 230 pgTAP assertions, and 7 protected legacy inputs |
+| `npm run validate:schema` | Passed: 89 private tables, 2 public projection tables, 252 pgTAP assertions, and 7 protected legacy inputs |
 | `npm run db:reset` | Passed: all ordered migrations apply to an empty local database |
-| `npm run test:db` | Passed: 7 pgTAP files and 230 assertions, including canonical operation, atomic publication, protected commands, and trusted import boundaries |
+| `npm run test:db` | Passed: 8 pgTAP files and 252 assertions, including canonical operation, atomic publication, protected commands, trusted import boundaries, fabric profiles/media, and the repaired garment Storage path |
 | `npm run test:rc:migration` | Passed: five-batch interruption recovery, exact round trip, stable database checksum, valid relationships, zero publications, and duplicate retry with 0 inserts / 0 updates / 27 unchanged |
-| `npm run test:canonical:integration` | Passed: 9 codec, pagination, IndexedDB, outbox, conflict, and 1,000-row operation tests |
-| `npm test -- --run` | Passed: 30 files, 143 tests, 1 skipped external-integration test |
+| `npm run test:canonical:integration` | Passed: 15 codec, pagination, IndexedDB, outbox, conflict, and 1,000-row operation tests |
+| `npm test -- --run` | Passed: 34 files, 163 tests, 1 skipped external-integration test |
 | `npm run test:e2e` | Passed: real UI RLS write, Supabase outage/reload/replay, second device, unauthorized Studio, and anonymous isolation |
 | `npm run test:a11y` | Passed: authenticated desktop/mobile and anonymous axe scenarios |
-| `npm run build` + `npm run test:bundle` | Passed: 36 route/lazy chunks; largest JavaScript chunk 378,463 bytes under the 500 KiB budget |
+| `npm run build` + `npm run test:bundle` | Passed: 38 route/lazy chunks; largest JavaScript chunk 387,268 bytes under the 500 KiB budget |
 | `npm audit` | Passed: 0 known vulnerabilities |
 | `git diff --check` | Passed |
 
@@ -465,6 +468,7 @@ rows marked public; they do not grant anonymous access to private Studio tables.
 | `20260826121000_implement_wp8_public_cuts.sql` | Normalized portfolio selections, optional released technical excerpts, publication allowlist/denylist, source revisions, copied-media provenance, RLS, and anonymous path index | WP8 added; legacy public tables retained for recovery |
 | `20260827170000_enable_trusted_rc_migration_role.sql` | Least-privilege trusted migration access: private read/upsert without delete, public read only, no internal schema access | WP10 RC added; 10-assertion pgTAP policy gate passed |
 | `20260827213019_implement_wp9_governed_ai_candidates.sql` | Governed AI jobs, version-pinned inputs, reviewable artifacts, acceptance receipts, typed-command audit links, RLS, grants, and direct-write prevention | WP9 added; no paid-provider dependency in tests |
+| `20260830073211_wp11g_material_visual_recovery.sql` | Relational material imagery/profiles and the member-owned canonical garment Storage path repair | WP11G added and applied to isolated beta; trusted V1 media import remains explicit |
 
 No legacy migration or table was edited or removed. The safe, sanitized input
 artifact remains `tests/fixtures/legacy-studio-data-v5.json`; WP2 retains it as

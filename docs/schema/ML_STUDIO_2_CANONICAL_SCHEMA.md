@@ -59,7 +59,7 @@ erDiagram
 | --- | --- |
 | Identity and catalog | `profiles`, `studios`, `studio_members`, `studio_settings`, `collections`, `garments`, `tags`, `garment_tags` |
 | Design and media | `design_briefs`, `inspiration_boards`, `inspiration_items`, `media_assets`, `garment_media`, `media_derivatives`, `design_annotations` |
-| Materials and components | `materials`, `material_variants`, `inventory_entries`, `garment_materials`, `components`, `component_variants`, `garment_components`, `supplier_items` |
+| Materials and components | `materials`, `material_variants`, `material_variant_profiles`, `material_variant_media`, `inventory_entries`, `garment_materials`, `components`, `component_variants`, `garment_components`, `supplier_items` |
 | Technical foundation | `technical_specs`, `technical_flats`, `flat_annotations`, `technical_files`, `tech_pack_exports`, `validation_runs`, `validation_waivers` |
 | POM and grading | `pom_points`, `measurement_sets`, `measurement_values`, `grade_rules`, `grade_rule_values`, `fit_measurements` |
 | BOM and construction | `bom_items`, `construction_sections`, `construction_steps`, `construction_details`, `technical_templates`, `template_applications` |
@@ -70,7 +70,7 @@ erDiagram
 | Canonical transport and publication batches | `canonical_operation_receipts`, `public_cut_batches` |
 | Public projection | `ml_public.publications`, `ml_public.publication_assets` |
 
-There are 87 canonical private tables and two public projection tables.
+There are 89 canonical private tables and two public projection tables.
 
 ## Design, Library, and Media Relationships
 
@@ -86,6 +86,9 @@ erDiagram
   GARMENTS ||--o{ DESIGN_ANNOTATIONS : discusses
   MEDIA_ASSETS ||--o{ DESIGN_ANNOTATIONS : anchors
   MATERIALS ||--o{ MATERIAL_VARIANTS : varies
+  MATERIAL_VARIANTS ||--o| MATERIAL_VARIANT_PROFILES : describes
+  MATERIAL_VARIANTS ||--o{ MATERIAL_VARIANT_MEDIA : presents
+  MEDIA_ASSETS ||--o{ MATERIAL_VARIANT_MEDIA : reused_as
   MATERIAL_VARIANTS ||--o{ INVENTORY_ENTRIES : ledgers
   GARMENTS ||--o{ GARMENT_MATERIALS : allocates
   MATERIAL_VARIANTS ||--o{ GARMENT_MATERIALS : specified_by
@@ -99,6 +102,9 @@ Inventory is append-only. Available quantity is derived from ledger entry type
 and garment reservations; no manually editable available total exists.
 Supplier offers use explicit nullable material/component variant foreign keys
 with an exactly-one constraint rather than a polymorphic JSON relationship.
+Material imagery is also relational: ordered swatch, detail, and reference roles
+point to private canonical media assets. Textile personality and storage details
+remain explicit profile columns rather than an opaque JSON document.
 
 ## Technical and Production Relationships
 
@@ -263,6 +269,7 @@ Ordered migrations:
 16. `20260828021002_atomic_public_cut_batch.sql`
 17. `20260828033000_protected_canonical_commands.sql`
 18. `20260828050000_trusted_device_import_finalize.sql`
+19. `20260830073211_wp11g_material_visual_recovery.sql`
 
 The release-candidate migration role is deliberately narrower than an
 application role: it can read and upsert canonical private rows for a trusted,
