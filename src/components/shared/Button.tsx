@@ -12,7 +12,7 @@ type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
 
 const buttonVariants: Record<ButtonVariant, string> = {
   primary:
-    'border-ember/70 bg-ember text-midnight shadow-[0_10px_24px_rgba(200,155,60,0.16),inset_0_1px_0_rgba(255,255,255,0.28)] hover:bg-[#d5ab51] hover:shadow-[0_14px_30px_rgba(200,155,60,0.22)]',
+    'border-ember/70 bg-[#d5ab51] text-[#020202] shadow-[0_10px_24px_rgba(200,155,60,0.16),inset_0_1px_0_rgba(255,255,255,0.28)] hover:bg-[#e0b85f] hover:shadow-[0_14px_30px_rgba(200,155,60,0.22)]',
   secondary:
     'border-bronze/30 bg-stardust/[0.035] text-stardust/86 hover:border-ember/42 hover:bg-stardust/[0.075]',
   ghost:
@@ -36,7 +36,7 @@ export function Button({
   return (
     <button
       className={cn(
-        'inline-flex items-center justify-center gap-2 rounded-xl border font-medium transition duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ember focus-visible:ring-offset-2 focus-visible:ring-offset-midnight disabled:pointer-events-none disabled:opacity-45',
+        'atelier-button inline-flex items-center justify-center gap-2 rounded-xl border font-medium transition duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ember focus-visible:ring-offset-2 focus-visible:ring-offset-midnight disabled:pointer-events-none',
         buttonVariants[variant],
         buttonSizes[size],
         className,

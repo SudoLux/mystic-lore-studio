@@ -68,7 +68,7 @@ export function PortfolioStudioPage() {
       const result = await publishPublicCut(state, profile.id, currentActorId, syncState === 'ready');
       const committed = await commitPublicCutToSupabase(state, result.publications);
       await refresh();
-      setMessage(`Published atomic Public Cut ${committed.checksum.slice(0, 12)} (${committed.publishedIds.length} snapshots).`);
+      setMessage(`Your Public Cut is live with ${committed.publishedIds.length} published piece${committed.publishedIds.length === 1 ? '' : 's'}.`);
     } catch (error) { recordClientEvent({ context: { action: 'publish' }, kind: 'publication_failure' }); setMessage(error instanceof Error ? error.message : 'The Public Cut could not be published.'); }
     finally { setBusy(false); }
   };

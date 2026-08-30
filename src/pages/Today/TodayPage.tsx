@@ -35,7 +35,7 @@ export function TodayPage({ onNavigate, onOpenGarment }: { onNavigate: (page: Pa
     <PageHeader badge="Today" description="Return to the garment that needs your eye, then move naturally into the next creative decision." title="Studio">
       <div className="flex flex-wrap gap-2"><Button icon={<Plus aria-hidden="true" size={16} />} onClick={() => onNavigate('projects')}>New garment</Button><Button onClick={() => onNavigate('kanban')} variant="ghost">View plan</Button></div>
     </PageHeader>
-    {workspace.syncState === 'offline' ? <div className="rounded-2xl border border-ember/30 bg-ember/[0.08] px-4 py-3 text-sm text-stardust/72" role="status">Offline: your visual workspace is available from the canonical cache. Release and publish still require a fresh connection.</div> : null}
+    {workspace.syncState === 'offline' ? <div className="rounded-2xl border border-ember/30 bg-ember/[0.08] px-4 py-3 text-sm text-stardust/72" role="status">You are offline. Your visual workspace remains available, and release or publishing will resume after you reconnect.</div> : null}
 
     {featuredGarment ? <article className="relative isolate overflow-hidden rounded-[1.7rem] border border-bronze/24 bg-midnight/56 shadow-[0_28px_80px_rgba(0,0,0,0.28)]" data-testid="featured-garment">
       <div className="grid min-h-[31rem] lg:grid-cols-[1.25fr_0.75fr]">

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Card } from '../components/shared/Card';
+import { StudioSkeleton } from '../components/shared/StudioSkeleton';
 import { useAuth } from '../hooks/useAuth';
 import { useCanonicalWorkspace } from '../hooks/useCanonicalWorkspace';
 import { getInitialRoute, type AppRoute } from '../lib/appRoutes';
@@ -66,16 +67,18 @@ export function StudioAppRoute() {
   if (!isReady || !state) {
     return (
       <main className="mx-auto flex min-h-screen max-w-3xl items-center px-4 py-10">
-        <Card aria-busy={syncState === 'loading'} className="w-full border-bronze/28" role="status">
-          <p className="text-lg font-semibold text-stardust">Preparing the canonical Studio…</p>
-          <p className="mt-2 text-sm leading-6 text-stardust/58">Loading the persisted workspace, offline outbox, and recovery boundary.</p>
-          {error ? (
+        <div className="w-full">
+          {!error ? <StudioSkeleton label="Preparing your private Studio" /> : (
+            <Card className="w-full border-ember/32" role="alert">
+              <p className="text-lg font-semibold text-stardust">Your Studio needs a moment</p>
+              <p className="mt-2 text-sm leading-6 text-stardust/58">We could not finish loading your shared workspace.</p>
             <div className="mt-4 rounded-xl border border-ember/32 bg-ember/10 p-4 text-sm text-stardust/72">
               <p>{error}</p>
               <button className="mt-3 min-h-11 rounded-xl border border-ember/36 px-4" onClick={retry} type="button">Try again</button>
             </div>
-          ) : null}
-        </Card>
+            </Card>
+          )}
+        </div>
       </main>
     );
   }

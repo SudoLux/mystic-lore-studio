@@ -521,7 +521,7 @@ const versionsPage = read('src/pages/Versions/VersionsPage.tsx');
 for (const contract of ['recordWorkspaceChangeEvents', 'createFreezeFrame', 'compareFreezeFrame', 'previewRestore', 'commitRestore', 'assertFreshServerState']) {
   check(versioningRepository.includes(`function ${contract}`), `WP5 versioning repository contract is missing: ${contract}`);
 }
-for (const contract of ['Timeline', 'Version A', 'Version B', 'Structural comparison', 'Preview restore', 'ReleaseGate']) {
+for (const contract of ['Timeline', 'Version A', 'Version B', 'What changed', 'Preview restore', 'ReleaseGate']) {
   check(versionsPage.includes(contract), `WP5 Versions/Diff UI contract is missing: ${contract}`);
 }
 check(router.includes('<VersionsPage'), 'WP5 Versions & Diff route is missing.');

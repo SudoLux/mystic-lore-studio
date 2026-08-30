@@ -7,6 +7,7 @@ import { CanonicalWorkspaceState } from '../../components/shared/CanonicalWorksp
 import { Card } from '../../components/shared/Card';
 import { MobilePageHeader } from '../../components/shared/MobilePageHeader';
 import { PageHeader } from '../../components/shared/PageHeader';
+import { GarmentWorkbenchContext, SpecialistWorkbench } from '../../components/shared/SpecialistWorkbench';
 import { acceptAiArtifact, aiWorkflowLabels, completeAiJobWithFakeProvider, defaultAiInputRefs, failAiJob, queueAiJob, rejectAiArtifact, retryAiJob, startAiJob } from '../../domains/ai';
 import type { AiWorkflow } from '../../domains/workspace';
 import { useCanonicalWorkspace } from '../../hooks/useCanonicalWorkspace';
@@ -124,9 +125,10 @@ function AiStudioWorkspace() {
 
   async function run(id: string, action: () => void | Promise<void>) { setBusyId(id); setNotice(''); try { await action(); } catch (error) { recordClientEvent({ context: { stage: 'ai_command' }, kind: 'ai_job' }); setNotice(message(error)); } finally { setBusyId(''); } }
 
-  return <section className="space-y-5">
-    <MobilePageHeader badge="AI Jobs" kicker="Private candidates, human decisions" title="Governed AI" />
-    <PageHeader badge="WP9 · designer authority" description="Generate private, reviewable candidates; inspect their sources; then accept selected fields through the same commands, validation, permissions, and change ledger as manual work." title="AI Jobs"><Badge variant="teal"><ShieldCheck size={13} /> Candidate-only</Badge></PageHeader>
+  return <SpecialistWorkbench>
+    <MobilePageHeader badge="Studio Assistant" kicker="Private ideas, always approved by you" title="Creative assistance" />
+    <PageHeader badge="Studio Assistant" description="Explore focused suggestions for this garment, review every source, and choose exactly what becomes part of your work." title="Creative Assistance"><Badge variant="teal"><ShieldCheck size={13} /> You stay in control</Badge></PageHeader>
+    {garmentId ? <GarmentWorkbenchContext garmentId={garmentId} label="Studio Assistant" /> : null}
     {notice ? <div aria-live="polite" className="rounded-xl border border-bronze/28 bg-espresso/35 p-3 text-sm text-stardust/72">{notice}</div> : null}
     {offline ? <div className="flex items-center gap-3 rounded-xl border border-ember/35 bg-ember/10 p-4 text-sm"><WifiOff size={17} className="text-ember" /> Generation evidence remains available, but acceptance requires a fresh connection.</div> : null}
     {conflicts ? <div className="rounded-xl border border-ember/35 bg-ember/10 p-4 text-sm">Resolve {conflicts} garment conflict{conflicts === 1 ? '' : 's'} before committing an AI candidate.</div> : null}
@@ -139,18 +141,18 @@ function AiStudioWorkspace() {
             <label className="block"><span className="field-label">Garment</span><select className="field" onChange={(event) => setGarmentId(event.target.value)} value={garmentId}>{state.garments.map((item) => <option key={item.id} value={item.id}>{item.garmentCode} · {item.title}</option>)}</select></label>
             <label className="block"><span className="field-label">Candidate workflow</span><select className="field" onChange={(event) => setWorkflow(event.target.value as AiWorkflow)} value={workflow}>{workflows.map((item) => <option key={item} value={item}>{aiWorkflowLabels[item]}</option>)}</select></label>
           </div>
-          <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-bronze/18 bg-midnight/32 p-4"><div><p className="text-sm font-medium">deterministic-fake-v1</p><p className="mt-1 text-xs text-stardust/45">No paid model call · no raw prompt stored · repeatable test output</p></div><Button disabled={!garmentId || busyId === 'queue'} icon={<Plus size={16} />} onClick={queue} variant="primary">Queue candidate</Button></div>
+          <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-xl bg-midnight/28 p-4"><div><p className="text-sm font-medium">Private preview</p><p className="mt-1 text-xs text-stardust/45">Your source material stays private and nothing is saved without your approval.</p></div><Button disabled={!garmentId || busyId === 'queue'} icon={<Plus size={16} />} onClick={queue} variant="primary">Request ideas</Button></div>
         </Card>
 
-        {jobs.length ? jobs.map((job) => { const artifact = state.aiArtifacts.find((item) => item.jobId === job.id) ?? null; return <AiCandidatePanel artifact={artifact} busy={busyId === job.id || busyId === artifact?.id} job={job} key={job.id} onAccept={(keys, note) => artifact && accept(artifact.id, keys, note)} onGenerate={() => generate(job.id)} onReject={(note) => artifact && reject(artifact.id, note)} onRetry={() => retry(job.id)} onStart={() => start(job.id)} state={state} />; }) : <Card><div className="py-10 text-center"><Sparkles className="mx-auto text-stardust/24" size={32} /><h2 className="font-display mt-4 text-2xl">No AI jobs for this garment</h2><p className="mx-auto mt-2 max-w-lg text-sm leading-6 text-stardust/50">Queue a narrow candidate workflow. Nothing can enter measurements, BOM, construction, releases, costs, suppliers, or publications until you explicitly review and accept it.</p></div></Card>}
+        {jobs.length ? jobs.map((job) => { const artifact = state.aiArtifacts.find((item) => item.jobId === job.id) ?? null; return <AiCandidatePanel artifact={artifact} busy={busyId === job.id || busyId === artifact?.id} job={job} key={job.id} onAccept={(keys, note) => artifact && accept(artifact.id, keys, note)} onGenerate={() => generate(job.id)} onReject={(note) => artifact && reject(artifact.id, note)} onRetry={() => retry(job.id)} onStart={() => start(job.id)} state={state} />; }) : <Card><div className="py-10 text-center"><Sparkles className="mx-auto text-stardust/24" size={32} /><h2 className="font-display mt-4 text-2xl">Begin with a focused request</h2><p className="mx-auto mt-2 max-w-lg text-sm leading-6 text-stardust/50">Choose one part of the garment to explore. Every suggestion remains separate from your work until you review and accept it.</p></div></Card>}
       </main>
 
       <aside className="space-y-4">
-        <Card><div className="flex items-center gap-2"><LockKeyhole className="text-ember" size={18} /><h2 className="font-display text-xl">Trust boundary</h2></div><ul className="mt-4 space-y-3 text-sm leading-6 text-stardust/58"><li>Jobs, inputs, logs, artifacts, and generated media stay private.</li><li>Candidates have no direct domain-write capability.</li><li>Acceptance reuses normal domain validation and emits attributable change events.</li><li>Portfolio copy still passes the Public Cut privacy gate before anonymous access.</li></ul></Card>
+        <Card><div className="flex items-center gap-2"><LockKeyhole className="text-ember" size={18} /><h2 className="font-display text-xl">Private by design</h2></div><ul className="mt-4 space-y-3 text-sm leading-6 text-stardust/58"><li>Your references and generated options stay private.</li><li>Suggestions cannot change a garment on their own.</li><li>You choose every field before it becomes part of the garment.</li><li>Anything shared publicly still passes the portfolio privacy review.</li></ul></Card>
         <Card><p className="text-xs uppercase tracking-[0.14em] text-ember">Decision states</p><div className="mt-4 space-y-2 text-sm text-stardust/58">{['Queued', 'Running', 'Candidate', 'Accepted', 'Rejected', 'Modified after generation'].map((label) => <div className="flex items-center gap-2" key={label}><span className="h-1.5 w-1.5 rounded-full bg-bronze" />{label}</div>)}</div></Card>
       </aside>
     </div>
-  </section>;
+  </SpecialistWorkbench>;
 }
 
 function message(error: unknown) { return error instanceof Error ? error.message : 'The AI workflow could not be completed.'; }

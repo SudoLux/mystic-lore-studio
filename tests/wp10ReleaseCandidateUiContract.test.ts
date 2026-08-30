@@ -40,7 +40,7 @@ describe('WP10 release-candidate UI corrections', () => {
   });
 
   it('keeps Today on canonical activity and preserves global keyboard search', () => {
-    for (const contract of ['Recent activity', 'Featured garment', 'Offline: your visual workspace']) {
+    for (const contract of ['Recent activity', 'Featured garment', 'You are offline. Your visual workspace remains available']) {
       expect(today).toContain(contract);
     }
     expect(today).toContain('useCanonicalWorkspace');

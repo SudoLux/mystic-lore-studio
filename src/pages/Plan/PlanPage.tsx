@@ -40,7 +40,7 @@ export function PlanPage() {
         <div aria-live="polite" className="flex min-h-52 flex-col items-center justify-center gap-4 text-center">
           {workspace.error ? <AlertTriangle className="text-ember" aria-hidden="true" /> : <RefreshCw className="animate-spin text-ember" aria-hidden="true" />}
           <p className="max-w-md text-sm leading-6 text-stardust/62">
-            {workspace.error ?? 'Preparing the canonical plan, task, and calendar records…'}
+            {workspace.error ?? 'Preparing your Studio plan…'}
           </p>
           {workspace.error ? <Button onClick={workspace.retry}>Retry</Button> : null}
         </div>
@@ -61,7 +61,7 @@ export function PlanPage() {
       />
       <PageHeader
         badge="Plan"
-        description="Move garments through the studio, keep canonical tasks accountable, and schedule fittings, reviews, releases, and shoots."
+        description="Move garments through the studio, keep next steps clear, and schedule fittings, reviews, releases, and shoots."
         title="Flow, Tasks & Calendar"
       >
         <Button icon={<Plus aria-hidden="true" size={16} />} onClick={() => setShowCreate(true)}>New {view === 'calendar' ? 'event' : 'task'}</Button>

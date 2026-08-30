@@ -21,7 +21,7 @@ describe('WP9 AI candidate UI contracts', () => {
   });
 
   it('includes offline, conflict, empty, failure, and narrow-screen states', () => {
-    for (const label of ['fresh connection', 'Resolve', 'No AI jobs for this garment', 'Provider failed']) expect(`${page}\n${panel}`).toContain(label);
+    for (const label of ['fresh connection', 'Resolve', 'Begin with a focused request', 'Provider failed']) expect(`${page}\n${panel}`).toContain(label);
     expect(page).toMatch(/md:grid-cols|xl:grid-cols/);
     expect(panel).toMatch(/sm:grid-cols|md:grid-cols/);
   });

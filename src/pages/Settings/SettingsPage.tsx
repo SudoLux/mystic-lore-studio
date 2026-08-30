@@ -48,9 +48,9 @@ export function SettingsPage() {
       link.click();
       link.remove();
       URL.revokeObjectURL(url);
-      setMessage(`Recovery bundle exported with ${manifest.length} verified media objects and checksum ${checksum.slice(0, 12)}…`);
+      setMessage(`Recovery copy ready with ${manifest.length} verified images and files.`);
     } catch (reason) {
-      setMessage(reason instanceof Error ? reason.message : 'The canonical recovery bundle could not be exported.');
+      setMessage(reason instanceof Error ? reason.message : 'The recovery copy could not be exported.');
     } finally {
       setWorking(false);
     }
@@ -61,9 +61,9 @@ export function SettingsPage() {
     setMessage(null);
     try {
       await refresh();
-      setMessage('The workspace was refreshed from the canonical repository.');
+      setMessage('Your Studio is up to date.');
     } catch (reason) {
-      setMessage(reason instanceof Error ? reason.message : 'The canonical workspace could not be refreshed.');
+      setMessage(reason instanceof Error ? reason.message : 'Your Studio could not be refreshed.');
     } finally {
       setWorking(false);
     }
@@ -71,43 +71,47 @@ export function SettingsPage() {
 
   return (
     <section className="space-y-5">
-      <MobilePageHeader badge="Settings" kicker="Cloud authority and recovery" title="Studio Controls" />
-      <PageHeader badge="Settings" description="Canonical repository status, explicit refresh, recovery export, and privacy-safe diagnostics." title="Settings" />
+      <MobilePageHeader badge="Settings" kicker="Sync, privacy, and recovery" title="Studio Settings" />
+      <PageHeader badge="Settings" description="Keep your Studio current, protect your work, and access advanced recovery tools when you need them." title="Studio Settings" />
 
       <div className="grid gap-4 md:grid-cols-3">
-        <StatusCard label="Authority" status={modeLabel(persistenceMode)} text={modeDescription(persistenceMode)} />
-        <StatusCard label="Outbox" status={`${pendingCount} pending`} text={pendingCount ? 'Queued edits will replay in dependency order. Protected actions remain paused.' : 'The local outbox is empty.'} />
-        <StatusCard label="Canonical graph" status={`${state.garments.length} garments`} text={`${state.mediaAssets.length} assets, ${state.releaseTasks.length} tasks, ${state.editorialCollections.length} editorials, and ${state.publications.length} publication records.`} />
+        <StatusCard label="Workspace" status={modeLabel(persistenceMode)} text={modeDescription(persistenceMode)} />
+        <StatusCard label="Waiting to sync" status={`${pendingCount} change${pendingCount === 1 ? '' : 's'}`} text={pendingCount ? 'Your queued edits will continue when a connection is available.' : 'Everything from this device is saved.'} />
+        <StatusCard label="Studio library" status={`${state.garments.length} garment${state.garments.length === 1 ? '' : 's'}`} text={`${state.mediaAssets.length} images and files · ${state.releaseTasks.length} tasks · ${state.editorialCollections.length} stories.`} />
       </div>
 
       <Card className="border-teal/28 bg-[linear-gradient(135deg,rgba(45,92,107,.2),rgba(10,10,10,.68))]" elevated>
         <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
           <div>
-            <Badge variant={syncState === 'ready' && pendingCount === 0 ? 'teal' : 'ember'}>Canonical sync</Badge>
+            <Badge variant={syncState === 'ready' && pendingCount === 0 ? 'teal' : 'ember'}>Cloud status</Badge>
             <h2 className="mt-4 text-xl font-semibold text-stardust">{syncHeading(syncState, pendingCount)}</h2>
-            <p className="mt-2 max-w-2xl text-sm leading-6 text-stardust/62">{error ?? 'Supabase is the shared record in cloud mode. IndexedDB holds only a cache, queued operations, staged media, and preserved recovery evidence.'}</p>
+            <p className="mt-2 max-w-2xl text-sm leading-6 text-stardust/62">{error ?? 'Your garments, imagery, and Studio decisions are safely shared across your signed-in devices.'}</p>
           </div>
-          <Button disabled={working} icon={<RefreshCcw aria-hidden="true" size={16} />} onClick={() => void refreshCloud()} variant="primary">Refresh from cloud</Button>
+          <Button disabled={working} icon={<RefreshCcw aria-hidden="true" size={16} />} onClick={() => void refreshCloud()} variant="primary">Refresh Studio</Button>
         </div>
       </Card>
 
       <Card>
         <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
           <div>
-            <div className="flex items-center gap-3"><ShieldCheck aria-hidden="true" className="text-teal" size={21} /><h2 className="text-lg font-semibold">Recovery boundary</h2></div>
-            <p className="mt-3 text-sm leading-6 text-stardust/62">Legacy browser data is available only to migration and emergency-recovery tooling. Import and reset controls are intentionally absent from normal authenticated routing, so a stale browser cannot replace canonical cloud authority.</p>
-            <p className="mt-3 text-xs leading-5 text-stardust/45">Recovery snapshots contain private Studio data. Store them securely and delete them under the 30-day beta retention policy.</p>
+            <div className="flex items-center gap-3"><ShieldCheck aria-hidden="true" className="text-teal" size={21} /><h2 className="text-lg font-semibold">Private recovery copy</h2></div>
+            <p className="mt-3 text-sm leading-6 text-stardust/62">Download a private copy of your Studio data and media for safekeeping.</p>
+            <p className="mt-3 text-xs leading-5 text-stardust/45">This file contains private Studio work. Store it securely and remove old beta copies after 30 days.</p>
           </div>
-          <Button disabled={working} icon={<Download aria-hidden="true" size={16} />} onClick={() => void exportRecoverySnapshot()} variant="secondary">Export recovery snapshot</Button>
+          <Button disabled={working} icon={<Download aria-hidden="true" size={16} />} onClick={() => void exportRecoverySnapshot()} variant="secondary">Download recovery copy</Button>
         </div>
       </Card>
 
       {message ? <p aria-live="polite" className="rounded-xl border border-bronze/28 bg-midnight/40 p-4 text-sm text-stardust/70">{message}</p> : null}
-      <ObservabilityPanel />
-
-      <Card className="border-bronze/22">
-        <div className="flex items-start gap-3"><Cloud aria-hidden="true" className="mt-0.5 text-ember" size={19} /><div><h2 className="font-semibold">Rollout rule</h2><p className="mt-2 text-sm leading-6 text-stardust/58">Mode is Studio-wide and stored in the canonical version policy. Shadow compares complete normalized graphs; cloud mode may be enabled only after exact parity and an empty outbox. This screen does not permit a browser to flip authority.</p></div></div>
-      </Card>
+      <details className="atelier-disclosure">
+        <summary>Advanced reliability details</summary>
+        <div className="mt-4 space-y-4">
+          <ObservabilityPanel />
+          <Card className="border-bronze/22">
+            <div className="flex items-start gap-3"><Cloud aria-hidden="true" className="mt-0.5 text-ember" size={19} /><div><h2 className="font-semibold">Workspace protection</h2><p className="mt-2 text-sm leading-6 text-stardust/58">The shared workspace mode applies to the whole Studio. Verification must finish and all queued changes must be saved before cloud authority can change. A browser cannot change this safety setting.</p></div></div>
+          </Card>
+        </div>
+      </details>
     </section>
   );
 }
@@ -117,19 +121,19 @@ function StatusCard({ label, status, text }: { label: string; status: string; te
 }
 
 function modeLabel(mode: 'cloud' | 'local-recovery' | 'shadow') {
-  return mode === 'cloud' ? 'Cloud authority' : mode === 'shadow' ? 'Shadow verification' : 'Recovery-only';
+  return mode === 'cloud' ? 'Shared and current' : mode === 'shadow' ? 'Verification in progress' : 'Recovery mode';
 }
 
 function modeDescription(mode: 'cloud' | 'local-recovery' | 'shadow') {
-  if (mode === 'cloud') return 'Supabase is authoritative; this device is cache and outbox only.';
-  if (mode === 'shadow') return 'Optimistic UI results persist to Supabase and are compared before cutover.';
-  return 'No writable canonical cloud is available; protected evidence is disabled.';
+  if (mode === 'cloud') return 'This device is connected to your shared Studio.';
+  if (mode === 'shadow') return 'Local and shared results are being compared before the switch.';
+  return 'The Studio is available for recovery inspection only.';
 }
 
 function syncHeading(syncState: 'loading' | 'ready' | 'offline' | 'conflict' | 'error', pendingCount: number) {
-  if (syncState === 'offline') return 'Offline edits are retained for replay.';
-  if (syncState === 'conflict') return 'Designer review is required.';
-  if (syncState === 'error') return 'Canonical sync needs attention.';
-  if (syncState === 'loading') return 'Loading the canonical repository…';
-  return pendingCount ? 'The outbox is waiting to converge.' : 'This device matches the canonical repository.';
+  if (syncState === 'offline') return 'Your offline edits are safe.';
+  if (syncState === 'conflict') return 'A recent edit needs your review.';
+  if (syncState === 'error') return 'Cloud sync needs attention.';
+  if (syncState === 'loading') return 'Checking your shared Studio…';
+  return pendingCount ? 'Your latest changes are waiting to sync.' : 'Everything is up to date.';
 }

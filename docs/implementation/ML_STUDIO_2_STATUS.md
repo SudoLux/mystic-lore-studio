@@ -1,6 +1,6 @@
 # Mystic Lore Studio 2.0 Implementation Ledger
 
-Last updated: 2026-08-27
+Last updated: 2026-08-29
 
 This ledger records the reproducible baseline and bounded implementation work
 for Mystic Lore Studio 2.0. WP2 establishes the additive canonical schema,
@@ -29,6 +29,10 @@ the private WP3–WP9 authority, with IndexedDB cache/outbox/recovery, protected
 command boundaries, and atomic Public Cuts. Local engineering gates pass; the
 release remains blocked on isolated hosted-beta recovery, assistive-technology,
 physical-device, and deployed-performance evidence.
+WP11 restores the V1-inspired visual ease at the presentation layer: image-first
+garment browsing, creative garment context, calmer specialist workbenches, and
+a production-polish pass across loading, motion, responsive hierarchy, copy,
+and accessibility. Canonical storage and security boundaries remain unchanged.
 
 ## Work-package Status
 
@@ -48,6 +52,7 @@ physical-device, and deployed-performance evidence.
 | WP8 | Portfolio profile/project/editorial curation, Public Cut preview, immutable publication history, copied media, and anonymous route cutover | Complete | Anonymous access exposes only selected immutable payloads and copied public-safe derivatives, proven by application and database privacy tests |
 | WP9 | Governed AI jobs, normalized source references, reviewable candidates, deterministic test provider, and typed/audited acceptance | Complete | AI cannot bypass domain validation or directly write private/public production records; every accepted field is attributable to its source, actor, command, and change event |
 | WP10 | Hardening, canonical cloud authority, transactional sync, atomic publication, migration rehearsal, and release readiness | External validation blocked | Local schema, application cutover, cross-device, privacy, accessibility automation, migration, and bundle gates pass; hosted recovery/device/performance evidence remains |
+| WP11 | Studio Experience & Visual Recovery, image-first creative hierarchy, specialist-workbench calm, and production UX polish | Local implementation complete | Major Studio routes pass visual regression at laptop, iPad portrait/landscape, and mobile sizes; automated accessibility, application, sync, schema, RLS, build, and bundle gates pass |
 
 ## Verification
 
@@ -106,6 +111,7 @@ RC evidence and decision records:
 - [2.0 release notes](RELEASE_NOTES_2.0.md)
 - [ADR index](../adr/README.md)
 - `docs/implementation/evidence/wp10/rc-migration-evidence.json`
+- [WP11F visual regression and accessibility report](WP11F_VISUAL_REGRESSION.md)
 
 Local blocker status: authenticated routing now uses the Supabase-backed
 canonical provider; localStorage is migration input only, IndexedDB is

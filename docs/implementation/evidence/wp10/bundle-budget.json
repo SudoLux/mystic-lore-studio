@@ -4,13 +4,13 @@
     "imageBytes": 256000,
     "jsChunkBytes": 512000
   },
-  "checkedAt": "2026-08-28T06:28:29.791Z",
+  "checkedAt": "2026-08-30T06:00:01.009Z",
   "decision": "PASS",
-  "distChecksum": "8c35cd4cd687ba88511178fc6b04fa486bd63a5ba4fe08ff5b9592fb30c9fcd5",
+  "distChecksum": "c0a8eda4c63ac88656c49c702d1f15942b60c36a986610e99d928bf5356a6d8c",
   "failures": [],
   "largestCss": {
-    "bytes": 268707,
-    "name": "index-Dh3fHcMA.css",
+    "bytes": 281120,
+    "name": "index-BMBE4B-f.css",
     "type": ".css"
   },
   "largestImage": {
@@ -19,10 +19,10 @@
     "type": ".png"
   },
   "largestJs": {
-    "bytes": 378463,
-    "name": "createLucideIcon-O1orv5Yl.js",
+    "bytes": 385433,
+    "name": "classes-B3MhsyuA.js",
     "type": ".js"
   },
-  "routeChunkCount": 36,
-  "totalBytes": 1681294
+  "routeChunkCount": 38,
+  "totalBytes": 1746359
 }

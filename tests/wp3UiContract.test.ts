@@ -9,8 +9,8 @@ describe('WP3 canonical UI accessibility and state contracts', () => {
     expect(source).toContain('aria-live="polite"');
     expect(source).toContain('aria-live="assertive"');
     expect(source).toContain('role="alert"');
-    expect(source).toContain('Preparing your canonical garment workspace');
-    expect(source).toContain('Retry');
+    expect(source).toContain('Preparing your garment workspace');
+    expect(source).toContain('Try again');
   });
 
   it('keeps relationship selection keyboard-native and exposes current selection/downstream use', () => {

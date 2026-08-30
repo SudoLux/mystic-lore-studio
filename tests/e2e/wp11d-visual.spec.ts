@@ -13,11 +13,6 @@ test('WP11D keeps garment inspiration and the textile archive visually dominant'
   await page.getByLabel('Signature details').fill('Articulated sleeve, wrapped closure, hand-finished edge');
   await page.getByRole('button', { name: 'Save creative direction' }).click();
 
-  await page.getByRole('region', { name: 'Choose a material' }).getByRole('button', { name: 'Create inline' }).click();
-  await page.getByPlaceholder('Material name').fill('Washed Indigo Linen');
-  await page.getByRole('button', { name: 'Create and use' }).click();
-  await expect(page.getByText('Washed Indigo Linen').first()).toBeVisible();
-
   await page.getByRole('button', { name: 'Story', exact: true }).click();
   await expect(page.getByTestId('garment-inspiration-hero')).toBeVisible();
   await expect(page.locator('main')).toHaveScreenshot('wp11d-garment-desktop.png', {

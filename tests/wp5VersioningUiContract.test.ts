@@ -10,7 +10,7 @@ const gate = readFileSync(new URL('../src/components/versioning/ReleaseGate.tsx'
 
 describe('WP5 Versions, Diff, and Restore UI contracts', () => {
   it('exposes a garment timeline and A/B structural comparison route', () => {
-    for (const label of ['Timeline', 'Version A', 'Version B', 'Structural comparison', 'Export diff']) expect(page).toContain(label);
+    for (const label of ['Timeline', 'Version A', 'Version B', 'What changed', 'Export changes']) expect(page).toContain(label);
     expect(page).toContain('Current working state');
     expect(page).toContain('FreezeFrameDialog');
   });

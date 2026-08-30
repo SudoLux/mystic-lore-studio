@@ -8,7 +8,7 @@ test('WP11E specialist workspaces share a calm garment-first workbench', async (
 
   await page.goto(`/#/technical/${garmentId}`);
   await expect(page.getByTestId('specialist-garment-context')).toBeVisible();
-  await page.getByRole('button', { name: /Create specification/ }).click();
+  await page.getByRole('button', { name: /Start with size M/ }).click();
   await expect(page.getByRole('heading', { exact: true, name: 'Flats' })).toBeVisible();
   await expect(page.locator('#main-content')).toHaveScreenshot('wp11e-technical-desktop.png', {
     animations: 'disabled',

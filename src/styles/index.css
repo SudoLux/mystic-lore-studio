@@ -34,9 +34,12 @@
   --atelier-page-space: clamp(1rem, 2.5vw, 3rem);
   --atelier-section-space: clamp(1.25rem, 2vw, 2rem);
   --atelier-panel-border: rgba(154, 108, 60, 0.2);
+  --atelier-ease: cubic-bezier(0.22, 1, 0.36, 1);
+  --atelier-speed-fast: 160ms;
+  --atelier-speed-base: 280ms;
 }
 
-html { scroll-behavior: smooth; }
+html { overflow-x: hidden; scroll-behavior: smooth; }
 
 button, a, input, select, textarea, [role="button"] { -webkit-tap-highlight-color: rgba(200, 155, 60, 0.22); }
 
@@ -82,6 +85,38 @@ button, a, input, select, textarea, [role="button"] { -webkit-tap-highlight-colo
 
 .atelier-page-header { border-bottom: 1px solid rgba(154, 108, 60, 0.18); }
 
+.atelier-route {
+  min-width: 0;
+  animation: atelier-route-enter 360ms var(--atelier-ease) both;
+}
+
+.atelier-button {
+  transform: translateY(0);
+  transition:
+    color var(--atelier-speed-fast) ease,
+    background-color var(--atelier-speed-fast) ease,
+    border-color var(--atelier-speed-fast) ease,
+    box-shadow var(--atelier-speed-base) var(--atelier-ease),
+    transform var(--atelier-speed-base) var(--atelier-ease);
+}
+
+.atelier-button:active:not(:disabled) { transform: translateY(1px) scale(0.985); }
+
+.atelier-button:disabled {
+  border-color: rgba(237, 227, 207, 0.12) !important;
+  background: rgba(237, 227, 207, 0.075) !important;
+  box-shadow: none !important;
+  color: rgba(237, 227, 207, 0.6) !important;
+  opacity: 1;
+}
+
+/* Gold selection surfaces use the lighter atelier gold for reliable dark-text contrast. */
+.bg-ember.text-midnight { background-color: #d5ab51; color: #020202; }
+
+@media (hover: hover) and (pointer: fine) {
+  .atelier-button:hover:not(:disabled) { transform: translateY(-1px); }
+}
+
 .atelier-image-frame {
   border: 1px solid rgba(154, 108, 60, 0.22);
   background: radial-gradient(circle at 20% 10%, rgba(200, 155, 60, 0.17), transparent 32%), #12110f;
@@ -92,6 +127,9 @@ button, a, input, select, textarea, [role="button"] { -webkit-tap-highlight-colo
 .atelier-image-frame--library { border-radius: 1rem; }
 .atelier-image-frame--thumbnail { border-radius: 0.75rem; }
 
+.atelier-image-pending { animation: atelier-image-breathe 1.8s ease-in-out infinite; }
+.atelier-image-ready { animation: atelier-image-reveal 420ms var(--atelier-ease) both; }
+
 .atelier-empty-state {
   border: 1px dashed rgba(154, 108, 60, 0.32);
   border-radius: 1.25rem;
@@ -99,6 +137,69 @@ button, a, input, select, textarea, [role="button"] { -webkit-tap-highlight-colo
   padding: clamp(1.5rem, 4vw, 3rem);
   text-align: center;
 }
+
+.atelier-skeleton-shell {
+  min-height: 28rem;
+  overflow: hidden;
+  border: 1px solid rgba(154, 108, 60, 0.16);
+  border-radius: 1.35rem;
+  background: linear-gradient(150deg, rgba(237, 227, 207, 0.035), rgba(237, 227, 207, 0.014));
+  padding: clamp(1.25rem, 3vw, 2.25rem);
+}
+
+.atelier-skeleton-shell--compact { min-height: 18rem; }
+
+.atelier-skeleton {
+  position: relative;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(237, 227, 207, 0.065);
+}
+
+.atelier-skeleton::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  transform: translateX(-105%);
+  background: linear-gradient(90deg, transparent, rgba(237, 227, 207, 0.1), transparent);
+  animation: atelier-skeleton-sheen 1.5s ease-in-out infinite;
+}
+
+.atelier-skeleton--eyebrow { width: 5.5rem; height: 1.35rem; }
+.atelier-skeleton--title { width: min(28rem, 72%); height: 2.75rem; margin-top: 1rem; }
+.atelier-skeleton--copy { width: min(38rem, 88%); height: 1rem; margin-top: 1rem; }
+.atelier-skeleton-grid { display: grid; gap: 1.5rem; margin-top: 2rem; }
+.atelier-skeleton--image { min-height: 15rem; border-radius: 1.15rem; }
+.atelier-skeleton-copy-stack { display: grid; align-content: center; gap: 0.85rem; }
+.atelier-skeleton--line { width: 72%; height: 0.85rem; }
+.atelier-skeleton--line-long { width: 94%; }
+.atelier-skeleton--line-short { width: 48%; }
+
+@media (min-width: 768px) {
+  .atelier-skeleton-grid { grid-template-columns: minmax(0, 1.15fr) minmax(15rem, 0.85fr); }
+}
+
+.atelier-disclosure {
+  border: 1px solid rgba(154, 108, 60, 0.18);
+  border-radius: 1.15rem;
+  background: rgba(237, 227, 207, 0.018);
+  padding: 1rem;
+}
+
+.atelier-disclosure > summary {
+  min-height: 2.75rem;
+  display: flex;
+  align-items: center;
+  color: rgba(237, 227, 207, 0.66);
+  cursor: pointer;
+  font-size: 0.875rem;
+  font-weight: 600;
+  list-style: none;
+}
+
+.atelier-disclosure > summary::-webkit-details-marker { display: none; }
+.atelier-disclosure > summary::after { content: '+'; margin-left: auto; color: rgba(200, 155, 60, 0.72); font-size: 1.25rem; font-weight: 400; }
+.atelier-disclosure[open] > summary::after { content: '−'; }
 
 .atelier-tablist {
   display: flex;
@@ -756,6 +857,25 @@ textarea:focus-visible {
     opacity: 1;
     transform: translateY(0);
   }
+}
+
+@keyframes atelier-route-enter {
+  from { transform: translateY(8px); }
+  to { transform: translateY(0); }
+}
+
+@keyframes atelier-image-reveal {
+  from { opacity: 0; filter: saturate(0.82) brightness(0.78); transform: scale(1.012); }
+  to { opacity: 1; filter: saturate(1) brightness(1); transform: scale(1); }
+}
+
+@keyframes atelier-image-breathe {
+  0%, 100% { filter: brightness(0.9); }
+  50% { filter: brightness(1.08); }
+}
+
+@keyframes atelier-skeleton-sheen {
+  55%, 100% { transform: translateX(105%); }
 }
 
 @keyframes gallery-image-enter {

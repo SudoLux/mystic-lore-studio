@@ -73,7 +73,7 @@ export function CanonicalMediaImage({
     return (
       <AtelierImageFrame
         aria-label={status === 'error' ? `${alt} image unavailable` : `${alt} image placeholder`}
-        className={cn('flex items-center justify-center', className)}
+        className={cn('atelier-image-pending flex items-center justify-center', className)}
         emphasis={mode}
         role="img"
       >
@@ -102,7 +102,7 @@ export function CanonicalMediaImage({
     <AdaptiveProjectImage
       alt={alt}
       asset={localAsset}
-      className={className}
+      className={cn('atelier-image-ready', className)}
       displayFit={fit}
       mode={mode === 'hero' ? 'primary' : mode === 'thumbnail' ? 'thumbnail' : 'compact'}
       priority={priority}

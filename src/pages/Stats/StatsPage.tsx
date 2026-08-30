@@ -20,7 +20,7 @@ export function StatsPage() {
   return (
     <section className="space-y-5">
       <MobilePageHeader badge="Stats" kicker={`${activeGarments.length} active · ${openTasks.length} open tasks`} title="Studio Signals" />
-      <PageHeader badge="Stats" description="Studio analytics calculated entirely from the freshly hydrated canonical graph." title="Studio Stats" />
+      <PageHeader badge="Stats" description="A quiet overview of momentum across garments, materials, production, and stories." title="Studio Signals" />
       <MobileSummaryStrip items={[
         { icon: <Shirt aria-hidden="true" size={15} />, label: 'Garments', value: String(state.garments.length) },
         { icon: <Clock3 aria-hidden="true" size={15} />, label: 'Open tasks', value: String(openTasks.length) },
@@ -37,7 +37,7 @@ export function StatsPage() {
 
       <div className="grid gap-5 xl:grid-cols-2">
         <SignalCard description="Stable garment relationships grouped by current workflow phase." rows={countBy(state.garments, 'phase')} title="Garments by phase" />
-        <SignalCard description="Canonical release tasks grouped by status." rows={countBy(state.releaseTasks, 'status')} title="Task board health" />
+        <SignalCard description="Studio tasks grouped by their current status." rows={countBy(state.releaseTasks, 'status')} title="Task board health" />
         <SignalCard description="Reusable material and component records, not duplicated project fields." rows={[
           { label: 'Materials', value: state.materials.length },
           { label: 'Material variants', value: state.materialVariants.length },
@@ -57,7 +57,7 @@ export function StatsPage() {
       <Card className="border-teal/24 bg-[linear-gradient(135deg,rgba(45,92,107,.16),rgba(10,10,10,.66))]">
         <p className="text-xs font-medium uppercase tracking-[.14em] text-teal">Integrity signal</p>
         <h2 className="mt-3 text-xl font-semibold">{state.garmentVersions.length} Freeze Frames · {state.changeEvents.length} ledger events · {state.aiAcceptances.length} AI acceptance receipts</h2>
-        <p className="mt-2 text-sm leading-6 text-stardust/58">These totals are loaded from the shared canonical repository. They no longer use the legacy browser-local project model.</p>
+        <p className="mt-2 text-sm leading-6 text-stardust/58">Your shared Studio keeps these milestones connected to the garment decisions that created them.</p>
       </Card>
     </section>
   );
@@ -69,7 +69,7 @@ function Metric({ icon, label, value }: { icon: ReactNode; label: string; value:
 
 function SignalCard({ description, rows, title }: { description: string; rows: CountRow[]; title: string }) {
   const maximum = Math.max(1, ...rows.map((row) => row.value));
-  return <Card><h2 className="text-lg font-semibold">{title}</h2><p className="mt-2 text-sm leading-6 text-stardust/52">{description}</p><div className="mt-5 space-y-3">{rows.length ? rows.map((row) => <div key={row.label}><div className="flex items-center justify-between gap-3 text-sm"><span className="capitalize text-stardust/68">{row.label.replaceAll('_', ' ')}</span><strong className="tabular-nums">{row.value}</strong></div><div className="mt-2 h-2 overflow-hidden rounded-full bg-stardust/8"><div className="h-full rounded-full bg-[linear-gradient(90deg,#9a6c3c,#c89b3c,#2d5c6b)]" style={{ width: `${(row.value / maximum) * 100}%` }} /></div></div>) : <p className="rounded-xl border border-dashed border-bronze/24 p-4 text-sm text-stardust/48">No canonical records yet.</p>}</div></Card>;
+  return <Card><h2 className="text-lg font-semibold">{title}</h2><p className="mt-2 text-sm leading-6 text-stardust/52">{description}</p><div className="mt-5 space-y-3">{rows.length ? rows.map((row) => <div key={row.label}><div className="flex items-center justify-between gap-3 text-sm"><span className="capitalize text-stardust/68">{row.label.replaceAll('_', ' ')}</span><strong className="tabular-nums">{row.value}</strong></div><div className="mt-2 h-2 overflow-hidden rounded-full bg-stardust/8"><div className="h-full rounded-full bg-[linear-gradient(90deg,#9a6c3c,#c89b3c,#2d5c6b)]" style={{ width: `${(row.value / maximum) * 100}%` }} /></div></div>) : <p className="rounded-xl border border-dashed border-bronze/24 p-4 text-sm text-stardust/48">Nothing to show here yet.</p>}</div></Card>;
 }
 
 function countBy<T extends Record<K, PropertyKey>, K extends keyof T>(items: T[], key: K): CountRow[] {

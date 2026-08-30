@@ -1,5 +1,5 @@
 import { lazy, Suspense, type ComponentType } from 'react';
-import { Card } from '../components/shared/Card';
+import { StudioSkeleton } from '../components/shared/StudioSkeleton';
 import type { AppRoute } from '../lib/appRoutes';
 import type { PageId } from '../types/navigation';
 
@@ -27,7 +27,7 @@ export type StudioPageRouterProps = {
 
 /** Each Studio area is a separate route chunk; all private screens read the canonical provider. */
 export function StudioPageRouter(props: StudioPageRouterProps) {
-  return <Suspense fallback={<RouteLoading />}><StudioPage {...props} /></Suspense>;
+  return <Suspense fallback={<RouteLoading />}><div className="atelier-route" key={routeKey(props.route)}><StudioPage {...props} /></div></Suspense>;
 }
 
 function StudioPage({
@@ -58,12 +58,11 @@ function StudioPage({
 }
 
 function RouteLoading() {
-  return (
-    <Card aria-busy="true" className="min-h-52 border-bronze/24" role="status">
-      <p className="text-sm font-medium text-stardust">Opening Studio workspace…</p>
-      <p className="mt-2 text-sm text-stardust/50">Loading only the tools needed for this area.</p>
-    </Card>
-  );
+  return <StudioSkeleton />;
+}
+
+function routeKey(route: AppRoute) {
+  return [route.page, route.projectId, route.technicalGarmentId, route.productionGarmentId].filter(Boolean).join(':');
 }
 
 function lazyNamed<TModule extends Record<string, unknown>, TKey extends keyof TModule>(

@@ -22,7 +22,7 @@ test('canonical UI writes survive offline reload, converge, and appear on a seco
   const offlineTitle = `Offline Coat ${crypto.randomUUID().slice(0, 8)}`;
   await disconnectCanonicalTransport(page);
   await createGarment(page, offlineTitle);
-  await expect(page.getByText('Saved locally. Changes will need a connection before cloud sync.')).toBeVisible();
+  await expect(page.getByText('Saved on this device. Your changes will sync when you reconnect.')).toBeVisible();
   await page.reload();
   await expect(page.getByRole('heading', { name: offlineTitle })).toBeVisible();
   await reconnectAndConverge(page);

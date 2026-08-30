@@ -57,7 +57,7 @@ export const navigationItems: NavItem[] = [
   },
   {
     id: 'versions',
-    label: 'Versions & Diff',
+    label: 'Versions',
     shortLabel: 'Versions',
     description: 'Freeze Frames and restore',
     icon: GitCompareArrows,
@@ -65,9 +65,9 @@ export const navigationItems: NavItem[] = [
   },
   {
     id: 'ai',
-    label: 'AI Jobs',
+    label: 'Studio Assistant',
     shortLabel: 'AI',
-    description: 'Governed candidates',
+    description: 'Private creative suggestions',
     icon: Sparkles,
     group: 'tools',
   },
