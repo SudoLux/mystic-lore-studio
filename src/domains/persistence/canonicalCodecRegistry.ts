@@ -258,7 +258,11 @@ export function materializeMutableRows(state: CanonicalWorkspaceState) {
   const rows = new Map<string, { codec: CanonicalCodec; record: Record<string, unknown> }>();
   for (const entry of canonicalCodecRegistry) {
     if (!entry.mutable || !entry.stateKey || !entry.entityType) continue;
-    const records = state[entry.stateKey] as unknown[];
+    // Older recovery caches can predate a later normalized collection. The
+    // provider upgrades them on load; this guard keeps snapshot and replay
+    // code safe even if a cache is encountered before that upgrade completes.
+    const candidate = state[entry.stateKey] as unknown;
+    const records = Array.isArray(candidate) ? candidate : [];
     for (const value of records) {
       const record = value as Record<string, unknown>;
       rows.set(`${entry.entityType}:${String(record.id)}`, { codec: entry, record });

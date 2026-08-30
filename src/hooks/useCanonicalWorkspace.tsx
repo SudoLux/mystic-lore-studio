@@ -194,7 +194,12 @@ export function CanonicalWorkspaceProvider({
         }
 
         const studioId = canonicalStudioId ?? recoveryState?.studioId;
-        const cachedState = studioId ? await cacheRef.current.getWorkspace(studioId) : null;
+        const cachedSnapshot = studioId ? await cacheRef.current.getWorkspace(studioId) : null;
+        // IndexedDB survives deploys. Fill in collections introduced by newer
+        // workspace contracts before comparing or replaying an older cache so
+        // a harmless schema addition never strands a Studio at startup.
+        const cachedState = cachedSnapshot ? hydrateTechnicalState(cachedSnapshot, rawData) : null;
+        if (cachedState && cachedState !== cachedSnapshot) await cacheRef.current.putWorkspace(cachedState);
         let next: CanonicalWorkspaceState;
         let mode: CanonicalPersistenceMode = 'local-recovery';
         let startupQueueError: string | null = null;
@@ -745,7 +750,14 @@ async function currentCanonicalStudioId(client: SupabaseClient<Database> | null)
   return (response.data as { id?: string } | null)?.id ?? null;
 }
 
-function hydrateTechnicalState(state: CanonicalWorkspaceState, rawData: StudioData): CanonicalWorkspaceState {
+function hydrateTechnicalState(partialState: CanonicalWorkspaceState, rawData: StudioData): CanonicalWorkspaceState {
+  // Recovery copies and IndexedDB caches may have been saved before a later
+  // work package added a normalized collection. Start with the current empty
+  // contract so every collection is iterable, then retain every saved value.
+  const state: CanonicalWorkspaceState = {
+    ...emptyCanonicalWorkspaceState(partialState.studioId),
+    ...partialState,
+  };
   const now = new Date().toISOString();
   const migratedProfile = state.portfolioProfiles?.length ? state.portfolioProfiles : [{
     avatarAssetId: null,

@@ -319,6 +319,14 @@ describe('canonical cloud repository cutover', () => {
     expect(repository).toContain('tryMergeDisjoint');
   });
 
+  it('keeps a pre-WP11G cache replayable when a later collection is absent', () => {
+    const state = emptyCanonicalWorkspaceState('25000000-0000-4000-8000-000000000001');
+    const olderCache = { ...state } as Record<string, unknown>;
+    delete olderCache.materialVariantMedia;
+    delete olderCache.materialVariantProfiles;
+    expect(() => materializeMutableRows(olderCache as typeof state)).not.toThrow();
+  });
+
   it('uses a fresh-source atomic Public Cut and visibility-first unpublish', () => {
     const adapter = readFileSync(new URL('../src/domains/portfolio/supabasePublicCut.ts', import.meta.url), 'utf8');
     expect(adapter).toContain('freshCanonicalState');
