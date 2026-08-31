@@ -1,0 +1,39 @@
+{
+  "completed": true,
+  "sourceProjectRef": "jsjhqnmlgceunlxgenkg",
+  "targetProjectRef": "iahrcupmyjnyyqszrmcx",
+  "studioId": "586ab26d-9713-46b8-bfff-7534ceab7633",
+  "firstExecution": {
+    "canonicalFabricsMatched": 12,
+    "canonicalFabricsCreated": 0,
+    "canonicalFabricsUpdated": 0,
+    "garmentRelationshipsInserted": 5,
+    "garmentRelationshipsAlreadyPresent": 4,
+    "conflicts": 0,
+    "mediaMutations": 0
+  },
+  "idempotentRetry": {
+    "canonicalFabricsUnchanged": 12,
+    "garmentRelationshipsUnchanged": 9,
+    "duplicateRowsCreated": 0
+  },
+  "legacyImageCleanup": {
+    "priorV1TaggedFabricLinksDetached": 12,
+    "attachedV1TaggedFabricLinksAfterRun": 0,
+    "assetRecordsDeleted": 0,
+    "storageObjectsDeleted": 0,
+    "imageBytesCopiedByThisPass": 0
+  },
+  "betaValidation": {
+    "totalCanonicalMaterials": 18,
+    "totalCanonicalVariants": 18,
+    "materialVariantProfiles": 12,
+    "totalGarmentMaterialLinks": 14,
+    "v1FabricRelationshipsMapped": 9,
+    "v2OnlyMaterialsPreserved": 6
+  },
+  "manualFollowUp": [
+    "Giverny Teal Canvas has cost 12.99 but no supplier; no supplier item was invented.",
+    "Review possible supplier spelling/name duplicates before any future merge."
+  ]
+}

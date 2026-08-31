@@ -23,6 +23,7 @@
     "check:scripts": "tsc -p tsconfig.scripts.json --pretty false",
     "beta:import-device": "sh scripts/run-beta-import.sh",
     "beta:import-v1-visuals": "sh scripts/run-v1-visual-import.sh",
+    "beta:recreate-v1-fabrics": "sh scripts/run-v1-fabric-recreation.sh",
     "audit:beta": "tsx scripts/audit-beta.ts",
     "test:bundle": "node scripts/check-bundle-budget.mjs",
     "validate:schema": "node scripts/validate-ml-studio-2-schema.mjs",
