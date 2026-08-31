@@ -460,6 +460,28 @@ export function addMaterial(state: CanonicalWorkspaceState, input: MaterialInput
   return { state: normalizeWorkspace({ ...state, materials: [...state.materials, material], materialVariants: [...state.materialVariants, variant] }), material, variant };
 }
 
+/**
+ * Removes a fabric colourway from the active Vault without breaking its
+ * historical garment, BOM, inventory, or release relationships. Canonical
+ * roots are deliberately archived instead of deleted so those records remain
+ * reproducible and can be restored later.
+ */
+export function setMaterialVariantStatus(
+  state: CanonicalWorkspaceState,
+  variantId: string,
+  status: CanonicalMaterialVariant['status'],
+) {
+  if (!state.materialVariants.some((variant) => variant.id === variantId)) {
+    throw new Error('This fabric is no longer available in the Studio. Refresh and try again.');
+  }
+  return normalizeWorkspace({
+    ...state,
+    materialVariants: state.materialVariants.map((variant) => variant.id === variantId
+      ? touch({ ...variant, status })
+      : variant),
+  });
+}
+
 export function addComponent(state: CanonicalWorkspaceState, input: ComponentInput) {
   const component: CanonicalComponent = { ...newRecord(state.studioId), category: input.category, componentCode: nextCode(state, 'CMP'), name: input.name.trim(), spec: {}, status: 'active' };
   const variant: CanonicalComponentVariant = { ...newRecord(state.studioId), color: input.color ?? '', componentId: component.id, finish: input.finish ?? '', size: input.size ?? '', sku: `${component.componentCode}-01`, status: 'active' };

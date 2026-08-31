@@ -14,6 +14,7 @@ import {
   materialAvailableQuantity,
   recordInventory,
   relationshipOptions,
+  setMaterialVariantStatus,
   updateBrief,
 } from '../src/domains/workspace';
 import { createSeedStudioData, importStudioData } from '../src/lib/studioStorage';
@@ -84,6 +85,18 @@ describe('WP3 canonical garment workspace', () => {
     const reserved = recordInventory(received.state, variant.id, 'reserve', 3, 'Garment allocation');
     expect(materialAvailableQuantity(reserved.state, variant.id)).toBeGreaterThanOrEqual(9);
     expect(() => recordInventory(reserved.state, variant.id, 'receive', 0)).toThrow(/positive/);
+  });
+
+  it('archives a fabric without removing its garment or inventory evidence, and can restore it', async () => {
+    const start = await workspace();
+    const variant = start.materialVariants[0];
+    const archived = setMaterialVariantStatus(start, variant.id, 'archived');
+    expect(archived.materialVariants.find((item) => item.id === variant.id)?.status).toBe('archived');
+    expect(archived.garmentMaterials.some((item) => item.variantId === variant.id)).toBe(true);
+    expect(archived.inventoryEntries.some((item) => item.variantId === variant.id)).toBe(true);
+
+    const restored = setMaterialVariantStatus(archived, variant.id, 'active');
+    expect(restored.materialVariants.find((item) => item.id === variant.id)?.status).toBe('active');
   });
 
   it('uses one source asset through separate garment and moodboard relationships without duplicating rights', async () => {
