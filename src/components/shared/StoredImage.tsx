@@ -18,6 +18,8 @@ type StoredImageProps = {
   displayOverride?: Partial<ImageDisplaySettings>;
   priority?: boolean;
   quality?: ImageDeliveryQuality;
+  refreshSource?: () => Promise<string>;
+  onFinalError?: () => void;
   sizes?: string;
 };
 
@@ -29,6 +31,8 @@ export function StoredImage({
   displayOverride,
   priority = false,
   quality = 'display',
+  refreshSource,
+  onFinalError,
   sizes,
 }: StoredImageProps) {
   const [hasError, setHasError] = useState(false);
@@ -85,24 +89,29 @@ export function StoredImage({
       loading={priority ? 'eager' : 'lazy'}
       onError={() => {
         setResponsiveFailed(true);
-        if (
-          delivery.storagePath &&
-          source !== asset.dataUrl &&
-          !refreshAttempted.current
-        ) {
+        const refresh = refreshSource ?? (
+          delivery.storagePath && source !== asset.dataUrl
+            ? () => refreshSignedImageUrl(delivery.storagePath!, { force: true })
+            : undefined
+        );
+        if (refresh && !refreshAttempted.current) {
           refreshAttempted.current = true;
-          void refreshSignedImageUrl(delivery.storagePath, { force: true })
+          void refresh()
             .then((url) => {
               setSource(url);
               setHasError(false);
             })
             .catch(() => {
               if (delivery.fallback) setSource(delivery.fallback);
-              else setHasError(true);
+              else {
+                setHasError(true);
+                onFinalError?.();
+              }
             });
           return;
         }
         setHasError(true);
+        onFinalError?.();
       }}
       sizes={sizes ?? defaultImageSizes(quality)}
       src={source}

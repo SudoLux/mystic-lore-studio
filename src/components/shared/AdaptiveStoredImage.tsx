@@ -11,7 +11,9 @@ type AdaptiveStoredImageProps = {
   displayFit?: 'cover' | 'contain';
   foregroundClassName?: string;
   mode?: 'compact' | 'primary' | 'thumbnail';
+  onFinalError?: () => void;
   priority?: boolean;
+  refreshSource?: () => Promise<string>;
 };
 
 export function AdaptiveStoredImage({
@@ -21,7 +23,9 @@ export function AdaptiveStoredImage({
   displayFit,
   foregroundClassName,
   mode = 'primary',
+  onFinalError,
   priority = false,
+  refreshSource,
 }: AdaptiveStoredImageProps) {
   const orientation = getImageOrientation(asset);
   const display = {
@@ -58,6 +62,7 @@ export function AdaptiveStoredImage({
             className="absolute inset-0 scale-110 blur-2xl saturate-75 opacity-52"
             decorative
             quality="display"
+            refreshSource={refreshSource}
             displayOverride={{
               objectFit: 'cover',
               objectPositionX: display.objectPositionX,
@@ -70,8 +75,10 @@ export function AdaptiveStoredImage({
             <StoredImage
               asset={asset}
               className={cn('absolute inset-0', foregroundClassName)}
+              onFinalError={onFinalError}
               priority={priority}
               quality="master"
+              refreshSource={refreshSource}
             />
           </div>
         </>
@@ -83,6 +90,8 @@ export function AdaptiveStoredImage({
           displayOverride={compactDisplay}
           priority={priority}
           quality={mode === 'thumbnail' ? 'thumbnail' : mode === 'compact' ? 'display' : 'master'}
+          onFinalError={onFinalError}
+          refreshSource={refreshSource}
         />
       )}
     </AtelierImageFrame>

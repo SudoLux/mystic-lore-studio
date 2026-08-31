@@ -8,7 +8,9 @@ type AdaptiveProjectImageProps = {
   displayFit?: 'cover' | 'contain';
   foregroundClassName?: string;
   mode?: 'compact' | 'primary' | 'thumbnail';
+  onFinalError?: () => void;
   priority?: boolean;
+  refreshSource?: () => Promise<string>;
 };
 
 export function AdaptiveProjectImage({
@@ -18,7 +20,9 @@ export function AdaptiveProjectImage({
   displayFit,
   foregroundClassName,
   mode = 'primary',
+  onFinalError,
   priority = false,
+  refreshSource,
 }: AdaptiveProjectImageProps) {
   return (
     <AdaptiveStoredImage
@@ -28,7 +32,9 @@ export function AdaptiveProjectImage({
       displayFit={displayFit}
       foregroundClassName={foregroundClassName}
       mode={mode}
+      onFinalError={onFinalError}
       priority={priority}
+      refreshSource={refreshSource}
     />
   );
 }

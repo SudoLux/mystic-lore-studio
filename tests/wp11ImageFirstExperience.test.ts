@@ -50,14 +50,17 @@ describe('WP11C image-first garment experience', () => {
     expect(library).toContain('aria-expanded={filtersOpen}');
   });
 
-  it('downloads private canonical imagery with the active workspace session', () => {
+  it('delivers private canonical imagery through expiring member-authorized links', () => {
     const image = readFileSync(new URL('../src/components/shared/CanonicalMediaImage.tsx', import.meta.url), 'utf8');
     const media = readFileSync(new URL('../src/domains/persistence/canonicalMedia.ts', import.meta.url), 'utf8');
     const repository = readFileSync(new URL('../src/domains/persistence/canonicalWorkspaceRepository.ts', import.meta.url), 'utf8');
     expect(image).toContain("session?.access_token");
     expect(image).toContain('createRequestBoundCanonicalSupabase');
-    expect(image).toContain('loadCanonicalStoredBlob(delivery, mediaClient)');
-    expect(media).toContain("client.storage.from('studio-assets').download");
+    expect(image).toContain('resolveCanonicalMediaUrl(delivery, mediaClient)');
+    expect(image).toContain('Try image again');
+    expect(media).toContain(".createSignedUrl(asset.storagePath, CANONICAL_SIGNED_URL_SECONDS)");
+    expect(media).toContain("CANONICAL_SIGNED_URL_SECONDS = 6 * 60 * 60");
+    expect(media).toContain('loadCachedCanonicalMediaBlob');
     expect(repository).toContain('}, this.cache, this.client)');
   });
 

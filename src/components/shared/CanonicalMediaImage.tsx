@@ -1,7 +1,11 @@
 import { ImageIcon, LoaderCircle } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import type { CanonicalMediaAsset, CanonicalMediaDerivative } from '../../domains/workspace';
-import { loadCanonicalStoredBlob } from '../../domains/persistence/canonicalMedia';
+import {
+  clearCanonicalMediaUrl,
+  loadCachedCanonicalMediaBlob,
+  resolveCanonicalMediaUrl,
+} from '../../domains/persistence/canonicalMedia';
 import { useAuth } from '../../hooks/useAuth';
 import { cn } from '../../lib/classes';
 import { createRequestBoundCanonicalSupabase } from '../../lib/supabase';
@@ -38,6 +42,7 @@ export function CanonicalMediaImage({
   const { session } = useAuth();
   const [source, setSource] = useState<string | null>(null);
   const [status, setStatus] = useState<'empty' | 'loading' | 'ready' | 'error'>(asset ? 'loading' : 'empty');
+  const [retryToken, setRetryToken] = useState(0);
   const delivery = useMemo(() => selectDelivery(asset, derivatives, mode), [asset, derivatives, mode]);
   const mediaClient = useMemo(
     () => createRequestBoundCanonicalSupabase(session?.access_token ?? ''),
@@ -55,19 +60,23 @@ export function CanonicalMediaImage({
     }
     setSource(null);
     setStatus('loading');
-    void loadCanonicalStoredBlob(delivery, mediaClient)
+    void loadCachedCanonicalMediaBlob(delivery)
+      .then((cached) => {
+        if (!cached) return resolveCanonicalMediaUrl(delivery, mediaClient);
+        objectUrl = URL.createObjectURL(cached);
+        return objectUrl;
+      })
       .catch((error) => {
         if (delivery.id === master.id) throw error;
-        return loadCanonicalStoredBlob(master, mediaClient);
+        return resolveCanonicalMediaUrl(master, mediaClient);
       })
-      .then((blob) => {
+      .then((url) => {
         if (!active) return;
-        if (!blob) {
+        if (!url) {
           setStatus('empty');
           return;
         }
-        objectUrl = URL.createObjectURL(blob);
-        setSource(objectUrl);
+        setSource(url);
         setStatus('ready');
       })
       .catch(() => {
@@ -77,7 +86,13 @@ export function CanonicalMediaImage({
       active = false;
       if (objectUrl) URL.revokeObjectURL(objectUrl);
     };
-  }, [delivery, mediaClient]);
+  }, [delivery, mediaClient, retryToken]);
+
+  const retry = () => {
+    if (delivery) clearCanonicalMediaUrl(delivery.storagePath);
+    setStatus('loading');
+    setRetryToken((value) => value + 1);
+  };
 
   if (!asset || !delivery || !source || status !== 'ready') {
     return (
@@ -91,6 +106,7 @@ export function CanonicalMediaImage({
         <div className="relative flex max-w-[14rem] flex-col items-center px-5 text-center text-stardust/42">
           {status === 'loading' ? <LoaderCircle aria-hidden="true" className="animate-spin text-ember/70" size={24} /> : <ImageIcon aria-hidden="true" className="text-ember/55" size={28} />}
           <span className="mt-3 text-[0.68rem] font-medium uppercase tracking-[0.2em]">{status === 'error' ? 'Image unavailable' : status === 'loading' ? 'Preparing image' : 'Awaiting garment imagery'}</span>
+          {status === 'error' ? <button className="mt-3 rounded-full border border-ember/45 px-3 py-1.5 text-xs text-stardust/76 transition hover:bg-ember/12 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ember" onClick={retry} type="button">Try image again</button> : null}
         </div>
       </AtelierImageFrame>
     );
@@ -118,7 +134,9 @@ export function CanonicalMediaImage({
       className={cn('atelier-image-ready', className)}
       displayFit={fit}
       mode={mode === 'hero' ? 'primary' : mode === 'thumbnail' ? 'thumbnail' : 'compact'}
+      onFinalError={() => setStatus('error')}
       priority={priority}
+      refreshSource={() => resolveCanonicalMediaUrl(delivery, mediaClient, { force: true })}
     />
   );
 }

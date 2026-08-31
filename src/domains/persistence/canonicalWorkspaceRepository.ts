@@ -149,6 +149,16 @@ export class SupabaseCanonicalWorkspaceRepository implements CanonicalWorkspaceR
     return await this.hydrate(this.studioId);
   }
 
+  async retryFailed() {
+    if (!this.studioId || (typeof navigator !== 'undefined' && navigator.onLine === false)) return;
+    const entries = await this.cache.listOutbox(this.studioId);
+    for (const entry of entries) {
+      if (entry.status !== 'failed') continue;
+      await this.cache.putOutbox({ ...entry, lastError: null, status: 'pending' });
+    }
+    await this.flush();
+  }
+
   private async enqueue(operation: CanonicalOperation) {
     const queued = await this.cache.listOutbox(operation.studioId);
     const baseRows: Record<string, Record<string, unknown> | null> = {};
@@ -181,7 +191,10 @@ export class SupabaseCanonicalWorkspaceRepository implements CanonicalWorkspaceR
   private async flushEntries() {
     const entries = await this.cache.listOutbox(this.studioId!);
     for (const entry of entries) {
-      if (entry.status === 'conflict') break;
+      // Failed media capture remains safely staged, but must not repeatedly
+      // retry in the background or hold an existing image library hostage.
+      // A deliberate Retry action returns it to pending status.
+      if (entry.status === 'conflict' || entry.status === 'failed') break;
       try {
         const result = await this.send(entry.operation);
         if (result.status === 'conflict') {

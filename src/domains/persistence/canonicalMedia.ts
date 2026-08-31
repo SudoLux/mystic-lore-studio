@@ -6,6 +6,16 @@ import { CanonicalIndexedDb } from './canonicalIndexedDb';
 import { canonicalValueChecksum } from './canonicalIndexedDb';
 
 const cache = new CanonicalIndexedDb();
+const CANONICAL_SIGNED_URL_SECONDS = 6 * 60 * 60;
+const CANONICAL_SIGNED_URL_REFRESH_BUFFER_MS = 5 * 60 * 1000;
+const CANONICAL_SIGNED_URL_CACHE_KEY = 'mystic-lore:canonical-signed-media-urls:v2';
+
+type CanonicalSignedUrlCacheEntry = {
+  expiresAt: number;
+  url: string;
+};
+
+const signedUrlCache = new Map<string, CanonicalSignedUrlCacheEntry>();
 
 /** Retains bytes before any network work so capture survives interruption. */
 export async function stageCanonicalMediaBlob(asset: CanonicalMediaAsset, blob: Blob) {
@@ -16,6 +26,49 @@ export async function stageCanonicalMediaBlob(asset: CanonicalMediaAsset, blob: 
 
 export async function loadCanonicalMediaBlob(asset: CanonicalMediaAsset) {
   return await loadCanonicalStoredBlob(asset);
+}
+
+/**
+ * Resolves a private asset to a short-lived viewing URL after Storage RLS has
+ * approved the current member session. The URL is intentionally ephemeral;
+ * it is never persisted in the canonical graph or shared with public routes.
+ */
+export async function resolveCanonicalMediaUrl(
+  asset: Pick<CanonicalMediaAsset, 'storagePath'>,
+  client: SupabaseClient<Database> | null = canonicalSupabase,
+  options: { force?: boolean } = {},
+) {
+  if (!client) throw new Error('Private media is waiting for your Studio session.');
+  const cached = options.force ? null : readCanonicalSignedUrl(asset.storagePath);
+  if (cached) return cached.url;
+
+  const response = await client.storage
+    .from('studio-assets')
+    .createSignedUrl(asset.storagePath, CANONICAL_SIGNED_URL_SECONDS);
+  if (response.error || !response.data?.signedUrl) {
+    throw new Error(response.error?.message ?? 'The private image link could not be prepared.');
+  }
+  writeCanonicalSignedUrl(asset.storagePath, response.data.signedUrl);
+  return response.data.signedUrl;
+}
+
+/** Reads an already-verified local copy so cached private images remain usable offline. */
+export async function loadCachedCanonicalMediaBlob(asset: Pick<CanonicalMediaAsset, 'checksum' | 'id'>) {
+  const staged = await cache.getMediaBlob(asset.id);
+  if (!staged || staged.checksum !== asset.checksum) return null;
+  return staged.blob;
+}
+
+export function clearCanonicalMediaUrl(storagePath: string) {
+  signedUrlCache.delete(storagePath);
+  if (typeof window === 'undefined') return;
+  try {
+    const entries = readCanonicalSignedUrlEntries();
+    delete entries[storagePath];
+    window.sessionStorage.setItem(CANONICAL_SIGNED_URL_CACHE_KEY, JSON.stringify(entries));
+  } catch {
+    // Memory cache removal is enough when browser storage is unavailable.
+  }
 }
 
 export async function loadCanonicalStoredBlob(asset: {
@@ -66,4 +119,44 @@ async function sha256(blob: Blob) {
   // Tests without SubtleCrypto still get the same deterministic fallback used
   // by the canonical cache; production browsers always take the SHA-256 path.
   return canonicalValueChecksum([...new Uint8Array(await blob.arrayBuffer())]);
+}
+
+function readCanonicalSignedUrl(storagePath: string) {
+  const memoryEntry = signedUrlCache.get(storagePath);
+  if (isCanonicalSignedUrlFresh(memoryEntry)) return memoryEntry;
+  if (typeof window === 'undefined') return null;
+  try {
+    const entry = readCanonicalSignedUrlEntries()[storagePath];
+    if (!isCanonicalSignedUrlFresh(entry)) return null;
+    signedUrlCache.set(storagePath, entry);
+    return entry;
+  } catch {
+    return null;
+  }
+}
+
+function writeCanonicalSignedUrl(storagePath: string, url: string) {
+  const entry = {
+    expiresAt: Date.now() + CANONICAL_SIGNED_URL_SECONDS * 1000,
+    url,
+  } satisfies CanonicalSignedUrlCacheEntry;
+  signedUrlCache.set(storagePath, entry);
+  if (typeof window === 'undefined') return;
+  try {
+    const entries = readCanonicalSignedUrlEntries();
+    entries[storagePath] = entry;
+    window.sessionStorage.setItem(CANONICAL_SIGNED_URL_CACHE_KEY, JSON.stringify(entries));
+  } catch {
+    // The in-memory cache still avoids duplicate signing in this tab.
+  }
+}
+
+function readCanonicalSignedUrlEntries() {
+  return JSON.parse(
+    window.sessionStorage.getItem(CANONICAL_SIGNED_URL_CACHE_KEY) ?? '{}',
+  ) as Record<string, CanonicalSignedUrlCacheEntry>;
+}
+
+function isCanonicalSignedUrlFresh(entry?: CanonicalSignedUrlCacheEntry | null) {
+  return Boolean(entry && entry.expiresAt - CANONICAL_SIGNED_URL_REFRESH_BUFFER_MS > Date.now());
 }

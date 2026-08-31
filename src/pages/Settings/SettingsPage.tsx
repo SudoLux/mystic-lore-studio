@@ -10,7 +10,7 @@ import { canonicalStateChecksum, loadCanonicalStoredBlob } from '../../domains/p
 import { useCanonicalWorkspace } from '../../hooks/useCanonicalWorkspace';
 
 export function SettingsPage() {
-  const { error, pendingCount, persistenceMode, refresh, state, syncState } = useCanonicalWorkspace();
+  const { error, pendingCount, persistenceMode, refresh, retry, state, syncState } = useCanonicalWorkspace();
   const [message, setMessage] = useState<string | null>(null);
   const [working, setWorking] = useState(false);
 
@@ -60,7 +60,8 @@ export function SettingsPage() {
     setWorking(true);
     setMessage(null);
     try {
-      await refresh();
+      if (error) await retry();
+      else await refresh();
       setMessage('Your Studio is up to date.');
     } catch (reason) {
       setMessage(reason instanceof Error ? reason.message : 'Your Studio could not be refreshed.');

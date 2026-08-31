@@ -108,4 +108,5 @@ export interface CanonicalWorkspaceRepository {
   dispatch(operation: CanonicalOperation): CanonicalCommitHandle;
   flush(): Promise<void>;
   refresh(): Promise<CanonicalWorkspaceState>;
+  retryFailed(): Promise<void>;
 }

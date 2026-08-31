@@ -88,7 +88,7 @@ type CanonicalWorkspaceContextValue = {
   requireFreshWorkspace: () => Promise<CanonicalWorkspaceState>;
   resolveTransportConflict: (conflictId: string, resolution: 'local' | 'remote') => Promise<void>;
   relationshipOptions: (kind: 'material' | 'component' | 'asset') => RelationshipOption[];
-  retry: () => void;
+  retry: () => Promise<void>;
   state: CanonicalWorkspaceState | null;
   syncState: WorkspaceSyncState;
   updateBrief: (garmentId: string, patch: Parameters<typeof updateBrief>[2]) => void;
@@ -466,6 +466,16 @@ export function CanonicalWorkspaceProvider({
     setPendingCount(0);
   }, []);
 
+  const retry = useCallback(async () => {
+    const repository = repositoryRef.current;
+    if (!repository) {
+      setAttempt((current) => current + 1);
+      return;
+    }
+    await repository.retryFailed();
+    await refresh();
+  }, [refresh]);
+
   const requireFreshWorkspace = useCallback(async () => {
     if (persistenceModeRef.current === 'local-recovery' || !repositoryRef.current) {
       throw new Error('This protected action requires the canonical cloud repository. Local recovery mode is read-only for release evidence.');
@@ -568,7 +578,7 @@ export function CanonicalWorkspaceProvider({
     refresh,
     requireFreshWorkspace,
     resolveTransportConflict,
-    retry: () => { setAttempt((current) => current + 1); void refresh(); },
+    retry,
     state,
     syncState,
     updateBrief: (garmentId, patch) => commit((current) => updateBrief(current, garmentId, patch)),
@@ -605,7 +615,7 @@ export function CanonicalWorkspaceProvider({
           : relation),
       };
     }),
-  }), [commit, commitAsync, error, pendingCount, persistenceMode, refresh, requireFreshWorkspace, resolveTransportConflict, state, syncState, userId]);
+  }), [commit, commitAsync, error, pendingCount, persistenceMode, refresh, requireFreshWorkspace, resolveTransportConflict, retry, state, syncState, userId]);
 
   return <CanonicalWorkspaceContext.Provider value={value}>{children}</CanonicalWorkspaceContext.Provider>;
 }
