@@ -528,6 +528,8 @@ export function createMoodboard(state: CanonicalWorkspaceState, garmentId: strin
   return { state: normalizeWorkspace({ ...state, moodboards: [...state.moodboards, board] }), board };
 }
 
+export const MAX_INSPIRATION_FIELD_IMAGES = 5;
+
 export function attachAsset(state: CanonicalWorkspaceState, garmentId: string, assetId: string, role: CanonicalGarmentMedia['role']) {
   const existing = state.garmentMedia.find((item) => item.garmentId === garmentId && item.assetId === assetId && item.role === role);
   if (existing) return { state, relation: existing };
@@ -540,6 +542,78 @@ export function attachMoodboardItem(state: CanonicalWorkspaceState, boardId: str
   if (existing) return { state, item: existing };
   const item: CanonicalMoodboardItem = { ...newRecord(state.studioId), assetId, boardId, caption, position: {}, sortOrder: state.moodboardItems.filter((candidate) => candidate.boardId === boardId).length };
   return { state: normalizeWorkspace({ ...state, moodboardItems: [...state.moodboardItems, item] }), item };
+}
+
+/**
+ * The garment-facing Inspiration Field is intentionally capped without
+ * changing the reusable moodboard schema. Other future moodboards can still
+ * use the general-purpose attachMoodboardItem command.
+ */
+export function attachInspirationReference(
+  state: CanonicalWorkspaceState,
+  garmentId: string,
+  assetId: string,
+  caption = '',
+) {
+  const boards = state.moodboards
+    .filter((board) => board.garmentId === garmentId)
+    .sort((left, right) => left.sortOrder - right.sortOrder || left.id.localeCompare(right.id));
+  const asset = state.mediaAssets.find((candidate) => candidate.id === assetId);
+  if (!asset?.mimeType.startsWith('image/')) {
+    throw new Error('Choose an image for the Inspiration Field.');
+  }
+  const existing = state.moodboardItems.find((item) => boards.some((board) => board.id === item.boardId) && item.assetId === assetId);
+  if (existing) return { state, item: existing };
+  const currentCount = state.moodboardItems.filter((item) => boards.some((board) => board.id === item.boardId)
+    && state.mediaAssets.some((candidate) => candidate.id === item.assetId && candidate.mimeType.startsWith('image/'))).length;
+  if (currentCount >= MAX_INSPIRATION_FIELD_IMAGES) {
+    throw new Error(`The Inspiration Field holds up to ${MAX_INSPIRATION_FIELD_IMAGES} images. Remove one before adding another.`);
+  }
+  const withBoard = boards.length ? { state, board: boards[0] } : createMoodboard(state, garmentId, 'Inspiration field');
+  const withAsset = attachAsset(withBoard.state, garmentId, assetId, 'reference').state;
+  return attachMoodboardItem(withAsset, withBoard.board.id, assetId, caption);
+}
+
+/**
+ * Detaches one image from this garment's Inspiration Field. The media asset
+ * and its private Storage object intentionally survive so shared Studio work
+ * is never destroyed by a local visual edit.
+ */
+export function removeInspirationReference(
+  state: CanonicalWorkspaceState,
+  garmentId: string,
+  inspirationItemId: string,
+) {
+  const item = state.moodboardItems.find((candidate) => candidate.id === inspirationItemId);
+  const board = item ? state.moodboards.find((candidate) => candidate.id === item.boardId) : null;
+  if (!item || !board || board.garmentId !== garmentId) {
+    throw new Error('That inspiration reference no longer belongs to this garment. Refresh and try again.');
+  }
+
+  const now = new Date().toISOString();
+  const remainingItems = state.moodboardItems.filter((candidate) => candidate.id !== item.id);
+  const compactedItems = remainingItems.map((candidate) => {
+    if (candidate.boardId !== board.id) return candidate;
+    const ordered = remainingItems
+      .filter((entry) => entry.boardId === board.id)
+      .sort((left, right) => left.sortOrder - right.sortOrder || left.id.localeCompare(right.id));
+    const nextSortOrder = ordered.findIndex((entry) => entry.id === candidate.id);
+    return nextSortOrder === candidate.sortOrder
+      ? candidate
+      : { ...candidate, revision: candidate.revision + 1, sortOrder: nextSortOrder, updatedAt: now };
+  });
+  const stillUsedByThisGarment = compactedItems.some((candidate) => {
+    const candidateBoard = state.moodboards.find((entry) => entry.id === candidate.boardId);
+    return candidate.assetId === item.assetId && candidateBoard?.garmentId === garmentId;
+  });
+
+  return normalizeWorkspace({
+    ...state,
+    garmentMedia: stillUsedByThisGarment
+      ? state.garmentMedia
+      : state.garmentMedia.filter((relation) => !(relation.garmentId === garmentId && relation.assetId === item.assetId && relation.role === 'reference')),
+    moodboardItems: compactedItems,
+  });
 }
 
 export function deleteGarment(state: CanonicalWorkspaceState, garmentId: string) {

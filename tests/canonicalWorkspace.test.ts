@@ -4,6 +4,7 @@ import {
   addComponent,
   addGarment,
   addMaterial,
+  attachInspirationReference,
   attachComponent,
   attachMoodboardItem,
   attachAsset,
@@ -11,8 +12,10 @@ import {
   attachMaterial,
   createCanonicalWorkspace,
   deleteGarment,
+  MAX_INSPIRATION_FIELD_IMAGES,
   materialAvailableQuantity,
   recordInventory,
+  removeInspirationReference,
   relationshipOptions,
   setMaterialVariantStatus,
   updateBrief,
@@ -109,6 +112,42 @@ describe('WP3 canonical garment workspace', () => {
     expect(moodboard.state.mediaAssets).toHaveLength(1);
     expect(moodboard.state.garmentMedia).toContainEqual(expect.objectContaining({ assetId: asset.id, garmentId: garment.id }));
     expect(moodboard.state.moodboardItems).toContainEqual(expect.objectContaining({ assetId: asset.id, boardId: board.board.id }));
+  });
+
+  it('bounds the garment Inspiration Field at five references without changing the reusable moodboard schema', async () => {
+    const start = await workspace();
+    const garment = start.garments[0];
+    const assets = Array.from({ length: MAX_INSPIRATION_FIELD_IMAGES + 1 }, (_, index) => ({
+      ...start.mediaAssets[0],
+      checksum: `inspiration-checksum-${index}`,
+      id: `inspiration-asset-${index}`,
+      storagePath: `studios/${start.studioId}/garments/${garment.id}/inspiration-${index}.jpg`,
+    }));
+    let next = { ...start, mediaAssets: assets };
+    for (const asset of assets.slice(0, MAX_INSPIRATION_FIELD_IMAGES)) {
+      next = attachInspirationReference(next, garment.id, asset.id).state;
+    }
+    expect(next.moodboardItems).toHaveLength(MAX_INSPIRATION_FIELD_IMAGES);
+    expect(() => attachInspirationReference(next, garment.id, assets[MAX_INSPIRATION_FIELD_IMAGES].id)).toThrow(/holds up to 5 images/);
+  });
+
+  it('removes an Inspiration Field relationship without deleting the private source asset', async () => {
+    const start = await workspace();
+    const garment = start.garments[0];
+    const asset = start.mediaAssets[0];
+    const first = attachInspirationReference(start, garment.id, asset.id);
+    const secondAsset = {
+      ...asset,
+      checksum: 'second-inspiration-checksum',
+      id: 'second-inspiration-asset',
+      storagePath: `studios/${start.studioId}/garments/${garment.id}/second-inspiration.jpg`,
+    };
+    const second = attachInspirationReference({ ...first.state, mediaAssets: [...first.state.mediaAssets, secondAsset] }, garment.id, secondAsset.id);
+    const removed = removeInspirationReference(second.state, garment.id, first.item.id);
+    expect(removed.mediaAssets.some((candidate) => candidate.id === asset.id)).toBe(true);
+    expect(removed.moodboardItems.some((candidate) => candidate.id === first.item.id)).toBe(false);
+    expect(removed.garmentMedia.some((candidate) => candidate.assetId === asset.id && candidate.role === 'reference')).toBe(false);
+    expect(removed.moodboardItems.find((candidate) => candidate.id === second.item.id)?.sortOrder).toBe(0);
   });
 
   it('removes a garment and only its dependent relationship records after explicit confirmation at the UI layer', async () => {

@@ -6,6 +6,8 @@ import { cn } from '../../lib/classes';
 import type { RelationshipOption } from '../../domains/workspace';
 
 type RelationshipPickerProps = {
+  disabled?: boolean;
+  disabledMessage?: string;
   emptyLabel: string;
   label: string;
   onCreateInline?: () => void;
@@ -16,6 +18,8 @@ type RelationshipPickerProps = {
 
 /** Search first, then create in-context. It intentionally exposes downstream use before linking. */
 export function RelationshipPicker({
+  disabled = false,
+  disabledMessage,
   emptyLabel,
   label,
   onCreateInline,
@@ -34,16 +38,17 @@ export function RelationshipPicker({
           <h3 className="text-sm font-semibold text-stardust">{label}</h3>
           <p className="mt-1 text-xs leading-5 text-stardust/55">Search the shared library before creating a new record.</p>
         </div>
-        {onCreateInline ? <Button icon={<Plus aria-hidden="true" size={15} />} onClick={onCreateInline} size="sm" variant="secondary">Create inline</Button> : null}
+        {onCreateInline ? <Button disabled={disabled} icon={<Plus aria-hidden="true" size={15} />} onClick={onCreateInline} size="sm" variant="secondary">Create inline</Button> : null}
       </div>
       <label className="relative mt-4 block" htmlFor={id}>
         <span className="sr-only">Search {label}</span>
         <Search aria-hidden="true" className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-stardust/45" size={16} />
-        <input className="h-11 w-full rounded-xl border border-bronze/30 bg-midnight/55 pl-10 pr-3 text-sm text-stardust outline-none focus:border-ember/70 focus:ring-2 focus:ring-ember/30" id={id} onChange={(event) => setQuery(event.target.value)} placeholder={`Search ${label.toLowerCase()}`} value={query} />
+        <input className="h-11 w-full rounded-xl border border-bronze/30 bg-midnight/55 pl-10 pr-3 text-sm text-stardust outline-none focus:border-ember/70 focus:ring-2 focus:ring-ember/30 disabled:cursor-not-allowed disabled:opacity-45" disabled={disabled} id={id} onChange={(event) => setQuery(event.target.value)} placeholder={`Search ${label.toLowerCase()}`} value={query} />
       </label>
+      {disabled && disabledMessage ? <p className="mt-3 text-xs leading-5 text-stardust/48">{disabledMessage}</p> : null}
       <div className="mt-3 max-h-60 space-y-2 overflow-y-auto pr-1">
         {filtered.length ? filtered.map((option) => (
-          <button aria-pressed={selectedId === option.id} className={cn('flex min-h-12 w-full items-center justify-between gap-3 rounded-xl border px-3 py-2 text-left transition focus:outline-none focus:ring-2 focus:ring-ember/55', selectedId === option.id ? 'border-ember/60 bg-ember/12' : 'border-bronze/24 bg-midnight/35 hover:border-bronze/50')} key={option.id} onClick={() => onSelect(option.id)} type="button">
+          <button aria-pressed={selectedId === option.id} className={cn('flex min-h-12 w-full items-center justify-between gap-3 rounded-xl border px-3 py-2 text-left transition focus:outline-none focus:ring-2 focus:ring-ember/55 disabled:cursor-not-allowed disabled:opacity-42', selectedId === option.id ? 'border-ember/60 bg-ember/12' : 'border-bronze/24 bg-midnight/35 hover:border-bronze/50')} disabled={disabled} key={option.id} onClick={() => onSelect(option.id)} type="button">
             <span>
               <span className="block text-sm font-medium text-stardust">{option.label}</span>
               <span className="block text-xs text-stardust/54">{option.detail}</span>

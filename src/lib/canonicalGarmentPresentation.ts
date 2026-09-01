@@ -1,6 +1,7 @@
 import type {
   CanonicalGarment,
   CanonicalMediaAsset,
+  CanonicalMoodboardItem,
   CanonicalWorkspaceState,
 } from '../domains/workspace';
 
@@ -24,6 +25,42 @@ export function canonicalGarmentMedia(
 
 export function canonicalGarmentCover(state: CanonicalWorkspaceState, garmentId: string) {
   return canonicalGarmentMedia(state, garmentId)[0] ?? null;
+}
+
+export type CanonicalInspirationReference = {
+  asset: CanonicalMediaAsset;
+  item: CanonicalMoodboardItem;
+};
+
+/**
+ * Keeps the garment workspace visual field grounded in the canonical
+ * moodboard ordering rather than the broader garment-media role ordering.
+ */
+export function canonicalInspirationReferences(
+  state: CanonicalWorkspaceState,
+  garmentId: string,
+): CanonicalInspirationReference[] {
+  const boardOrder = new Map(
+    state.moodboards
+      .filter((board) => board.garmentId === garmentId)
+      .sort((left, right) => left.sortOrder - right.sortOrder || left.id.localeCompare(right.id))
+      .map((board, index) => [board.id, index]),
+  );
+  const assets = new Map(state.mediaAssets.map((asset) => [asset.id, asset]));
+  const seenAssetIds = new Set<string>();
+
+  return state.moodboardItems
+    .filter((item) => boardOrder.has(item.boardId))
+    .sort((left, right) => {
+      const boardDifference = (boardOrder.get(left.boardId) ?? 0) - (boardOrder.get(right.boardId) ?? 0);
+      return boardDifference || left.sortOrder - right.sortOrder || left.id.localeCompare(right.id);
+    })
+    .flatMap((item) => {
+      const asset = assets.get(item.assetId);
+      if (!asset?.mimeType.startsWith('image/') || seenAssetIds.has(item.assetId)) return [];
+      seenAssetIds.add(item.assetId);
+      return [{ asset, item }];
+    });
 }
 
 export type GarmentSwatch = {

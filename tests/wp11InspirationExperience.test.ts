@@ -38,4 +38,26 @@ describe('WP11D inspiration-first Studio experience', () => {
     expect(mediaUpload).toContain('25 * 1024 * 1024');
     expect(mediaUpload).not.toContain('localStorage');
   });
+
+  it('keeps the Inspiration Field bounded, viewable, and safely removable through canonical links', () => {
+    const workspaceStore = readFileSync('src/domains/workspace/workspaceStore.ts', 'utf8');
+    const presentation = readFileSync('src/lib/canonicalGarmentPresentation.ts', 'utf8');
+    const lightbox = readFileSync('src/components/shared/CanonicalMediaLightbox.tsx', 'utf8');
+    const canonicalMedia = readFileSync('src/components/shared/CanonicalMediaImage.tsx', 'utf8');
+    expect(garmentWorkspace).toContain('MAX_INSPIRATION_FIELD_IMAGES');
+    expect(garmentWorkspace).toContain('Inspiration field full');
+    expect(garmentWorkspace).toContain('Remove this reference?');
+    expect(garmentWorkspace).toContain('View full image');
+    expect(garmentWorkspace).toContain('CanonicalMediaLightbox');
+    expect(presentation).toContain('canonicalInspirationReferences');
+    expect(workspaceStore).toContain('attachInspirationReference');
+    expect(workspaceStore).toContain('removeInspirationReference');
+    expect(workspaceStore).toContain('The media asset');
+    expect(lightbox).toContain("event.key === 'ArrowLeft'");
+    expect(lightbox).toContain("event.key === 'ArrowRight'");
+    expect(lightbox).toContain("event.key === 'Escape'");
+    expect(lightbox).toContain("event.key === 'Tab'");
+    expect(lightbox).toContain('returnFocusRef.current?.focus()');
+    expect(canonicalMedia).toContain('onActivate?:');
+  });
 });

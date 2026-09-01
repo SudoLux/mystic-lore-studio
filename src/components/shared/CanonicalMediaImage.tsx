@@ -1,5 +1,5 @@
 import { ImageIcon, LoaderCircle } from 'lucide-react';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, type MouseEvent } from 'react';
 import type { CanonicalMediaAsset, CanonicalMediaDerivative } from '../../domains/workspace';
 import {
   clearCanonicalMediaUrl,
@@ -21,7 +21,9 @@ type CanonicalMediaImageProps = {
   derivatives?: CanonicalMediaDerivative[];
   fit?: 'cover' | 'contain';
   framing?: Partial<CanonicalMaterialImageFraming>;
+  interactiveClassName?: string;
   mode?: 'hero' | 'library' | 'thumbnail';
+  onActivate?: (event: MouseEvent<HTMLButtonElement>) => void;
   priority?: boolean;
 };
 
@@ -36,7 +38,9 @@ export function CanonicalMediaImage({
   derivatives = [],
   fit,
   framing,
+  interactiveClassName,
   mode = 'library',
+  onActivate,
   priority = false,
 }: CanonicalMediaImageProps) {
   const { session } = useAuth();
@@ -127,7 +131,7 @@ export function CanonicalMediaImage({
     zoom: framing?.zoom ?? 1,
   };
 
-  return (
+  const image = (
     <AdaptiveProjectImage
       alt={alt}
       asset={localAsset}
@@ -138,6 +142,18 @@ export function CanonicalMediaImage({
       priority={priority}
       refreshSource={() => resolveCanonicalMediaUrl(delivery, mediaClient, { force: true })}
     />
+  );
+
+  if (!onActivate) return image;
+  return (
+    <button
+      aria-label={`Open ${alt}`}
+      className={cn('block text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ember focus-visible:ring-offset-2 focus-visible:ring-offset-midnight', interactiveClassName)}
+      onClick={onActivate}
+      type="button"
+    >
+      {image}
+    </button>
   );
 }
 

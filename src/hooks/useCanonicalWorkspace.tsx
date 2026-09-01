@@ -8,12 +8,14 @@ import {
   addTask,
   addTemplate,
   attachAsset,
+  attachInspirationReference,
   attachMoodboardItem,
   attachComponent,
   attachMaterial,
   createCanonicalWorkspace,
   createMoodboard,
   deleteGarment,
+  removeInspirationReference,
   recordInventory,
   relationshipOptions,
   updateBrief,
@@ -70,6 +72,7 @@ type CanonicalWorkspaceContextValue = {
   addTask: (input: Pick<CanonicalReleaseTask, 'description' | 'dueAt' | 'garmentId' | 'priority' | 'title'>) => string;
   addTemplate: (input: { name: string; templateType: 'pom' | 'measurement' | 'grading' | 'bom' | 'construction' | 'validation' | 'tech_pack' }) => string;
   attachAsset: (garmentId: string, assetId: string, role: CanonicalGarmentMedia['role']) => void;
+  attachInspirationReference: (garmentId: string, assetId: string, caption?: string) => void;
   attachMoodboardItem: (boardId: string, assetId: string, caption?: string) => void;
   attachComponent: (garmentId: string, variantId: string, placement?: string) => void;
   attachMaterial: (garmentId: string, variantId: string, role: string, placement?: string) => void;
@@ -83,6 +86,7 @@ type CanonicalWorkspaceContextValue = {
   isReady: boolean;
   pendingCount: number;
   recordInventory: (variantId: string, entryType: InventoryEntryType, quantity: number, note?: string) => void;
+  removeInspirationReference: (garmentId: string, inspirationItemId: string) => void;
   persistenceMode: CanonicalPersistenceMode;
   refresh: () => Promise<void>;
   requireFreshWorkspace: () => Promise<CanonicalWorkspaceState>;
@@ -95,6 +99,7 @@ type CanonicalWorkspaceContextValue = {
   updateGarment: (garmentId: string, patch: Partial<GarmentInput>) => void;
   updateTaskStatus: (taskId: string, status: CanonicalReleaseTask['status']) => void;
   uploadGarmentMedia: (garmentId: string, file: File, role: CanonicalGarmentMedia['role']) => Promise<string>;
+  uploadInspirationMedia: (garmentId: string, file: File) => Promise<string>;
   uploadMaterialMedia: (variantId: string, file: File) => Promise<string>;
   replaceMaterialMedia: (variantId: string, file: File, framing?: CanonicalMaterialImageFraming) => Promise<string>;
   removeMaterialMedia: (variantId: string) => void;
@@ -551,6 +556,7 @@ export function CanonicalWorkspaceProvider({
     addTask: (input) => { let id = ''; commit((current) => { const result = addTask(current, input); id = result.record.id; return result.state; }); return id; },
     addTemplate: (input) => { let id = ''; commit((current) => { const result = addTemplate(current, input); id = result.record.id; return result.state; }); return id; },
     attachAsset: (garmentId, assetId, role) => commit((current) => attachAsset(current, garmentId, assetId, role).state),
+    attachInspirationReference: (garmentId, assetId, caption) => commit((current) => attachInspirationReference(current, garmentId, assetId, caption).state),
     attachMoodboardItem: (boardId, assetId, caption) => commit((current) => attachMoodboardItem(current, boardId, assetId, caption).state),
     attachComponent: (garmentId, variantId, placement) => commit((current) => attachComponent(current, garmentId, variantId, placement).state),
     attachMaterial: (garmentId, variantId, role, placement) => commit((current) => attachMaterial(current, garmentId, variantId, role, placement).state),
@@ -574,6 +580,7 @@ export function CanonicalWorkspaceProvider({
     pendingCount,
     persistenceMode,
     recordInventory: (variantId, entryType, quantity, note) => commit((current) => recordInventory(current, variantId, entryType, quantity, note).state),
+    removeInspirationReference: (garmentId, inspirationItemId) => commit((current) => removeInspirationReference(current, garmentId, inspirationItemId)),
     relationshipOptions: (kind) => state ? relationshipOptions(state, kind) : [],
     refresh,
     requireFreshWorkspace,
@@ -594,6 +601,18 @@ export function CanonicalWorkspaceProvider({
         const withAsset = { ...workspace, mediaAssets: [...workspace.mediaAssets, asset] };
         return attachAsset(withAsset, garmentId, asset.id, role).state;
       });
+      return asset.id;
+    },
+    uploadInspirationMedia: async (garmentId, file) => {
+      const current = stateRef.current;
+      if (!current) throw new Error('The garment workspace is not ready.');
+      if (persistenceModeRef.current === 'local-recovery') throw new Error('Connect the canonical Studio before uploading imagery.');
+      if (!current.garments.some((garment) => garment.id === garmentId)) throw new Error('Garment not found.');
+      const asset = await prepareCanonicalGarmentImage(file, current.studioId, garmentId);
+      await commitAsync((workspace) => attachInspirationReference({
+        ...workspace,
+        mediaAssets: [...workspace.mediaAssets, asset],
+      }, garmentId, asset.id).state);
       return asset.id;
     },
     uploadMaterialMedia: async (variantId, file) => {
