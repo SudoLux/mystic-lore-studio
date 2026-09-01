@@ -43,8 +43,14 @@ describe('WP11C image-first garment experience', () => {
     expect(recommendedGarmentAction(garment).label).toBe('Open Technical Studio');
     const dashboard = readFileSync(new URL('../src/pages/Today/TodayPage.tsx', import.meta.url), 'utf8');
     const library = readFileSync(new URL('../src/pages/GarmentLibrary/GarmentLibraryPage.tsx', import.meta.url), 'utf8');
+    const recentGarmentCard = dashboard.slice(dashboard.indexOf('function RecentGarmentCard'), dashboard.indexOf('function PhasePill'));
     expect(dashboard).toContain('data-testid="featured-garment"');
     expect(dashboard).toContain('Recent garments');
+    expect(recentGarmentCard).toContain('type="button"');
+    expect(recentGarmentCard).toContain('aria-label={`Open ${garment.title}, ${collectionName}, ${garment.phase} garment`}');
+    expect(recentGarmentCard).toContain('onClick={onOpen}');
+    expect(recentGarmentCard).toContain('>Open garment <ArrowRight');
+    expect(recentGarmentCard).not.toContain('<Button');
     expect(library).toContain('data-testid="garment-card"');
     expect(library).toContain('>Continue</Button>');
     expect(library).toContain('aria-expanded={filtersOpen}');
