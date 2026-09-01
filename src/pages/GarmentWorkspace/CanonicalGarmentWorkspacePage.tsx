@@ -108,20 +108,24 @@ export function CanonicalGarmentWorkspacePage({ garmentId, onBack }: { garmentId
           />
           <div className="pointer-events-none absolute inset-0 z-10 bg-[linear-gradient(180deg,rgba(10,10,10,0.08),transparent_45%,rgba(10,10,10,0.62))] lg:bg-[linear-gradient(90deg,transparent_56%,rgba(10,10,10,0.7))]" />
           <div className="absolute left-4 top-4 z-30 flex gap-2 sm:left-6 sm:top-6"><Button className="bg-midnight/72 backdrop-blur-md" icon={<ArrowLeft aria-hidden="true" size={16}/>} onClick={onBack} size="sm" variant="secondary">Library</Button></div>
-          <Button
-            className="absolute bottom-5 left-5 z-30 bg-midnight/74 backdrop-blur-md sm:bottom-6 sm:left-6"
-            disabled={uploading}
-            icon={<Camera aria-hidden="true" size={16}/>}
-            onClick={(event) => {
-              if (!garmentViews.length) beginUpload('garment-view');
-              else {
-                garmentViewManagerTriggerRef.current = event.currentTarget;
-                setGarmentViewManagerOpen(true);
-              }
-            }}
-            size="sm"
-            variant="secondary"
-          >{garmentViews.length ? 'Manage photos' : 'Upload image'}</Button>
+          <div className="pointer-events-auto absolute bottom-5 left-5 z-[60] sm:bottom-6 sm:left-6">
+            <Button
+              className="relative z-[60] bg-midnight/74 backdrop-blur-md"
+              disabled={uploading}
+              icon={<Camera aria-hidden="true" size={16}/>}
+              onClick={(event) => {
+                event.stopPropagation();
+                if (!garmentViews.length) beginUpload('garment-view');
+                else {
+                  garmentViewManagerTriggerRef.current = event.currentTarget;
+                  setGarmentViewManagerOpen(true);
+                }
+              }}
+              onPointerDown={(event) => event.stopPropagation()}
+              size="sm"
+              variant="secondary"
+            >{garmentViews.length ? 'Manage photos' : 'Upload image'}</Button>
+          </div>
           <GarmentSupportingViewRail
             activeAssetId={displayedHero?.id ?? null}
             derivatives={state.mediaDerivatives}
