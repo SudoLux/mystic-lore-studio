@@ -107,15 +107,33 @@ export class CanonicalIndexedDb {
   }
 
   async putMediaBlob(key: string, blob: Blob, checksum: string) {
-    await putRecord('media', { blob, checksum, id: key, updatedAt: new Date().toISOString() } satisfies StoredMedia);
+    const record = { blob, checksum, id: key, updatedAt: new Date().toISOString() } satisfies StoredMedia;
+    try {
+      await putRecord('media', record);
+    } catch {
+      // Safari Private Browsing can expose IndexedDB but reject Blob/File
+      // writes. Keep the file available for this live upload rather than
+      // blocking the user; normal browsers still retain the offline cache.
+      memory.media.set(key, record);
+    }
   }
 
   async getMediaBlob(key: string) {
-    return await getRecord<StoredMedia>('media', key);
+    try {
+      return await getRecord<StoredMedia>('media', key) ?? memory.media.get(key) ?? null;
+    } catch {
+      return memory.media.get(key) ?? null;
+    }
   }
 
   async deleteMediaBlob(key: string) {
-    await deleteRecord('media', key);
+    memory.media.delete(key);
+    try {
+      await deleteRecord('media', key);
+    } catch {
+      // The staged copy was already cleared from this session. Browsers that
+      // reject private-mode Blob transactions have nothing durable to clear.
+    }
   }
 }
 

@@ -21,6 +21,7 @@ import {
   updateBrief,
 } from '../src/domains/workspace';
 import { createSeedStudioData, importStudioData } from '../src/lib/studioStorage';
+import { canonicalInspirationReferences } from '../src/lib/canonicalGarmentPresentation';
 
 const fixtureText = readFileSync(new URL('./fixtures/legacy-studio-data-v5.json', import.meta.url), 'utf8');
 const OWNER_ID = '10000000-0000-4000-8000-000000000111';
@@ -143,11 +144,25 @@ describe('WP3 canonical garment workspace', () => {
       storagePath: `studios/${start.studioId}/garments/${garment.id}/second-inspiration.jpg`,
     };
     const second = attachInspirationReference({ ...first.state, mediaAssets: [...first.state.mediaAssets, secondAsset] }, garment.id, secondAsset.id);
-    const removed = removeInspirationReference(second.state, garment.id, first.item.id);
+    const removed = removeInspirationReference(second.state, garment.id, asset.id, first.item.id);
     expect(removed.mediaAssets.some((candidate) => candidate.id === asset.id)).toBe(true);
     expect(removed.moodboardItems.some((candidate) => candidate.id === first.item.id)).toBe(false);
     expect(removed.garmentMedia.some((candidate) => candidate.assetId === asset.id && candidate.role === 'reference')).toBe(false);
     expect(removed.moodboardItems.find((candidate) => candidate.id === second.item.id)?.sortOrder).toBe(0);
+  });
+
+  it('keeps existing canonical reference links visible and removable when they predate moodboard items', async () => {
+    const start = await workspace();
+    const garment = start.garments[0];
+    const asset = start.mediaAssets[0];
+    const linked = attachAsset(start, garment.id, asset.id, 'reference');
+
+    const references = canonicalInspirationReferences(linked.state, garment.id);
+    expect(references).toEqual([expect.objectContaining({ asset, garmentMedia: expect.objectContaining({ assetId: asset.id }), item: null })]);
+
+    const removed = removeInspirationReference(linked.state, garment.id, asset.id);
+    expect(removed.mediaAssets.some((candidate) => candidate.id === asset.id)).toBe(true);
+    expect(removed.garmentMedia.some((candidate) => candidate.assetId === asset.id && candidate.role === 'reference')).toBe(false);
   });
 
   it('removes a garment and only its dependent relationship records after explicit confirmation at the UI layer', async () => {

@@ -564,9 +564,17 @@ export function attachInspirationReference(
   }
   const existing = state.moodboardItems.find((item) => boards.some((board) => board.id === item.boardId) && item.assetId === assetId);
   if (existing) return { state, item: existing };
-  const currentCount = state.moodboardItems.filter((item) => boards.some((board) => board.id === item.boardId)
-    && state.mediaAssets.some((candidate) => candidate.id === item.assetId && candidate.mimeType.startsWith('image/'))).length;
-  if (currentCount >= MAX_INSPIRATION_FIELD_IMAGES) {
+  const inspirationAssetIds = new Set([
+    ...state.moodboardItems
+      .filter((item) => boards.some((board) => board.id === item.boardId)
+        && state.mediaAssets.some((candidate) => candidate.id === item.assetId && candidate.mimeType.startsWith('image/')))
+      .map((item) => item.assetId),
+    ...state.garmentMedia
+      .filter((relation) => relation.garmentId === garmentId && relation.role === 'reference'
+        && state.mediaAssets.some((candidate) => candidate.id === relation.assetId && candidate.mimeType.startsWith('image/')))
+      .map((relation) => relation.assetId),
+  ]);
+  if (inspirationAssetIds.size >= MAX_INSPIRATION_FIELD_IMAGES && !inspirationAssetIds.has(assetId)) {
     throw new Error(`The Inspiration Field holds up to ${MAX_INSPIRATION_FIELD_IMAGES} images. Remove one before adding another.`);
   }
   const withBoard = boards.length ? { state, board: boards[0] } : createMoodboard(state, garmentId, 'Inspiration field');
@@ -582,9 +590,22 @@ export function attachInspirationReference(
 export function removeInspirationReference(
   state: CanonicalWorkspaceState,
   garmentId: string,
-  inspirationItemId: string,
+  assetId: string,
+  inspirationItemId: string | null = null,
 ) {
-  const item = state.moodboardItems.find((candidate) => candidate.id === inspirationItemId);
+  const item = inspirationItemId ? state.moodboardItems.find((candidate) => candidate.id === inspirationItemId) : null;
+  if (!item) {
+    const directReferenceExists = state.garmentMedia.some((relation) =>
+      relation.garmentId === garmentId && relation.assetId === assetId && relation.role === 'reference');
+    if (!directReferenceExists) {
+      throw new Error('That inspiration reference no longer belongs to this garment. Refresh and try again.');
+    }
+    return normalizeWorkspace({
+      ...state,
+      garmentMedia: state.garmentMedia.filter((relation) =>
+        !(relation.garmentId === garmentId && relation.assetId === assetId && relation.role === 'reference')),
+    });
+  }
   const board = item ? state.moodboards.find((candidate) => candidate.id === item.boardId) : null;
   if (!item || !board || board.garmentId !== garmentId) {
     throw new Error('That inspiration reference no longer belongs to this garment. Refresh and try again.');
@@ -604,14 +625,14 @@ export function removeInspirationReference(
   });
   const stillUsedByThisGarment = compactedItems.some((candidate) => {
     const candidateBoard = state.moodboards.find((entry) => entry.id === candidate.boardId);
-    return candidate.assetId === item.assetId && candidateBoard?.garmentId === garmentId;
+    return candidate.assetId === assetId && candidateBoard?.garmentId === garmentId;
   });
 
   return normalizeWorkspace({
     ...state,
     garmentMedia: stillUsedByThisGarment
       ? state.garmentMedia
-      : state.garmentMedia.filter((relation) => !(relation.garmentId === garmentId && relation.assetId === item.assetId && relation.role === 'reference')),
+      : state.garmentMedia.filter((relation) => !(relation.garmentId === garmentId && relation.assetId === assetId && relation.role === 'reference')),
     moodboardItems: compactedItems,
   });
 }

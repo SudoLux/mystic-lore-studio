@@ -1,5 +1,6 @@
 import type {
   CanonicalGarment,
+  CanonicalGarmentMedia,
   CanonicalMediaAsset,
   CanonicalMoodboardItem,
   CanonicalWorkspaceState,
@@ -29,12 +30,14 @@ export function canonicalGarmentCover(state: CanonicalWorkspaceState, garmentId:
 
 export type CanonicalInspirationReference = {
   asset: CanonicalMediaAsset;
-  item: CanonicalMoodboardItem;
+  /** Older canonical references pre-date Inspiration Field items. */
+  item: CanonicalMoodboardItem | null;
+  garmentMedia: CanonicalGarmentMedia | null;
 };
 
 /**
- * Keeps the garment workspace visual field grounded in the canonical
- * moodboard ordering rather than the broader garment-media role ordering.
+ * Resolves moodboard-backed images first, then retains previously saved
+ * canonical garment `reference` links so the UI never makes them disappear.
  */
 export function canonicalInspirationReferences(
   state: CanonicalWorkspaceState,
@@ -47,9 +50,13 @@ export function canonicalInspirationReferences(
       .map((board, index) => [board.id, index]),
   );
   const assets = new Map(state.mediaAssets.map((asset) => [asset.id, asset]));
+  const relations = state.garmentMedia
+    .filter((relation) => relation.garmentId === garmentId && relation.role === 'reference')
+    .sort((left, right) => left.sortOrder - right.sortOrder || left.id.localeCompare(right.id));
+  const relationByAssetId = new Map(relations.map((relation) => [relation.assetId, relation]));
   const seenAssetIds = new Set<string>();
 
-  return state.moodboardItems
+  const moodboardReferences: CanonicalInspirationReference[] = state.moodboardItems
     .filter((item) => boardOrder.has(item.boardId))
     .sort((left, right) => {
       const boardDifference = (boardOrder.get(left.boardId) ?? 0) - (boardOrder.get(right.boardId) ?? 0);
@@ -59,8 +66,17 @@ export function canonicalInspirationReferences(
       const asset = assets.get(item.assetId);
       if (!asset?.mimeType.startsWith('image/') || seenAssetIds.has(item.assetId)) return [];
       seenAssetIds.add(item.assetId);
-      return [{ asset, item }];
+      return [{ asset, garmentMedia: relationByAssetId.get(item.assetId) ?? null, item }];
     });
+
+  const directReferenceFallbacks: CanonicalInspirationReference[] = relations.flatMap((relation) => {
+    const asset = assets.get(relation.assetId);
+    if (!asset?.mimeType.startsWith('image/') || seenAssetIds.has(relation.assetId)) return [];
+    seenAssetIds.add(relation.assetId);
+    return [{ asset, garmentMedia: relation, item: null }];
+  });
+
+  return [...moodboardReferences, ...directReferenceFallbacks];
 }
 
 export type GarmentSwatch = {

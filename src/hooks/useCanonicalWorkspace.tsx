@@ -86,7 +86,7 @@ type CanonicalWorkspaceContextValue = {
   isReady: boolean;
   pendingCount: number;
   recordInventory: (variantId: string, entryType: InventoryEntryType, quantity: number, note?: string) => void;
-  removeInspirationReference: (garmentId: string, inspirationItemId: string) => void;
+  removeInspirationReference: (garmentId: string, assetId: string, inspirationItemId?: string | null) => void;
   persistenceMode: CanonicalPersistenceMode;
   refresh: () => Promise<void>;
   requireFreshWorkspace: () => Promise<CanonicalWorkspaceState>;
@@ -580,7 +580,7 @@ export function CanonicalWorkspaceProvider({
     pendingCount,
     persistenceMode,
     recordInventory: (variantId, entryType, quantity, note) => commit((current) => recordInventory(current, variantId, entryType, quantity, note).state),
-    removeInspirationReference: (garmentId, inspirationItemId) => commit((current) => removeInspirationReference(current, garmentId, inspirationItemId)),
+    removeInspirationReference: (garmentId, assetId, inspirationItemId) => commit((current) => removeInspirationReference(current, garmentId, assetId, inspirationItemId)),
     relationshipOptions: (kind) => state ? relationshipOptions(state, kind) : [],
     refresh,
     requireFreshWorkspace,
