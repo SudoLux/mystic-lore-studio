@@ -49,9 +49,30 @@ No schema or migration change is required. The canonical model already contains 
 - Flow cards now consume the shared garment context, including canonical cover, open tasks, next task, and supported warning.
 - Tasks and Calendar consume the same garment context, so garment names remain aligned across views.
 
+## WP11P-B — Flow Board visual recovery
+
+Flow is now an image-led horizontal atelier pipeline rather than a compressed
+table of stages.
+
+- It retains the eight canonical `garments.phase` values: Brief, Design,
+  Materials, Technical, Sampling, Production, Story, and Portfolio.
+- Each 320–328px column has a restrained stage description, count, deliberate
+  empty/drop state, and natural horizontal scrolling on every viewport.
+- Each garment card resolves the existing private canonical cover image and
+  presents its collection, type, phase, open-task count, next move, and
+  supported warning without creating another garment record.
+- A separate drag handle prevents drag gestures from competing with opening a
+  garment. Pointer, touch, and keyboard drag sensors use the same
+  `updateGarment(..., { phase })` command as the visible stage dropdown.
+- Clicking a card opens that garment workspace. The dropdown remains the
+  explicit keyboard-friendly alternative for moving a garment; a drag/drop
+  success or failure is announced through a polite live region.
+- Dragging only updates the existing canonical phase and therefore preserves
+  canonical change events, offline outbox replay, conflict handling, RLS,
+  private media delivery, and reload behavior.
+
 ## Remaining WP11P work
 
-1. **Flow:** dedicated garment cards, stage transitions, drag/reorder affordances, and richer stage context.
-2. **Tasks:** calm grouped/freeform layouts, filtering, task detail, and bulk planning behavior.
-3. **Calendar:** month/week/agenda modes, responsive detail panel, date navigation, and event editing.
-4. **Cross-view polish:** deep links, transitions, loading skeletons, empty states, and visual regression coverage at desktop, iPad, and mobile sizes.
+1. **Tasks:** calm grouped/freeform layouts, filtering, task detail, and bulk planning behavior.
+2. **Calendar:** month/week/agenda modes, responsive detail panel, date navigation, and event editing.
+3. **Cross-view polish:** deep links, transitions, loading skeletons, empty states, and visual regression coverage at desktop, iPad, and mobile sizes.

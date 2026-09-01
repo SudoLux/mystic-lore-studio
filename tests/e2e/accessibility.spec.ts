@@ -9,6 +9,7 @@ test('authenticated desktop and field-mode routes have no detectable WCAG A/AA v
   for (const route of ['#/today', '#/projects', '#/kanban', `#/projects/${garmentId}`, '#/fabrics', `#/technical/${garmentId}`, `#/production/${garmentId}`, '#/lookbooks', '#/portfolio', '#/versions', '#/ai', '#/stats', '#/settings']) {
     await page.goto(`/${route}`);
     await expect(page.locator('#main-content')).toBeVisible();
+    await expect(page.getByText('Opening your Studio workspace')).toBeHidden();
     const desktop = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21aa', 'wcag22aa']).analyze();
     expect(desktop.violations, `${route} desktop violations`).toEqual([]);
   }
@@ -17,6 +18,7 @@ test('authenticated desktop and field-mode routes have no detectable WCAG A/AA v
   for (const route of ['#/today', '#/projects', '#/kanban', `#/projects/${garmentId}`, '#/fabrics', `#/production/${garmentId}`, '#/versions', '#/ai', '#/settings']) {
     await page.goto(`/${route}`);
     await expect(page.locator('#main-content')).toBeVisible();
+    await expect(page.getByText('Opening your Studio workspace')).toBeHidden();
     const fieldMode = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21aa', 'wcag22aa']).analyze();
     expect(fieldMode.violations, `${route} field-mode violations`).toEqual([]);
   }

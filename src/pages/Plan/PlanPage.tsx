@@ -1,9 +1,24 @@
 import { useMemo, useState, type FormEvent, type KeyboardEvent } from 'react';
 import {
+  DndContext,
+  DragOverlay,
+  KeyboardSensor,
+  PointerSensor,
+  TouchSensor,
+  useDraggable,
+  useDroppable,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+  type DragStartEvent,
+} from '@dnd-kit/core';
+import {
   AlertTriangle,
+  ArrowUpRight,
   CalendarDays,
   CheckSquare2,
   Columns3,
+  GripVertical,
   Plus,
   RefreshCw,
 } from 'lucide-react';
@@ -22,11 +37,11 @@ import {
   type PlanGarmentSummary,
   type PlanTaskItem,
 } from '../../lib/canonicalPlanPresentation';
-import type { CanonicalGarment, CanonicalReleaseTask } from '../../domains/workspace';
+import { updateGarment as updateCanonicalGarment, type CanonicalGarment, type CanonicalReleaseTask } from '../../domains/workspace';
 
 type PlanView = 'flow' | 'tasks' | 'calendar';
 
-export function PlanPage() {
+export function PlanPage({ onOpenGarment }: { onOpenGarment?: (garmentId: string) => void }) {
   const workspace = useCanonicalWorkspace();
   const [view, setView] = useState<PlanView>('flow');
   const [showCreate, setShowCreate] = useState(false);
@@ -83,7 +98,7 @@ export function PlanPage() {
           : <TaskForm onClose={() => setShowCreate(false)} />
       ) : null}
 
-      {view === 'flow' ? <FlowView garments={plan.garments} /> : null}
+      {view === 'flow' ? <FlowView garments={plan.garments} onOpenGarment={onOpenGarment} /> : null}
       {view === 'tasks' ? <TaskView tasks={plan.tasks} /> : null}
       {view === 'calendar' ? <CalendarView items={plan.calendarItems} /> : null}
     </section>
@@ -128,40 +143,189 @@ function PlanTab({ active, icon: Icon, label, onClick, tabId }: { active: boolea
   );
 }
 
-function FlowView({ garments }: { garments: PlanGarmentSummary[] }) {
-  const { state, updateGarment } = useCanonicalWorkspace();
+const flowStageDescriptions: Record<CanonicalGarment['phase'], string> = {
+  brief: 'Set the intention.',
+  design: 'Shape the silhouette.',
+  materials: 'Choose what it becomes.',
+  technical: 'Resolve the specification.',
+  sampling: 'Fit, test, refine.',
+  production: 'Make with confidence.',
+  story: 'Build the narrative.',
+  portfolio: 'Prepare the presentation.',
+};
+
+function FlowView({ garments, onOpenGarment }: { garments: PlanGarmentSummary[]; onOpenGarment?: (garmentId: string) => void }) {
+  const { commitWorkspaceAsync, state } = useCanonicalWorkspace();
+  const [activeGarmentId, setActiveGarmentId] = useState<string | null>(null);
+  const [feedback, setFeedback] = useState('');
+  const [movingGarmentId, setMovingGarmentId] = useState<string | null>(null);
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 150, tolerance: 8 } }),
+    useSensor(KeyboardSensor),
+  );
   if (!state) return null;
+
+  const activeGarment = activeGarmentId ? garments.find((summary) => summary.garment.id === activeGarmentId) ?? null : null;
+  const moveGarment = async (garmentId: string, phase: CanonicalGarment['phase']) => {
+    if (movingGarmentId) return;
+    const original = state.garments.find((item) => item.id === garmentId);
+    if (!original || original.phase === phase) return;
+    let garment = original;
+    setMovingGarmentId(garmentId);
+    setFeedback(`Moving ${original.title} to ${phase}…`);
+    try {
+      await commitWorkspaceAsync((current) => {
+        const latest = current.garments.find((item) => item.id === garmentId);
+        if (!latest) throw new Error('This garment is no longer available.');
+        garment = latest;
+        return latest.phase === phase ? current : updateCanonicalGarment(current, garmentId, { phase });
+      });
+      setFeedback(`${garment.title} moved to ${phase}.`);
+    } catch {
+      setFeedback(`We could not move ${garment.title}. Your garment remains in ${garment.phase}.`);
+    } finally {
+      setMovingGarmentId(null);
+    }
+  };
+  const onDragStart = (event: DragStartEvent) => setActiveGarmentId(String(event.active.id));
+  const onDragCancel = () => setActiveGarmentId(null);
+  const onDragEnd = (event: DragEndEvent) => {
+    const garmentId = String(event.active.id);
+    const phase = event.over?.id as CanonicalGarment['phase'] | undefined;
+    setActiveGarmentId(null);
+    if (!phase || !planGarmentPhases.includes(phase)) return;
+    void moveGarment(garmentId, phase);
+  };
+
   return (
-    <div aria-labelledby="plan-tab-flow" className="studio-scrollbar -mx-4 overflow-x-auto px-4 pb-3 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8" id="plan-panel-flow" role="tabpanel">
-      <div className="grid min-w-[70rem] grid-cols-8 gap-3">
-        {planGarmentPhases.map((phase) => {
-          const garmentsInPhase = garments.filter((item) => item.garment.phase === phase);
-          return (
-            <section className="rounded-2xl border border-bronze/22 bg-midnight/34 p-3" key={phase}>
-              <div className="flex items-center justify-between gap-2">
-                <h2 className="text-sm font-semibold capitalize text-stardust">{phase}</h2>
-                <Badge variant="bronze">{garmentsInPhase.length}</Badge>
-              </div>
-              <div className="mt-3 space-y-3">
-                {garmentsInPhase.map((summary) => (
-                  <article className="rounded-xl border border-bronze/20 bg-stardust/[0.045] p-3" key={summary.garment.id}>
-                    <div className="flex gap-3"><CanonicalMediaImage alt={`${summary.garment.title} cover`} asset={summary.coverImage} className="h-12 w-10 shrink-0" derivatives={state.mediaDerivatives} mode="thumbnail" /><div className="min-w-0"><p className="truncate text-sm font-semibold text-stardust">{summary.garment.title}</p><p className="mt-1 truncate text-xs text-stardust/46">{summary.collectionName} · {summary.openTaskCount} open {summary.openTaskCount === 1 ? 'task' : 'tasks'}</p>{summary.nextTask ? <p className="mt-1 truncate text-xs text-stardust/38">Next: {summary.nextTask.title}</p> : null}</div></div>
-                    {summary.warning ? <p className="mt-3 text-xs font-medium text-ember">{summary.warning.label}</p> : null}
-                    <label className="mt-3 block text-xs text-stardust/52">
-                      <span className="sr-only">Move {summary.garment.title} to phase</span>
-                      <select className="min-h-11 w-full rounded-xl border border-bronze/26 bg-midnight px-2 text-xs text-stardust" onChange={(event) => updateGarment(summary.garment.id, { phase: event.target.value as CanonicalGarment['phase'] })} value={summary.garment.phase}>
-                        {planGarmentPhases.map((option) => <option key={option} value={option}>{option}</option>)}
-                      </select>
-                    </label>
-                  </article>
-                ))}
-                {!garmentsInPhase.length ? <p className="rounded-xl border border-dashed border-bronze/22 p-3 text-xs leading-5 text-stardust/42">No garments in this phase.</p> : null}
-              </div>
-            </section>
-          );
-        })}
-      </div>
+    <div aria-labelledby="plan-tab-flow" id="plan-panel-flow" role="tabpanel">
+      <p className="sr-only" aria-live="polite">{feedback}</p>
+      <DndContext onDragCancel={onDragCancel} onDragEnd={onDragEnd} onDragStart={onDragStart} sensors={sensors}>
+        <div aria-label="Garment development flow" className="studio-scrollbar -mx-4 overflow-x-auto px-4 pb-5 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8" role="region" tabIndex={0}>
+          <div className="flex min-w-max items-stretch gap-5">
+            {planGarmentPhases.map((phase) => {
+              const garmentsInPhase = garments.filter((item) => item.garment.phase === phase);
+              return <FlowColumn garments={garmentsInPhase} key={phase} movingGarmentId={movingGarmentId} onMove={moveGarment} onOpenGarment={onOpenGarment} phase={phase} state={state} />;
+            })}
+          </div>
+        </div>
+        <DragOverlay dropAnimation={null}>
+          {activeGarment ? <FlowGarmentDragPreview state={state} summary={activeGarment} /> : null}
+        </DragOverlay>
+      </DndContext>
     </div>
+  );
+}
+
+function FlowColumn({ garments, movingGarmentId, onMove, onOpenGarment, phase, state }: {
+  garments: PlanGarmentSummary[];
+  movingGarmentId: string | null;
+  onMove: (garmentId: string, phase: CanonicalGarment['phase']) => Promise<void>;
+  onOpenGarment?: (garmentId: string) => void;
+  phase: CanonicalGarment['phase'];
+  state: NonNullable<ReturnType<typeof useCanonicalWorkspace>['state']>;
+}) {
+  const { isOver, setNodeRef } = useDroppable({ id: phase });
+  return (
+    <section
+      className={cn(
+        'flex w-[20rem] shrink-0 flex-col rounded-[1.6rem] border bg-[linear-gradient(160deg,rgba(237,227,207,0.055),rgba(17,20,24,0.64)_42%,rgba(10,10,10,0.78))] p-3 shadow-[0_18px_64px_rgba(0,0,0,0.24),inset_0_1px_0_rgba(237,227,207,0.04)] transition-[background-color,border-color,box-shadow] duration-200 sm:w-[20.5rem]',
+        isOver ? 'border-ember/70 bg-ember/[0.09] shadow-[0_20px_72px_rgba(200,155,60,0.18),inset_0_1px_0_rgba(237,227,207,0.08)]' : 'border-bronze/24',
+      )}
+      data-testid={`flow-column-${phase}`}
+      ref={setNodeRef}
+    >
+      <header className="border-b border-bronze/18 px-2 pb-4 pt-1">
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <p className="text-[0.63rem] font-medium uppercase tracking-[0.2em] text-ember/72">{phase} · {garments.length}</p>
+            <h2 className="font-display mt-2 text-2xl capitalize text-stardust">{phase}</h2>
+          </div>
+          <Badge variant="bronze">{garments.length}</Badge>
+        </div>
+        <p className="mt-2 text-sm leading-5 text-stardust/48">{flowStageDescriptions[phase]}</p>
+      </header>
+      <div className="mt-4 flex min-h-44 flex-1 flex-col gap-4">
+        {garments.map((summary) => <FlowGarmentCard isMoving={movingGarmentId === summary.garment.id} key={summary.garment.id} onMove={onMove} onOpenGarment={onOpenGarment} state={state} summary={summary} />)}
+        {!garments.length ? (
+          <div className={cn(
+            'flex min-h-36 flex-1 items-center justify-center rounded-2xl border border-dashed px-5 text-center text-sm leading-6 transition-colors duration-200',
+            isOver ? 'border-ember/58 bg-ember/[0.08] text-stardust/74' : 'border-bronze/22 bg-midnight/18 text-stardust/40',
+          )}>
+            {isOver ? `Move this garment into ${phase}.` : 'This part of the collection is ready for its next piece.'}
+          </div>
+        ) : null}
+      </div>
+    </section>
+  );
+}
+
+function FlowGarmentCard({ isMoving, onMove, onOpenGarment, state, summary }: {
+  isMoving: boolean;
+  onMove: (garmentId: string, phase: CanonicalGarment['phase']) => Promise<void>;
+  onOpenGarment?: (garmentId: string) => void;
+  state: NonNullable<ReturnType<typeof useCanonicalWorkspace>['state']>;
+  summary: PlanGarmentSummary;
+}) {
+  const { attributes, isDragging, listeners, setNodeRef } = useDraggable({
+    id: summary.garment.id,
+    data: { garmentId: summary.garment.id, phase: summary.garment.phase },
+    disabled: isMoving,
+  });
+  const openGarment = () => onOpenGarment?.(summary.garment.id);
+  return (
+    <article
+      className={cn(
+        'group relative overflow-hidden rounded-[1.35rem] border border-bronze/24 bg-[linear-gradient(155deg,rgba(10,10,10,0.78),rgba(61,43,31,0.25))] shadow-[0_14px_42px_rgba(0,0,0,0.24),inset_0_1px_0_rgba(237,227,207,0.035)] transition-[border-color,box-shadow,opacity,transform] duration-200 hover:-translate-y-1 hover:border-ember/52 hover:shadow-[0_18px_54px_rgba(0,0,0,0.32),0_0_24px_rgba(200,155,60,0.08)] focus-within:border-ember/62',
+        isDragging && 'scale-[0.985] border-ember/55 opacity-30',
+      )}
+      data-testid="flow-card"
+      ref={setNodeRef}
+    >
+      <button aria-label={`Open ${summary.garment.title}, ${summary.collectionName}, ${summary.garment.phase}`} className="block w-full text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ember" onClick={openGarment} type="button">
+        <div className="relative overflow-hidden bg-midnight/70">
+          <CanonicalMediaImage alt={`${summary.garment.title} cover`} asset={summary.coverImage} className="aspect-[4/3] w-full transition-transform duration-300 motion-reduce:transition-none group-hover:scale-[1.025]" derivatives={state.mediaDerivatives} mode="library" />
+          <div className="pointer-events-none absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-midnight/92 via-midnight/30 to-transparent" />
+          <span className="absolute bottom-3 left-3 rounded-full border border-stardust/15 bg-midnight/72 px-2.5 py-1 text-[0.62rem] font-medium uppercase tracking-[0.16em] text-stardust/82 backdrop-blur-sm">{summary.garment.phase}</span>
+          {summary.warning ? <span className="absolute bottom-3 right-3 rounded-full border border-ember/35 bg-midnight/72 px-2.5 py-1 text-[0.62rem] font-medium uppercase tracking-[0.12em] text-ember backdrop-blur-sm">{summary.warning.label}</span> : null}
+        </div>
+        <div className="p-4 pb-3">
+          <p className="truncate text-[0.66rem] font-medium uppercase tracking-[0.16em] text-ember/72">{summary.collectionName} · {summary.garment.garmentType}</p>
+          <h3 className="font-display mt-2 line-clamp-2 text-2xl leading-[1.04] text-stardust">{summary.garment.title}</h3>
+          <div className="mt-4 flex items-center justify-between gap-3 text-xs text-stardust/52">
+            <span>{summary.openTaskCount ? `${summary.openTaskCount} open ${summary.openTaskCount === 1 ? 'task' : 'tasks'}` : 'No open tasks'}</span>
+            <span className="inline-flex items-center gap-1 font-medium text-stardust/72">Open <ArrowUpRight aria-hidden="true" size={14} /></span>
+          </div>
+          {summary.nextTask ? <p className="mt-3 truncate border-t border-bronze/15 pt-3 text-xs text-stardust/48"><span className="mr-1 uppercase tracking-[0.13em] text-stardust/34">Next</span>{summary.nextTask.title}</p> : null}
+        </div>
+      </button>
+      <button
+        aria-label={`Drag ${summary.garment.title} to another stage`}
+        className="absolute right-3 top-3 flex h-10 w-10 touch-none items-center justify-center rounded-xl border border-stardust/18 bg-midnight/72 text-stardust/62 opacity-0 shadow-lg backdrop-blur-sm transition hover:border-ember/55 hover:text-ember focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ember group-hover:opacity-100"
+        disabled={isMoving}
+        type="button"
+        {...attributes}
+        {...listeners}
+      >
+        <GripVertical aria-hidden="true" size={18} strokeWidth={1.8} />
+      </button>
+      <label className="block border-t border-bronze/16 px-3 py-3 text-[0.65rem] font-medium uppercase tracking-[0.14em] text-stardust/42">
+        <span className="sr-only">Move {summary.garment.title} to phase</span>
+        <select className="mt-1 min-h-10 w-full cursor-pointer rounded-xl border border-bronze/22 bg-midnight/62 px-2.5 text-xs normal-case tracking-normal text-stardust/76 outline-none transition focus:border-ember/65 focus:ring-2 focus:ring-ember/30 disabled:cursor-wait disabled:opacity-55" data-testid={`flow-stage-${summary.garment.id}`} disabled={isMoving} onChange={(event) => void onMove(summary.garment.id, event.target.value as CanonicalGarment['phase'])} value={summary.garment.phase}>
+          {planGarmentPhases.map((option) => <option key={option} value={option}>{option}</option>)}
+        </select>
+      </label>
+    </article>
+  );
+}
+
+function FlowGarmentDragPreview({ state, summary }: { state: NonNullable<ReturnType<typeof useCanonicalWorkspace>['state']>; summary: PlanGarmentSummary }) {
+  return (
+    <article className="pointer-events-none w-[20rem] rotate-[0.5deg] overflow-hidden rounded-[1.35rem] border border-ember/75 bg-midnight/96 shadow-[0_28px_90px_rgba(0,0,0,0.55),0_0_42px_rgba(200,155,60,0.2)]">
+      <CanonicalMediaImage alt={`${summary.garment.title} cover`} asset={summary.coverImage} className="aspect-[4/3] w-full" derivatives={state.mediaDerivatives} mode="library" />
+      <div className="p-4"><p className="text-[0.65rem] uppercase tracking-[0.16em] text-ember/78">{summary.garment.phase}</p><p className="font-display mt-2 text-2xl text-stardust">{summary.garment.title}</p></div>
+    </article>
   );
 }
 

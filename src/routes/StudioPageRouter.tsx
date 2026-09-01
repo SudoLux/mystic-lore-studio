@@ -50,7 +50,7 @@ function StudioPage({
   if (route.page === 'production') return <ProductionPage garmentId={route.productionGarmentId} onOpenGarment={onOpenProductionGarment} />;
   if (route.page === 'versions') return <VersionsPage />;
   if (route.page === 'ai') return <AiStudioPage />;
-  if (route.page === 'kanban') return <PlanPage />;
+  if (route.page === 'kanban') return <PlanPage onOpenGarment={onOpenProject} />;
   if (route.page === 'lookbooks') return <EditorialStudioPage />;
   if (route.page === 'portfolio') return <PortfolioStudioPage />;
   if (route.page === 'stats') return <StatsPage />;
