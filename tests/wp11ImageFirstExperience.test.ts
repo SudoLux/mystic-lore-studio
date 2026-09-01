@@ -53,12 +53,31 @@ describe('WP11C image-first garment experience', () => {
   it('presents a three-view garment set with main-image controls and a private lightbox', () => {
     const workspace = readFileSync(new URL('../src/pages/GarmentWorkspace/CanonicalGarmentWorkspacePage.tsx', import.meta.url), 'utf8');
     const manager = readFileSync(new URL('../src/components/shared/CanonicalGarmentViewManager.tsx', import.meta.url), 'utf8');
-    expect(workspace).toContain("garmentViews.length ? 'Add image' : 'Upload image'");
+    expect(workspace).toContain("garmentViews.length ? 'Manage photos' : 'Upload image'");
     expect(workspace).toContain('GarmentSupportingViewRail');
     expect(workspace).toContain('sectionLabel="Garment photography"');
+    expect(workspace).toContain('setPreviewViewAssetId(assetId)');
+    expect(workspace).toContain('asset={displayedHero}');
+    const viewRail = workspace.slice(workspace.indexOf('function GarmentSupportingViewRail'), workspace.indexOf('function RemoveGarmentViewDialog'));
+    expect(viewRail).toContain('onSelect(view.asset.id)');
+    expect(viewRail).not.toContain('setGarmentHero');
+    expect(manager).toContain('Manage photos');
     expect(manager).toContain('Make main');
     expect(manager).toContain('remove one to upload another');
     expect(manager).toContain('MAX_GARMENT_VIEWS');
+  });
+
+  it('uses a focused garment material manager instead of leading with the shared-library picker', () => {
+    const workspace = readFileSync(new URL('../src/pages/GarmentWorkspace/CanonicalGarmentWorkspacePage.tsx', import.meta.url), 'utf8');
+    const manager = readFileSync(new URL('../src/components/shared/CanonicalGarmentMaterialManager.tsx', import.meta.url), 'utf8');
+    const designStudio = workspace.slice(workspace.indexOf('function DesignStudio'), workspace.indexOf('function TechnicalLens'));
+    expect(workspace).toContain('<CanonicalGarmentMaterialManager');
+    expect(workspace).toContain('Manage materials');
+    expect(designStudio).not.toContain('Choose a material');
+    expect(manager).toContain('Add material');
+    expect(manager).toContain('Remove from garment');
+    expect(manager).toContain('Planned yardage');
+    expect(manager).toContain("'shell', 'lining', 'trim', 'pocketing', 'binding', 'contrast', 'interfacing'");
   });
 
   it('delivers private canonical imagery through expiring member-authorized links', () => {

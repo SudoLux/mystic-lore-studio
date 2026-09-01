@@ -504,10 +504,49 @@ export function addTemplate(
 }
 
 export function attachMaterial(state: CanonicalWorkspaceState, garmentId: string, variantId: string, role: string, placement = '') {
-  const existing = state.garmentMaterials.find((item) => item.garmentId === garmentId && item.variantId === variantId && item.role === role && item.placement === (placement || null));
+  const existing = state.garmentMaterials.find((item) => item.garmentId === garmentId && item.variantId === variantId && materialRoleKey(item.role) === materialRoleKey(role) && item.placement === (placement || null));
   if (existing) return { state, relationship: existing };
   const relationship: CanonicalGarmentMaterial = { ...newRecord(state.studioId), garmentId, placement: placement || null, requiredQuantity: 0, reservedQuantity: 0, role, status: 'planned', unit: 'yd', variantId };
   return { state: normalizeWorkspace({ ...state, garmentMaterials: [...state.garmentMaterials, relationship] }), relationship };
+}
+
+/** Updates the garment-specific use of a material without touching Vault inventory or the material itself. */
+export function updateGarmentMaterial(state: CanonicalWorkspaceState, relationshipId: string, patch: Pick<CanonicalGarmentMaterial, 'requiredQuantity' | 'role'>) {
+  const relationship = state.garmentMaterials.find((item) => item.id === relationshipId);
+  if (!relationship) throw new Error('That material link is no longer available. Refresh and try again.');
+  const role = patch.role.trim();
+  if (!role) throw new Error('Choose how this fabric is used in the garment.');
+  if (!Number.isFinite(patch.requiredQuantity) || patch.requiredQuantity < 0) throw new Error('Planned yardage must be zero or more.');
+  if (patch.requiredQuantity < relationship.reservedQuantity && !['issued', 'consumed'].includes(relationship.status)) {
+    throw new Error('Planned yardage cannot be less than the amount already reserved.');
+  }
+  const duplicate = state.garmentMaterials.find((item) => item.id !== relationship.id
+    && item.garmentId === relationship.garmentId
+    && item.variantId === relationship.variantId
+    && materialRoleKey(item.role) === materialRoleKey(role)
+    && item.placement === relationship.placement);
+  if (duplicate) throw new Error('This fabric is already linked with that role.');
+  return normalizeWorkspace({
+    ...state,
+    garmentMaterials: state.garmentMaterials.map((item) => item.id === relationship.id
+      ? touch({ ...item, requiredQuantity: patch.requiredQuantity, role })
+      : item),
+  });
+}
+
+/** Detaches a fabric from one garment only; the canonical material and its evidence remain intact. */
+export function removeGarmentMaterial(state: CanonicalWorkspaceState, relationshipId: string) {
+  if (!state.garmentMaterials.some((item) => item.id === relationshipId)) {
+    throw new Error('That material link is no longer available. Refresh and try again.');
+  }
+  return normalizeWorkspace({
+    ...state,
+    garmentMaterials: state.garmentMaterials.filter((item) => item.id !== relationshipId),
+  });
+}
+
+function materialRoleKey(role: string) {
+  return role.trim().toLowerCase().replace(/\s+fabric$/, '');
 }
 
 export function attachComponent(state: CanonicalWorkspaceState, garmentId: string, variantId: string, placement = '') {

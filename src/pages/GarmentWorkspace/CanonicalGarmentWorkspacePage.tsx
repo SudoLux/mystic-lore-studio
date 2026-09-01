@@ -3,6 +3,7 @@ import { ArrowLeft, ArrowRight, Camera, ImagePlus, Palette, Trash2 } from 'lucid
 import { Badge } from '../../components/shared/Badge';
 import { Button } from '../../components/shared/Button';
 import { CanonicalGarmentViewManager } from '../../components/shared/CanonicalGarmentViewManager';
+import { CanonicalGarmentMaterialManager } from '../../components/shared/CanonicalGarmentMaterialManager';
 import { CanonicalMediaImage } from '../../components/shared/CanonicalMediaImage';
 import { CanonicalMediaLightbox } from '../../components/shared/CanonicalMediaLightbox';
 import { CanonicalWorkspaceState } from '../../components/shared/CanonicalWorkspaceState';
@@ -15,13 +16,15 @@ import { canonicalGarmentCover, canonicalGarmentSwatches, canonicalGarmentViews,
 import { MAX_GARMENT_VIEWS, MAX_INSPIRATION_FIELD_IMAGES } from '../../domains/workspace';
 
 export function CanonicalGarmentWorkspacePage({ garmentId, onBack }: { garmentId: string; onBack: () => void }) {
-  const { deleteGarment, removeGarmentView, removeInspirationReference, setGarmentHero, state, syncState, uploadGarmentView, uploadInspirationMedia } = useCanonicalWorkspace();
+  const { deleteGarment, linkMaterialToGarment, removeGarmentMaterial, removeGarmentView, removeInspirationReference, setGarmentHero, state, syncState, updateGarmentMaterial, uploadGarmentView, uploadInspirationMedia } = useCanonicalWorkspace();
   const [lens, setLens] = useState<GarmentLens>('overview');
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [referenceToRemove, setReferenceToRemove] = useState<CanonicalInspirationReference | null>(null);
   const [garmentViewToRemove, setGarmentViewToRemove] = useState<CanonicalGarmentView | null>(null);
   const [garmentViewManagerOpen, setGarmentViewManagerOpen] = useState(false);
+  const [materialManagerOpen, setMaterialManagerOpen] = useState(false);
   const [garmentViewerAssetId, setGarmentViewerAssetId] = useState<string | null>(null);
+  const [previewViewAssetId, setPreviewViewAssetId] = useState<string | null>(null);
   const [viewerAssetId, setViewerAssetId] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
   const [uploadNotice, setUploadNotice] = useState<string | null>(null);
@@ -29,6 +32,7 @@ export function CanonicalGarmentWorkspacePage({ garmentId, onBack }: { garmentId
   const inspirationTriggerRef = useRef<HTMLElement | null>(null);
   const garmentViewTriggerRef = useRef<HTMLElement | null>(null);
   const garmentViewManagerTriggerRef = useRef<HTMLElement | null>(null);
+  const materialManagerTriggerRef = useRef<HTMLElement | null>(null);
   const uploadRoleRef = useRef<'garment-view' | 'reference'>('garment-view');
   const garment = state?.garments.find((item) => item.id === garmentId);
   const collection = state?.collections.find((item) => item.id === garment?.collectionId);
@@ -39,6 +43,7 @@ export function CanonicalGarmentWorkspacePage({ garmentId, onBack }: { garmentId
   const garmentViews = canonicalGarmentViews(state, garmentId);
   const garmentViewAssets = garmentViews.map((view) => view.asset);
   const cover = garmentViews[0]?.asset ?? canonicalGarmentCover(state, garmentId);
+  const displayedHero = garmentViews.find((view) => view.asset.id === previewViewAssetId)?.asset ?? cover;
   const swatches = canonicalGarmentSwatches(state, garmentId, 6);
   const inspirationReferences = canonicalInspirationReferences(state, garmentId);
   const referenceAssets = inspirationReferences.map((reference) => reference.asset).slice(0, MAX_INSPIRATION_FIELD_IMAGES);
@@ -73,6 +78,7 @@ export function CanonicalGarmentWorkspacePage({ garmentId, onBack }: { garmentId
     if (!garmentViewToRemove) return;
     removeGarmentView(garmentId, garmentViewToRemove.asset.id);
     if (garmentViewerAssetId === garmentViewToRemove.asset.id) setGarmentViewerAssetId(null);
+    if (previewViewAssetId === garmentViewToRemove.asset.id) setPreviewViewAssetId(null);
     setGarmentViewToRemove(null);
     setUploadNotice('Garment view removed. The original private file remains safe in the Studio.');
   };
@@ -91,13 +97,13 @@ export function CanonicalGarmentWorkspacePage({ garmentId, onBack }: { garmentId
       <div className="grid min-w-0 lg:min-h-[35rem] lg:grid-cols-[1.2fr_0.8fr]">
         <div className="relative min-h-[19rem] sm:min-h-[27rem] lg:min-h-full">
           <CanonicalMediaImage
-            alt={`${garment.title} main image`}
-            asset={cover}
+            alt={`${garment.title} garment view`}
+            asset={displayedHero}
             className="absolute inset-0 rounded-none border-0"
             derivatives={state.mediaDerivatives}
-            interactiveClassName={cover ? 'absolute inset-0 z-0 rounded-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ember' : undefined}
+            interactiveClassName={displayedHero ? 'absolute inset-0 z-0 rounded-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ember' : undefined}
             mode="hero"
-            onActivate={cover ? (event) => { garmentViewTriggerRef.current = event.currentTarget; setGarmentViewerAssetId(cover.id); } : undefined}
+            onActivate={displayedHero ? (event) => { garmentViewTriggerRef.current = event.currentTarget; setGarmentViewerAssetId(displayedHero.id); } : undefined}
             priority
           />
           <div className="pointer-events-none absolute inset-0 z-10 bg-[linear-gradient(180deg,rgba(10,10,10,0.08),transparent_45%,rgba(10,10,10,0.62))] lg:bg-[linear-gradient(90deg,transparent_56%,rgba(10,10,10,0.7))]" />
@@ -115,17 +121,18 @@ export function CanonicalGarmentWorkspacePage({ garmentId, onBack }: { garmentId
             }}
             size="sm"
             variant="secondary"
-          >{garmentViews.length ? 'Add image' : 'Upload image'}</Button>
+          >{garmentViews.length ? 'Manage photos' : 'Upload image'}</Button>
           <GarmentSupportingViewRail
+            activeAssetId={displayedHero?.id ?? null}
             derivatives={state.mediaDerivatives}
             garmentTitle={garment.title}
-            onOpen={(assetId, trigger) => { garmentViewTriggerRef.current = trigger; setGarmentViewerAssetId(assetId); }}
-            views={garmentViews.slice(1)}
+            onSelect={(assetId) => setPreviewViewAssetId(assetId)}
+            views={garmentViews}
           />
         </div>
         <div className="flex min-w-0 max-w-full flex-col justify-between overflow-hidden p-6 sm:p-8 lg:p-10">
           <div className="min-w-0"><div className="flex flex-wrap items-center gap-2"><PhasePill phase={garment.phase} />{garment.status === 'on_hold' ? <Badge variant="ember">On hold</Badge> : null}<span className="text-xs text-stardust/38">{syncState === 'ready' ? 'Saved' : syncState}</span></div><p className="mt-8 text-[0.66rem] uppercase tracking-[0.2em] text-ember/74">{collection?.name ?? 'Independent piece'}</p><h1 aria-label={garment.title} className="font-display mt-3 flex max-w-full flex-wrap gap-x-[0.28em] text-[2.15rem] leading-[1.02] text-stardust sm:text-5xl xl:text-6xl">{garment.title.split(/\s+/).map((word, index) => <span aria-hidden="true" className="basis-full sm:basis-auto" key={`${word}-${index}`}>{word}</span>)}</h1><p className="mt-5 max-w-xl text-base leading-7 text-stardust/64">{brief?.intent || 'Describe what this garment should make someone feel, how it should move, and the world it belongs to.'}</p></div>
-          <div className="mt-9"><MaterialStrip swatches={swatches} /><div className="mt-7 border-t border-bronze/18 pt-6"><p className="text-[0.64rem] uppercase tracking-[0.18em] text-stardust/38">Next move</p><h2 className="mt-2 text-xl font-semibold text-stardust">{nextAction.label}</h2><p className="mt-2 text-sm leading-6 text-stardust/52">{nextAction.detail}</p><Button className="mt-5 w-full sm:w-auto" icon={<ArrowRight aria-hidden="true" size={16}/>} onClick={continueIntoPhase} variant="primary">{nextAction.label}</Button></div></div>
+          <div className="mt-9"><MaterialStrip onManage={(trigger) => { materialManagerTriggerRef.current = trigger; setMaterialManagerOpen(true); }} swatches={swatches} /><div className="mt-7 border-t border-bronze/18 pt-6"><p className="text-[0.64rem] uppercase tracking-[0.18em] text-stardust/38">Next move</p><h2 className="mt-2 text-xl font-semibold text-stardust">{nextAction.label}</h2><p className="mt-2 text-sm leading-6 text-stardust/52">{nextAction.detail}</p><Button className="mt-5 w-full sm:w-auto" icon={<ArrowRight aria-hidden="true" size={16}/>} onClick={continueIntoPhase} variant="primary">{nextAction.label}</Button></div></div>
         </div>
       </div>
     </article>
@@ -160,6 +167,16 @@ export function CanonicalGarmentWorkspacePage({ garmentId, onBack }: { garmentId
       uploading={uploading}
       views={garmentViews}
     /> : null}
+    {materialManagerOpen ? <CanonicalGarmentMaterialManager
+      garmentId={garmentId}
+      garmentTitle={garment.title}
+      onAdd={(variantId, role, requiredQuantity) => { linkMaterialToGarment(garmentId, variantId, role, '', requiredQuantity); setUploadNotice('Material added to this garment.'); }}
+      onClose={() => setMaterialManagerOpen(false)}
+      onRemove={(relationshipId) => { removeGarmentMaterial(relationshipId); setUploadNotice('Material removed from this garment. The Fabric Vault record remains unchanged.'); }}
+      onUpdate={(relationshipId, patch) => { updateGarmentMaterial(relationshipId, patch); setUploadNotice('Material use updated.'); }}
+      returnFocusTo={materialManagerTriggerRef.current}
+      state={state}
+    /> : null}
     {garmentViewerAssetId ? <CanonicalMediaLightbox assets={garmentViewAssets} derivatives={state.mediaDerivatives} imageNoun="garment view" initialAssetId={garmentViewerAssetId} label={garment.title} onClose={() => setGarmentViewerAssetId(null)} returnFocusTo={garmentViewTriggerRef.current} sectionLabel="Garment photography" /> : null}
     {viewerAssetId ? <CanonicalMediaLightbox assets={referenceAssets} derivatives={state.mediaDerivatives} initialAssetId={viewerAssetId} label={garment.title} onClose={() => setViewerAssetId(null)} returnFocusTo={inspirationTriggerRef.current} /> : null}
     {garmentViewToRemove ? <RemoveGarmentViewDialog isMain={garmentViews[0]?.asset.id === garmentViewToRemove.asset.id} onCancel={() => setGarmentViewToRemove(null)} onConfirm={confirmGarmentViewRemoval} view={garmentViewToRemove} /> : null}
@@ -167,18 +184,19 @@ export function CanonicalGarmentWorkspacePage({ garmentId, onBack }: { garmentId
   </section></CanonicalWorkspaceState>;
 }
 
-function GarmentSupportingViewRail({ derivatives, garmentTitle, onOpen, views }: { derivatives: NonNullable<ReturnType<typeof useCanonicalWorkspace>['state']>['mediaDerivatives']; garmentTitle: string; onOpen: (assetId: string, trigger: HTMLElement) => void; views: CanonicalGarmentView[] }) {
-  if (!views.length) return null;
+function GarmentSupportingViewRail({ activeAssetId, derivatives, garmentTitle, onSelect, views }: { activeAssetId: string | null; derivatives: NonNullable<ReturnType<typeof useCanonicalWorkspace>['state']>['mediaDerivatives']; garmentTitle: string; onSelect: (assetId: string) => void; views: CanonicalGarmentView[] }) {
+  const inactiveViews = views.filter((view) => view.asset.id !== activeAssetId);
+  if (!inactiveViews.length) return null;
   return <div aria-label={`${garmentTitle} supporting views`} className="absolute bottom-5 right-5 z-30 flex gap-2 sm:bottom-6 sm:right-6">
-    {views.map((view, index) => <button
-      aria-label={`Open supporting garment view ${index + 1}`}
+    {inactiveViews.map((view) => <button
+      aria-label={`Show ${view.relation.role === 'hero' ? 'main image' : 'supporting garment view'} in the workspace hero`}
       className="group relative h-20 w-16 overflow-hidden rounded-xl border border-stardust/22 bg-midnight/74 shadow-[0_12px_30px_rgba(0,0,0,0.32)] backdrop-blur-xl transition hover:-translate-y-0.5 hover:border-ember/65 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ember motion-reduce:transform-none motion-reduce:transition-none sm:h-24 sm:w-20"
       key={view.relation.id}
-      onClick={(event) => onOpen(view.asset.id, event.currentTarget)}
+      onClick={() => onSelect(view.asset.id)}
       type="button"
     >
-      <CanonicalMediaImage alt={`${garmentTitle} supporting view ${index + 1}`} asset={view.asset} className="absolute inset-0 h-full w-full rounded-none border-0 transition duration-300 group-hover:scale-[1.025] motion-reduce:transform-none motion-reduce:transition-none" derivatives={derivatives} fit="cover" mode="thumbnail" />
-      <span className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-midnight/80 to-transparent px-2 pb-1.5 pt-5 text-left text-[0.58rem] uppercase tracking-[0.12em] text-stardust/78">View {index + 2}</span>
+      <CanonicalMediaImage alt={`${garmentTitle} ${view.relation.role === 'hero' ? 'main image' : 'supporting view'}`} asset={view.asset} className="absolute inset-0 h-full w-full rounded-none border-0 transition duration-300 group-hover:scale-[1.025] motion-reduce:transform-none motion-reduce:transition-none" derivatives={derivatives} fit="cover" mode="thumbnail" />
+      <span className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-midnight/80 to-transparent px-2 pb-1.5 pt-5 text-left text-[0.58rem] uppercase tracking-[0.12em] text-stardust/78">{view.relation.role === 'hero' ? 'Main' : 'View'}</span>
     </button>)}
   </div>;
 }
@@ -203,21 +221,20 @@ function RemoveInspirationReferenceDialog({ onCancel, onConfirm, reference }: { 
 function Overview({ garmentId }: { garmentId: string }) { const { state } = useCanonicalWorkspace(); const garment = state!.garments.find((item) => item.id === garmentId)!; const brief = state!.designBriefs.find((item) => item.garmentId === garmentId); const materials = state!.garmentMaterials.filter((item) => item.garmentId === garmentId); return <section className="space-y-5" aria-labelledby="creative-direction-heading"><div className="grid gap-5 xl:grid-cols-[1fr_0.72fr]"><div><p className="text-[0.65rem] uppercase tracking-[0.18em] text-ember/70">Creative direction</p><h2 className="font-display mt-2 text-3xl" id="creative-direction-heading">The idea behind the piece</h2><p className="mt-4 max-w-3xl text-base leading-7 text-stardust/58">{brief?.intent || 'The creative direction is still open. Move into Design to describe the feeling, silhouette, wearer, and color story.'}</p>{brief?.keyFeatures.length ? <div className="mt-5 flex flex-wrap gap-2">{brief.keyFeatures.map((feature) => <span className="rounded-full bg-stardust/[0.05] px-3 py-2 text-xs text-stardust/66" key={feature}>{feature}</span>)}</div> : null}</div><div className="rounded-[1.25rem] bg-stardust/[0.025] p-5"><p className="text-sm font-medium text-stardust/72">At a glance</p><dl className="mt-4 grid grid-cols-2 gap-4"><Info label="Silhouette" value={brief?.silhouette || 'Open'}/><Info label="Color story" value={brief?.colorStory || 'Open'}/><Info label="Wearer" value={brief?.targetWearer || 'Open'}/><Info label="Materials" value={`${materials.length} selected`}/></dl></div></div><div className="border-t border-bronze/14 pt-5"><p className="text-xs text-stardust/36">Technical records, revisions, production evidence, and publishing controls remain available through the workspace tabs above. Garment {garment.garmentCode} · revision {garment.revision}.</p></div></section>; }
 
 function DesignStudio({ garmentId, onUploadReference, uploading }: { garmentId: string; onUploadReference: () => void; uploading: boolean }) {
-  const { addComponent, addMaterial, attachComponent, attachInspirationReference, attachMaterial, relationshipOptions, state, updateBrief } = useCanonicalWorkspace();
-  const brief = state!.designBriefs.find((item) => item.garmentId === garmentId); const boards = state!.moodboards.filter((item) => item.garmentId === garmentId); const [showMaterialCreate, setShowMaterialCreate] = useState(false); const [showComponentCreate, setShowComponentCreate] = useState(false);
+  const { addComponent, attachComponent, attachInspirationReference, relationshipOptions, state, updateBrief } = useCanonicalWorkspace();
+  const brief = state!.designBriefs.find((item) => item.garmentId === garmentId); const boards = state!.moodboards.filter((item) => item.garmentId === garmentId); const [showComponentCreate, setShowComponentCreate] = useState(false);
   const saveBrief = (event: FormEvent<HTMLFormElement>) => { event.preventDefault(); const form = new FormData(event.currentTarget); updateBrief(garmentId, { colorStory: String(form.get('colorStory') ?? ''), intent: String(form.get('intent') ?? ''), keyFeatures: String(form.get('features') ?? '').split(',').map((value) => value.trim()).filter(Boolean), silhouette: String(form.get('silhouette') ?? ''), targetWearer: String(form.get('targetWearer') ?? '') }); };
   const inspirationCount = canonicalInspirationReferences(state!, garmentId).length;
   const inspirationFull = inspirationCount >= MAX_INSPIRATION_FIELD_IMAGES;
   const imageOptions = relationshipOptions('asset').filter((option) => state!.mediaAssets.some((asset) => asset.id === option.id && asset.mimeType.startsWith('image/')));
-  return <div className="grid gap-5 xl:grid-cols-[1fr_20rem]"><Card><div className="flex flex-wrap items-start justify-between gap-3"><div><p className="text-[0.65rem] uppercase tracking-[0.18em] text-ember/70">Design</p><h2 className="font-display mt-2 text-3xl">Shape the garment story</h2></div><Button disabled={uploading || inspirationFull} icon={<Palette aria-hidden="true" size={16}/>} onClick={onUploadReference} size="sm">{inspirationFull ? 'Inspiration field full' : 'Add inspiration'}</Button></div><form className="mt-6 grid gap-4 md:grid-cols-2" onSubmit={saveBrief}><Field defaultValue={brief?.intent} label="Creative description" name="intent" required/><Field defaultValue={brief?.targetWearer} label="Who is it for?" name="targetWearer"/><Field defaultValue={brief?.silhouette} label="Silhouette" name="silhouette"/><Field defaultValue={brief?.colorStory} label="Color story" name="colorStory"/><label className="md:col-span-2"><span className="field-label">Signature details</span><input className="field" defaultValue={brief?.keyFeatures.join(', ')} name="features" placeholder="Articulated sleeve, collar stand, …"/></label><div className="md:col-span-2"><Button type="submit" variant="primary">Save creative direction</Button></div></form></Card><Card><p className="text-xs uppercase tracking-[0.12em] text-ember/80">Moodboard</p><p className="mt-3 text-sm leading-6 text-stardust/62">{boards.length ? `${boards.length} board · ${inspirationCount} of ${MAX_INSPIRATION_FIELD_IMAGES} references` : 'No moodboard yet. Add inspiration to begin the visual field.'}</p></Card><div className="grid gap-4 xl:col-span-2 xl:grid-cols-2"><RelationshipPicker emptyLabel="No material variants yet. Create a reusable material inline." label="Choose a material" onCreateInline={() => setShowMaterialCreate(true)} onSelect={(id) => attachMaterial(garmentId, id, 'Shell Fabric')} options={relationshipOptions('material')} /><RelationshipPicker emptyLabel="No component variants yet. Create a reusable component inline." label="Choose a component" onCreateInline={() => setShowComponentCreate(true)} onSelect={(id) => attachComponent(garmentId, id)} options={relationshipOptions('component')} /></div><div className="xl:col-span-2"><RelationshipPicker disabled={inspirationFull} disabledMessage={`The Inspiration Field is full. Remove one of its ${MAX_INSPIRATION_FIELD_IMAGES} references before adding an existing Studio image.`} emptyLabel="No canonical imagery is available yet. Upload a private reference above." label="Use an image already in the Studio" onSelect={(id) => attachInspirationReference(garmentId, id)} options={imageOptions} /></div>{showMaterialCreate ? <InlineMaterial onCancel={() => setShowMaterialCreate(false)} onCreate={(name) => { const result = addMaterial({ category: 'Fabric', composition: '', name }); attachMaterial(garmentId, result.variantId, 'Shell Fabric'); setShowMaterialCreate(false); }}/> : null}{showComponentCreate ? <InlineComponent onCancel={() => setShowComponentCreate(false)} onCreate={(name) => { const result = addComponent({ category: 'Trim', name }); attachComponent(garmentId, result.variantId); setShowComponentCreate(false); }}/> : null}</div>;
+  return <div className="grid gap-5 xl:grid-cols-[1fr_20rem]"><Card><div className="flex flex-wrap items-start justify-between gap-3"><div><p className="text-[0.65rem] uppercase tracking-[0.18em] text-ember/70">Design</p><h2 className="font-display mt-2 text-3xl">Shape the garment story</h2></div><Button disabled={uploading || inspirationFull} icon={<Palette aria-hidden="true" size={16}/>} onClick={onUploadReference} size="sm">{inspirationFull ? 'Inspiration field full' : 'Add inspiration'}</Button></div><form className="mt-6 grid gap-4 md:grid-cols-2" onSubmit={saveBrief}><Field defaultValue={brief?.intent} label="Creative description" name="intent" required/><Field defaultValue={brief?.targetWearer} label="Who is it for?" name="targetWearer"/><Field defaultValue={brief?.silhouette} label="Silhouette" name="silhouette"/><Field defaultValue={brief?.colorStory} label="Color story" name="colorStory"/><label className="md:col-span-2"><span className="field-label">Signature details</span><input className="field" defaultValue={brief?.keyFeatures.join(', ')} name="features" placeholder="Articulated sleeve, collar stand, …"/></label><div className="md:col-span-2"><Button type="submit" variant="primary">Save creative direction</Button></div></form></Card><Card><p className="text-xs uppercase tracking-[0.12em] text-ember/80">Moodboard</p><p className="mt-3 text-sm leading-6 text-stardust/62">{boards.length ? `${boards.length} board · ${inspirationCount} of ${MAX_INSPIRATION_FIELD_IMAGES} references` : 'No moodboard yet. Add inspiration to begin the visual field.'}</p></Card><details className="rounded-2xl border border-bronze/16 bg-stardust/[0.018] p-4 xl:col-span-2"><summary className="cursor-pointer text-sm text-stardust/52">Components and trims</summary><div className="mt-5 border-t border-bronze/14 pt-5"><RelationshipPicker emptyLabel="No component variants yet. Create a reusable component inline." label="Choose a component" onCreateInline={() => setShowComponentCreate(true)} onSelect={(id) => attachComponent(garmentId, id)} options={relationshipOptions('component')} /></div></details><div className="xl:col-span-2"><RelationshipPicker disabled={inspirationFull} disabledMessage={`The Inspiration Field is full. Remove one of its ${MAX_INSPIRATION_FIELD_IMAGES} references before adding an existing Studio image.`} emptyLabel="No canonical imagery is available yet. Upload a private reference above." label="Use an image already in the Studio" onSelect={(id) => attachInspirationReference(garmentId, id)} options={imageOptions} /></div>{showComponentCreate ? <InlineComponent onCancel={() => setShowComponentCreate(false)} onCreate={(name) => { const result = addComponent({ category: 'Trim', name }); attachComponent(garmentId, result.variantId); setShowComponentCreate(false); }}/> : null}</div>;
 }
 
 function TechnicalLens({ garmentId }: { garmentId: string }) { return <Card><Badge variant="bronze">Technical Studio</Badge><h2 className="font-display mt-3 text-3xl">Turn the idea into instructions</h2><p className="mt-3 max-w-2xl text-sm leading-6 text-stardust/65">Build flats, measurements, construction details, and release evidence without losing the garment’s visual direction.</p><a className="mt-5 inline-flex min-h-11 items-center rounded-xl bg-ember px-4 text-sm font-semibold text-midnight" href={`#/technical/${garmentId}`}>Open Technical Studio</a></Card>; }
 function DeferredLens({ lens }: { lens: GarmentLens }) { const copy = { production: ['Make the garment', 'Samples, fittings, costing, and production decisions stay connected to this piece.'], editorial: ['Tell the story', 'Compose the approved imagery and garment facts into an editorial world.'], portfolio: ['Present the work', 'Curate this garment into a focused case study and public presentation.'] } as const; const value = copy[lens as keyof typeof copy]; return <Card><p className="text-[0.65rem] uppercase tracking-[0.18em] text-ember/70">{designerLensLabel(lens)}</p><h2 className="font-display mt-2 text-3xl">{value?.[0] ?? 'Continue the garment'}</h2><p className="mt-3 max-w-2xl text-sm leading-6 text-stardust/65">{value?.[1]}</p></Card>; }
-function MaterialStrip({ swatches }: { swatches: ReturnType<typeof canonicalGarmentSwatches> }) { return <div><p className="text-[0.64rem] uppercase tracking-[0.18em] text-stardust/38">Material story</p>{swatches.length ? <div className="mt-3 flex gap-2 overflow-x-auto pb-1">{swatches.map((swatch) => <div className="min-w-[7.5rem] rounded-xl bg-stardust/[0.035] p-2" key={swatch.id}><span className="block h-12 rounded-lg ring-1 ring-inset ring-stardust/10" style={{ background: swatch.colorHex ?? 'linear-gradient(135deg,#9a6c3c,#1b3a63)' }} /><span className="mt-2 block truncate text-xs text-stardust/66">{swatch.materialName}</span><span className="mt-0.5 block truncate text-[0.65rem] text-stardust/36">{swatch.colorName}</span></div>)}</div> : <p className="mt-2 text-sm text-stardust/40">Materials are still open.</p>}</div>; }
+function MaterialStrip({ onManage, swatches }: { onManage: (trigger: HTMLElement) => void; swatches: ReturnType<typeof canonicalGarmentSwatches> }) { return <div><div className="flex items-center justify-between gap-3"><p className="text-[0.64rem] uppercase tracking-[0.18em] text-stardust/38">Material story</p><button className="min-h-9 rounded-lg px-2 text-xs font-medium text-ember transition hover:bg-stardust/[0.06] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ember" onClick={(event) => onManage(event.currentTarget)} type="button">Manage materials</button></div>{swatches.length ? <div className="mt-3 flex gap-2 overflow-x-auto pb-1">{swatches.map((swatch) => <div className="min-w-[7.5rem] rounded-xl bg-stardust/[0.035] p-2" key={swatch.id}><span className="block h-12 rounded-lg ring-1 ring-inset ring-stardust/10" style={{ background: swatch.colorHex ?? 'linear-gradient(135deg,#9a6c3c,#1b3a63)' }} /><span className="mt-2 block truncate text-xs text-stardust/66">{swatch.materialName}</span><span className="mt-0.5 block truncate text-[0.65rem] text-stardust/36">{swatch.colorName}</span></div>)}</div> : <div className="mt-2 flex items-center justify-between gap-3"><p className="text-sm text-stardust/40">Materials are still open.</p><button className="text-xs font-medium text-ember hover:text-stardust focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ember" onClick={(event) => onManage(event.currentTarget)} type="button">Add fabric</button></div>}</div>; }
 function PhasePill({ phase }: { phase: string }) { return <span className="inline-flex min-h-7 items-center rounded-full bg-midnight/68 px-2.5 text-[0.64rem] font-medium uppercase tracking-[0.13em] text-ember ring-1 ring-bronze/28">{phase}</span>; }
 function designerLensLabel(lens: GarmentLens) { return ({ overview: 'Story', design: 'Design', technical: 'Technical', production: 'Make', editorial: 'Editorial', portfolio: 'Portfolio' } as Record<GarmentLens, string>)[lens]; }
-function InlineMaterial({ onCancel, onCreate }: { onCancel: () => void; onCreate: (name: string) => void }) { const submit = (event: FormEvent<HTMLFormElement>) => { event.preventDefault(); const value = String(new FormData(event.currentTarget).get('name') ?? '').trim(); if (value) onCreate(value); }; return <Card className="xl:col-span-2"><form className="flex flex-wrap gap-3" onSubmit={submit}><input autoFocus className="field min-w-52 flex-1" name="name" placeholder="Material name" required/><Button type="submit" variant="primary">Create and use</Button><Button onClick={onCancel}>Cancel</Button></form></Card>; }
 function InlineComponent({ onCancel, onCreate }: { onCancel: () => void; onCreate: (name: string) => void }) { const submit = (event: FormEvent<HTMLFormElement>) => { event.preventDefault(); const value = String(new FormData(event.currentTarget).get('name') ?? '').trim(); if (value) onCreate(value); }; return <Card className="xl:col-span-2"><form className="flex flex-wrap gap-3" onSubmit={submit}><input autoFocus className="field min-w-52 flex-1" name="name" placeholder="Component name" required/><Button type="submit" variant="primary">Create and use</Button><Button onClick={onCancel}>Cancel</Button></form></Card>; }
 function Field({ defaultValue, label, name, required }: { defaultValue?: string; label: string; name: string; required?: boolean }) { return <label><span className="field-label">{label}</span><input className="field" defaultValue={defaultValue} name={name} required={required}/></label>; }
 function Info({ label, value }: { label: string; value: string }) { return <div><dt className="text-xs uppercase tracking-[0.12em] text-stardust/38">{label}</dt><dd className="mt-1 text-sm text-stardust/76">{value}</dd></div>; }

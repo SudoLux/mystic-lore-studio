@@ -18,12 +18,14 @@ import {
   deleteGarment,
   MAX_GARMENT_VIEWS,
   removeInspirationReference,
+  removeGarmentMaterial,
   removeGarmentView,
   recordInventory,
   relationshipOptions,
   setGarmentHero,
   updateBrief,
   updateGarment,
+  updateGarmentMaterial,
   updateTaskStatus,
   type ComponentInput,
   type GarmentInput,
@@ -91,6 +93,7 @@ type CanonicalWorkspaceContextValue = {
   pendingCount: number;
   recordInventory: (variantId: string, entryType: InventoryEntryType, quantity: number, note?: string) => void;
   removeGarmentView: (garmentId: string, assetId: string) => void;
+  removeGarmentMaterial: (relationshipId: string) => void;
   removeInspirationReference: (garmentId: string, assetId: string, inspirationItemId?: string | null) => void;
   persistenceMode: CanonicalPersistenceMode;
   refresh: () => Promise<void>;
@@ -103,6 +106,7 @@ type CanonicalWorkspaceContextValue = {
   setGarmentHero: (garmentId: string, assetId: string) => void;
   updateBrief: (garmentId: string, patch: Parameters<typeof updateBrief>[2]) => void;
   updateGarment: (garmentId: string, patch: Partial<GarmentInput>) => void;
+  updateGarmentMaterial: (relationshipId: string, patch: { requiredQuantity: number; role: string }) => void;
   updateTaskStatus: (taskId: string, status: CanonicalReleaseTask['status']) => void;
   uploadGarmentMedia: (garmentId: string, file: File, role: CanonicalGarmentMedia['role']) => Promise<string>;
   uploadGarmentView: (garmentId: string, file: File) => Promise<string>;
@@ -587,6 +591,7 @@ export function CanonicalWorkspaceProvider({
     pendingCount,
     persistenceMode,
     recordInventory: (variantId, entryType, quantity, note) => commit((current) => recordInventory(current, variantId, entryType, quantity, note).state),
+    removeGarmentMaterial: (relationshipId) => commit((current) => removeGarmentMaterial(current, relationshipId)),
     removeGarmentView: (garmentId, assetId) => commit((current) => removeGarmentView(current, garmentId, assetId)),
     removeInspirationReference: (garmentId, assetId, inspirationItemId) => commit((current) => removeInspirationReference(current, garmentId, assetId, inspirationItemId)),
     relationshipOptions: (kind) => state ? relationshipOptions(state, kind) : [],
@@ -599,6 +604,7 @@ export function CanonicalWorkspaceProvider({
     setGarmentHero: (garmentId, assetId) => commit((current) => setGarmentHero(current, garmentId, assetId)),
     updateBrief: (garmentId, patch) => commit((current) => updateBrief(current, garmentId, patch)),
     updateGarment: (garmentId, patch) => commit((current) => updateGarment(current, garmentId, patch)),
+    updateGarmentMaterial: (relationshipId, patch) => commit((current) => updateGarmentMaterial(current, relationshipId, patch)),
     updateTaskStatus: (taskId, status) => commit((current) => updateTaskStatus(current, taskId, status)),
     uploadGarmentMedia: async (garmentId, file, role) => {
       const current = stateRef.current;

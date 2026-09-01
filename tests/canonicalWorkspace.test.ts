@@ -22,6 +22,8 @@ import {
   relationshipOptions,
   setMaterialVariantStatus,
   setGarmentHero,
+  removeGarmentMaterial,
+  updateGarmentMaterial,
   updateBrief,
 } from '../src/domains/workspace';
 import { createSeedStudioData, importStudioData } from '../src/lib/studioStorage';
@@ -84,6 +86,25 @@ describe('WP3 canonical garment workspace', () => {
     expect(relationshipOptions(linked.state, 'material').find((item) => item.id === material.variant.id)?.inUseBy).toContain('Orbit Vest');
     expect(relationshipOptions(linked.state, 'component').find((item) => item.id === component.variant.id)?.inUseBy).toContain('Orbit Vest');
     expect(linked.state.garmentMaterials.every((item) => !('materialName' in item))).toBe(true);
+  });
+
+  it('edits and detaches a garment material without affecting the reusable fabric or another role', async () => {
+    const start = await workspace();
+    const garment = start.garments[0];
+    const variant = start.materialVariants[0];
+    const shell = attachMaterial(start, garment.id, variant.id, 'shell');
+    const lining = attachMaterial(shell.state, garment.id, variant.id, 'lining');
+    expect(attachMaterial(shell.state, garment.id, variant.id, 'Shell Fabric').relationship.id).toBe(shell.relationship.id);
+    const updated = updateGarmentMaterial(lining.state, shell.relationship.id, { requiredQuantity: 2.8, role: 'shell' });
+    expect(updated.garmentMaterials.find((item) => item.id === shell.relationship.id)).toMatchObject({ requiredQuantity: 2.8, role: 'shell' });
+    expect(() => updateGarmentMaterial(updated, lining.relationship.id, { requiredQuantity: 1, role: 'shell' })).toThrow(/already linked/i);
+
+    const detached = removeGarmentMaterial(updated, shell.relationship.id);
+    expect(detached.garmentMaterials.some((item) => item.id === shell.relationship.id)).toBe(false);
+    expect(detached.garmentMaterials.some((item) => item.id === lining.relationship.id)).toBe(true);
+    expect(detached.materialVariants.some((item) => item.id === variant.id)).toBe(true);
+    expect(detached.materials).toHaveLength(start.materials.length);
+    expect(detached.inventoryEntries).toEqual(start.inventoryEntries);
   });
 
   it('derives inventory from immutable ledger events and validates positive quantities', async () => {
