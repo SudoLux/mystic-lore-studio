@@ -50,6 +50,17 @@ describe('WP11C image-first garment experience', () => {
     expect(library).toContain('aria-expanded={filtersOpen}');
   });
 
+  it('presents a three-view garment set with main-image controls and a private lightbox', () => {
+    const workspace = readFileSync(new URL('../src/pages/GarmentWorkspace/CanonicalGarmentWorkspacePage.tsx', import.meta.url), 'utf8');
+    const manager = readFileSync(new URL('../src/components/shared/CanonicalGarmentViewManager.tsx', import.meta.url), 'utf8');
+    expect(workspace).toContain("garmentViews.length ? 'Add image' : 'Upload image'");
+    expect(workspace).toContain('GarmentSupportingViewRail');
+    expect(workspace).toContain('sectionLabel="Garment photography"');
+    expect(manager).toContain('Make main');
+    expect(manager).toContain('remove one to upload another');
+    expect(manager).toContain('MAX_GARMENT_VIEWS');
+  });
+
   it('delivers private canonical imagery through expiring member-authorized links', () => {
     const image = readFileSync(new URL('../src/components/shared/CanonicalMediaImage.tsx', import.meta.url), 'utf8');
     const media = readFileSync(new URL('../src/domains/persistence/canonicalMedia.ts', import.meta.url), 'utf8');

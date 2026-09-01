@@ -529,12 +529,96 @@ export function createMoodboard(state: CanonicalWorkspaceState, garmentId: strin
 }
 
 export const MAX_INSPIRATION_FIELD_IMAGES = 5;
+export const MAX_GARMENT_VIEWS = 3;
 
 export function attachAsset(state: CanonicalWorkspaceState, garmentId: string, assetId: string, role: CanonicalGarmentMedia['role']) {
   const existing = state.garmentMedia.find((item) => item.garmentId === garmentId && item.assetId === assetId && item.role === role);
   if (existing) return { state, relation: existing };
   const relation: CanonicalGarmentMedia = { ...newRecord(state.studioId), assetId, garmentId, role, sortOrder: state.garmentMedia.filter((item) => item.garmentId === garmentId && item.role === role).length };
   return { state: normalizeWorkspace({ ...state, garmentMedia: [...state.garmentMedia, relation] }), relation };
+}
+
+/** Adds one image to the garment's curated hero/gallery set. */
+export function addGarmentView(state: CanonicalWorkspaceState, garmentId: string, assetId: string) {
+  assertGarmentViewInput(state, garmentId, assetId);
+  const current = orderedGarmentViewRelations(state, garmentId);
+  if (current.some((relation) => relation.assetId === assetId)) return state;
+  if (current.length >= MAX_GARMENT_VIEWS) {
+    throw new Error(`A garment can have up to ${MAX_GARMENT_VIEWS} images. Remove one before uploading another.`);
+  }
+  const hasHero = current.some((relation) => relation.role === 'hero');
+  const assetIds = hasHero
+    ? [...current.map((relation) => relation.assetId), assetId]
+    : [assetId, ...current.map((relation) => relation.assetId)];
+  return rewriteGarmentViews(state, garmentId, assetIds);
+}
+
+/** Promotes an existing garment view without creating or copying media. */
+export function setGarmentHero(state: CanonicalWorkspaceState, garmentId: string, assetId: string) {
+  const current = orderedGarmentViewRelations(state, garmentId);
+  if (!current.some((relation) => relation.assetId === assetId)) {
+    throw new Error('That image is no longer attached to this garment. Refresh and try again.');
+  }
+  return rewriteGarmentViews(state, garmentId, [
+    assetId,
+    ...current.filter((relation) => relation.assetId !== assetId).map((relation) => relation.assetId),
+  ]);
+}
+
+/** Detaches a view only; its canonical asset and private Storage object survive. */
+export function removeGarmentView(state: CanonicalWorkspaceState, garmentId: string, assetId: string) {
+  const current = orderedGarmentViewRelations(state, garmentId);
+  if (!current.some((relation) => relation.assetId === assetId)) {
+    throw new Error('That image is no longer attached to this garment. Refresh and try again.');
+  }
+  return rewriteGarmentViews(
+    state,
+    garmentId,
+    current.filter((relation) => relation.assetId !== assetId).map((relation) => relation.assetId),
+  );
+}
+
+function assertGarmentViewInput(state: CanonicalWorkspaceState, garmentId: string, assetId: string) {
+  if (!state.garments.some((garment) => garment.id === garmentId)) throw new Error('Garment not found.');
+  const asset = state.mediaAssets.find((candidate) => candidate.id === assetId);
+  if (!asset?.mimeType.startsWith('image/')) throw new Error('Choose an image for the garment view.');
+}
+
+function orderedGarmentViewRelations(state: CanonicalWorkspaceState, garmentId: string) {
+  const seen = new Set<string>();
+  return state.garmentMedia
+    .filter((relation) => relation.garmentId === garmentId && (relation.role === 'hero' || relation.role === 'gallery'))
+    .sort((left, right) => Number(right.role === 'hero') - Number(left.role === 'hero') || left.sortOrder - right.sortOrder || left.id.localeCompare(right.id))
+    .filter((relation) => {
+      if (seen.has(relation.assetId)) return false;
+      seen.add(relation.assetId);
+      return true;
+    });
+}
+
+function rewriteGarmentViews(state: CanonicalWorkspaceState, garmentId: string, assetIds: string[]) {
+  const uniqueAssetIds = [...new Set(assetIds)].slice(0, MAX_GARMENT_VIEWS);
+  const existing = orderedGarmentViewRelations(state, garmentId);
+  const relationByAssetId = new Map(existing.map((relation) => [relation.assetId, relation]));
+  const viewRelationIds = new Set(state.garmentMedia
+    .filter((relation) => relation.garmentId === garmentId && (relation.role === 'hero' || relation.role === 'gallery'))
+    .map((relation) => relation.id));
+  const now = new Date().toISOString();
+  const views = uniqueAssetIds.map((assetId, index) => {
+    const prior = relationByAssetId.get(assetId);
+    const role: CanonicalGarmentMedia['role'] = index === 0 ? 'hero' : 'gallery';
+    const sortOrder = index === 0 ? 0 : index - 1;
+    if (!prior) return { ...newRecord(state.studioId), assetId, garmentId, role, sortOrder } satisfies CanonicalGarmentMedia;
+    if (prior.role === role && prior.sortOrder === sortOrder) return prior;
+    return { ...prior, revision: prior.revision + 1, role, sortOrder, updatedAt: now };
+  });
+  return normalizeWorkspace({
+    ...state,
+    garmentMedia: [
+      ...state.garmentMedia.filter((relation) => !viewRelationIds.has(relation.id)),
+      ...views,
+    ],
+  });
 }
 
 export function attachMoodboardItem(state: CanonicalWorkspaceState, boardId: string, assetId: string, caption = '') {

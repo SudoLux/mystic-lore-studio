@@ -7,6 +7,7 @@ import type {
 } from '../domains/workspace';
 
 const coverRolePriority = ['hero', 'gallery', 'design', 'editorial', 'portfolio', 'sample', 'detail', 'reference', 'flat'] as const;
+const MAX_PRESENTED_GARMENT_VIEWS = 3;
 
 export function canonicalGarmentMedia(
   state: CanonicalWorkspaceState,
@@ -25,7 +26,31 @@ export function canonicalGarmentMedia(
 }
 
 export function canonicalGarmentCover(state: CanonicalWorkspaceState, garmentId: string) {
-  return canonicalGarmentMedia(state, garmentId)[0] ?? null;
+  return canonicalGarmentViews(state, garmentId)[0]?.asset ?? null;
+}
+
+export type CanonicalGarmentView = {
+  asset: CanonicalMediaAsset;
+  relation: CanonicalGarmentMedia;
+};
+
+/** The one main image and at most two supporting garment views. */
+export function canonicalGarmentViews(
+  state: CanonicalWorkspaceState,
+  garmentId: string,
+): CanonicalGarmentView[] {
+  const assets = new Map(state.mediaAssets.map((asset) => [asset.id, asset]));
+  const seen = new Set<string>();
+  return state.garmentMedia
+    .filter((relation) => relation.garmentId === garmentId && (relation.role === 'hero' || relation.role === 'gallery'))
+    .sort((left, right) => Number(right.role === 'hero') - Number(left.role === 'hero') || left.sortOrder - right.sortOrder || left.id.localeCompare(right.id))
+    .flatMap((relation) => {
+      const asset = assets.get(relation.assetId);
+      if (!asset?.mimeType.startsWith('image/') || seen.has(relation.assetId)) return [];
+      seen.add(relation.assetId);
+      return [{ asset, relation }];
+    })
+    .slice(0, MAX_PRESENTED_GARMENT_VIEWS);
 }
 
 export type CanonicalInspirationReference = {

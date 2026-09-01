@@ -9,7 +9,9 @@ type CanonicalMediaLightboxProps = {
   assets: CanonicalMediaAsset[];
   derivatives: CanonicalMediaDerivative[];
   initialAssetId: string;
+  imageNoun?: string;
   label: string;
+  sectionLabel?: string;
   onClose: () => void;
   returnFocusTo?: HTMLElement | null;
 };
@@ -21,7 +23,9 @@ export function CanonicalMediaLightbox({
   assets,
   derivatives,
   initialAssetId,
+  imageNoun = 'image',
   label,
+  sectionLabel = 'Inspiration field',
   onClose,
   returnFocusTo,
 }: CanonicalMediaLightboxProps) {
@@ -112,7 +116,7 @@ export function CanonicalMediaLightbox({
     >
       <header className="flex items-center justify-between gap-3 pb-3 sm:pb-5">
         <div>
-          <p className="text-xs font-medium uppercase tracking-[0.16em] text-ember">Inspiration field</p>
+          <p className="text-xs font-medium uppercase tracking-[0.16em] text-ember">{sectionLabel}</p>
           <p className="mt-1 text-sm text-stardust/58">Image {activeIndex + 1} of {assets.length}</p>
         </div>
         <button aria-label="Close full-size image" className={controlClassName} onClick={onClose} ref={closeRef} type="button">
@@ -131,7 +135,7 @@ export function CanonicalMediaLightbox({
         style={{ touchAction: 'pan-y' }}
       >
         <CanonicalMediaImage
-          alt={`${label} reference ${activeIndex + 1}`}
+          alt={`${label} ${imageNoun} ${activeIndex + 1}`}
           asset={activeAsset}
           className="absolute inset-0 border-0 p-2 sm:p-5"
           derivatives={derivatives}
@@ -141,10 +145,10 @@ export function CanonicalMediaLightbox({
           priority
         />
         {assets.length > 1 ? <>
-          <button aria-label="Previous inspiration image" className={cn(controlClassName, 'absolute left-3 top-1/2 -translate-y-1/2')} onClick={() => move(-1)} type="button">
+          <button aria-label={`Previous ${imageNoun}`} className={cn(controlClassName, 'absolute left-3 top-1/2 -translate-y-1/2')} onClick={() => move(-1)} type="button">
             <ArrowLeft aria-hidden="true" size={19} strokeWidth={1.9} />
           </button>
-          <button aria-label="Next inspiration image" className={cn(controlClassName, 'absolute right-3 top-1/2 -translate-y-1/2')} onClick={() => move(1)} type="button">
+          <button aria-label={`Next ${imageNoun}`} className={cn(controlClassName, 'absolute right-3 top-1/2 -translate-y-1/2')} onClick={() => move(1)} type="button">
             <ArrowRight aria-hidden="true" size={19} strokeWidth={1.9} />
           </button>
         </> : null}

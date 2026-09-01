@@ -2,6 +2,7 @@ import { useRef, useState, type ChangeEvent, type FormEvent } from 'react';
 import { ArrowLeft, ArrowRight, Camera, ImagePlus, Palette, Trash2 } from 'lucide-react';
 import { Badge } from '../../components/shared/Badge';
 import { Button } from '../../components/shared/Button';
+import { CanonicalGarmentViewManager } from '../../components/shared/CanonicalGarmentViewManager';
 import { CanonicalMediaImage } from '../../components/shared/CanonicalMediaImage';
 import { CanonicalMediaLightbox } from '../../components/shared/CanonicalMediaLightbox';
 import { CanonicalWorkspaceState } from '../../components/shared/CanonicalWorkspaceState';
@@ -10,33 +11,40 @@ import { RelationshipPicker } from '../../components/shared/RelationshipPicker';
 import { useCanonicalWorkspace } from '../../hooks/useCanonicalWorkspace';
 import { garmentLenses, type GarmentLens } from '../../domains/garments/contracts';
 import { cn } from '../../lib/classes';
-import { canonicalGarmentCover, canonicalGarmentSwatches, canonicalInspirationReferences, recommendedGarmentAction, type CanonicalInspirationReference } from '../../lib/canonicalGarmentPresentation';
-import { MAX_INSPIRATION_FIELD_IMAGES } from '../../domains/workspace';
+import { canonicalGarmentCover, canonicalGarmentSwatches, canonicalGarmentViews, canonicalInspirationReferences, recommendedGarmentAction, type CanonicalGarmentView, type CanonicalInspirationReference } from '../../lib/canonicalGarmentPresentation';
+import { MAX_GARMENT_VIEWS, MAX_INSPIRATION_FIELD_IMAGES } from '../../domains/workspace';
 
 export function CanonicalGarmentWorkspacePage({ garmentId, onBack }: { garmentId: string; onBack: () => void }) {
-  const { deleteGarment, removeInspirationReference, state, syncState, uploadGarmentMedia, uploadInspirationMedia } = useCanonicalWorkspace();
+  const { deleteGarment, removeGarmentView, removeInspirationReference, setGarmentHero, state, syncState, uploadGarmentView, uploadInspirationMedia } = useCanonicalWorkspace();
   const [lens, setLens] = useState<GarmentLens>('overview');
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [referenceToRemove, setReferenceToRemove] = useState<CanonicalInspirationReference | null>(null);
+  const [garmentViewToRemove, setGarmentViewToRemove] = useState<CanonicalGarmentView | null>(null);
+  const [garmentViewManagerOpen, setGarmentViewManagerOpen] = useState(false);
+  const [garmentViewerAssetId, setGarmentViewerAssetId] = useState<string | null>(null);
   const [viewerAssetId, setViewerAssetId] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
   const [uploadNotice, setUploadNotice] = useState<string | null>(null);
   const uploadInputRef = useRef<HTMLInputElement>(null);
   const inspirationTriggerRef = useRef<HTMLElement | null>(null);
-  const uploadRoleRef = useRef<'hero' | 'reference'>('hero');
+  const garmentViewTriggerRef = useRef<HTMLElement | null>(null);
+  const garmentViewManagerTriggerRef = useRef<HTMLElement | null>(null);
+  const uploadRoleRef = useRef<'garment-view' | 'reference'>('garment-view');
   const garment = state?.garments.find((item) => item.id === garmentId);
   const collection = state?.collections.find((item) => item.id === garment?.collectionId);
 
   if (!garment || !state) return <CanonicalWorkspaceState><Card><h1 className="font-display text-3xl">Garment not found</h1><p className="mt-3 text-sm text-stardust/65">It may have been removed in another session.</p><Button className="mt-4" icon={<ArrowLeft aria-hidden="true" size={16}/>} onClick={onBack}>Return to garment library</Button></Card></CanonicalWorkspaceState>;
 
   const brief = state.designBriefs.find((item) => item.garmentId === garmentId);
-  const cover = canonicalGarmentCover(state, garmentId);
+  const garmentViews = canonicalGarmentViews(state, garmentId);
+  const garmentViewAssets = garmentViews.map((view) => view.asset);
+  const cover = garmentViews[0]?.asset ?? canonicalGarmentCover(state, garmentId);
   const swatches = canonicalGarmentSwatches(state, garmentId, 6);
   const inspirationReferences = canonicalInspirationReferences(state, garmentId);
   const referenceAssets = inspirationReferences.map((reference) => reference.asset).slice(0, MAX_INSPIRATION_FIELD_IMAGES);
   const nextAction = recommendedGarmentAction(garment);
   const remove = () => { deleteGarment(garment.id); onBack(); };
-  const beginUpload = (role: 'hero' | 'reference') => { uploadRoleRef.current = role; setUploadNotice(null); uploadInputRef.current?.click(); };
+  const beginUpload = (role: 'garment-view' | 'reference') => { uploadRoleRef.current = role; setUploadNotice(null); uploadInputRef.current?.click(); };
   const upload = async (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.currentTarget.files?.[0];
     event.currentTarget.value = '';
@@ -48,15 +56,25 @@ export function CanonicalGarmentWorkspacePage({ garmentId, onBack }: { garmentId
       if (role === 'reference' && inspirationReferences.length >= MAX_INSPIRATION_FIELD_IMAGES) {
         throw new Error(`The Inspiration Field holds up to ${MAX_INSPIRATION_FIELD_IMAGES} images. Remove one before adding another.`);
       }
+      if (role === 'garment-view' && garmentViews.length >= MAX_GARMENT_VIEWS) {
+        throw new Error(`${MAX_GARMENT_VIEWS} of ${MAX_GARMENT_VIEWS} garment views are already in use. Remove one before uploading another.`);
+      }
       await (role === 'reference'
         ? uploadInspirationMedia(garmentId, file)
-        : uploadGarmentMedia(garmentId, file, cover ? 'gallery' : 'hero'));
-      setUploadNotice(role === 'hero' ? 'Garment image added.' : 'Reference added to the inspiration field.');
+        : uploadGarmentView(garmentId, file));
+      setUploadNotice(role === 'garment-view' ? 'Garment view added.' : 'Reference added to the inspiration field.');
     } catch (error) {
       setUploadNotice(error instanceof Error ? error.message : 'The image could not be added.');
     } finally {
       setUploading(false);
     }
+  };
+  const confirmGarmentViewRemoval = () => {
+    if (!garmentViewToRemove) return;
+    removeGarmentView(garmentId, garmentViewToRemove.asset.id);
+    if (garmentViewerAssetId === garmentViewToRemove.asset.id) setGarmentViewerAssetId(null);
+    setGarmentViewToRemove(null);
+    setUploadNotice('Garment view removed. The original private file remains safe in the Studio.');
   };
   const confirmReferenceRemoval = () => {
     if (!referenceToRemove) return;
@@ -72,10 +90,38 @@ export function CanonicalGarmentWorkspacePage({ garmentId, onBack }: { garmentId
     <article className="relative isolate overflow-hidden rounded-[1.7rem] border border-bronze/24 bg-midnight/62 shadow-[0_28px_80px_rgba(0,0,0,0.28)]" data-testid="garment-inspiration-hero">
       <div className="grid min-w-0 lg:min-h-[35rem] lg:grid-cols-[1.2fr_0.8fr]">
         <div className="relative min-h-[19rem] sm:min-h-[27rem] lg:min-h-full">
-          <CanonicalMediaImage alt={`${garment.title} hero`} asset={cover} className="absolute inset-0 rounded-none border-0" derivatives={state.mediaDerivatives} mode="hero" priority />
-          <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(180deg,rgba(10,10,10,0.08),transparent_45%,rgba(10,10,10,0.62))] lg:bg-[linear-gradient(90deg,transparent_56%,rgba(10,10,10,0.7))]" />
-          <div className="absolute left-4 top-4 flex gap-2 sm:left-6 sm:top-6"><Button className="bg-midnight/72 backdrop-blur-md" icon={<ArrowLeft aria-hidden="true" size={16}/>} onClick={onBack} size="sm" variant="secondary">Library</Button></div>
-          <Button className="absolute bottom-5 left-5 bg-midnight/74 backdrop-blur-md sm:bottom-6 sm:left-6" disabled={uploading} icon={<Camera aria-hidden="true" size={16}/>} onClick={() => beginUpload('hero')} size="sm" variant="secondary">{cover ? 'Add another view' : 'Add garment image'}</Button>
+          <CanonicalMediaImage
+            alt={`${garment.title} main image`}
+            asset={cover}
+            className="absolute inset-0 rounded-none border-0"
+            derivatives={state.mediaDerivatives}
+            interactiveClassName={cover ? 'absolute inset-0 z-0 rounded-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ember' : undefined}
+            mode="hero"
+            onActivate={cover ? (event) => { garmentViewTriggerRef.current = event.currentTarget; setGarmentViewerAssetId(cover.id); } : undefined}
+            priority
+          />
+          <div className="pointer-events-none absolute inset-0 z-10 bg-[linear-gradient(180deg,rgba(10,10,10,0.08),transparent_45%,rgba(10,10,10,0.62))] lg:bg-[linear-gradient(90deg,transparent_56%,rgba(10,10,10,0.7))]" />
+          <div className="absolute left-4 top-4 z-30 flex gap-2 sm:left-6 sm:top-6"><Button className="bg-midnight/72 backdrop-blur-md" icon={<ArrowLeft aria-hidden="true" size={16}/>} onClick={onBack} size="sm" variant="secondary">Library</Button></div>
+          <Button
+            className="absolute bottom-5 left-5 z-30 bg-midnight/74 backdrop-blur-md sm:bottom-6 sm:left-6"
+            disabled={uploading}
+            icon={<Camera aria-hidden="true" size={16}/>}
+            onClick={(event) => {
+              if (!garmentViews.length) beginUpload('garment-view');
+              else {
+                garmentViewManagerTriggerRef.current = event.currentTarget;
+                setGarmentViewManagerOpen(true);
+              }
+            }}
+            size="sm"
+            variant="secondary"
+          >{garmentViews.length ? 'Add image' : 'Upload image'}</Button>
+          <GarmentSupportingViewRail
+            derivatives={state.mediaDerivatives}
+            garmentTitle={garment.title}
+            onOpen={(assetId, trigger) => { garmentViewTriggerRef.current = trigger; setGarmentViewerAssetId(assetId); }}
+            views={garmentViews.slice(1)}
+          />
         </div>
         <div className="flex min-w-0 max-w-full flex-col justify-between overflow-hidden p-6 sm:p-8 lg:p-10">
           <div className="min-w-0"><div className="flex flex-wrap items-center gap-2"><PhasePill phase={garment.phase} />{garment.status === 'on_hold' ? <Badge variant="ember">On hold</Badge> : null}<span className="text-xs text-stardust/38">{syncState === 'ready' ? 'Saved' : syncState}</span></div><p className="mt-8 text-[0.66rem] uppercase tracking-[0.2em] text-ember/74">{collection?.name ?? 'Independent piece'}</p><h1 aria-label={garment.title} className="font-display mt-3 flex max-w-full flex-wrap gap-x-[0.28em] text-[2.15rem] leading-[1.02] text-stardust sm:text-5xl xl:text-6xl">{garment.title.split(/\s+/).map((word, index) => <span aria-hidden="true" className="basis-full sm:basis-auto" key={`${word}-${index}`}>{word}</span>)}</h1><p className="mt-5 max-w-xl text-base leading-7 text-stardust/64">{brief?.intent || 'Describe what this garment should make someone feel, how it should move, and the world it belongs to.'}</p></div>
@@ -102,9 +148,43 @@ export function CanonicalGarmentWorkspacePage({ garmentId, onBack }: { garmentId
     {lens === 'production' || lens === 'editorial' || lens === 'portfolio' ? <DeferredLens lens={lens} /> : null}
 
     <details className="rounded-2xl border border-bronze/16 bg-stardust/[0.018] p-4"><summary className="cursor-pointer text-sm text-stardust/48">Garment record and workspace options</summary><div className="mt-5 grid gap-5 border-t border-bronze/14 pt-5 sm:grid-cols-3"><Info label="Garment code" value={garment.garmentCode}/><Info label="Revision" value={String(garment.revision)}/><Info label="Collection" value={collection?.name ?? 'Unassigned'}/></div>{confirmDelete ? <div className="mt-6 rounded-xl border border-ember/50 bg-ember/10 p-3"><p className="text-sm leading-5">Delete this garment and its design/material links? This cannot be undone from the workspace.</p><div className="mt-3 flex gap-2"><Button onClick={remove} size="sm" variant="primary">Delete garment</Button><Button onClick={() => setConfirmDelete(false)} size="sm">Cancel</Button></div></div> : <Button className="mt-6" icon={<Trash2 aria-hidden="true" size={15}/>} onClick={() => setConfirmDelete(true)} size="sm" variant="ghost">Delete garment</Button>}</details>
+    {garmentViewManagerOpen ? <CanonicalGarmentViewManager
+      derivatives={state.mediaDerivatives}
+      garmentTitle={garment.title}
+      onAdd={() => { setGarmentViewManagerOpen(false); beginUpload('garment-view'); }}
+      onClose={() => setGarmentViewManagerOpen(false)}
+      onMakeMain={(assetId) => { setGarmentHero(garmentId, assetId); setUploadNotice('Main image updated across the Studio.'); }}
+      onOpen={(assetId) => { setGarmentViewManagerOpen(false); garmentViewTriggerRef.current = garmentViewManagerTriggerRef.current; setGarmentViewerAssetId(assetId); }}
+      onRemove={(view) => { setGarmentViewManagerOpen(false); setGarmentViewToRemove(view); }}
+      returnFocusTo={garmentViewManagerTriggerRef.current}
+      uploading={uploading}
+      views={garmentViews}
+    /> : null}
+    {garmentViewerAssetId ? <CanonicalMediaLightbox assets={garmentViewAssets} derivatives={state.mediaDerivatives} imageNoun="garment view" initialAssetId={garmentViewerAssetId} label={garment.title} onClose={() => setGarmentViewerAssetId(null)} returnFocusTo={garmentViewTriggerRef.current} sectionLabel="Garment photography" /> : null}
     {viewerAssetId ? <CanonicalMediaLightbox assets={referenceAssets} derivatives={state.mediaDerivatives} initialAssetId={viewerAssetId} label={garment.title} onClose={() => setViewerAssetId(null)} returnFocusTo={inspirationTriggerRef.current} /> : null}
+    {garmentViewToRemove ? <RemoveGarmentViewDialog isMain={garmentViews[0]?.asset.id === garmentViewToRemove.asset.id} onCancel={() => setGarmentViewToRemove(null)} onConfirm={confirmGarmentViewRemoval} view={garmentViewToRemove} /> : null}
     {referenceToRemove ? <RemoveInspirationReferenceDialog onCancel={() => setReferenceToRemove(null)} onConfirm={confirmReferenceRemoval} reference={referenceToRemove} /> : null}
   </section></CanonicalWorkspaceState>;
+}
+
+function GarmentSupportingViewRail({ derivatives, garmentTitle, onOpen, views }: { derivatives: NonNullable<ReturnType<typeof useCanonicalWorkspace>['state']>['mediaDerivatives']; garmentTitle: string; onOpen: (assetId: string, trigger: HTMLElement) => void; views: CanonicalGarmentView[] }) {
+  if (!views.length) return null;
+  return <div aria-label={`${garmentTitle} supporting views`} className="absolute bottom-5 right-5 z-30 flex gap-2 sm:bottom-6 sm:right-6">
+    {views.map((view, index) => <button
+      aria-label={`Open supporting garment view ${index + 1}`}
+      className="group relative h-20 w-16 overflow-hidden rounded-xl border border-stardust/22 bg-midnight/74 shadow-[0_12px_30px_rgba(0,0,0,0.32)] backdrop-blur-xl transition hover:-translate-y-0.5 hover:border-ember/65 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ember motion-reduce:transform-none motion-reduce:transition-none sm:h-24 sm:w-20"
+      key={view.relation.id}
+      onClick={(event) => onOpen(view.asset.id, event.currentTarget)}
+      type="button"
+    >
+      <CanonicalMediaImage alt={`${garmentTitle} supporting view ${index + 1}`} asset={view.asset} className="absolute inset-0 h-full w-full rounded-none border-0 transition duration-300 group-hover:scale-[1.025] motion-reduce:transform-none motion-reduce:transition-none" derivatives={derivatives} fit="cover" mode="thumbnail" />
+      <span className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-midnight/80 to-transparent px-2 pb-1.5 pt-5 text-left text-[0.58rem] uppercase tracking-[0.12em] text-stardust/78">View {index + 2}</span>
+    </button>)}
+  </div>;
+}
+
+function RemoveGarmentViewDialog({ isMain, onCancel, onConfirm, view }: { isMain: boolean; onCancel: () => void; onConfirm: () => void; view: CanonicalGarmentView }) {
+  return <div aria-describedby="remove-garment-view-description" aria-labelledby="remove-garment-view-title" aria-modal="true" className="fixed inset-0 z-[145] flex items-end justify-center bg-midnight/82 p-4 backdrop-blur-xl sm:items-center" role="dialog"><div className="w-full max-w-md rounded-[1.5rem] border border-bronze/30 bg-[#11100f] p-5 shadow-2xl sm:p-7"><p className="text-[0.65rem] uppercase tracking-[0.18em] text-ember">Garment photography</p><h2 className="font-display mt-2 text-3xl" id="remove-garment-view-title">Remove this garment view?</h2><p className="mt-4 text-sm leading-6 text-stardust/62" id="remove-garment-view-description"><span className="font-medium text-stardust">{view.asset.name}</span> will be detached from this garment. {isMain ? 'The next supporting view will automatically become the main image. ' : ''}Its original private file stays safe in the Studio and any other use remains unchanged.</p><div className="mt-7 flex flex-wrap justify-end gap-3"><Button onClick={onCancel} type="button" variant="ghost">Keep view</Button><Button icon={<Trash2 aria-hidden="true" size={16}/>} onClick={onConfirm} type="button">Remove from garment</Button></div></div></div>;
 }
 
 function InspirationField({ garmentTitle, onOpen, onRemove, onUpload, references, state, uploading }: { garmentTitle: string; onOpen: (assetId: string, trigger: HTMLElement) => void; onRemove: (reference: CanonicalInspirationReference) => void; onUpload: () => void; references: CanonicalInspirationReference[]; state: NonNullable<ReturnType<typeof useCanonicalWorkspace>['state']>; uploading: boolean }) {

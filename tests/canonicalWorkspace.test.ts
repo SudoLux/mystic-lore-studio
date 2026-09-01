@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
   addComponent,
   addGarment,
+  addGarmentView,
   addMaterial,
   attachInspirationReference,
   attachComponent,
@@ -13,15 +14,18 @@ import {
   createCanonicalWorkspace,
   deleteGarment,
   MAX_INSPIRATION_FIELD_IMAGES,
+  MAX_GARMENT_VIEWS,
   materialAvailableQuantity,
   recordInventory,
   removeInspirationReference,
+  removeGarmentView,
   relationshipOptions,
   setMaterialVariantStatus,
+  setGarmentHero,
   updateBrief,
 } from '../src/domains/workspace';
 import { createSeedStudioData, importStudioData } from '../src/lib/studioStorage';
-import { canonicalInspirationReferences } from '../src/lib/canonicalGarmentPresentation';
+import { canonicalGarmentCover, canonicalGarmentViews, canonicalInspirationReferences } from '../src/lib/canonicalGarmentPresentation';
 
 const fixtureText = readFileSync(new URL('./fixtures/legacy-studio-data-v5.json', import.meta.url), 'utf8');
 const OWNER_ID = '10000000-0000-4000-8000-000000000111';
@@ -163,6 +167,38 @@ describe('WP3 canonical garment workspace', () => {
     const removed = removeInspirationReference(linked.state, garment.id, asset.id);
     expect(removed.mediaAssets.some((candidate) => candidate.id === asset.id)).toBe(true);
     expect(removed.garmentMedia.some((candidate) => candidate.assetId === asset.id && candidate.role === 'reference')).toBe(false);
+  });
+
+  it('curates one main garment image and two supporting views without deleting private assets', async () => {
+    const start = await workspace();
+    const garment = start.garments[0];
+    const sourceAsset = start.mediaAssets[0];
+    const assets = Array.from({ length: MAX_GARMENT_VIEWS + 1 }, (_, index) => ({
+      ...sourceAsset,
+      checksum: `garment-view-checksum-${index}`,
+      id: `garment-view-${index}`,
+      storagePath: `studios/${start.studioId}/garments/${garment.id}/view-${index}.jpg`,
+    }));
+    let next = { ...start, garmentMedia: [], mediaAssets: assets };
+    for (const asset of assets.slice(0, MAX_GARMENT_VIEWS)) next = addGarmentView(next, garment.id, asset.id);
+
+    expect(canonicalGarmentViews(next, garment.id).map((view) => view.asset.id)).toEqual(assets.slice(0, 3).map((asset) => asset.id));
+    expect(canonicalGarmentCover(next, garment.id)?.id).toBe(assets[0].id);
+    expect(() => addGarmentView(next, garment.id, assets[3].id)).toThrow(/up to 3 images/);
+
+    next = setGarmentHero(next, garment.id, assets[2].id);
+    expect(canonicalGarmentViews(next, garment.id).map((view) => view.asset.id)).toEqual([assets[2].id, assets[0].id, assets[1].id]);
+    expect(next.garmentMedia.filter((relation) => relation.garmentId === garment.id && relation.role === 'hero')).toHaveLength(1);
+
+    next = removeGarmentView(next, garment.id, assets[2].id);
+    expect(canonicalGarmentCover(next, garment.id)?.id).toBe(assets[0].id);
+    expect(next.mediaAssets.some((asset) => asset.id === assets[2].id)).toBe(true);
+    expect(canonicalGarmentViews(next, garment.id).map((view) => view.relation.sortOrder)).toEqual([0, 0]);
+
+    next = removeGarmentView(next, garment.id, assets[0].id);
+    next = removeGarmentView(next, garment.id, assets[1].id);
+    expect(canonicalGarmentCover(next, garment.id)).toBeNull();
+    expect(next.mediaAssets).toHaveLength(assets.length);
   });
 
   it('removes a garment and only its dependent relationship records after explicit confirmation at the UI layer', async () => {

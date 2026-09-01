@@ -7,6 +7,7 @@ import {
   addMaterial,
   addTask,
   addTemplate,
+  addGarmentView,
   attachAsset,
   attachInspirationReference,
   attachMoodboardItem,
@@ -15,9 +16,12 @@ import {
   createCanonicalWorkspace,
   createMoodboard,
   deleteGarment,
+  MAX_GARMENT_VIEWS,
   removeInspirationReference,
+  removeGarmentView,
   recordInventory,
   relationshipOptions,
+  setGarmentHero,
   updateBrief,
   updateGarment,
   updateTaskStatus,
@@ -86,6 +90,7 @@ type CanonicalWorkspaceContextValue = {
   isReady: boolean;
   pendingCount: number;
   recordInventory: (variantId: string, entryType: InventoryEntryType, quantity: number, note?: string) => void;
+  removeGarmentView: (garmentId: string, assetId: string) => void;
   removeInspirationReference: (garmentId: string, assetId: string, inspirationItemId?: string | null) => void;
   persistenceMode: CanonicalPersistenceMode;
   refresh: () => Promise<void>;
@@ -95,10 +100,12 @@ type CanonicalWorkspaceContextValue = {
   retry: () => Promise<void>;
   state: CanonicalWorkspaceState | null;
   syncState: WorkspaceSyncState;
+  setGarmentHero: (garmentId: string, assetId: string) => void;
   updateBrief: (garmentId: string, patch: Parameters<typeof updateBrief>[2]) => void;
   updateGarment: (garmentId: string, patch: Partial<GarmentInput>) => void;
   updateTaskStatus: (taskId: string, status: CanonicalReleaseTask['status']) => void;
   uploadGarmentMedia: (garmentId: string, file: File, role: CanonicalGarmentMedia['role']) => Promise<string>;
+  uploadGarmentView: (garmentId: string, file: File) => Promise<string>;
   uploadInspirationMedia: (garmentId: string, file: File) => Promise<string>;
   uploadMaterialMedia: (variantId: string, file: File) => Promise<string>;
   replaceMaterialMedia: (variantId: string, file: File, framing?: CanonicalMaterialImageFraming) => Promise<string>;
@@ -580,6 +587,7 @@ export function CanonicalWorkspaceProvider({
     pendingCount,
     persistenceMode,
     recordInventory: (variantId, entryType, quantity, note) => commit((current) => recordInventory(current, variantId, entryType, quantity, note).state),
+    removeGarmentView: (garmentId, assetId) => commit((current) => removeGarmentView(current, garmentId, assetId)),
     removeInspirationReference: (garmentId, assetId, inspirationItemId) => commit((current) => removeInspirationReference(current, garmentId, assetId, inspirationItemId)),
     relationshipOptions: (kind) => state ? relationshipOptions(state, kind) : [],
     refresh,
@@ -588,6 +596,7 @@ export function CanonicalWorkspaceProvider({
     retry,
     state,
     syncState,
+    setGarmentHero: (garmentId, assetId) => commit((current) => setGarmentHero(current, garmentId, assetId)),
     updateBrief: (garmentId, patch) => commit((current) => updateBrief(current, garmentId, patch)),
     updateGarment: (garmentId, patch) => commit((current) => updateGarment(current, garmentId, patch)),
     updateTaskStatus: (taskId, status) => commit((current) => updateTaskStatus(current, taskId, status)),
@@ -601,6 +610,22 @@ export function CanonicalWorkspaceProvider({
         const withAsset = { ...workspace, mediaAssets: [...workspace.mediaAssets, asset] };
         return attachAsset(withAsset, garmentId, asset.id, role).state;
       });
+      return asset.id;
+    },
+    uploadGarmentView: async (garmentId, file) => {
+      const current = stateRef.current;
+      if (!current) throw new Error('The garment workspace is not ready.');
+      if (persistenceModeRef.current === 'local-recovery') throw new Error('Connect the canonical Studio before uploading imagery.');
+      if (!current.garments.some((garment) => garment.id === garmentId)) throw new Error('Garment not found.');
+      const currentViewCount = new Set(current.garmentMedia
+        .filter((relation) => relation.garmentId === garmentId && (relation.role === 'hero' || relation.role === 'gallery'))
+        .map((relation) => relation.assetId)).size;
+      if (currentViewCount >= MAX_GARMENT_VIEWS) throw new Error(`A garment can have up to ${MAX_GARMENT_VIEWS} images. Remove one before uploading another.`);
+      const asset = await prepareCanonicalGarmentImage(file, current.studioId, garmentId);
+      await commitAsync((workspace) => addGarmentView({
+        ...workspace,
+        mediaAssets: [...workspace.mediaAssets, asset],
+      }, garmentId, asset.id));
       return asset.id;
     },
     uploadInspirationMedia: async (garmentId, file) => {
