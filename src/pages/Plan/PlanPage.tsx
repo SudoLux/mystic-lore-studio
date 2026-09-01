@@ -1,4 +1,4 @@
-import { useMemo, useState, type FormEvent } from 'react';
+import { useMemo, useState, type FormEvent, type KeyboardEvent } from 'react';
 import {
   AlertTriangle,
   CalendarDays,
@@ -10,24 +10,21 @@ import {
 import { Badge } from '../../components/shared/Badge';
 import { Button } from '../../components/shared/Button';
 import { Card } from '../../components/shared/Card';
+import { CanonicalMediaImage } from '../../components/shared/CanonicalMediaImage';
 import { MobilePageHeader } from '../../components/shared/MobilePageHeader';
 import { PageHeader } from '../../components/shared/PageHeader';
 import { useCanonicalWorkspace } from '../../hooks/useCanonicalWorkspace';
 import { cn } from '../../lib/classes';
+import {
+  planGarmentPhases,
+  planTaskStatusLabel,
+  selectPlanWorkspacePresentation,
+  type PlanGarmentSummary,
+  type PlanTaskItem,
+} from '../../lib/canonicalPlanPresentation';
 import type { CanonicalGarment, CanonicalReleaseTask } from '../../domains/workspace';
 
 type PlanView = 'flow' | 'tasks' | 'calendar';
-
-const phases: CanonicalGarment['phase'][] = [
-  'brief',
-  'design',
-  'materials',
-  'technical',
-  'sampling',
-  'production',
-  'story',
-  'portfolio',
-];
 
 export function PlanPage() {
   const workspace = useCanonicalWorkspace();
@@ -49,14 +46,14 @@ export function PlanPage() {
   }
 
   const state = workspace.state;
-  const openTasks = state.releaseTasks.filter((task) => !['done', 'cancelled'].includes(task.status));
+  const plan = useMemo(() => selectPlanWorkspacePresentation(state), [state]);
 
   return (
     <section className="space-y-5">
       <MobilePageHeader
         action={<Button icon={<Plus aria-hidden="true" size={15} />} onClick={() => setShowCreate(true)} size="sm">New</Button>}
         badge="Plan"
-        kicker={`${openTasks.length} open tasks · ${state.calendarEvents.length} events`}
+        kicker={`${plan.openTasks.length} open tasks · ${state.calendarEvents.length} events`}
         title="Studio Plan"
       />
       <PageHeader
@@ -78,11 +75,7 @@ export function PlanPage() {
         </div>
       ) : null}
 
-      <div aria-label="Plan views" className="grid grid-cols-3 gap-2 rounded-2xl border border-bronze/24 bg-midnight/36 p-1" role="tablist">
-        <PlanTab active={view === 'flow'} icon={Columns3} label="Flow" onClick={() => setView('flow')} />
-        <PlanTab active={view === 'tasks'} icon={CheckSquare2} label="Tasks" onClick={() => setView('tasks')} />
-        <PlanTab active={view === 'calendar'} icon={CalendarDays} label="Calendar" onClick={() => setView('calendar')} />
-      </div>
+      <PlanWorkspaceTabs view={view} onChange={setView} />
 
       {showCreate ? (
         view === 'calendar'
@@ -90,20 +83,43 @@ export function PlanPage() {
           : <TaskForm onClose={() => setShowCreate(false)} />
       ) : null}
 
-      {view === 'flow' ? <FlowView /> : null}
-      {view === 'tasks' ? <TaskView /> : null}
-      {view === 'calendar' ? <CalendarView /> : null}
+      {view === 'flow' ? <FlowView garments={plan.garments} /> : null}
+      {view === 'tasks' ? <TaskView tasks={plan.tasks} /> : null}
+      {view === 'calendar' ? <CalendarView items={plan.calendarItems} /> : null}
     </section>
   );
 }
 
-function PlanTab({ active, icon: Icon, label, onClick }: { active: boolean; icon: typeof Columns3; label: string; onClick: () => void }) {
+const planViews: Array<{ icon: typeof Columns3; id: PlanView; label: string }> = [
+  { icon: Columns3, id: 'flow', label: 'Flow' },
+  { icon: CheckSquare2, id: 'tasks', label: 'Tasks' },
+  { icon: CalendarDays, id: 'calendar', label: 'Calendar' },
+];
+
+function PlanWorkspaceTabs({ onChange, view }: { onChange: (view: PlanView) => void; view: PlanView }) {
+  const onKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
+    if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
+    event.preventDefault();
+    const current = planViews.findIndex((item) => item.id === view);
+    const next = event.key === 'Home' ? 0 : event.key === 'End' ? planViews.length - 1 : (current + (event.key === 'ArrowRight' ? 1 : -1) + planViews.length) % planViews.length;
+    onChange(planViews[next].id);
+    document.getElementById(`plan-tab-${planViews[next].id}`)?.focus();
+  };
+  return <div aria-label="Plan views" className="grid grid-cols-3 gap-2 rounded-2xl border border-bronze/24 bg-midnight/36 p-1" onKeyDown={onKeyDown} role="tablist">
+    {planViews.map((item) => <PlanTab active={view === item.id} icon={item.icon} key={item.id} label={item.label} onClick={() => onChange(item.id)} tabId={item.id} />)}
+  </div>;
+}
+
+function PlanTab({ active, icon: Icon, label, onClick, tabId }: { active: boolean; icon: typeof Columns3; label: string; onClick: () => void; tabId: PlanView }) {
   return (
     <button
       aria-selected={active}
+      aria-controls={`plan-panel-${tabId}`}
       className={cn('flex min-h-11 items-center justify-center gap-2 rounded-xl border px-2 text-sm font-medium transition', active ? 'border-ember/48 bg-ember/14 text-stardust' : 'border-transparent text-stardust/55 hover:bg-stardust/[0.05] hover:text-stardust')}
+      id={`plan-tab-${tabId}`}
       onClick={onClick}
       role="tab"
+      tabIndex={active ? 0 : -1}
       type="button"
     >
       <Icon aria-hidden="true" size={16} />
@@ -112,34 +128,34 @@ function PlanTab({ active, icon: Icon, label, onClick }: { active: boolean; icon
   );
 }
 
-function FlowView() {
+function FlowView({ garments }: { garments: PlanGarmentSummary[] }) {
   const { state, updateGarment } = useCanonicalWorkspace();
   if (!state) return null;
   return (
-    <div className="studio-scrollbar -mx-4 overflow-x-auto px-4 pb-3 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8" role="tabpanel">
+    <div aria-labelledby="plan-tab-flow" className="studio-scrollbar -mx-4 overflow-x-auto px-4 pb-3 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8" id="plan-panel-flow" role="tabpanel">
       <div className="grid min-w-[70rem] grid-cols-8 gap-3">
-        {phases.map((phase) => {
-          const garments = state.garments.filter((garment) => garment.phase === phase);
+        {planGarmentPhases.map((phase) => {
+          const garmentsInPhase = garments.filter((item) => item.garment.phase === phase);
           return (
             <section className="rounded-2xl border border-bronze/22 bg-midnight/34 p-3" key={phase}>
               <div className="flex items-center justify-between gap-2">
                 <h2 className="text-sm font-semibold capitalize text-stardust">{phase}</h2>
-                <Badge variant="bronze">{garments.length}</Badge>
+                <Badge variant="bronze">{garmentsInPhase.length}</Badge>
               </div>
               <div className="mt-3 space-y-3">
-                {garments.map((garment) => (
-                  <article className="rounded-xl border border-bronze/20 bg-stardust/[0.045] p-3" key={garment.id}>
-                    <p className="text-sm font-semibold text-stardust">{garment.title}</p>
-                    <p className="mt-1 text-xs text-stardust/46">{garment.garmentCode}</p>
+                {garmentsInPhase.map((summary) => (
+                  <article className="rounded-xl border border-bronze/20 bg-stardust/[0.045] p-3" key={summary.garment.id}>
+                    <div className="flex gap-3"><CanonicalMediaImage alt={`${summary.garment.title} cover`} asset={summary.coverImage} className="h-12 w-10 shrink-0" derivatives={state.mediaDerivatives} mode="thumbnail" /><div className="min-w-0"><p className="truncate text-sm font-semibold text-stardust">{summary.garment.title}</p><p className="mt-1 truncate text-xs text-stardust/46">{summary.collectionName} · {summary.openTaskCount} open {summary.openTaskCount === 1 ? 'task' : 'tasks'}</p>{summary.nextTask ? <p className="mt-1 truncate text-xs text-stardust/38">Next: {summary.nextTask.title}</p> : null}</div></div>
+                    {summary.warning ? <p className="mt-3 text-xs font-medium text-ember">{summary.warning.label}</p> : null}
                     <label className="mt-3 block text-xs text-stardust/52">
-                      <span className="sr-only">Move {garment.title} to phase</span>
-                      <select className="min-h-11 w-full rounded-xl border border-bronze/26 bg-midnight px-2 text-xs text-stardust" onChange={(event) => updateGarment(garment.id, { phase: event.target.value as CanonicalGarment['phase'] })} value={garment.phase}>
-                        {phases.map((option) => <option key={option} value={option}>{option}</option>)}
+                      <span className="sr-only">Move {summary.garment.title} to phase</span>
+                      <select className="min-h-11 w-full rounded-xl border border-bronze/26 bg-midnight px-2 text-xs text-stardust" onChange={(event) => updateGarment(summary.garment.id, { phase: event.target.value as CanonicalGarment['phase'] })} value={summary.garment.phase}>
+                        {planGarmentPhases.map((option) => <option key={option} value={option}>{option}</option>)}
                       </select>
                     </label>
                   </article>
                 ))}
-                {!garments.length ? <p className="rounded-xl border border-dashed border-bronze/22 p-3 text-xs leading-5 text-stardust/42">No garments in this phase.</p> : null}
+                {!garmentsInPhase.length ? <p className="rounded-xl border border-dashed border-bronze/22 p-3 text-xs leading-5 text-stardust/42">No garments in this phase.</p> : null}
               </div>
             </section>
           );
@@ -149,50 +165,39 @@ function FlowView() {
   );
 }
 
-function TaskView() {
-  const { state, updateTaskStatus } = useCanonicalWorkspace();
-  if (!state) return null;
+function TaskView({ tasks }: { tasks: PlanTaskItem[] }) {
+  const { updateTaskStatus } = useCanonicalWorkspace();
   return (
-    <Card className="space-y-3" role="tabpanel">
-      {state.releaseTasks.map((task) => {
-        const garment = state.garments.find((item) => item.id === task.garmentId);
+    <Card aria-labelledby="plan-tab-tasks" className="space-y-3" id="plan-panel-tasks" role="tabpanel">
+      {tasks.map(({ garment, task }) => {
         return (
           <article className="grid gap-3 rounded-2xl border border-bronze/22 bg-stardust/[0.035] p-4 sm:grid-cols-[minmax(0,1fr)_10rem] sm:items-center" key={task.id}>
             <div>
-              <div className="flex flex-wrap items-center gap-2"><Badge variant={task.priority === 'urgent' ? 'ember' : 'bronze'}>{task.priority}</Badge><span className="text-xs text-stardust/48">{garment?.title ?? 'Studio-wide'}</span></div>
+              <div className="flex flex-wrap items-center gap-2"><Badge variant={task.priority === 'urgent' ? 'ember' : 'bronze'}>{task.priority}</Badge><span className="text-xs text-stardust/48">{garment?.garment.title ?? 'Studio-wide'}</span></div>
               <h2 className="mt-2 text-sm font-semibold text-stardust">{task.title}</h2>
               <p className="mt-1 text-sm leading-6 text-stardust/55">{task.description || 'No description.'}</p>
               <p className="mt-2 text-xs text-stardust/45">{task.dueAt ? `Due ${formatDay(task.dueAt)}` : 'No due date'}</p>
             </div>
-            <label className="text-xs text-stardust/52"><span className="sr-only">Status for {task.title}</span><select className="min-h-11 w-full rounded-xl border border-bronze/26 bg-midnight px-3 text-sm text-stardust" onChange={(event) => updateTaskStatus(task.id, event.target.value as CanonicalReleaseTask['status'])} value={task.status}>{['todo', 'in_progress', 'blocked', 'done', 'cancelled'].map((status) => <option key={status} value={status}>{status.replace('_', ' ')}</option>)}</select></label>
+            <label className="text-xs text-stardust/52"><span className="sr-only">Status for {task.title}</span><select className="min-h-11 w-full rounded-xl border border-bronze/26 bg-midnight px-3 text-sm text-stardust" onChange={(event) => updateTaskStatus(task.id, event.target.value as CanonicalReleaseTask['status'])} value={task.status}>{['todo', 'in_progress', 'blocked', 'done', 'cancelled'].map((status) => <option key={status} value={status}>{planTaskStatusLabel(status as CanonicalReleaseTask['status'])}</option>)}</select></label>
           </article>
         );
       })}
-      {!state.releaseTasks.length ? <EmptyPlanState title="No tasks yet" detail="Create the first accountable next move. Tasks can be garment-specific or studio-wide." /> : null}
+      {!tasks.length ? <EmptyPlanState title="No tasks yet" detail="Create the first accountable next move. Tasks can be garment-specific or studio-wide." /> : null}
     </Card>
   );
 }
 
-function CalendarView() {
-  const { state } = useCanonicalWorkspace();
-  const schedule = useMemo(() => {
-    if (!state) return [];
-    return [
-      ...state.calendarEvents.map((event) => ({ id: event.id, garmentId: event.garmentId, kind: event.eventType, startsAt: event.startsAt, title: event.title })),
-      ...state.releaseTasks.filter((task) => task.dueAt).map((task) => ({ id: `task:${task.id}`, garmentId: task.garmentId || null, kind: 'task due', startsAt: task.dueAt!, title: task.title })),
-    ].sort((left, right) => left.startsAt.localeCompare(right.startsAt));
-  }, [state]);
-  if (!state) return null;
+function CalendarView({ items }: { items: ReturnType<typeof selectPlanWorkspacePresentation>['calendarItems'] }) {
   return (
-    <Card className="space-y-3" role="tabpanel">
-      {schedule.map((item) => (
+    <Card aria-labelledby="plan-tab-calendar" className="space-y-3" id="plan-panel-calendar" role="tabpanel">
+      {items.map((item) => (
         <article className="grid gap-2 rounded-2xl border border-bronze/22 bg-stardust/[0.035] p-4 sm:grid-cols-[9rem_minmax(0,1fr)_auto] sm:items-center" key={item.id}>
           <time className="text-sm tabular-nums text-ember" dateTime={item.startsAt}>{formatDay(item.startsAt)}</time>
-          <div><h2 className="text-sm font-semibold text-stardust">{item.title}</h2><p className="mt-1 text-xs text-stardust/46">{state.garments.find((garment) => garment.id === item.garmentId)?.title ?? 'Studio-wide'}</p></div>
+          <div><h2 className="text-sm font-semibold text-stardust">{item.title}</h2><p className="mt-1 text-xs text-stardust/46">{item.garment?.garment.title ?? 'Studio-wide'}</p></div>
           <Badge variant="teal">{item.kind}</Badge>
         </article>
       ))}
-      {!schedule.length ? <EmptyPlanState title="Calendar is clear" detail="Add a fitting, supplier review, release, shoot, or any other studio event." /> : null}
+      {!items.length ? <EmptyPlanState title="Calendar is clear" detail="Add a fitting, supplier review, release, shoot, or any other studio event." /> : null}
     </Card>
   );
 }
