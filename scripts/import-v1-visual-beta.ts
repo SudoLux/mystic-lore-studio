@@ -9,6 +9,7 @@ type ReportCount = { inserted: number; unchanged: number };
 const V1_REF = 'jsjhqnmlgceunlxgenkg';
 const BETA_REF = 'iahrcupmyjnyyqszrmcx';
 const dryRun = process.argv.includes('--dry-run');
+const fabricsOnly = process.argv.includes('--fabrics-only');
 const v1Url = required('ML_V1_SUPABASE_URL');
 const v1Key = required('ML_V1_SERVICE_ROLE_KEY');
 const v1OwnerId = required('ML_V1_OWNER_USER_ID');
@@ -30,9 +31,11 @@ const mappings: Array<{ canonicalId: string; legacyId: string; type: string }> =
 const media: Array<{ assetId: string; checksum: string; destination: string; legacyId: string; role: string; source: string }> = [];
 
 const [projects, fabrics, projectImages] = await Promise.all([
-  selectV1('projects'), selectV1('fabrics'), selectV1('project_images'),
+  fabricsOnly ? Promise.resolve([]) : selectV1('projects'),
+  selectV1('fabrics'),
+  fabricsOnly ? Promise.resolve([]) : selectV1('project_images'),
 ]);
-if (projects.length !== 7 || fabrics.length !== 12 || projectImages.length !== 21) {
+if (!fabricsOnly && (projects.length !== 7 || fabrics.length !== 12 || projectImages.length !== 21)) {
   warnings.push(`Expected the verified 7 projects, 12 fabrics, and 21 project images; found ${projects.length}, ${fabrics.length}, and ${projectImages.length}.`);
 }
 
@@ -221,7 +224,7 @@ try {
 }
 
 const report = {
-  completed, completedAt: new Date().toISOString(), counts, dryRun, failure,
+  completed, completedAt: new Date().toISOString(), counts, dryRun, fabricsOnly, failure,
   format: 'ml-v1-visual-beta-import-report-v1', mappings, media,
   source: { projectRef: V1_REF, projects: projects.length, fabrics: fabrics.length, projectImages: projectImages.length },
   target: { projectRef: BETA_REF, studioId }, warnings,
