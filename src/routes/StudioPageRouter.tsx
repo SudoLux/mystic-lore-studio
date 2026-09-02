@@ -1,4 +1,4 @@
-import { lazy, Suspense, type ComponentType } from 'react';
+import { Component, lazy, Suspense, type ComponentType, type ReactNode } from 'react';
 import { StudioSkeleton } from '../components/shared/StudioSkeleton';
 import type { AppRoute } from '../lib/appRoutes';
 import type { PageId } from '../types/navigation';
@@ -27,7 +27,7 @@ export type StudioPageRouterProps = {
 
 /** Each Studio area is a separate route chunk; all private screens read the canonical provider. */
 export function StudioPageRouter(props: StudioPageRouterProps) {
-  return <Suspense fallback={<RouteLoading />}><div className="atelier-route" key={routeKey(props.route)}><StudioPage {...props} /></div></Suspense>;
+  return <RouteErrorBoundary><Suspense fallback={<RouteLoading />}><div className="atelier-route" key={routeKey(props.route)}><StudioPage {...props} /></div></Suspense></RouteErrorBoundary>;
 }
 
 function StudioPage({
@@ -69,5 +69,37 @@ function lazyNamed<TModule extends Record<string, unknown>, TKey extends keyof T
   loader: () => Promise<TModule>,
   key: TKey,
 ) {
-  return lazy(async () => ({ default: (await loader())[key] as ComponentType<any> }));
+  return lazy(async () => {
+    try {
+      return { default: (await loader())[key] as ComponentType<any> };
+    } catch (error) {
+      // Netlify can briefly serve a cached entry file while the old hashed
+      // route chunk has been retired. One controlled reload obtains matching
+      // assets; repeated failures surface a usable recovery state instead.
+      if (shouldRecoverStaleChunk(error)) {
+        window.sessionStorage.setItem(chunkRecoveryKey, '1');
+        window.location.reload();
+        return new Promise<never>(() => undefined);
+      }
+      throw error;
+    }
+  });
+}
+
+const chunkRecoveryKey = 'ml-studio:chunk-recovery';
+
+function shouldRecoverStaleChunk(error: unknown) {
+  if (typeof window === 'undefined' || window.sessionStorage.getItem(chunkRecoveryKey)) return false;
+  const message = error instanceof Error ? error.message : String(error);
+  return /dynamically imported module|failed to fetch|importing a module script/i.test(message);
+}
+
+class RouteErrorBoundary extends Component<{ children: ReactNode }, { failed: boolean }> {
+  state = { failed: false };
+  static getDerivedStateFromError() { return { failed: true }; }
+  componentDidCatch() { window.sessionStorage.removeItem(chunkRecoveryKey); }
+  render() {
+    if (!this.state.failed) return this.props.children;
+    return <section className="atelier-panel mx-auto max-w-xl rounded-[1.5rem] p-6 text-center"><p className="text-[0.65rem] uppercase tracking-[.18em] text-ember">Studio recovery</p><h1 className="font-display mt-3 text-3xl">This workspace needs a fresh load</h1><p className="mt-3 text-sm leading-6 text-stardust/60">A new Studio version was published while this page was open. Your saved work remains intact.</p><button className="atelier-button mt-6 rounded-xl border border-ember/70 bg-[#d5ab51] px-4 py-3 text-sm font-medium text-midnight" onClick={() => window.location.reload()} type="button">Reload Studio</button></section>;
+  }
 }
