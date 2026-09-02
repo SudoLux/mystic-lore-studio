@@ -5717,6 +5717,8 @@ export type Database = {
           released_by: string | null
           revision: number
           revision_label: string
+          size_range_json: Json
+          size_system: string
           status: string
           studio_id: string
           unit: Database["ml_private"]["Enums"]["measurement_unit"]
@@ -5733,6 +5735,8 @@ export type Database = {
           released_by?: string | null
           revision?: number
           revision_label?: string
+          size_range_json?: Json
+          size_system?: string
           status?: string
           studio_id: string
           unit: Database["ml_private"]["Enums"]["measurement_unit"]
@@ -5749,6 +5753,8 @@ export type Database = {
           released_by?: string | null
           revision?: number
           revision_label?: string
+          size_range_json?: Json
+          size_system?: string
           status?: string
           studio_id?: string
           unit?: Database["ml_private"]["Enums"]["measurement_unit"]

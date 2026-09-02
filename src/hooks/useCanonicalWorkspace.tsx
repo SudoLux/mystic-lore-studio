@@ -1051,6 +1051,8 @@ function hydrateTechnicalState(partialState: CanonicalWorkspaceState, rawData: S
       releaseVersionId: item.releaseVersionId ?? null,
       releasedAt: item.releasedAt ?? null,
       releasedBy: item.releasedBy ?? null,
+      sizeRange: Array.isArray(item.sizeRange) && item.sizeRange.length ? item.sizeRange : [item.baseSize],
+      sizeSystem: item.sizeSystem ?? 'custom',
     })),
     suppliers: (state.suppliers ?? []).map((item) => ({
       ...item,

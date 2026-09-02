@@ -16,16 +16,17 @@ import type { CanonicalMeasurementValue, CanonicalTechnicalSpec } from '../../do
 import { useMeasurements } from '../../hooks/useMeasurements';
 import { cn } from '../../lib/classes';
 import { PomWorkspace } from './PomWorkspace';
+import { MeasurementsWorkspace } from './MeasurementsWorkspace';
 
 export type MeasurementSection = 'pom' | 'measurements' | 'grading';
 
-export function MeasurementStudio({ garmentId, onOpenFlats, section }: { garmentId: string; onOpenFlats?: () => void; section: MeasurementSection }) {
+export function MeasurementStudio({ garmentId, onOpenFlats, onOpenPom, section }: { garmentId: string; onOpenFlats?: () => void; onOpenPom?: () => void; section: MeasurementSection }) {
   const { state } = useMeasurements();
   const spec = state?.technicalSpecs.find((item) => item.garmentId === garmentId);
   if (!state || !spec) return <Card><p className="text-sm text-stardust/60">Create the garment technical specification from Flats before defining POM.</p></Card>;
   if (section === 'pom') return <PomWorkspace onOpenFlats={onOpenFlats ?? (() => undefined)} spec={spec} />;
   if (section === 'grading') return <GradingWorkspace spec={spec} />;
-  return <MeasurementWorkspace garmentId={garmentId} spec={spec} />;
+  return <MeasurementsWorkspace garmentId={garmentId} onOpenPom={onOpenPom} />;
 }
 
 function MeasurementWorkspace({ garmentId, spec }: { garmentId: string; spec: CanonicalTechnicalSpec }) {
@@ -46,6 +47,10 @@ function MeasurementWorkspace({ garmentId, spec }: { garmentId: string; spec: Ca
   const setIssues = validateMeasurementSet(state!, activeSet.id);
   return <section className="space-y-4"><header className="flex flex-wrap items-end justify-between gap-3"><div><Badge variant="bronze">Measurement grid · canonical {spec.unit}</Badge><h1 className="font-display mt-3 text-4xl">Base, graded, and sample values</h1><p className="mt-2 text-sm text-stardust/58">Every row retains POM identity, size, decimal target, asymmetric tolerance, actual, and variance.</p></div><div className="flex flex-wrap gap-2"><Badge variant={setIssues.length ? 'ember' : 'teal'}>{setIssues.length ? `${setIssues.length} set issue${setIssues.length === 1 ? '' : 's'}` : 'set validated'}</Badge><Button disabled={Boolean(setIssues.length)} onClick={() => void createCheckpoint(spec.id)} size="sm">Freeze measurement checkpoint</Button><Button onClick={() => execute({ type: 'create_sample_round', garmentId, sampleType: `Sample ${sampleRounds.length + 1}` })} size="sm">Add sample round</Button></div></header><Card><div className="flex flex-wrap items-end gap-3"><label><span className="field-label">Measurement set</span><select className="field min-w-48" onChange={(event) => setSetId(event.target.value)} value={activeSet.id}>{sets.map((set) => <option key={set.id} value={set.id}>{set.name} · {set.baseSize}</option>)}</select></label><label><span className="field-label">Converted display</span><select className="field" onChange={(event) => setDisplayUnit(event.target.value as MeasurementUnit)} value={displayUnit}>{(['mm', 'cm', 'in'] as const).map((unit) => <option key={unit} value={unit}>{unit}{unit === spec.unit ? ' · canonical' : ''}</option>)}</select></label><label><span className="field-label">Sample actuals</span><select className="field min-w-44" onChange={(event) => setSampleId(event.target.value)} value={sampleId}><option value="">No sample selected</option>{sampleRounds.map((round) => <option key={round.id} value={round.id}>Round {round.roundNo} · {round.sampleType}</option>)}</select></label></div>{setIssues.length ? <ul aria-live="polite" className="mt-4 space-y-1 text-sm text-ember">{setIssues.map((issue) => <li key={`${issue.code}:${issue.pomPointId}`}>• {issue.message}</li>)}</ul> : <p className="mt-4 text-sm text-teal">Stable POM coverage and required size targets are valid.</p>}</Card><MeasurementDataGrid activeSetId={activeSet.id} displayRows={displayRows} displayUnit={displayUnit} sampleId={sample?.id ?? ''} specUnit={spec.unit} /><CsvImportPanel setId={activeSet.id} specId={spec.id} /><VersionRestorePanel spec={spec} /></section>;
 }
+
+// Retained temporarily for the grading route's legacy coverage while the
+// redesigned workspace uses the extracted component above.
+void MeasurementWorkspace;
 
 function MeasurementDataGrid({ activeSetId, displayRows, displayUnit, sampleId, specUnit }: { activeSetId: string; displayRows: CanonicalMeasurementValue[]; displayUnit: MeasurementUnit; sampleId: string; specUnit: MeasurementUnit }) {
   const { execute, state } = useMeasurements();

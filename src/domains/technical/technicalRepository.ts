@@ -14,6 +14,7 @@ import { flatViewOptions, requiredFlatViews, technicalRulesetVersion, type FlatC
 
 export function executeTechnicalCommand(state: CanonicalWorkspaceState, command: TechnicalCommand) {
   if (command.type === 'create_spec') return createSpec(state, command.garmentId, command.baseSize, command.unit).state;
+  if (command.type === 'update_spec_size_range') return updateSpecSizeRange(state, command).state;
   if (command.type === 'register_flat') return registerFlat(state, command.specId, command.assetId, command.view, command.versionLabel).state;
   if (command.type === 'add_annotation') return addFlatAnnotation(state, command).state;
   if (command.type === 'set_annotation_status') return setAnnotationStatus(state, command.annotationId, command.status);
@@ -25,8 +26,20 @@ export function createSpec(state: CanonicalWorkspaceState, garmentId: string, ba
   const existing = state.technicalSpecs.find((item) => item.garmentId === garmentId);
   if (existing) return { spec: existing, state };
   if (!state.garments.some((item) => item.id === garmentId)) throw new Error('The garment does not exist in this studio.');
-  const spec: CanonicalTechnicalSpec = { ...record(state.studioId), garmentId, status: 'draft', baseSize: baseSize.trim() || 'M', unit, revisionLabel: 'A', releaseVersionId: null, releaseValidationRunId: null, releasedBy: null, releasedAt: null };
+  const resolvedBaseSize = baseSize.trim() || 'M';
+  const spec: CanonicalTechnicalSpec = { ...record(state.studioId), garmentId, status: 'draft', baseSize: resolvedBaseSize, sizeSystem: 'custom', sizeRange: [resolvedBaseSize], unit, revisionLabel: 'A', releaseVersionId: null, releaseValidationRunId: null, releasedBy: null, releasedAt: null };
   return { spec, state: { ...state, technicalSpecs: [...state.technicalSpecs, spec] } };
+}
+
+export function updateSpecSizeRange(state: CanonicalWorkspaceState, command: Extract<TechnicalCommand, { type: 'update_spec_size_range' }>) {
+  const spec = state.technicalSpecs.find((item) => item.id === command.specId);
+  if (!spec) throw new Error('Technical specification not found.');
+  const sizeRange = command.sizeRange.map((size) => size.trim()).filter(Boolean);
+  if (!sizeRange.length || new Set(sizeRange.map((size) => size.toLowerCase())).size !== sizeRange.length) throw new Error('Add at least one unique garment size.');
+  const baseSize = command.baseSize.trim();
+  if (!sizeRange.includes(baseSize)) throw new Error('The base size must be included in the garment size range.');
+  const updated = touch({ ...spec, baseSize, sizeSystem: command.sizeSystem, sizeRange });
+  return { spec: updated, state: { ...state, technicalSpecs: state.technicalSpecs.map((item) => item.id === spec.id ? updated : item) } };
 }
 
 export function registerFlat(state: CanonicalWorkspaceState, specId: string, assetId: string, view: TechnicalFlatView, versionLabel: string) {

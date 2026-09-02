@@ -85,7 +85,7 @@ export const canonicalCodecRegistry = [
   codec('componentVariants', 'component_variants'),
   codec('garmentComponents', 'garment_components'),
   codec('supplierItems', 'supplier_items'),
-  codec('technicalSpecs', 'technical_specs'),
+  codec('technicalSpecs', 'technical_specs', true, { sizeRange: 'size_range_json' }),
   codec('technicalFlats', 'technical_flats'),
   codec('flatAnnotations', 'flat_annotations'),
   codec('technicalFiles', 'technical_files'),

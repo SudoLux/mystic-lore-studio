@@ -27,9 +27,9 @@ export function useMeasurements() {
     commitWorkspace((current) => { const result = commitGradePreview(current, sourceSetId, gradeRuleId, name); setId = result.set.id; return result.state; });
     return setId;
   };
-  const createCheckpoint = async (specId: string) => {
+  const createCheckpoint = async (specId: string, label?: string, notes?: string) => {
     if (!state) throw new Error('Workspace is not ready.');
-    const result = await createTechnicalCheckpoint(state, specId);
+    const result = await createTechnicalCheckpoint(state, specId, label, { notes });
     commitWorkspace((current) => ({ ...current, garmentVersions: [...current.garmentVersions, result.version] }));
     return result.version.id;
   };

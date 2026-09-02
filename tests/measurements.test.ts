@@ -16,6 +16,7 @@ import {
   previewGradeRule,
   recordFitActual,
   restoreMeasurementSelection,
+  updateSpecSizeRange,
   upsertMeasurementValue,
   validateMeasurementSet,
 } from '../src/domains/technical';
@@ -42,6 +43,13 @@ describe('WP4 POM, measurement, fit, and grading domain', () => {
     expect(convertMeasurement(2.54, 'cm', 'in')).toBe(1);
     expect(convertMeasurement(1, 'in', 'mm')).toBe(25.4);
     expect(convertMeasurement(convertMeasurement(12.3456, 'cm', 'in'), 'in', 'cm')).toBeCloseTo(12.3456, 3);
+  });
+
+  it('keeps a garment-owned, ordered size range and base size on the canonical technical spec', async () => {
+    const start = await technicalWorkspace();
+    const updated = updateSpecSizeRange(start.state, { type: 'update_spec_size_range', specId: start.spec.id, sizeSystem: 'alpha', sizeRange: ['XS', 'S', 'M', 'L', 'XL'], baseSize: 'M' });
+    expect(updated.spec).toMatchObject({ sizeSystem: 'alpha', sizeRange: ['XS', 'S', 'M', 'L', 'XL'], baseSize: 'M' });
+    expect(() => updateSpecSizeRange(updated.state, { type: 'update_spec_size_range', specId: start.spec.id, sizeSystem: 'alpha', sizeRange: ['XS', 'S'], baseSize: 'M' })).toThrow(/base size/i);
   });
 
   it('treats plus and minus tolerance boundaries as passing', () => {
