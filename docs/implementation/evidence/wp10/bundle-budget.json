@@ -4,13 +4,13 @@
     "imageBytes": 256000,
     "jsChunkBytes": 512000
   },
-  "checkedAt": "2026-09-02T05:34:00.312Z",
+  "checkedAt": "2026-09-02T07:21:09.036Z",
   "decision": "PASS",
-  "distChecksum": "a221e109e27cfca0daadbf1d110012c0d45e7d5c22dcf3d5d30f47db2187f072",
+  "distChecksum": "2714ea72cfcae87d2c03adb86abb14bfaf8f47148e2b135d82d7877463dc6052",
   "failures": [],
   "largestCss": {
-    "bytes": 299701,
-    "name": "index-DP8EMmqM.css",
+    "bytes": 306844,
+    "name": "index-CeM38c8t.css",
     "type": ".css"
   },
   "largestImage": {
@@ -24,5 +24,5 @@
     "type": ".js"
   },
   "routeChunkCount": 44,
-  "totalBytes": 1949617
+  "totalBytes": 1964563
 }

@@ -10,7 +10,7 @@ const shell = read('../src/components/layout/AppShell.tsx');
 const styles = read('../src/styles/index.css');
 const fieldMode = read('../src/components/shared/FieldModePanel.tsx');
 const dialog = read('../src/components/shared/useDialogA11y.ts');
-const technical = read('../src/pages/TechnicalStudio/TechnicalStudioPage.tsx');
+const flats = read('../src/pages/TechnicalStudio/FlatsWorkspace.tsx');
 const technicalLanding = read('../src/pages/TechnicalStudio/TechnicalStudioLanding.tsx');
 const production = read('../src/pages/Production/ProductionPage.tsx');
 const observability = read('../src/lib/observability.ts');
@@ -28,7 +28,7 @@ describe('WP10 responsive, accessibility, performance, and observability contrac
   it('uses focus-contained dialogs and semantic alternatives for canvases and narrow tables', () => {
     for (const token of ['Escape', 'focusableSelector', 'previousFocusRef']) expect(dialog).toContain(token);
     expect(technicalLanding).toContain('Technical release queue details');
-    expect(technical).toContain('flat-canvas-help');
+    expect(flats).toContain('flat-canvas-help');
     expect(production).toContain('Sampling timeline details');
     expect(fieldMode).toContain('Field mode');
     expect(fieldMode).toContain('Capture and review work stays on this device');
