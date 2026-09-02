@@ -500,19 +500,21 @@ check(router.includes('<LibraryVaultPage'), 'Material Vault route must use the c
 check(!router.includes('<ProjectsPage'), 'WP3 must remove the legacy project-library read path.');
 check(!router.includes('<FabricVaultPage'), 'WP3 must remove the legacy fabric-vault read path.');
 const technicalPage = read('src/pages/TechnicalStudio/TechnicalStudioPage.tsx');
+const flatsPage = read('src/pages/TechnicalStudio/FlatsWorkspace.tsx');
 const technicalRepository = read('src/domains/technical/technicalRepository.ts');
 check(router.includes('<TechnicalStudioPage'), 'WP4 Technical Studio route is missing.');
-check(technicalPage.includes('FlatCanvas'), 'WP4 Flats workspace is missing.');
+check(technicalPage.includes('<FlatsWorkspace') && flatsPage.includes('flat-canvas'), 'WP4 Flats workspace is missing.');
 check(technicalRepository.includes('missing_required_view'), 'WP4 required-view validation is missing.');
 check(technicalRepository.includes('missing_source_mapping'), 'WP4 source-mapping validation is missing.');
 check(technicalRepository.includes('unresolved_critical_annotation'), 'WP4 critical-annotation validation is missing.');
 check(technicalRepository.includes('deterministicExportFilename'), 'WP4 deterministic export naming is missing.');
 const measurementRepository = read('src/domains/technical/measurementRepository.ts');
 const measurementPage = read('src/pages/TechnicalStudio/MeasurementStudio.tsx');
+const pomPage = read('src/pages/TechnicalStudio/PomWorkspace.tsx');
 for (const contract of ['convertMeasurement', 'measurementWithinTolerance', 'previewGradeRule', 'parseMeasurementCsv', 'restoreMeasurementSelection']) {
   check(measurementRepository.includes(`function ${contract}`), `WP4 measurement repository contract is missing: ${contract}`);
 }
-check(measurementPage.includes('POMCanvas'), 'WP4 accessible POM canvas is missing.');
+check(measurementPage.includes('<PomWorkspace') && pomPage.includes('pom-canvas'), 'WP4 accessible POM canvas is missing.');
 check(measurementPage.includes('MeasurementDataGrid'), 'WP4 dense measurement grid is missing.');
 check(measurementPage.includes('Structural compare and selective restore'), 'WP4 structural restore UI is missing.');
 const releaseRepository = read('src/domains/technical/releaseRepository.ts');

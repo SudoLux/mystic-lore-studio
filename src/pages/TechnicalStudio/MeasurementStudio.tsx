@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type FormEvent, type KeyboardEvent } from 'react';
-import { Check, ClipboardPaste, GitCompare, Plus, Save, Undo2 } from 'lucide-react';
+import { Check, ClipboardPaste, GitCompare, Undo2 } from 'lucide-react';
 import { Badge } from '../../components/shared/Badge';
 import { Button } from '../../components/shared/Button';
 import { Card } from '../../components/shared/Card';
@@ -12,38 +12,20 @@ import {
   validateMeasurementSet,
   type MeasurementUnit,
 } from '../../domains/technical';
-import type { CanonicalMeasurementValue, CanonicalPomPoint, CanonicalTechnicalSpec } from '../../domains/workspace';
+import type { CanonicalMeasurementValue, CanonicalTechnicalSpec } from '../../domains/workspace';
 import { useMeasurements } from '../../hooks/useMeasurements';
 import { cn } from '../../lib/classes';
+import { PomWorkspace } from './PomWorkspace';
 
 export type MeasurementSection = 'pom' | 'measurements' | 'grading';
 
-export function MeasurementStudio({ garmentId, section }: { garmentId: string; section: MeasurementSection }) {
+export function MeasurementStudio({ garmentId, onOpenFlats, section }: { garmentId: string; onOpenFlats?: () => void; section: MeasurementSection }) {
   const { state } = useMeasurements();
   const spec = state?.technicalSpecs.find((item) => item.garmentId === garmentId);
   if (!state || !spec) return <Card><p className="text-sm text-stardust/60">Create the garment technical specification from Flats before defining POM.</p></Card>;
-  if (section === 'pom') return <PomWorkspace spec={spec} />;
+  if (section === 'pom') return <PomWorkspace onOpenFlats={onOpenFlats ?? (() => undefined)} spec={spec} />;
   if (section === 'grading') return <GradingWorkspace spec={spec} />;
   return <MeasurementWorkspace garmentId={garmentId} spec={spec} />;
-}
-
-function PomWorkspace({ spec }: { spec: CanonicalTechnicalSpec }) {
-  const { execute, state } = useMeasurements();
-  const points = state!.pomPoints.filter((item) => item.specId === spec.id).sort((a, b) => a.sortOrder - b.sortOrder);
-  const [selectedId, setSelectedId] = useState(points[0]?.id ?? '');
-  const selected = points.find((item) => item.id === selectedId) ?? points[0];
-  const addPoint = (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault(); const form = new FormData(event.currentTarget);
-    execute({ type: 'create_pom', specId: spec.id, code: String(form.get('code') ?? ''), name: String(form.get('name') ?? ''), method: String(form.get('method') ?? ''), anchor: { x: Number(form.get('x')), y: Number(form.get('y')) } });
-    event.currentTarget.reset();
-  };
-  return <section className="space-y-4"><header><Badge variant="bronze">POM map · canonical {spec.unit}</Badge><h1 className="font-display mt-3 text-4xl">Points of measure</h1><p className="mt-2 max-w-2xl text-sm leading-6 text-stardust/60">Define each identity and method once. Diagram anchors and the synchronized list edit the same structured record.</p></header><div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_22rem]"><Card><h2 className="font-display text-2xl">POMCanvas</h2><div aria-label="POM diagram and anchored points" className="relative mt-4 min-h-[30rem] overflow-hidden rounded-2xl border border-bronze/25 bg-gradient-to-b from-white to-stardust/90" role="group"><GarmentDiagram />{points.map((point) => <button aria-label={`${point.code}: ${point.name}. ${point.method}`} aria-pressed={selected?.id === point.id} className={cn('absolute grid h-9 w-9 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full border-2 text-xs font-bold shadow-lg focus:outline-none focus:ring-4 focus:ring-ember/45', selected?.id === point.id ? 'border-midnight bg-ember text-midnight' : 'border-ember bg-midnight text-stardust')} key={point.id} onClick={() => setSelectedId(point.id)} style={{ left: `${point.diagramAnchor.x * 100}%`, top: `${point.diagramAnchor.y * 100}%` }} type="button">{point.sortOrder + 1}</button>)}</div></Card><div className="space-y-4"><Card><h2 className="font-display text-xl">Keyboard point list</h2>{points.length ? <ol className="mt-4 space-y-2">{points.map((point) => <li key={point.id}><button aria-pressed={selected?.id === point.id} className={cn('w-full rounded-xl border p-3 text-left text-sm focus:outline-none focus:ring-2 focus:ring-ember/60', selected?.id === point.id ? 'border-ember bg-ember/10' : 'border-bronze/20')} onClick={() => setSelectedId(point.id)} type="button"><strong>{point.code}</strong><span className="mt-1 block text-stardust/58">{point.name}</span><span className="mt-1 block text-xs text-stardust/42">{point.method}</span></button></li>)}</ol> : <p className="mt-3 text-sm text-stardust/50">No POM points yet.</p>}</Card>{selected ? <PomInspector point={selected} /> : null}</div></div><Card><h2 className="font-display text-xl">Add a stable POM identity</h2><form className="mt-4 grid gap-3 md:grid-cols-[8rem_1fr_1.5fr_7rem_7rem_auto]" onSubmit={addPoint}><Field label="Code" name="code" placeholder="CBL" required /><Field label="Point name" name="name" placeholder="Center-back length" required /><Field label="Method" name="method" placeholder="High point shoulder to hem" required /><Field defaultValue="0.5" label="Anchor X" max="1" min="0" name="x" step="0.01" type="number" required /><Field defaultValue="0.5" label="Anchor Y" max="1" min="0" name="y" step="0.01" type="number" required /><Button className="self-end" icon={<Plus aria-hidden="true" size={16}/>} type="submit" variant="primary">Add POM</Button></form></Card></section>;
-}
-
-function PomInspector({ point }: { point: CanonicalPomPoint }) {
-  const { execute } = useMeasurements();
-  const save = (event: FormEvent<HTMLFormElement>) => { event.preventDefault(); const form = new FormData(event.currentTarget); execute({ type: 'update_pom', pomPointId: point.id, expectedRevision: point.revision, patch: { name: String(form.get('name') ?? ''), method: String(form.get('method') ?? ''), diagramAnchor: { x: Number(form.get('x')), y: Number(form.get('y')) } } }); };
-  return <Card><div className="flex items-center justify-between"><h2 className="font-display text-xl">Selected point</h2><Badge variant="blue">{point.code} · r{point.revision}</Badge></div><form className="mt-4 space-y-3" key={`${point.id}:${point.revision}`} onSubmit={save}><Field defaultValue={point.name} label="Name" name="name" required /><label><span className="field-label">Method</span><textarea className="field min-h-24" defaultValue={point.method} name="method" required /></label><div className="grid grid-cols-2 gap-3"><Field defaultValue={String(point.diagramAnchor.x)} label="Anchor X" max="1" min="0" name="x" step="0.01" type="number" required /><Field defaultValue={String(point.diagramAnchor.y)} label="Anchor Y" max="1" min="0" name="y" step="0.01" type="number" required /></div><Button icon={<Save aria-hidden="true" size={15}/>} type="submit" size="sm">Save selected point</Button></form></Card>;
 }
 
 function MeasurementWorkspace({ garmentId, spec }: { garmentId: string; spec: CanonicalTechnicalSpec }) {
@@ -101,7 +83,6 @@ function VersionRestorePanel({ spec }: { spec: CanonicalTechnicalSpec }) {
   return <Card><div className="flex items-center gap-2"><GitCompare aria-hidden="true" size={18}/><h2 className="font-display text-xl">Structural compare and selective restore</h2></div><div className="mt-4 flex flex-wrap items-end gap-3"><label><span className="field-label">Measurement checkpoint</span><select className="field min-w-56" onChange={(event) => { setVersionId(event.target.value); setSelected([]); }} value={versionId}><option value="">Select checkpoint</option>{versions.map((version) => <option key={version.id} value={version.id}>{version.label} · {version.checksum.slice(0, 8)}</option>)}</select></label><Button disabled={!selected.length} icon={<Undo2 aria-hidden="true" size={15}/>} onClick={() => void restore()} size="sm">Restore selected</Button></div>{diffs.length ? <ul className="mt-4 max-h-64 space-y-2 overflow-auto">{diffs.map((diff) => { const key = `${diff.entity}:${diff.key}`; return <li key={key}><label className="flex min-h-11 items-center gap-3 rounded-xl border border-bronze/20 p-3 text-sm"><input checked={selected.includes(key)} onChange={(event) => setSelected((current) => event.target.checked ? [...current, key] : current.filter((item) => item !== key))} type="checkbox"/><Badge variant={diff.kind === 'removed' ? 'ember' : 'blue'}>{diff.kind}</Badge><span>{diff.entity} · {diff.key}</span></label></li>; })}</ul> : <p className="mt-3 text-sm text-stardust/50">{versionId ? 'No structural POM or measurement differences.' : 'Create and select a measurement checkpoint to compare.'}</p>}<p className="mt-3 text-xs text-stardust/45">Restore updates only selected structured rows, creates a new checkpoint, and never deletes later fit actuals.</p>{notice ? <p aria-live="polite" className="mt-3 text-sm text-teal">{notice}</p> : null}</Card>;
 }
 
-function GarmentDiagram() { return <svg aria-hidden="true" className="absolute inset-0 h-full w-full text-midnight/16" viewBox="0 0 400 500"><path d="M145 70 110 105 55 150l35 68 35-28v250h150V190l35 28 35-68-55-45-35-35c-34 20-76 20-110 0Z" fill="none" stroke="currentColor" strokeWidth="5"/><path d="M145 70c10 50 100 50 110 0M125 190h150M125 330h150" fill="none" stroke="currentColor" strokeDasharray="8 7" strokeWidth="3"/></svg>; }
 function Field(props: { defaultValue?: string; label: string; max?: string; min?: string; name: string; placeholder?: string; required?: boolean; step?: string; type?: string }) { return <label><span className="field-label">{props.label}</span><input className="field" {...props} /></label>; }
 function Detail({ label, value }: { label: string; value: string }) { return <div><dt className="text-xs uppercase tracking-[.08em] text-stardust/42">{label}</dt><dd className="mt-1 tabular-nums">{value}</dd></div>; }
 function signed(value: number) { return value > 0 ? `+${value}` : String(value); }
