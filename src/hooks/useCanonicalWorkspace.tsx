@@ -15,6 +15,7 @@ import {
   attachMaterial,
   createCanonicalWorkspace,
   createMoodboard,
+  deleteCalendarEvent,
   deleteGarment,
   deleteTask,
   MAX_GARMENT_VIEWS,
@@ -25,6 +26,7 @@ import {
   relationshipOptions,
   setGarmentHero,
   updateBrief,
+  updateCalendarEvent,
   updateGarment,
   updateGarmentMaterial,
   updateTask,
@@ -73,7 +75,7 @@ import type { CanonicalMaterialImageFraming } from '../lib/canonicalMaterialPres
 
 type CanonicalWorkspaceContextValue = {
   addCollection: (name: string, season?: string) => string;
-  addCalendarEvent: (input: Pick<CanonicalCalendarEvent, 'endsAt' | 'eventType' | 'garmentId' | 'startsAt' | 'title'>) => string;
+  addCalendarEvent: (input: Pick<CanonicalCalendarEvent, 'endsAt' | 'eventType' | 'garmentId' | 'notes' | 'startsAt' | 'title'>) => string;
   addComponent: (input: ComponentInput) => { componentId: string; variantId: string };
   addGarment: (input: GarmentInput) => string;
   addMaterial: (input: MaterialInput) => { materialId: string; variantId: string };
@@ -87,6 +89,7 @@ type CanonicalWorkspaceContextValue = {
   linkMaterialToGarment: (garmentId: string, variantId: string, role: string, placement: string, requiredQuantity: number) => void;
   createMoodboard: (garmentId: string, title?: string) => string;
   deleteGarment: (garmentId: string) => void;
+  deleteCalendarEvent: (eventId: string) => void;
   deleteTask: (taskId: string) => void;
   commitWorkspace: (change: (current: CanonicalWorkspaceState) => CanonicalWorkspaceState, context?: Omit<WorkspaceChangeContext, 'actorId'>) => void;
   commitWorkspaceAsync: (change: (current: CanonicalWorkspaceState) => CanonicalWorkspaceState, context?: Omit<WorkspaceChangeContext, 'actorId'> & { excludeEntities?: string[] }) => Promise<CanonicalCommitResult | null>;
@@ -109,6 +112,7 @@ type CanonicalWorkspaceContextValue = {
   setGarmentHero: (garmentId: string, assetId: string) => void;
   updateBrief: (garmentId: string, patch: Parameters<typeof updateBrief>[2]) => void;
   updateGarment: (garmentId: string, patch: Partial<GarmentInput>) => void;
+  updateCalendarEvent: (eventId: string, patch: Parameters<typeof updateCalendarEvent>[2]) => void;
   updateGarmentMaterial: (relationshipId: string, patch: { requiredQuantity: number; role: string }) => void;
   updateTask: (taskId: string, patch: Parameters<typeof updateTask>[2]) => void;
   updateTaskStatus: (taskId: string, status: CanonicalReleaseTask['status']) => void;
@@ -587,6 +591,7 @@ export function CanonicalWorkspaceProvider({
     }),
     createMoodboard: (garmentId, title) => { let id = ''; commit((current) => { const result = createMoodboard(current, garmentId, title); id = result.board.id; return result.state; }); return id; },
     deleteGarment: (garmentId) => commit((current) => deleteGarment(current, garmentId)),
+    deleteCalendarEvent: (eventId) => commit((current) => deleteCalendarEvent(current, eventId)),
     deleteTask: (taskId) => commit((current) => deleteTask(current, taskId)),
     commitWorkspace: commit,
     commitWorkspaceAsync: commitAsync,
@@ -609,6 +614,7 @@ export function CanonicalWorkspaceProvider({
     setGarmentHero: (garmentId, assetId) => commit((current) => setGarmentHero(current, garmentId, assetId)),
     updateBrief: (garmentId, patch) => commit((current) => updateBrief(current, garmentId, patch)),
     updateGarment: (garmentId, patch) => commit((current) => updateGarment(current, garmentId, patch)),
+    updateCalendarEvent: (eventId, patch) => commit((current) => updateCalendarEvent(current, eventId, patch)),
     updateGarmentMaterial: (relationshipId, patch) => commit((current) => updateGarmentMaterial(current, relationshipId, patch)),
     updateTask: (taskId, patch) => commit((current) => updateTask(current, taskId, patch)),
     updateTaskStatus: (taskId, status) => commit((current) => updateTaskStatus(current, taskId, status)),

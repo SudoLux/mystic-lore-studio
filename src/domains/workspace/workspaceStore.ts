@@ -430,9 +430,11 @@ export function deleteTask(state: CanonicalWorkspaceState, taskId: string) {
   });
 }
 
+export type CalendarEventInput = Pick<CanonicalCalendarEvent, 'endsAt' | 'eventType' | 'garmentId' | 'notes' | 'startsAt' | 'title'>;
+
 export function addCalendarEvent(
   state: CanonicalWorkspaceState,
-  input: Pick<CanonicalCalendarEvent, 'endsAt' | 'eventType' | 'garmentId' | 'startsAt' | 'title'>,
+  input: CalendarEventInput,
 ) {
   if (input.endsAt && input.endsAt < input.startsAt) {
     throw new Error('Calendar event end must be after its start.');
@@ -443,10 +445,45 @@ export function addCalendarEvent(
     endsAt: input.endsAt,
     eventType: input.eventType.trim() || 'studio',
     garmentId: input.garmentId,
+    notes: input.notes.trim(),
     startsAt: input.startsAt,
     title: input.title.trim(),
   };
   return { record, state: normalizeWorkspace({ ...state, calendarEvents: [...state.calendarEvents, record] }) };
+}
+
+/** Changes one canonical appointment without cloning it for Calendar display. */
+export function updateCalendarEvent(
+  state: CanonicalWorkspaceState,
+  eventId: string,
+  patch: Partial<CalendarEventInput>,
+) {
+  const existing = state.calendarEvents.find((event) => event.id === eventId);
+  if (!existing) throw new Error('This calendar appointment is no longer available. Refresh the Studio and try again.');
+  const next = {
+    ...existing,
+    ...patch,
+    ...(patch.title === undefined ? {} : { title: patch.title.trim() }),
+    ...(patch.notes === undefined ? {} : { notes: patch.notes.trim() }),
+    ...(patch.eventType === undefined ? {} : { eventType: patch.eventType.trim() || 'studio' }),
+  };
+  if (!next.title) throw new Error('An appointment needs a title.');
+  if (next.endsAt && next.endsAt < next.startsAt) throw new Error('The appointment end must be after its start.');
+  return normalizeWorkspace({
+    ...state,
+    calendarEvents: state.calendarEvents.map((event) => event.id === eventId ? touch(next) : event),
+  });
+}
+
+/** Deletes only the standalone calendar appointment. It never changes a task. */
+export function deleteCalendarEvent(state: CanonicalWorkspaceState, eventId: string) {
+  if (!state.calendarEvents.some((event) => event.id === eventId)) {
+    throw new Error('This calendar appointment is no longer available. Refresh the Studio and try again.');
+  }
+  return normalizeWorkspace({
+    ...state,
+    calendarEvents: state.calendarEvents.filter((event) => event.id !== eventId),
+  });
 }
 
 export function addGarment(state: CanonicalWorkspaceState, input: GarmentInput) {

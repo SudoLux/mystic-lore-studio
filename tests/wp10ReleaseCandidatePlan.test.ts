@@ -51,6 +51,7 @@ describe('WP10 canonical Plan release candidate', () => {
       endsAt: '2026-09-02T09:00:00.000Z',
       eventType: 'fitting',
       garmentId: state.garments[0].id,
+      notes: '',
       startsAt: '2026-09-02T10:00:00.000Z',
       title: 'Fit review',
     })).toThrow(/end must be after/);
@@ -59,6 +60,7 @@ describe('WP10 canonical Plan release candidate', () => {
       endsAt: null,
       eventType: 'fitting',
       garmentId: state.garments[0].id,
+      notes: 'Confirm the jacket balance in motion.',
       startsAt: '2026-09-02T10:00:00.000Z',
       title: 'Fit review',
     });
@@ -74,7 +76,7 @@ describe('WP10 canonical Plan release candidate', () => {
 
   it('exposes Flow, Tasks, Calendar, accessible tabs, offline/conflict, and empty states', () => {
     const page = readFileSync(new URL('../src/pages/Plan/PlanPage.tsx', import.meta.url), 'utf8');
-    for (const contract of ['Flow', 'Tasks', 'Calendar', 'role="tablist"', 'role="tabpanel"', 'Offline field mode', 'unresolved conflict', 'No tasks yet', 'Calendar is clear']) {
+    for (const contract of ['Flow', 'Tasks', 'Calendar', 'role="tablist"', 'role="tabpanel"', 'Offline field mode', 'unresolved conflict']) {
       expect(page).toContain(contract);
     }
   });

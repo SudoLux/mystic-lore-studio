@@ -107,7 +107,43 @@ so standard revisions, change events, conflict handling, offline-outbox replay,
 and second-device hydration remain in force. Freeform positions deliberately
 remain outside the canonical domain model.
 
+## WP11P-D — Visual Studio Calendar
+
+Calendar is now a visual planning surface with **Month**, **Week**, and
+**Agenda** views. Month is the default: a real seven-day grid with a selected
+day panel on wide layouts, and a deliberate stacked panel on smaller screens.
+Week keeps its readable cell widths through horizontal scrolling; Agenda is a
+focused chronological read of the chosen month.
+
+- `src/lib/canonicalPlanCalendar.ts` is a presentation-only date adapter. It
+  builds the month/week day ranges, assigns the existing transient Plan items
+  to their local calendar date, moves timestamps while preserving local time,
+  and supplies display labels. A due task therefore appears only as the one
+  Calendar projection already defined in WP11P-A; it never becomes an event.
+- Dated tasks and standalone events use the same small item treatment. Linked
+  garments resolve their existing private canonical cover thumbnail. Clicking
+  a task opens its existing task detail drawer; clicking an appointment opens
+  its event detail drawer. Both can open the linked garment without leaving a
+  duplicate navigation control inside the calendar item.
+- New Event stays lightweight and now captures title, type, garment, start,
+  optional end, and private notes. Event detail supports editing and a clear
+  confirmation before deleting only that standalone appointment.
+- Date/time editing in the task or appointment detail drawer remains the
+  deliberate scheduling action. It uses the same canonical update commands as
+  every other task/event edit, so a changed date moves the existing Calendar
+  projection without creating an extra record. A direct drag interaction was
+  intentionally deferred: it must first have a reliable, accessible failure
+  recovery path across desktop and touch browsers.
+
+## Schema decision
+
+WP11P-D adds one optional private-detail field, `calendar_events.notes`, in
+`20260902011308_add_calendar_event_notes.sql`. This is the smallest canonical
+extension needed to retain appointment notes requested by the Calendar—there
+are no new tables, no task/event copies, no Storage change, and no RLS or
+policy change. The canonical client-field allowlist is extended only to permit
+that field on the existing `calendar_events` command.
+
 ## Remaining WP11P work
 
-1. **Calendar:** month/week/agenda modes, responsive detail panel, date navigation, and event editing.
-2. **Cross-view polish:** deep links, transitions, loading skeletons, empty states, and visual regression coverage at desktop, iPad, and mobile sizes.
+1. **Cross-view polish:** deep links, transitions, loading skeletons, empty states, and visual regression coverage at desktop, iPad, and mobile sizes.

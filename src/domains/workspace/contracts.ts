@@ -445,7 +445,7 @@ export type CanonicalConstructionStep = CanonicalRecord & { sectionId: string; s
 export type CanonicalConstructionDetail = CanonicalRecord & { stepId: string; assetId: string | null; anchor: { x: number; y: number } | null; callout: string; severity: 'info' | 'warning' | 'critical'; status: 'open' | 'resolved' | 'dismissed'; sortOrder: number };
 export type CanonicalTemplateApplication = CanonicalRecord & { templateId: string; garmentId: string; appliedBy: string | null; appliedAt: string; mapping: { copiedIds: string[]; sourceVersion: number } };
 export type CanonicalReleaseTask = CanonicalRecord & { garmentId: string; title: string; description: string; status: 'todo' | 'in_progress' | 'blocked' | 'done' | 'cancelled'; priority: 'low' | 'medium' | 'high' | 'urgent'; dueAt: string | null; assigneeId: string | null; sortOrder: number };
-export type CanonicalCalendarEvent = CanonicalRecord & { assigneeId: string | null; endsAt: string | null; eventType: string; garmentId: string | null; startsAt: string; title: string };
+export type CanonicalCalendarEvent = CanonicalRecord & { assigneeId: string | null; endsAt: string | null; eventType: string; garmentId: string | null; notes: string; startsAt: string; title: string };
 export type CanonicalValidationWaiver = CanonicalRecord & { specId: string; validationRunId: string; ruleCode: string; domain: Exclude<ValidationDomain, 'privacy'>; reason: string; actorId: string; followUpTaskId: string; waivedAt: string };
 
 export type CanonicalWorkspaceState = {

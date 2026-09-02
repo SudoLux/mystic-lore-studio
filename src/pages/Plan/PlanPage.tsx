@@ -16,11 +16,14 @@ import {
   AlertTriangle,
   ArrowUpRight,
   CalendarDays,
+  ChevronLeft,
+  ChevronRight,
   Check,
   CheckSquare2,
   Columns3,
   Grip,
   GripVertical,
+  ListFilter,
   Plus,
   RefreshCw,
   Trash2,
@@ -40,10 +43,11 @@ import {
   planGarmentPhases,
   planTaskStatusLabel,
   selectPlanWorkspacePresentation,
+  type PlanCalendarItem,
   type PlanGarmentSummary,
   type PlanTaskItem,
 } from '../../lib/canonicalPlanPresentation';
-import { updateGarment as updateCanonicalGarment, type CanonicalGarment, type CanonicalReleaseTask } from '../../domains/workspace';
+import { updateGarment as updateCanonicalGarment, type CanonicalCalendarEvent, type CanonicalGarment, type CanonicalReleaseTask } from '../../domains/workspace';
 import {
   clampTaskPinPosition,
   defaultTaskPinPosition,
@@ -53,6 +57,18 @@ import {
   type TaskPinboardMode,
   type TaskPinPositions,
 } from '../../lib/canonicalTaskPinboard';
+import {
+  calendarDateFromKey,
+  calendarDateKey,
+  calendarLabel,
+  calendarMonthDays,
+  calendarTime,
+  calendarWeekDays,
+  itemsForCalendarDate,
+  moveCalendarCursor,
+  type CalendarDay,
+  type PlanCalendarMode,
+} from '../../lib/canonicalPlanCalendar';
 
 type PlanView = 'flow' | 'tasks' | 'calendar';
 
@@ -115,7 +131,7 @@ export function PlanPage({ onOpenGarment }: { onOpenGarment?: (garmentId: string
 
       {view === 'flow' ? <FlowView garments={plan.garments} onOpenGarment={onOpenGarment} /> : null}
       {view === 'tasks' ? <TaskView onCreateTask={() => setShowCreate(true)} onOpenGarment={onOpenGarment} tasks={plan.tasks} /> : null}
-      {view === 'calendar' ? <CalendarView items={plan.calendarItems} /> : null}
+      {view === 'calendar' ? <CalendarView items={plan.calendarItems} onCreateEvent={() => setShowCreate(true)} onOpenGarment={onOpenGarment} /> : null}
     </section>
   );
 }
@@ -544,19 +560,99 @@ function TaskDetailDrawer({ item, onClose, onDeleted, onOpenGarment }: { item: P
   );
 }
 
-function CalendarView({ items }: { items: ReturnType<typeof selectPlanWorkspacePresentation>['calendarItems'] }) {
+const calendarModes: Array<{ id: PlanCalendarMode; label: string }> = [
+  { id: 'month', label: 'Month' },
+  { id: 'week', label: 'Week' },
+  { id: 'agenda', label: 'Agenda' },
+];
+const calendarWeekdays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
+function CalendarView({ items, onCreateEvent, onOpenGarment }: { items: PlanCalendarItem[]; onCreateEvent: () => void; onOpenGarment?: (garmentId: string) => void }) {
+  const [mode, setMode] = useState<PlanCalendarMode>('month');
+  const [cursor, setCursor] = useState(() => new Date());
+  const [selectedDateKey, setSelectedDateKey] = useState(() => calendarDateKey(new Date()));
+  const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
+  const selectedItem = items.find((item) => item.id === selectedItemId) ?? null;
+  const closeItemDetail = useCallback(() => setSelectedItemId(null), []);
+  const days = mode === 'month' ? calendarMonthDays(cursor) : calendarWeekDays(cursor);
+  const selectedItems = itemsForCalendarDate(items, selectedDateKey);
+
+  const navigate = (direction: -1 | 1) => {
+    const next = moveCalendarCursor(cursor, mode, direction);
+    setCursor(next);
+    setSelectedDateKey(calendarDateKey(next));
+  };
   return (
-    <Card aria-labelledby="plan-tab-calendar" className="space-y-3" id="plan-panel-calendar" role="tabpanel">
-      {items.map((item) => (
-        <article className="grid gap-2 rounded-2xl border border-bronze/22 bg-stardust/[0.035] p-4 sm:grid-cols-[9rem_minmax(0,1fr)_auto] sm:items-center" key={item.id}>
-          <time className="text-sm tabular-nums text-ember" dateTime={item.startsAt}>{formatDay(item.startsAt)}</time>
-          <div><h2 className="text-sm font-semibold text-stardust">{item.title}</h2><p className="mt-1 text-xs text-stardust/46">{item.garment?.garment.title ?? 'Studio-wide'}</p></div>
-          <Badge variant="teal">{item.kind}</Badge>
-        </article>
-      ))}
-      {!items.length ? <EmptyPlanState title="Calendar is clear" detail="Add a fitting, supplier review, release, shoot, or any other studio event." /> : null}
-    </Card>
+    <section aria-labelledby="plan-tab-calendar" className="min-w-0 space-y-5" id="plan-panel-calendar" role="tabpanel">
+      <Card className="min-w-0 overflow-hidden p-0">
+        <div className="flex flex-col gap-4 border-b border-bronze/18 px-5 py-5 lg:flex-row lg:items-end lg:justify-between">
+          <div className="min-w-0"><p className="text-[0.66rem] font-medium uppercase tracking-[0.22em] text-ember/75">Studio calendar</p><h2 className="font-display mt-2 break-words text-3xl text-stardust">Make space for the work</h2><p className="mt-2 max-w-2xl break-words text-sm leading-6 text-stardust/52">Dated tasks arrive here automatically. Appointments remain their own private Studio records.</p></div>
+          <Button icon={<Plus aria-hidden="true" size={16} />} onClick={onCreateEvent}>New event</Button>
+        </div>
+        <div className="flex flex-col gap-4 px-5 py-4 lg:flex-row lg:items-center lg:justify-between">
+          <div aria-label="Calendar navigation" className="flex flex-wrap items-center gap-2"><Button aria-label="Previous period" icon={<ChevronLeft aria-hidden="true" size={17} />} onClick={() => navigate(-1)} size="sm" variant="ghost">Previous</Button><Button onClick={() => { const today = new Date(); setCursor(today); setSelectedDateKey(calendarDateKey(today)); }} size="sm" variant="ghost">Today</Button><Button aria-label="Next period" icon={<ChevronRight aria-hidden="true" size={17} />} onClick={() => navigate(1)} size="sm" variant="ghost">Next</Button><h3 aria-live="polite" className="min-w-0 text-sm font-medium text-stardust sm:ml-1 sm:text-base">{calendarLabel(cursor, mode)}</h3></div>
+          <div aria-label="Calendar views" className="flex rounded-xl border border-bronze/22 bg-midnight/45 p-1" role="tablist">{calendarModes.map((item) => <button aria-selected={mode === item.id} className={cn('min-h-9 rounded-lg px-3 text-sm transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ember', mode === item.id ? 'bg-ember/16 text-stardust' : 'text-stardust/55 hover:text-stardust')} key={item.id} onClick={() => setMode(item.id)} role="tab" type="button">{item.label}</button>)}</div>
+        </div>
+      </Card>
+
+      {!items.length ? <EmptyPlanState title="Your calendar is open" detail="Add a fitting, supplier review, shoot, production appointment, or other studio moment. Due tasks will appear here automatically." /> : null}
+      {mode !== 'agenda' ? <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_20rem]">
+        <CalendarGrid days={days} items={items} mode={mode} onOpenItem={setSelectedItemId} onSelectDate={setSelectedDateKey} selectedDateKey={selectedDateKey} />
+        <CalendarDayPanel dateKey={selectedDateKey} items={selectedItems} onOpenGarment={onOpenGarment} onOpenItem={setSelectedItemId} />
+      </div> : <CalendarAgenda cursor={cursor} items={items} onOpenGarment={onOpenGarment} onOpenItem={setSelectedItemId} />}
+      {selectedItem?.source === 'task' && selectedItem.task ? <TaskDetailDrawer item={{ garment: selectedItem.garment, task: selectedItem.task }} onClose={closeItemDetail} onDeleted={closeItemDetail} onOpenGarment={onOpenGarment} /> : null}
+      {selectedItem?.source === 'event' && selectedItem.event ? <CalendarEventDetailDrawer event={selectedItem.event} onClose={closeItemDetail} onDeleted={closeItemDetail} onOpenGarment={onOpenGarment} /> : null}
+    </section>
   );
+}
+
+function CalendarGrid({ days, items, mode, onOpenItem, onSelectDate, selectedDateKey }: {
+  days: CalendarDay[];
+  items: PlanCalendarItem[];
+  mode: Exclude<PlanCalendarMode, 'agenda'>;
+  onOpenItem: (itemId: string) => void;
+  onSelectDate: (dateKey: string) => void;
+  selectedDateKey: string;
+}) {
+  const gridClass = mode === 'month' ? 'grid-cols-7' : 'grid-cols-7 min-w-[54rem]';
+  return <Card className={cn('min-w-0 overflow-hidden p-0', mode === 'week' && 'studio-scrollbar overflow-x-auto')}><div className={cn('grid border-b border-bronze/18', gridClass)}>{calendarWeekdays.map((day) => <div className="min-w-0 border-r border-bronze/14 px-1 py-3 text-center text-[0.6rem] font-medium uppercase tracking-[0.1em] text-stardust/44 last:border-r-0 sm:px-2 sm:text-[0.63rem] sm:tracking-[0.16em]" key={day}>{day}</div>)}</div><div className={cn('grid min-w-0', gridClass)}>{days.map((day) => <CalendarDayCell day={day} items={itemsForCalendarDate(items, day.key)} key={day.key} mode={mode} onOpenItem={onOpenItem} onSelectDate={onSelectDate} selected={selectedDateKey === day.key} />)}</div></Card>;
+}
+
+function CalendarDayCell({ day, items, mode, onOpenItem, onSelectDate, selected }: {
+  day: CalendarDay;
+  items: PlanCalendarItem[];
+  mode: Exclude<PlanCalendarMode, 'agenda'>;
+  onOpenItem: (itemId: string) => void;
+  onSelectDate: (dateKey: string) => void;
+  selected: boolean;
+}) {
+  const visibleItems = mode === 'month' ? items.slice(0, 3) : items;
+  return <div className={cn('min-h-[8.2rem] border-b border-r border-bronze/14 p-1.5 last:border-r-0 sm:min-h-[9.2rem] sm:p-2', day.outsideMonth && mode === 'month' && 'bg-midnight/35', selected && 'bg-ember/[0.055]')} data-testid={`calendar-day-${day.key}`}>
+    <button aria-label={`Select ${formatCalendarDate(day.date)}`} className={cn('flex h-7 min-w-7 items-center justify-center rounded-full px-1 text-xs tabular-nums transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ember', calendarDateKey(new Date()) === day.key ? 'bg-ember text-midnight' : selected ? 'bg-stardust/12 text-stardust' : 'text-stardust/56 hover:bg-stardust/8 hover:text-stardust', day.outsideMonth && 'opacity-42')} onClick={() => onSelectDate(day.key)} type="button">{day.date.getDate()}</button>
+    <div className="mt-1 space-y-1">{visibleItems.map((item) => <CalendarItemChip item={item} key={item.id} onOpen={() => onOpenItem(item.id)} />)}{items.length > visibleItems.length ? <button className="w-full px-1 text-left text-[0.66rem] text-ember hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ember" onClick={() => onSelectDate(day.key)} type="button">+{items.length - visibleItems.length} more</button> : null}</div>
+  </div>;
+}
+
+function CalendarItemChip({ item, onOpen }: { item: PlanCalendarItem; onOpen: () => void }) {
+  const completed = item.task?.status === 'done' || item.task?.status === 'cancelled';
+  const tone = item.source === 'task' ? 'border-bronze/32 bg-bronze/12 text-stardust' : item.event?.eventType.includes('fit') || item.event?.eventType.includes('review') ? 'border-celestial/42 bg-celestial/17 text-stardust' : 'border-ember/36 bg-ember/10 text-stardust';
+  return <button aria-label={`Open ${item.title}`} className={cn('flex min-w-0 w-full items-center gap-1 rounded-md border px-1.5 py-1 text-left text-[0.65rem] leading-4 shadow-sm transition hover:-translate-y-px hover:border-ember/58 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ember motion-reduce:transform-none', tone, completed && 'opacity-52 line-through')} data-testid={`calendar-item-${item.id}`} onClick={onOpen} type="button"><span className="shrink-0 text-[0.6rem] opacity-70">{calendarTime(item.startsAt)}</span><span className="min-w-0 truncate">{item.title}</span></button>;
+}
+
+function CalendarDayPanel({ dateKey, items, onOpenGarment, onOpenItem }: { dateKey: string; items: PlanCalendarItem[]; onOpenGarment?: (garmentId: string) => void; onOpenItem: (itemId: string) => void }) {
+  const { state } = useCanonicalWorkspace();
+  return <Card className="min-h-56 p-4 xl:sticky xl:top-5 xl:max-h-[calc(100vh-8rem)] xl:overflow-y-auto"><p className="text-[0.66rem] font-medium uppercase tracking-[0.18em] text-ember/72">Selected day</p><h3 className="font-display mt-2 text-2xl text-stardust">{new Intl.DateTimeFormat(undefined, { month: 'long', day: 'numeric' }).format(calendarDateFromKey(dateKey))}</h3><div className="mt-5 space-y-3">{items.map((item) => <button className="group flex w-full gap-3 rounded-xl border border-bronze/18 bg-stardust/[0.025] p-3 text-left transition hover:border-ember/45 hover:bg-stardust/[0.045] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ember" key={item.id} onClick={() => onOpenItem(item.id)} type="button">{item.garment ? <CanonicalMediaImage alt={`${item.garment.garment.title} thumbnail`} asset={item.garment.coverImage} className="h-11 w-11 shrink-0 rounded-lg" derivatives={state?.mediaDerivatives} mode="thumbnail" /> : <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-bronze/20 text-ember"><CalendarDays aria-hidden="true" size={17} /></span>}<span className="min-w-0 flex-1"><span className="text-xs text-ember">{calendarTime(item.startsAt)}{item.endsAt ? ` – ${calendarTime(item.endsAt)}` : ''}</span><span className="mt-1 block truncate text-sm font-semibold text-stardust">{item.title}</span><span className="mt-1 flex items-center justify-between gap-2 text-xs text-stardust/48"><span className="truncate">{item.garment?.garment.title ?? item.kind}</span>{item.garment ? <span aria-hidden="true" className="text-ember group-hover:translate-x-0.5">↗</span> : null}</span></span></button>)}</div>{!items.length ? <p className="py-8 text-sm leading-6 text-stardust/52">Nothing is scheduled for this day yet. Select another day or add an appointment.</p> : null}{items.some((item) => item.garment) ? <div className="mt-4 border-t border-bronze/15 pt-3">{items.filter((item) => item.garment).map((item) => <button className="mr-3 text-xs text-stardust/56 underline-offset-4 hover:text-stardust hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ember" key={`garment-${item.id}`} onClick={() => onOpenGarment?.(item.garment!.garment.id)} type="button">Open {item.garment!.garment.title}</button>)}</div> : null}</Card>;
+}
+
+function CalendarAgenda({ cursor, items, onOpenGarment, onOpenItem }: { cursor: Date; items: PlanCalendarItem[]; onOpenGarment?: (garmentId: string) => void; onOpenItem: (itemId: string) => void }) {
+  const monthItems = items.filter((item) => { const date = new Date(item.startsAt); return date.getFullYear() === cursor.getFullYear() && date.getMonth() === cursor.getMonth(); });
+  const dates = [...new Set(monthItems.map((item) => calendarDateKey(item.startsAt)))];
+  return <Card className="space-y-5"><div className="flex items-center gap-2 text-sm text-stardust/52"><ListFilter aria-hidden="true" size={16} />A focused chronological read of this month.</div>{dates.map((dateKey) => <section className="grid gap-4 border-t border-bronze/18 pt-5 md:grid-cols-[10rem_minmax(0,1fr)]" key={dateKey}><h3 className="font-display text-2xl text-stardust">{new Intl.DateTimeFormat(undefined, { month: 'short', day: 'numeric', weekday: 'long' }).format(calendarDateFromKey(dateKey))}</h3><div className="grid gap-3">{itemsForCalendarDate(monthItems, dateKey).map((item) => <CalendarAgendaItem item={item} key={item.id} onOpenGarment={onOpenGarment} onOpenItem={onOpenItem} />)}</div></section>)}{!dates.length ? <EmptyPlanState title="Nothing scheduled this month" detail="Dated tasks and studio appointments will appear here as the work takes shape." /> : null}</Card>;
+}
+
+function CalendarAgendaItem({ item, onOpenGarment, onOpenItem }: { item: PlanCalendarItem; onOpenGarment?: (garmentId: string) => void; onOpenItem: (itemId: string) => void }) {
+  const { state } = useCanonicalWorkspace();
+  return <article className="flex gap-3 rounded-xl border border-bronze/18 bg-stardust/[0.025] p-3"><span className="w-16 shrink-0 text-xs text-ember">{calendarTime(item.startsAt)}</span>{item.garment ? <button aria-label={`Open ${item.garment.garment.title}`} className="h-11 w-11 shrink-0 overflow-hidden rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ember" onClick={() => onOpenGarment?.(item.garment!.garment.id)} type="button"><CanonicalMediaImage alt={`${item.garment.garment.title} thumbnail`} asset={item.garment.coverImage} className="h-full w-full" derivatives={state?.mediaDerivatives} mode="thumbnail" /></button> : null}<button className="min-w-0 flex-1 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ember" onClick={() => onOpenItem(item.id)} type="button"><h4 className="text-sm font-semibold text-stardust">{item.title}</h4><p className="mt-1 text-xs text-stardust/50">{item.garment?.garment.title ?? item.kind}{item.endsAt ? ` · until ${calendarTime(item.endsAt)}` : ''}</p></button></article>;
 }
 
 function TaskForm({ onClose }: { onClose: () => void }) {
@@ -574,10 +670,27 @@ function CalendarEventForm({ onClose }: { onClose: () => void }) {
   const { addCalendarEvent, state } = useCanonicalWorkspace();
   const [title, setTitle] = useState('');
   const [startsAt, setStartsAt] = useState('');
+  const [endsAt, setEndsAt] = useState('');
   const [garmentId, setGarmentId] = useState('');
   const [eventType, setEventType] = useState('fitting');
-  const submit = (event: FormEvent) => { event.preventDefault(); if (!title.trim() || !startsAt) return; addCalendarEvent({ endsAt: null, eventType, garmentId: garmentId || null, startsAt: new Date(startsAt).toISOString(), title }); onClose(); };
-  return <PlanForm onClose={onClose} onSubmit={submit} title="Add calendar event"><TextField label="Event title" onChange={setTitle} required value={title} /><SelectField label="Type" onChange={setEventType} options={['fitting', 'supplier review', 'release', 'shoot', 'qc', 'studio'].map((value) => [value, value])} value={eventType} /><SelectField label="Garment" onChange={setGarmentId} options={[['', 'Studio-wide'], ...(state?.garments.map((item) => [item.id, item.title] as [string, string]) ?? [])]} value={garmentId} /><label className="text-xs text-stardust/52">Start<input className="mt-2 min-h-11 w-full rounded-xl border border-bronze/26 bg-midnight px-3 text-sm text-stardust" onChange={(event) => setStartsAt(event.target.value)} required type="datetime-local" value={startsAt} /></label></PlanForm>;
+  const [notes, setNotes] = useState('');
+  const submit = (event: FormEvent) => { event.preventDefault(); if (!title.trim() || !startsAt) return; addCalendarEvent({ endsAt: endsAt ? new Date(endsAt).toISOString() : null, eventType, garmentId: garmentId || null, notes, startsAt: new Date(startsAt).toISOString(), title }); onClose(); };
+  return <PlanForm onClose={onClose} onSubmit={submit} title="New calendar event"><TextField label="Event title" onChange={setTitle} required value={title} /><SelectField label="Type" onChange={setEventType} options={['fitting', 'review', 'shoot', 'production', 'deadline', 'meeting', 'studio'].map((value) => [value, value])} value={eventType} /><SelectField label="Garment" onChange={setGarmentId} options={[['', 'Studio-wide'], ...(state?.garments.map((item) => [item.id, item.title] as [string, string]) ?? [])]} value={garmentId} /><label className="text-xs text-stardust/52">Start<input className="mt-2 min-h-11 w-full rounded-xl border border-bronze/26 bg-midnight px-3 text-sm text-stardust" onChange={(event) => setStartsAt(event.target.value)} required type="datetime-local" value={startsAt} /></label><label className="text-xs text-stardust/52">End <span className="text-stardust/38">optional</span><input className="mt-2 min-h-11 w-full rounded-xl border border-bronze/26 bg-midnight px-3 text-sm text-stardust" min={startsAt || undefined} onChange={(event) => setEndsAt(event.target.value)} type="datetime-local" value={endsAt} /></label><label className="text-xs text-stardust/52 md:col-span-2">Notes <span className="text-stardust/38">optional</span><textarea className="mt-2 min-h-24 w-full rounded-xl border border-bronze/26 bg-midnight px-3 py-3 text-sm leading-6 text-stardust outline-none focus:border-ember/65 focus:ring-2 focus:ring-ember/25" onChange={(event) => setNotes(event.target.value)} value={notes} /></label></PlanForm>;
+}
+
+function CalendarEventDetailDrawer({ event, onClose, onDeleted, onOpenGarment }: { event: CanonicalCalendarEvent; onClose: () => void; onDeleted: () => void; onOpenGarment?: (garmentId: string) => void }) {
+  const { deleteCalendarEvent, state, updateCalendarEvent } = useCanonicalWorkspace();
+  const [title, setTitle] = useState(event.title);
+  const [notes, setNotes] = useState(event.notes);
+  const [eventType, setEventType] = useState(event.eventType);
+  const [garmentId, setGarmentId] = useState(event.garmentId ?? '');
+  const [startsAt, setStartsAt] = useState(toDatetimeLocal(event.startsAt));
+  const [endsAt, setEndsAt] = useState(toDatetimeLocal(event.endsAt));
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const dialogRef = useDialogA11y(true, onClose);
+  const save = (change: FormEvent) => { change.preventDefault(); if (!title.trim() || !startsAt) return; updateCalendarEvent(event.id, { endsAt: endsAt ? new Date(endsAt).toISOString() : null, eventType, garmentId: garmentId || null, notes, startsAt: new Date(startsAt).toISOString(), title }); onClose(); };
+  const linkedGarment = state?.garments.find((garment) => garment.id === garmentId) ?? null;
+  return <div className="fixed inset-0 z-[80] flex justify-end bg-black/65 p-0 sm:p-4"><button aria-label="Close event details" className="absolute inset-0 cursor-default" onClick={onClose} type="button" /><aside aria-labelledby="event-detail-title" aria-modal="true" className="relative z-10 flex h-full w-full max-w-xl flex-col overflow-y-auto border-l border-bronze/30 bg-[linear-gradient(160deg,#17171a,#090909)] p-5 shadow-[-24px_0_80px_rgba(0,0,0,0.45)] sm:rounded-l-[1.5rem]" ref={dialogRef} role="dialog" tabIndex={-1}><div className="flex items-start justify-between gap-4"><div><p className="text-[0.66rem] uppercase tracking-[0.2em] text-ember/72">Studio appointment</p><h2 className="font-display mt-2 text-3xl text-stardust" id="event-detail-title">Shape the moment</h2></div><Button aria-label="Close event details" icon={<X aria-hidden="true" size={18} />} onClick={onClose} size="sm" variant="ghost">Close</Button></div><form className="mt-7 space-y-5" onSubmit={save}><TextField label="Event title" onChange={setTitle} required value={title} /><div className="grid gap-4 sm:grid-cols-2"><SelectField label="Type" onChange={setEventType} options={['fitting', 'review', 'shoot', 'production', 'deadline', 'meeting', 'studio'].map((value) => [value, value])} value={eventType} /><SelectField label="Garment" onChange={setGarmentId} options={[['', 'Studio-wide'], ...(state?.garments.map((garment) => [garment.id, garment.title] as [string, string]) ?? [])]} value={garmentId} /><label className="text-xs text-stardust/52">Start<input className="mt-2 min-h-11 w-full rounded-xl border border-bronze/26 bg-midnight px-3 text-sm text-stardust outline-none focus:border-ember/65 focus:ring-2 focus:ring-ember/25" onChange={(change) => setStartsAt(change.target.value)} required type="datetime-local" value={startsAt} /></label><label className="text-xs text-stardust/52">End <span className="text-stardust/38">optional</span><input className="mt-2 min-h-11 w-full rounded-xl border border-bronze/26 bg-midnight px-3 text-sm text-stardust outline-none focus:border-ember/65 focus:ring-2 focus:ring-ember/25" min={startsAt || undefined} onChange={(change) => setEndsAt(change.target.value)} type="datetime-local" value={endsAt} /></label></div><label className="block text-xs text-stardust/52">Notes<textarea className="mt-2 min-h-28 w-full rounded-xl border border-bronze/26 bg-midnight px-3 py-3 text-sm leading-6 text-stardust outline-none focus:border-ember/65 focus:ring-2 focus:ring-ember/25" onChange={(change) => setNotes(change.target.value)} value={notes} /></label>{linkedGarment ? <button className="inline-flex items-center gap-2 text-sm text-stardust/60 underline-offset-4 hover:text-stardust hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ember" onClick={() => onOpenGarment?.(linkedGarment.id)} type="button">Open {linkedGarment.title}<ArrowUpRight aria-hidden="true" size={15} /></button> : null}<div className="flex flex-wrap items-center justify-between gap-3 border-t border-bronze/18 pt-5"><div>{confirmDelete ? <div className="flex items-center gap-2 text-sm text-ember"><span>Delete this event?</span><Button onClick={() => { deleteCalendarEvent(event.id); onDeleted(); }} size="sm">Delete</Button><Button onClick={() => setConfirmDelete(false)} size="sm" variant="ghost">Keep</Button></div> : <Button icon={<Trash2 aria-hidden="true" size={15} />} onClick={() => setConfirmDelete(true)} size="sm" variant="ghost">Delete event</Button>}</div><Button type="submit">Save changes</Button></div></form></aside></div>;
 }
 
 function PlanForm({ children, onClose, onSubmit, title }: { children: React.ReactNode; onClose: () => void; onSubmit: (event: FormEvent) => void; title: string }) { return <Card><form className="space-y-4" onSubmit={onSubmit}><div className="flex items-center justify-between gap-3"><h2 className="text-lg font-semibold text-stardust">{title}</h2><Button onClick={onClose} size="sm" variant="ghost">Cancel</Button></div><div className="grid gap-4 md:grid-cols-2">{children}</div><Button type="submit">Save</Button></form></Card>; }
@@ -585,4 +698,6 @@ function TextField({ label, onChange, required = false, value }: { label: string
 function SelectField({ label, onChange, options, value }: { label: string; onChange: (value: string) => void; options: Array<[string, string]>; value: string }) { return <label className="text-xs text-stardust/52">{label}<select className="mt-2 min-h-11 w-full rounded-xl border border-bronze/26 bg-midnight px-3 text-sm capitalize text-stardust" onChange={(event) => onChange(event.target.value)} value={value}>{options.map(([optionValue, optionLabel]) => <option key={optionValue || 'none'} value={optionValue}>{optionLabel}</option>)}</select></label>; }
 function EmptyPlanState({ detail, title }: { detail: string; title: string }) { return <div className="rounded-2xl border border-dashed border-bronze/28 p-8 text-center"><h2 className="text-base font-semibold text-stardust">{title}</h2><p className="mx-auto mt-2 max-w-lg text-sm leading-6 text-stardust/52">{detail}</p></div>; }
 function toDateInput(value: string | null) { return value ? new Date(value).toISOString().slice(0, 10) : ''; }
+function toDatetimeLocal(value: string | null) { if (!value) return ''; const date = new Date(value); const offset = date.getTimezoneOffset() * 60_000; return new Date(date.getTime() - offset).toISOString().slice(0, 16); }
 function formatDay(value: string) { return new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: value.includes('T') && !value.endsWith('T12:00:00.000Z') ? 'short' : undefined }).format(new Date(value)); }
+function formatCalendarDate(value: Date) { return new Intl.DateTimeFormat(undefined, { weekday: 'long', month: 'long', day: 'numeric' }).format(value); }

@@ -55,6 +55,6 @@ function fixture() {
     { ...record, assigneeId: null, description: '', dueAt: null, garmentId: 'garment-1', id: 'task-blocked', priority: 'urgent', sortOrder: 1, status: 'blocked', title: 'Resolve sleeve balance' },
     { ...record, assigneeId: null, description: '', dueAt: null, garmentId: 'garment-1', id: 'task-done', priority: 'low', sortOrder: 2, status: 'done', title: 'Archive reference' },
   ] satisfies CanonicalReleaseTask[];
-  state.calendarEvents = [{ ...record, assigneeId: null, endsAt: null, eventType: 'fitting', garmentId: 'garment-1', id: 'fit-review', startsAt: '2026-09-02T10:00:00.000Z', title: 'Fit review' } satisfies CanonicalCalendarEvent];
+  state.calendarEvents = [{ ...record, assigneeId: null, endsAt: null, eventType: 'fitting', garmentId: 'garment-1', id: 'fit-review', notes: '', startsAt: '2026-09-02T10:00:00.000Z', title: 'Fit review' } satisfies CanonicalCalendarEvent];
   return state;
 }

@@ -32,7 +32,7 @@ export function AppShell({
     <div className="atelier-shell min-h-screen bg-midnight text-stardust">
       <a className="skip-link" href="#main-content">Skip to main content</a>
       <div className="min-h-screen bg-[radial-gradient(circle_at_8%_0%,rgba(200,155,60,0.08),transparent_24rem),linear-gradient(115deg,rgba(27,58,99,0.24)_0%,rgba(10,10,10,0)_38%),linear-gradient(245deg,rgba(154,108,60,0.14)_0%,rgba(10,10,10,0)_34%)]">
-        <div className="mx-auto min-h-screen w-full max-w-[1760px] lg:pl-[6.75rem] xl:pl-[18rem]">
+        <div className="mx-auto min-h-screen min-w-0 w-full max-w-[1760px] lg:pl-[6.75rem] xl:pl-[18rem]">
           <Sidebar
             activePage={activePage}
             navItems={navItems}
@@ -42,9 +42,9 @@ export function AppShell({
             userEmail={userEmail}
           />
           <main className="atelier-main min-w-0 px-4 pb-36 pt-4 sm:px-6 sm:pt-7 md:max-lg:pb-40 lg:px-8 lg:pb-10 xl:px-12 xl:pt-9" id="main-content" tabIndex={-1}>
-            <div className="mx-auto w-full max-w-[88rem]">
-              <div className="atelier-mobile-bar mb-3 p-2.5 md:max-lg:mb-4 md:max-lg:p-3 lg:hidden">
-                <div className="flex items-center justify-between gap-3">
+            <div className="mx-auto min-w-0 w-full max-w-[88rem]">
+              <div className="atelier-mobile-bar mb-3 min-w-0 overflow-hidden p-2.5 md:max-lg:mb-4 md:max-lg:p-3 lg:hidden">
+                <div className="flex min-w-0 items-center justify-between gap-3">
                   <BrandLockup
                     showText={false}
                     size="mobile"

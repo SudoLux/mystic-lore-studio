@@ -590,6 +590,7 @@ export type Database = {
           event_type: string
           garment_id: string | null
           id: string
+          notes: string
           revision: number
           starts_at: string
           studio_id: string
@@ -603,6 +604,7 @@ export type Database = {
           event_type: string
           garment_id?: string | null
           id?: string
+          notes?: string
           revision?: number
           starts_at: string
           studio_id: string
@@ -616,6 +618,7 @@ export type Database = {
           event_type?: string
           garment_id?: string | null
           id?: string
+          notes?: string
           revision?: number
           starts_at?: string
           studio_id?: string
@@ -7396,4 +7399,3 @@ export const Constants = {
     Enums: {},
   },
 } as const
-
