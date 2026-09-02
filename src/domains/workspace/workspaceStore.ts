@@ -398,6 +398,38 @@ export function updateTaskStatus(
   });
 }
 
+/** Updates task facts without introducing a second planning record. */
+export function updateTask(
+  state: CanonicalWorkspaceState,
+  taskId: string,
+  patch: Partial<Pick<CanonicalReleaseTask, 'description' | 'dueAt' | 'garmentId' | 'priority' | 'status' | 'title'>>,
+) {
+  const existing = state.releaseTasks.find((task) => task.id === taskId);
+  if (!existing) throw new Error('This task is no longer available. Refresh the Studio and try again.');
+  const next = {
+    ...existing,
+    ...patch,
+    ...(patch.title === undefined ? {} : { title: patch.title.trim() }),
+    ...(patch.description === undefined ? {} : { description: patch.description.trim() }),
+  };
+  if (!next.title) throw new Error('A task needs a title.');
+  return normalizeWorkspace({
+    ...state,
+    releaseTasks: state.releaseTasks.map((task) => task.id === taskId ? touch(next) : task),
+  });
+}
+
+/** Removes only the canonical task; linked garments, events, and media remain intact. */
+export function deleteTask(state: CanonicalWorkspaceState, taskId: string) {
+  if (!state.releaseTasks.some((task) => task.id === taskId)) {
+    throw new Error('This task is no longer available. Refresh the Studio and try again.');
+  }
+  return normalizeWorkspace({
+    ...state,
+    releaseTasks: state.releaseTasks.filter((task) => task.id !== taskId),
+  });
+}
+
 export function addCalendarEvent(
   state: CanonicalWorkspaceState,
   input: Pick<CanonicalCalendarEvent, 'endsAt' | 'eventType' | 'garmentId' | 'startsAt' | 'title'>,

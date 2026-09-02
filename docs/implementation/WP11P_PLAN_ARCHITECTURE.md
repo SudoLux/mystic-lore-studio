@@ -71,8 +71,43 @@ table of stages.
   canonical change events, offline outbox replay, conflict handling, RLS,
   private media delivery, and reload behavior.
 
+## WP11P-C — Mystic Lore Task Pinboard
+
+Tasks are now a visual studio pinboard, not a second Kanban system. Every note
+continues to render the same canonical `release_tasks` row used by Flow,
+garment context, and the Calendar projection.
+
+- The four organization modes are **Priority**, **Garment**, **Due date**, and
+  **Freeform**. They regroup the same task references in memory; no records are
+  copied or transformed into a board-specific task type.
+- Priority uses Urgent, This week, and Later. Garment mode adds a small,
+  private-media garment header. Due-date mode uses chronological groups.
+  Completed and cancelled tasks remain available in a collapsible archive, and
+  can be reopened from the same note.
+- Notes provide deliberate priority treatment, completion/reopen, linked
+  canonical garment thumbnail, due date, status, and an accessible detail
+  drawer for title, notes, garment, priority, status, due date, and deletion.
+  Task deletion removes only the canonical task, never the garment, media, or
+  a standalone calendar event.
+- The compact New task composer captures title, garment, priority, due date,
+  and notes without requiring a full-page form. A date on the canonical task
+  remains visible in Calendar through the existing transient task projection.
+- Freeform coordinates are saved under
+  `plan-task-pinboard:<studioId>` in the existing canonical IndexedDB settings
+  store. They are an intentionally local presentation preference: they never
+  alter task rows, ownership, revisions, RLS, cloud sync, or Calendar data.
+  Desktop and iPad offer touch/pointer/keyboard drag handles; narrow mobile
+  keeps the same notes in a stacked Priority layout.
+
+## Schema decision
+
+No schema or migration change is required for WP11P-C. Task editing and
+deletion use new small commands over existing canonical `release_tasks` rows,
+so standard revisions, change events, conflict handling, offline-outbox replay,
+and second-device hydration remain in force. Freeform positions deliberately
+remain outside the canonical domain model.
+
 ## Remaining WP11P work
 
-1. **Tasks:** calm grouped/freeform layouts, filtering, task detail, and bulk planning behavior.
-2. **Calendar:** month/week/agenda modes, responsive detail panel, date navigation, and event editing.
-3. **Cross-view polish:** deep links, transitions, loading skeletons, empty states, and visual regression coverage at desktop, iPad, and mobile sizes.
+1. **Calendar:** month/week/agenda modes, responsive detail panel, date navigation, and event editing.
+2. **Cross-view polish:** deep links, transitions, loading skeletons, empty states, and visual regression coverage at desktop, iPad, and mobile sizes.

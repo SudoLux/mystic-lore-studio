@@ -1,4 +1,4 @@
-import { useMemo, useState, type FormEvent, type KeyboardEvent } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type FormEvent, type KeyboardEvent, type ReactNode } from 'react';
 import {
   DndContext,
   DragOverlay,
@@ -16,11 +16,15 @@ import {
   AlertTriangle,
   ArrowUpRight,
   CalendarDays,
+  Check,
   CheckSquare2,
   Columns3,
+  Grip,
   GripVertical,
   Plus,
   RefreshCw,
+  Trash2,
+  X,
 } from 'lucide-react';
 import { Badge } from '../../components/shared/Badge';
 import { Button } from '../../components/shared/Button';
@@ -30,6 +34,8 @@ import { MobilePageHeader } from '../../components/shared/MobilePageHeader';
 import { PageHeader } from '../../components/shared/PageHeader';
 import { useCanonicalWorkspace } from '../../hooks/useCanonicalWorkspace';
 import { cn } from '../../lib/classes';
+import { CanonicalIndexedDb } from '../../domains/persistence';
+import { useDialogA11y } from '../../components/shared/useDialogA11y';
 import {
   planGarmentPhases,
   planTaskStatusLabel,
@@ -38,6 +44,15 @@ import {
   type PlanTaskItem,
 } from '../../lib/canonicalPlanPresentation';
 import { updateGarment as updateCanonicalGarment, type CanonicalGarment, type CanonicalReleaseTask } from '../../domains/workspace';
+import {
+  clampTaskPinPosition,
+  defaultTaskPinPosition,
+  isCompletedTask,
+  taskPinboardGroups,
+  taskPinboardPositionKey,
+  type TaskPinboardMode,
+  type TaskPinPositions,
+} from '../../lib/canonicalTaskPinboard';
 
 type PlanView = 'flow' | 'tasks' | 'calendar';
 
@@ -99,7 +114,7 @@ export function PlanPage({ onOpenGarment }: { onOpenGarment?: (garmentId: string
       ) : null}
 
       {view === 'flow' ? <FlowView garments={plan.garments} onOpenGarment={onOpenGarment} /> : null}
-      {view === 'tasks' ? <TaskView tasks={plan.tasks} /> : null}
+      {view === 'tasks' ? <TaskView onCreateTask={() => setShowCreate(true)} onOpenGarment={onOpenGarment} tasks={plan.tasks} /> : null}
       {view === 'calendar' ? <CalendarView items={plan.calendarItems} /> : null}
     </section>
   );
@@ -329,25 +344,203 @@ function FlowGarmentDragPreview({ state, summary }: { state: NonNullable<ReturnT
   );
 }
 
-function TaskView({ tasks }: { tasks: PlanTaskItem[] }) {
-  const { updateTaskStatus } = useCanonicalWorkspace();
+const taskModes: Array<{ id: TaskPinboardMode; label: string }> = [
+  { id: 'priority', label: 'Priority' },
+  { id: 'garment', label: 'Garment' },
+  { id: 'due', label: 'Due date' },
+  { id: 'freeform', label: 'Freeform' },
+];
+
+function TaskView({ onCreateTask, onOpenGarment, tasks }: {
+  onCreateTask: () => void;
+  onOpenGarment?: (garmentId: string) => void;
+  tasks: PlanTaskItem[];
+}) {
+  const { state } = useCanonicalWorkspace();
+  const [mode, setMode] = useState<TaskPinboardMode>('priority');
+  const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
+  const [completedExpanded, setCompletedExpanded] = useState(false);
+  const [positions, setPositions] = useState<TaskPinPositions>({});
+  const cache = useRef(new CanonicalIndexedDb());
+  const activeTasks = tasks.filter(({ task }) => !isCompletedTask(task));
+  const completedTasks = tasks.filter(({ task }) => isCompletedTask(task));
+  const selected = tasks.find(({ task }) => task.id === selectedTaskId) ?? null;
+  const positionKey = state ? taskPinboardPositionKey(state.studioId) : null;
+  const closeTaskDrawer = useCallback(() => setSelectedTaskId(null), []);
+
+  useEffect(() => {
+    let live = true;
+    if (!positionKey) return () => { live = false; };
+    void cache.current.getSetting<TaskPinPositions>(positionKey).then((stored) => {
+      if (live) setPositions(stored ?? {});
+    }).catch(() => {
+      if (live) setPositions({});
+    });
+    return () => { live = false; };
+  }, [positionKey]);
+
+  const movePin = (taskId: string, delta: { x: number; y: number }) => {
+    setPositions((current) => {
+      const index = activeTasks.findIndex(({ task }) => task.id === taskId);
+      const start = current[taskId] ?? defaultTaskPinPosition(Math.max(0, index));
+      const next = { ...current, [taskId]: clampTaskPinPosition({ x: start.x + delta.x, y: start.y + delta.y }) };
+      if (positionKey) void cache.current.putSetting(positionKey, next);
+      return next;
+    });
+  };
+
   return (
-    <Card aria-labelledby="plan-tab-tasks" className="space-y-3" id="plan-panel-tasks" role="tabpanel">
-      {tasks.map(({ garment, task }) => {
-        return (
-          <article className="grid gap-3 rounded-2xl border border-bronze/22 bg-stardust/[0.035] p-4 sm:grid-cols-[minmax(0,1fr)_10rem] sm:items-center" key={task.id}>
-            <div>
-              <div className="flex flex-wrap items-center gap-2"><Badge variant={task.priority === 'urgent' ? 'ember' : 'bronze'}>{task.priority}</Badge><span className="text-xs text-stardust/48">{garment?.garment.title ?? 'Studio-wide'}</span></div>
-              <h2 className="mt-2 text-sm font-semibold text-stardust">{task.title}</h2>
-              <p className="mt-1 text-sm leading-6 text-stardust/55">{task.description || 'No description.'}</p>
-              <p className="mt-2 text-xs text-stardust/45">{task.dueAt ? `Due ${formatDay(task.dueAt)}` : 'No due date'}</p>
-            </div>
-            <label className="text-xs text-stardust/52"><span className="sr-only">Status for {task.title}</span><select className="min-h-11 w-full rounded-xl border border-bronze/26 bg-midnight px-3 text-sm text-stardust" onChange={(event) => updateTaskStatus(task.id, event.target.value as CanonicalReleaseTask['status'])} value={task.status}>{['todo', 'in_progress', 'blocked', 'done', 'cancelled'].map((status) => <option key={status} value={status}>{planTaskStatusLabel(status as CanonicalReleaseTask['status'])}</option>)}</select></label>
-          </article>
-        );
-      })}
-      {!tasks.length ? <EmptyPlanState title="No tasks yet" detail="Create the first accountable next move. Tasks can be garment-specific or studio-wide." /> : null}
-    </Card>
+    <section aria-labelledby="plan-tab-tasks" className="space-y-5" id="plan-panel-tasks" role="tabpanel">
+      <Card className="overflow-hidden p-0">
+        <div className="flex flex-col gap-4 border-b border-bronze/18 px-5 py-5 lg:flex-row lg:items-end lg:justify-between">
+          <div>
+            <p className="text-[0.66rem] font-medium uppercase tracking-[0.22em] text-ember/75">Studio pinboard</p>
+            <h2 className="font-display mt-2 text-3xl text-stardust">What moves the work forward</h2>
+            <p className="mt-2 max-w-2xl text-sm leading-6 text-stardust/52">Arrange the same connected studio work in the way that helps you decide what comes next.</p>
+          </div>
+          <Button icon={<Plus aria-hidden="true" size={16} />} onClick={onCreateTask}>New task</Button>
+        </div>
+        <div aria-label="Task organization" className="studio-scrollbar flex gap-2 overflow-x-auto px-5 py-4" role="tablist">
+          {taskModes.map((item) => (
+            <button
+              aria-selected={mode === item.id}
+              className={cn('min-h-10 shrink-0 rounded-full border px-4 text-sm font-medium transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ember', mode === item.id ? 'border-ember/62 bg-ember/16 text-stardust' : 'border-bronze/22 bg-midnight/34 text-stardust/56 hover:border-bronze/46 hover:text-stardust')}
+              key={item.id}
+              onClick={() => setMode(item.id)}
+              role="tab"
+              type="button"
+            >
+              {item.label}
+            </button>
+          ))}
+        </div>
+      </Card>
+
+      {!activeTasks.length ? <EmptyPlanState title="The pinboard is clear" detail="Add a task when a garment needs a next move. Completed work stays below for reference." /> : null}
+      {activeTasks.length && mode !== 'freeform' ? (
+        <div className="grid gap-5 xl:grid-cols-3">
+          {taskPinboardGroups(mode, activeTasks).filter((group) => group.tasks.length > 0).map((group) => (
+            <TaskGroup group={group} key={group.id} onOpenGarment={onOpenGarment} onOpenTask={setSelectedTaskId} />
+          ))}
+        </div>
+      ) : null}
+      {activeTasks.length && mode === 'freeform' ? (
+        <>
+          <div className="md:hidden">
+            <p className="mb-3 text-sm leading-6 text-stardust/52">On a narrow canvas, notes stay grouped for easy scanning. Open this view on a wider screen to arrange your studio pinboard.</p>
+            <div className="grid gap-5">{taskPinboardGroups('priority', activeTasks).filter((group) => group.tasks.length > 0).map((group) => <TaskGroup group={group} key={group.id} onOpenGarment={onOpenGarment} onOpenTask={setSelectedTaskId} />)}</div>
+          </div>
+          <FreeformTaskPinboard className="hidden md:block" onMove={movePin} onOpenGarment={onOpenGarment} onOpenTask={setSelectedTaskId} positions={positions} tasks={activeTasks} />
+        </>
+      ) : null}
+
+      {completedTasks.length ? (
+        <Card className="p-0">
+          <button aria-expanded={completedExpanded} className="flex w-full items-center justify-between gap-4 px-5 py-4 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ember" onClick={() => setCompletedExpanded((value) => !value)} type="button">
+            <span><span className="text-[0.66rem] font-medium uppercase tracking-[0.18em] text-stardust/45">Archive</span><span className="mt-1 block text-sm font-medium text-stardust">Completed · {completedTasks.length}</span></span>
+            <span className="text-sm text-ember">{completedExpanded ? 'Hide' : 'Review'}</span>
+          </button>
+          {completedExpanded ? <div className="grid gap-4 border-t border-bronze/18 p-5 sm:grid-cols-2 xl:grid-cols-3">{completedTasks.map((item) => <TaskNote item={item} key={item.task.id} onOpenGarment={onOpenGarment} onOpenTask={setSelectedTaskId} />)}</div> : null}
+        </Card>
+      ) : null}
+      {selected ? <TaskDetailDrawer item={selected} onClose={closeTaskDrawer} onDeleted={closeTaskDrawer} onOpenGarment={onOpenGarment} /> : null}
+    </section>
+  );
+}
+
+function TaskGroup({ group, onOpenGarment, onOpenTask }: {
+  group: ReturnType<typeof taskPinboardGroups>[number];
+  onOpenGarment?: (garmentId: string) => void;
+  onOpenTask: (taskId: string) => void;
+}) {
+  const { state } = useCanonicalWorkspace();
+  const garment = group.tasks[0]?.garment;
+  return (
+    <section className="rounded-[1.4rem] border border-bronze/20 bg-[linear-gradient(155deg,rgba(237,227,207,0.045),rgba(10,10,10,0.36))] p-4 shadow-[0_16px_46px_rgba(0,0,0,0.16)]">
+      <header className="mb-4 flex min-h-12 items-center gap-3 border-b border-bronze/16 pb-4">
+        {garment && group.id === garment.garment.id ? <button aria-label={`Open ${garment.garment.title}`} className="h-11 w-11 shrink-0 overflow-hidden rounded-xl border border-bronze/22 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ember" onClick={() => onOpenGarment?.(garment.garment.id)} type="button"><CanonicalMediaImage alt={`${garment.garment.title} cover`} asset={garment.coverImage} className="h-full w-full" derivatives={state?.mediaDerivatives} mode="thumbnail" /></button> : null}
+        <div className="min-w-0"><p className="text-[0.64rem] font-medium uppercase tracking-[0.18em] text-ember/72">{group.tasks.length} open</p><h3 className="truncate text-lg font-semibold text-stardust">{group.label}</h3></div>
+      </header>
+      <div className="grid gap-3">{group.tasks.map((item) => <TaskNote item={item} key={item.task.id} onOpenGarment={onOpenGarment} onOpenTask={onOpenTask} />)}</div>
+    </section>
+  );
+}
+
+function TaskNote({ className, dragHandle, item, onOpenGarment, onOpenTask }: {
+  className?: string;
+  dragHandle?: ReactNode;
+  item: PlanTaskItem;
+  onOpenGarment?: (garmentId: string) => void;
+  onOpenTask: (taskId: string) => void;
+}) {
+  const { state, updateTaskStatus } = useCanonicalWorkspace();
+  const { garment, task } = item;
+  const completed = isCompletedTask(task);
+  return (
+    <article className={cn('group relative overflow-hidden rounded-[1.18rem] border bg-[linear-gradient(145deg,rgba(237,227,207,0.065),rgba(61,43,31,0.18)_52%,rgba(10,10,10,0.52))] p-4 shadow-[0_12px_30px_rgba(0,0,0,0.16)] transition duration-200 hover:-translate-y-0.5 hover:border-ember/45 hover:shadow-[0_16px_38px_rgba(0,0,0,0.24)] focus-within:border-ember/58 motion-reduce:transform-none', task.priority === 'urgent' ? 'border-ember/45' : task.priority === 'high' ? 'border-bronze/42' : 'border-bronze/22', completed && 'opacity-72', className)} data-testid="task-note">
+      <div className="flex items-start justify-between gap-3">
+        <button aria-label={`${completed ? 'Reopen' : 'Complete'} ${task.title}`} className={cn('mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full border transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ember', completed ? 'border-nebula/55 bg-nebula/18 text-stardust' : 'border-bronze/38 text-stardust/48 hover:border-ember hover:text-ember')} onClick={() => updateTaskStatus(task.id, completed ? 'todo' : 'done')} type="button">
+          {completed ? <Check aria-hidden="true" size={15} /> : <span aria-hidden="true" className="h-2.5 w-2.5 rounded-full border border-current" />}
+        </button>
+        <button aria-label={`Open task ${task.title}`} className="min-w-0 flex-1 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ember" onClick={() => onOpenTask(task.id)} type="button">
+          <div className="flex flex-wrap items-center gap-2"><Badge className="capitalize" variant={task.priority === 'urgent' ? 'ember' : task.priority === 'high' ? 'bronze' : 'blue'}>{task.priority}</Badge><span className="text-[0.69rem] uppercase tracking-[0.13em] text-stardust/44">{planTaskStatusLabel(task.status)}</span></div>
+          <h3 className="mt-3 text-base font-semibold leading-6 text-stardust">{task.title}</h3>
+          {task.description ? <p className="mt-2 line-clamp-2 text-sm leading-5 text-stardust/56">{task.description}</p> : null}
+        </button>
+        {dragHandle}
+      </div>
+      <div className="mt-4 flex flex-wrap items-center justify-between gap-2 border-t border-bronze/14 pt-3 text-xs text-stardust/48">
+        {garment ? <button className="group/garment inline-flex min-w-0 items-center gap-2 text-left hover:text-stardust focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ember" onClick={() => onOpenGarment?.(garment.garment.id)} type="button"><CanonicalMediaImage alt={`${garment.garment.title} thumbnail`} asset={garment.coverImage} className="h-6 w-6 rounded-md" derivatives={state?.mediaDerivatives} mode="thumbnail" /><span className="max-w-[11rem] truncate">{garment.garment.title}</span></button> : <span>Studio-wide</span>}
+        <time dateTime={task.dueAt ?? undefined}>{task.dueAt ? `Due ${formatDay(task.dueAt)}` : 'No due date'}</time>
+      </div>
+    </article>
+  );
+}
+
+function FreeformTaskPinboard({ className, onMove, onOpenGarment, onOpenTask, positions, tasks }: {
+  className?: string;
+  onMove: (taskId: string, delta: { x: number; y: number }) => void;
+  onOpenGarment?: (garmentId: string) => void;
+  onOpenTask: (taskId: string) => void;
+  positions: TaskPinPositions;
+  tasks: PlanTaskItem[];
+}) {
+  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }), useSensor(TouchSensor, { activationConstraint: { delay: 150, tolerance: 8 } }), useSensor(KeyboardSensor));
+  const onDragEnd = (event: DragEndEvent) => onMove(String(event.active.id), event.delta);
+  return <div className={className}><div className="mb-3 flex items-center gap-2 text-sm text-stardust/52"><Grip aria-hidden="true" size={16} />Drag a note by its grip to arrange your own working surface. This layout is saved only on this device.</div><DndContext onDragEnd={onDragEnd} sensors={sensors}><div aria-label="Freeform task pinboard" className="relative min-h-[44rem] min-w-[52rem] overflow-hidden rounded-[1.6rem] border border-bronze/24 bg-[radial-gradient(circle_at_18%_12%,rgba(200,155,60,0.12),transparent_28%),linear-gradient(135deg,rgba(61,43,31,0.25),rgba(10,10,10,0.82))] shadow-[inset_0_1px_0_rgba(237,227,207,0.05)]" data-testid="task-freeform-board">{tasks.map((item, index) => <FreeformTaskNote item={item} key={item.task.id} onOpenGarment={onOpenGarment} onOpenTask={onOpenTask} position={positions[item.task.id] ?? defaultTaskPinPosition(index)} />)}</div></DndContext></div>;
+}
+
+function FreeformTaskNote({ item, onOpenGarment, onOpenTask, position }: { item: PlanTaskItem; onOpenGarment?: (garmentId: string) => void; onOpenTask: (taskId: string) => void; position: { x: number; y: number } }) {
+  const { attributes, listeners, setNodeRef } = useDraggable({ id: item.task.id });
+  const style: CSSProperties = { left: position.x, position: 'absolute', top: position.y, width: '15rem' };
+  return <div ref={setNodeRef} style={style}><TaskNote dragHandle={<button aria-label={`Move ${item.task.title} on pinboard`} className="flex h-8 w-8 touch-none items-center justify-center rounded-lg border border-bronze/24 text-stardust/50 hover:border-ember/48 hover:text-ember focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ember" type="button" {...attributes} {...listeners}><GripVertical aria-hidden="true" size={16} /></button>} item={item} onOpenGarment={onOpenGarment} onOpenTask={onOpenTask} /></div>;
+}
+
+function TaskDetailDrawer({ item, onClose, onDeleted, onOpenGarment }: { item: PlanTaskItem; onClose: () => void; onDeleted: () => void; onOpenGarment?: (garmentId: string) => void }) {
+  const { deleteTask, state, updateTask } = useCanonicalWorkspace();
+  const [title, setTitle] = useState(item.task.title);
+  const [description, setDescription] = useState(item.task.description);
+  const [garmentId, setGarmentId] = useState(item.task.garmentId);
+  const [priority, setPriority] = useState(item.task.priority);
+  const [status, setStatus] = useState(item.task.status);
+  const [dueAt, setDueAt] = useState(toDateInput(item.task.dueAt));
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const dialogRef = useDialogA11y(true, onClose);
+  const save = (event: FormEvent) => { event.preventDefault(); updateTask(item.task.id, { description, dueAt: dueAt ? new Date(`${dueAt}T12:00:00`).toISOString() : null, garmentId, priority, status, title }); onClose(); };
+  return (
+    <div className="fixed inset-0 z-[80] flex justify-end bg-black/65 p-0 sm:p-4">
+      <button aria-label="Close task details" className="absolute inset-0 cursor-default" onClick={onClose} type="button" />
+      <aside aria-labelledby="task-detail-title" aria-modal="true" className="relative z-10 flex h-full w-full max-w-xl flex-col overflow-y-auto border-l border-bronze/30 bg-[linear-gradient(160deg,#17171a,#090909)] p-5 shadow-[-24px_0_80px_rgba(0,0,0,0.45)] sm:rounded-l-[1.5rem]" ref={dialogRef} role="dialog" tabIndex={-1}>
+        <div className="flex items-start justify-between gap-4"><div><p className="text-[0.66rem] uppercase tracking-[0.2em] text-ember/72">Task detail</p><h2 className="font-display mt-2 text-3xl text-stardust" id="task-detail-title">Refine the next move</h2></div><Button aria-label="Close task details" icon={<X aria-hidden="true" size={18} />} onClick={onClose} size="sm" variant="ghost">Close</Button></div>
+        <form className="mt-7 space-y-5" onSubmit={save}>
+          <TextField label="Task title" onChange={setTitle} required value={title} />
+          <label className="block text-xs text-stardust/52">Notes<textarea className="mt-2 min-h-28 w-full rounded-xl border border-bronze/26 bg-midnight px-3 py-3 text-sm leading-6 text-stardust outline-none focus:border-ember/65 focus:ring-2 focus:ring-ember/25" onChange={(event) => setDescription(event.target.value)} value={description} /></label>
+          <div className="grid gap-4 sm:grid-cols-2"><SelectField label="Garment" onChange={setGarmentId} options={[['', 'Studio-wide'], ...(state?.garments.map((garment) => [garment.id, garment.title] as [string, string]) ?? [])]} value={garmentId} /><SelectField label="Priority" onChange={(value) => setPriority(value as CanonicalReleaseTask['priority'])} options={['low', 'medium', 'high', 'urgent'].map((value) => [value, value])} value={priority} /><SelectField label="Status" onChange={(value) => setStatus(value as CanonicalReleaseTask['status'])} options={['todo', 'in_progress', 'blocked', 'done', 'cancelled'].map((value) => [value, planTaskStatusLabel(value as CanonicalReleaseTask['status'])])} value={status} /><label className="text-xs text-stardust/52">Due date<input className="mt-2 min-h-11 w-full rounded-xl border border-bronze/26 bg-midnight px-3 text-sm text-stardust outline-none focus:border-ember/65 focus:ring-2 focus:ring-ember/25" onChange={(event) => setDueAt(event.target.value)} type="date" value={dueAt} /></label></div>
+          {item.garment ? <button className="inline-flex items-center gap-2 text-sm text-stardust/60 underline-offset-4 hover:text-stardust hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ember" onClick={() => onOpenGarment?.(item.garment!.garment.id)} type="button">Open {item.garment.garment.title}<ArrowUpRight aria-hidden="true" size={15} /></button> : null}
+          <div className="flex flex-wrap items-center justify-between gap-3 border-t border-bronze/18 pt-5"><div>{confirmDelete ? <div className="flex items-center gap-2 text-sm text-ember"><span>Delete this task?</span><Button onClick={() => { deleteTask(item.task.id); onDeleted(); }} size="sm">Delete</Button><Button onClick={() => setConfirmDelete(false)} size="sm" variant="ghost">Keep</Button></div> : <Button icon={<Trash2 aria-hidden="true" size={15} />} onClick={() => setConfirmDelete(true)} size="sm" variant="ghost">Delete task</Button>}</div><Button type="submit">Save changes</Button></div>
+        </form>
+      </aside>
+    </div>
   );
 }
 
@@ -374,7 +567,7 @@ function TaskForm({ onClose }: { onClose: () => void }) {
   const [garmentId, setGarmentId] = useState('');
   const [priority, setPriority] = useState<CanonicalReleaseTask['priority']>('medium');
   const submit = (event: FormEvent) => { event.preventDefault(); if (!title.trim()) return; addTask({ description, dueAt: dueAt ? new Date(`${dueAt}T12:00:00`).toISOString() : null, garmentId, priority, title }); onClose(); };
-  return <PlanForm onClose={onClose} onSubmit={submit} title="Create task"><TextField label="Task title" onChange={setTitle} required value={title} /><TextField label="Description" onChange={setDescription} value={description} /><SelectField label="Garment" onChange={setGarmentId} options={[['', 'Studio-wide'], ...(state?.garments.map((item) => [item.id, item.title] as [string, string]) ?? [])]} value={garmentId} /><label className="text-xs text-stardust/52">Due date<input className="mt-2 min-h-11 w-full rounded-xl border border-bronze/26 bg-midnight px-3 text-sm text-stardust" onChange={(event) => setDueAt(event.target.value)} type="date" value={dueAt} /></label><SelectField label="Priority" onChange={(value) => setPriority(value as CanonicalReleaseTask['priority'])} options={['low', 'medium', 'high', 'urgent'].map((value) => [value, value])} value={priority} /></PlanForm>;
+  return <PlanForm onClose={onClose} onSubmit={submit} title="New task"><p className="-mt-2 text-sm leading-6 text-stardust/52">Capture the essentials now; refine the rest from the pinboard.</p><TextField label="Task title" onChange={setTitle} required value={title} /><label className="text-xs text-stardust/52">Notes<textarea className="mt-2 min-h-24 w-full rounded-xl border border-bronze/26 bg-midnight px-3 py-3 text-sm leading-6 text-stardust outline-none focus:border-ember/65 focus:ring-2 focus:ring-ember/25" onChange={(event) => setDescription(event.target.value)} value={description} /></label><SelectField label="Garment" onChange={setGarmentId} options={[['', 'Studio-wide'], ...(state?.garments.map((item) => [item.id, item.title] as [string, string]) ?? [])]} value={garmentId} /><label className="text-xs text-stardust/52">Due date<input className="mt-2 min-h-11 w-full rounded-xl border border-bronze/26 bg-midnight px-3 text-sm text-stardust" onChange={(event) => setDueAt(event.target.value)} type="date" value={dueAt} /></label><SelectField label="Priority" onChange={(value) => setPriority(value as CanonicalReleaseTask['priority'])} options={['low', 'medium', 'high', 'urgent'].map((value) => [value, value])} value={priority} /></PlanForm>;
 }
 
 function CalendarEventForm({ onClose }: { onClose: () => void }) {
@@ -391,4 +584,5 @@ function PlanForm({ children, onClose, onSubmit, title }: { children: React.Reac
 function TextField({ label, onChange, required = false, value }: { label: string; onChange: (value: string) => void; required?: boolean; value: string }) { return <label className="text-xs text-stardust/52">{label}<input className="mt-2 min-h-11 w-full rounded-xl border border-bronze/26 bg-midnight px-3 text-sm text-stardust" onChange={(event) => onChange(event.target.value)} required={required} value={value} /></label>; }
 function SelectField({ label, onChange, options, value }: { label: string; onChange: (value: string) => void; options: Array<[string, string]>; value: string }) { return <label className="text-xs text-stardust/52">{label}<select className="mt-2 min-h-11 w-full rounded-xl border border-bronze/26 bg-midnight px-3 text-sm capitalize text-stardust" onChange={(event) => onChange(event.target.value)} value={value}>{options.map(([optionValue, optionLabel]) => <option key={optionValue || 'none'} value={optionValue}>{optionLabel}</option>)}</select></label>; }
 function EmptyPlanState({ detail, title }: { detail: string; title: string }) { return <div className="rounded-2xl border border-dashed border-bronze/28 p-8 text-center"><h2 className="text-base font-semibold text-stardust">{title}</h2><p className="mx-auto mt-2 max-w-lg text-sm leading-6 text-stardust/52">{detail}</p></div>; }
+function toDateInput(value: string | null) { return value ? new Date(value).toISOString().slice(0, 10) : ''; }
 function formatDay(value: string) { return new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: value.includes('T') && !value.endsWith('T12:00:00.000Z') ? 'short' : undefined }).format(new Date(value)); }

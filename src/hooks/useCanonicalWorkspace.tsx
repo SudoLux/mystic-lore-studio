@@ -16,6 +16,7 @@ import {
   createCanonicalWorkspace,
   createMoodboard,
   deleteGarment,
+  deleteTask,
   MAX_GARMENT_VIEWS,
   removeInspirationReference,
   removeGarmentMaterial,
@@ -26,6 +27,7 @@ import {
   updateBrief,
   updateGarment,
   updateGarmentMaterial,
+  updateTask,
   updateTaskStatus,
   type ComponentInput,
   type GarmentInput,
@@ -85,6 +87,7 @@ type CanonicalWorkspaceContextValue = {
   linkMaterialToGarment: (garmentId: string, variantId: string, role: string, placement: string, requiredQuantity: number) => void;
   createMoodboard: (garmentId: string, title?: string) => string;
   deleteGarment: (garmentId: string) => void;
+  deleteTask: (taskId: string) => void;
   commitWorkspace: (change: (current: CanonicalWorkspaceState) => CanonicalWorkspaceState, context?: Omit<WorkspaceChangeContext, 'actorId'>) => void;
   commitWorkspaceAsync: (change: (current: CanonicalWorkspaceState) => CanonicalWorkspaceState, context?: Omit<WorkspaceChangeContext, 'actorId'> & { excludeEntities?: string[] }) => Promise<CanonicalCommitResult | null>;
   currentActorId: string;
@@ -107,6 +110,7 @@ type CanonicalWorkspaceContextValue = {
   updateBrief: (garmentId: string, patch: Parameters<typeof updateBrief>[2]) => void;
   updateGarment: (garmentId: string, patch: Partial<GarmentInput>) => void;
   updateGarmentMaterial: (relationshipId: string, patch: { requiredQuantity: number; role: string }) => void;
+  updateTask: (taskId: string, patch: Parameters<typeof updateTask>[2]) => void;
   updateTaskStatus: (taskId: string, status: CanonicalReleaseTask['status']) => void;
   uploadGarmentMedia: (garmentId: string, file: File, role: CanonicalGarmentMedia['role']) => Promise<string>;
   uploadGarmentView: (garmentId: string, file: File) => Promise<string>;
@@ -583,6 +587,7 @@ export function CanonicalWorkspaceProvider({
     }),
     createMoodboard: (garmentId, title) => { let id = ''; commit((current) => { const result = createMoodboard(current, garmentId, title); id = result.board.id; return result.state; }); return id; },
     deleteGarment: (garmentId) => commit((current) => deleteGarment(current, garmentId)),
+    deleteTask: (taskId) => commit((current) => deleteTask(current, taskId)),
     commitWorkspace: commit,
     commitWorkspaceAsync: commitAsync,
     currentActorId: userId,
@@ -605,6 +610,7 @@ export function CanonicalWorkspaceProvider({
     updateBrief: (garmentId, patch) => commit((current) => updateBrief(current, garmentId, patch)),
     updateGarment: (garmentId, patch) => commit((current) => updateGarment(current, garmentId, patch)),
     updateGarmentMaterial: (relationshipId, patch) => commit((current) => updateGarmentMaterial(current, relationshipId, patch)),
+    updateTask: (taskId, patch) => commit((current) => updateTask(current, taskId, patch)),
     updateTaskStatus: (taskId, status) => commit((current) => updateTaskStatus(current, taskId, status)),
     uploadGarmentMedia: async (garmentId, file, role) => {
       const current = stateRef.current;
