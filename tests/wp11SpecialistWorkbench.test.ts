@@ -4,6 +4,7 @@ import { readFileSync } from 'node:fs';
 const shared = readFileSync('src/components/shared/SpecialistWorkbench.tsx', 'utf8');
 const styles = readFileSync('src/styles/index.css', 'utf8');
 const technical = readFileSync('src/pages/TechnicalStudio/TechnicalStudioPage.tsx', 'utf8');
+const technicalLanding = readFileSync('src/pages/TechnicalStudio/TechnicalStudioLanding.tsx', 'utf8');
 const production = readFileSync('src/pages/Production/ProductionPage.tsx', 'utf8');
 const editorial = readFileSync('src/pages/EditorialStudio/EditorialStudioPage.tsx', 'utf8');
 const portfolio = readFileSync('src/pages/PortfolioStudio/PortfolioStudioPage.tsx', 'utf8');
@@ -34,7 +35,9 @@ describe('WP11E calm specialist workbenches', () => {
     expect(styles).toContain('.specialist-workbench table');
     expect(styles).toContain('.specialist-workbench .field');
     expect(styles).toContain('.workbench-tabs');
-    expect(technical).toContain('Technical release gate details');
+    expect(technicalLanding).toContain('Technical release queue details');
+    expect(technicalLanding).toContain('Technical Studio');
+    expect(technicalLanding).toContain('Technical readiness');
     expect(production).toContain('Sampling timeline details');
     expect(technical).toContain('flat-canvas-help');
   });
