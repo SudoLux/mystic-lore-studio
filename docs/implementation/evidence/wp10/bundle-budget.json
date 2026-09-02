@@ -4,9 +4,9 @@
     "imageBytes": 256000,
     "jsChunkBytes": 512000
   },
-  "checkedAt": "2026-09-02T07:21:09.036Z",
+  "checkedAt": "2026-09-02T07:49:49.123Z",
   "decision": "PASS",
-  "distChecksum": "2714ea72cfcae87d2c03adb86abb14bfaf8f47148e2b135d82d7877463dc6052",
+  "distChecksum": "9714310176ad9b1b0c3bd4f7dd02a139c18a3fd55d15b91c9d1e6b065cb8c9d4",
   "failures": [],
   "largestCss": {
     "bytes": 306844,
@@ -24,5 +24,5 @@
     "type": ".js"
   },
   "routeChunkCount": 44,
-  "totalBytes": 1964563
+  "totalBytes": 1964674
 }
