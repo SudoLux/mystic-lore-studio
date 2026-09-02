@@ -30,7 +30,25 @@ export async function storeTechnicalSource(file: File, studioId: string): Promis
 export async function technicalPreviewUrl(asset: CanonicalMediaAsset) {
   const local = asset.localBlobKey ? await getImageBlob(asset.localBlobKey).catch(() => null) : null;
   const blob = local ?? await loadCachedCanonicalMediaBlob(asset);
-  return blob ? URL.createObjectURL(blob) : null;
+  if (!blob) return null;
+  const imageMimeType = technicalImageMimeType(asset);
+  // Older private source records can have application/octet-stream even when
+  // their immutable filename and bytes are a PNG/JPG/SVG. Override only the
+  // ephemeral preview Blob type; the canonical asset metadata and source file
+  // remain untouched.
+  const previewBlob = imageMimeType && blob.type !== imageMimeType ? blob.slice(0, blob.size, imageMimeType) : blob;
+  return URL.createObjectURL(previewBlob);
+}
+
+export function isTechnicalImageAsset(asset: Pick<CanonicalMediaAsset, 'mimeType' | 'name'>) {
+  return Boolean(technicalImageMimeType(asset));
+}
+
+export function technicalImageMimeType(asset: Pick<CanonicalMediaAsset, 'mimeType' | 'name'>): string | null {
+  const mimeType = asset.mimeType.toLowerCase();
+  if (mimeType.startsWith('image/')) return mimeType;
+  const extension = asset.name.split('.').pop()?.toLowerCase();
+  return extension ? ({ avif: 'image/avif', gif: 'image/gif', jpeg: 'image/jpeg', jpg: 'image/jpeg', png: 'image/png', svg: 'image/svg+xml', webp: 'image/webp' }[extension] ?? null) : null;
 }
 
 export async function sha256(blob: Blob) { const digest = await crypto.subtle.digest('SHA-256', await blob.arrayBuffer()); return [...new Uint8Array(digest)].map((value) => value.toString(16).padStart(2, '0')).join(''); }

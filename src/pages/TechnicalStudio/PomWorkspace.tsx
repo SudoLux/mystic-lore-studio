@@ -6,7 +6,7 @@ import { activeFlat } from '../../domains/technical';
 import type { CanonicalMediaAsset, CanonicalPomPoint, CanonicalTechnicalFlat, CanonicalTechnicalSpec, CanonicalWorkspaceState } from '../../domains/workspace';
 import { useMeasurements } from '../../hooks/useMeasurements';
 import { cn } from '../../lib/classes';
-import { technicalPreviewUrl } from '../../lib/technicalFiles';
+import { isTechnicalImageAsset, technicalPreviewUrl } from '../../lib/technicalFiles';
 
 type PomView = 'front' | 'back';
 type FocusMode = 'both' | PomView;
@@ -237,7 +237,7 @@ function PomFlatSurface({ asset, flat, focused, hoveredId, onHover, onOpenFlats,
       tabIndex={placement && asset ? 0 : undefined}
     >
       <div className="pom-flat-surface__content" ref={contentRef} style={{ transform: `scale(${zoom})` }}>
-        {url && asset?.mimeType.startsWith('image/') ? <img alt={`${viewTitle(view)} technical flat`} draggable={false} src={url} /> : asset ? <div className="pom-flat-surface__missing"><strong>{asset.name}</strong><p>This source type cannot be previewed on the canvas.</p></div> : <div className="pom-flat-surface__missing"><Focus aria-hidden="true" size={27} /><strong>Add the {viewTitle(view)} flat</strong><p>POM anchors need the garment’s canonical technical source.</p><Button onClick={onOpenFlats} size="sm">Open Flats</Button></div>}
+        {url && asset && isTechnicalImageAsset(asset) ? <img alt={`${viewTitle(view)} technical flat`} draggable={false} src={url} /> : asset ? <div className="pom-flat-surface__missing"><strong>{asset.name}</strong><p>This source type cannot be previewed on the canvas.</p></div> : <div className="pom-flat-surface__missing"><Focus aria-hidden="true" size={27} /><strong>Add the {viewTitle(view)} flat</strong><p>POM anchors need the garment’s canonical technical source.</p><Button onClick={onOpenFlats} size="sm">Open Flats</Button></div>}
         {asset ? points.map((point) => <PomMarker hovered={hoveredId === point.id} key={point.id} onHover={onHover} onSelect={onSelect} point={point} selected={selectedId === point.id} />) : null}
       </div>
     </div>

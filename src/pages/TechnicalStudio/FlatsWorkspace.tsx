@@ -7,7 +7,7 @@ import { Card } from '../../components/shared/Card';
 import { activeFlat, flatViewOptions, prepareFlatComparison, requiredFlatViews, validateTechnicalSpec } from '../../domains/technical';
 import type { CanonicalFlatAnnotation, CanonicalMediaAsset, TechnicalFlatView } from '../../domains/workspace';
 import { useTechnicalStudio } from '../../hooks/useTechnicalStudio';
-import { technicalPreviewUrl } from '../../lib/technicalFiles';
+import { isTechnicalImageAsset, technicalPreviewUrl } from '../../lib/technicalFiles';
 import { cn } from '../../lib/classes';
 
 type Anchor = { x: number; y: number };
@@ -173,7 +173,7 @@ function FlatCanvas({ annotations, annotating, asset, busy, onAnnotate, onBrowse
     })();
     return () => { active = false; if (objectUrl) URL.revokeObjectURL(objectUrl); };
   }, [asset]);
-  const sourceIsImage = Boolean(url && asset?.mimeType.startsWith('image/'));
+  const sourceIsImage = Boolean(url && asset && isTechnicalImageAsset(asset));
   const setAnchor = (event: { clientX: number; clientY: number; currentTarget: EventTarget & HTMLDivElement }) => {
     if (!annotating || !asset) return;
     const bounds = event.currentTarget.getBoundingClientRect();

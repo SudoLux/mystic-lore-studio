@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { loadCachedCanonicalMediaBlob } from '../src/domains/persistence/canonicalMedia';
-import { storeTechnicalSource, technicalPreviewUrl } from '../src/lib/technicalFiles';
+import { isTechnicalImageAsset, storeTechnicalSource, technicalImageMimeType, technicalPreviewUrl } from '../src/lib/technicalFiles';
 
 describe('Technical source storage', () => {
   it('normalizes a selected File to a plain Blob so private-mode object storage cannot block the canonical upload', async () => {
@@ -13,5 +13,11 @@ describe('Technical source storage', () => {
     expect(staged).toBeInstanceOf(Blob);
     expect(staged).not.toBeInstanceOf(File);
     expect(await technicalPreviewUrl(asset)).toMatch(/^blob:/);
+  });
+
+  it('renders legacy PNG/JPG/SVG source records whose persisted MIME type was generic', () => {
+    expect(isTechnicalImageAsset({ mimeType: 'application/octet-stream', name: 'Rōnyn_Jacket_Tech_Flat_Front.png' })).toBe(true);
+    expect(technicalImageMimeType({ mimeType: 'application/octet-stream', name: 'back-flat.svg' })).toBe('image/svg+xml');
+    expect(isTechnicalImageAsset({ mimeType: 'application/pdf', name: 'tech-pack.pdf' })).toBe(false);
   });
 });
