@@ -46,6 +46,7 @@ describe('WP11P-D Visual Studio Calendar', () => {
     const page = readFileSync(new URL('../src/pages/Plan/PlanPage.tsx', import.meta.url), 'utf8');
     expect(migration).toContain("add column if not exists notes text not null default ''");
     expect(migration).toContain("'calendar_events' then array['garment_id','event_type','title','notes'");
+    expect(migration).toContain("when 'material_variant_media' then array['variant_id','asset_id','role','sort_order','framing_json']");
     for (const contract of ['Month', 'Week', 'Agenda', 'CalendarDayPanel', 'CalendarEventDetailDrawer', 'CalendarItemChip']) expect(page).toContain(contract);
   });
 });

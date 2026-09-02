@@ -76,6 +76,7 @@ export function PlanPage({ onOpenGarment }: { onOpenGarment?: (garmentId: string
   const workspace = useCanonicalWorkspace();
   const [view, setView] = useState<PlanView>('flow');
   const [showCreate, setShowCreate] = useState(false);
+  const [taskGarmentFilterId, setTaskGarmentFilterId] = useState<string | null>(null);
 
   if (!workspace.isReady || !workspace.state) {
     return (
@@ -121,7 +122,13 @@ export function PlanPage({ onOpenGarment }: { onOpenGarment?: (garmentId: string
         </div>
       ) : null}
 
-      <PlanWorkspaceTabs view={view} onChange={setView} />
+      <PlanWorkspaceTabs
+        view={view}
+        onChange={(nextView) => {
+          if (nextView === 'tasks') setTaskGarmentFilterId(null);
+          setView(nextView);
+        }}
+      />
 
       {showCreate ? (
         view === 'calendar'
@@ -129,9 +136,9 @@ export function PlanPage({ onOpenGarment }: { onOpenGarment?: (garmentId: string
           : <TaskForm onClose={() => setShowCreate(false)} />
       ) : null}
 
-      {view === 'flow' ? <FlowView garments={plan.garments} onOpenGarment={onOpenGarment} /> : null}
-      {view === 'tasks' ? <TaskView onCreateTask={() => setShowCreate(true)} onOpenGarment={onOpenGarment} tasks={plan.tasks} /> : null}
-      {view === 'calendar' ? <CalendarView items={plan.calendarItems} onCreateEvent={() => setShowCreate(true)} onOpenGarment={onOpenGarment} /> : null}
+      {view === 'flow' ? <FlowView garments={plan.garments} onOpenGarment={onOpenGarment} onOpenTasks={(garmentId) => { setTaskGarmentFilterId(garmentId); setView('tasks'); }} /> : null}
+      {view === 'tasks' ? <TaskView garmentFilterId={taskGarmentFilterId} onClearGarmentFilter={() => setTaskGarmentFilterId(null)} onOpenGarment={onOpenGarment} tasks={plan.tasks} /> : null}
+      {view === 'calendar' ? <CalendarView items={plan.calendarItems} onOpenGarment={onOpenGarment} /> : null}
     </section>
   );
 }
@@ -185,7 +192,7 @@ const flowStageDescriptions: Record<CanonicalGarment['phase'], string> = {
   portfolio: 'Prepare the presentation.',
 };
 
-function FlowView({ garments, onOpenGarment }: { garments: PlanGarmentSummary[]; onOpenGarment?: (garmentId: string) => void }) {
+function FlowView({ garments, onOpenGarment, onOpenTasks }: { garments: PlanGarmentSummary[]; onOpenGarment?: (garmentId: string) => void; onOpenTasks: (garmentId: string) => void }) {
   const { commitWorkspaceAsync, state } = useCanonicalWorkspace();
   const [activeGarmentId, setActiveGarmentId] = useState<string | null>(null);
   const [feedback, setFeedback] = useState('');
@@ -237,7 +244,7 @@ function FlowView({ garments, onOpenGarment }: { garments: PlanGarmentSummary[];
           <div className="flex min-w-max items-stretch gap-5">
             {planGarmentPhases.map((phase) => {
               const garmentsInPhase = garments.filter((item) => item.garment.phase === phase);
-              return <FlowColumn garments={garmentsInPhase} key={phase} movingGarmentId={movingGarmentId} onMove={moveGarment} onOpenGarment={onOpenGarment} phase={phase} state={state} />;
+              return <FlowColumn garments={garmentsInPhase} key={phase} movingGarmentId={movingGarmentId} onMove={moveGarment} onOpenGarment={onOpenGarment} onOpenTasks={onOpenTasks} phase={phase} state={state} />;
             })}
           </div>
         </div>
@@ -249,11 +256,12 @@ function FlowView({ garments, onOpenGarment }: { garments: PlanGarmentSummary[];
   );
 }
 
-function FlowColumn({ garments, movingGarmentId, onMove, onOpenGarment, phase, state }: {
+function FlowColumn({ garments, movingGarmentId, onMove, onOpenGarment, onOpenTasks, phase, state }: {
   garments: PlanGarmentSummary[];
   movingGarmentId: string | null;
   onMove: (garmentId: string, phase: CanonicalGarment['phase']) => Promise<void>;
   onOpenGarment?: (garmentId: string) => void;
+  onOpenTasks: (garmentId: string) => void;
   phase: CanonicalGarment['phase'];
   state: NonNullable<ReturnType<typeof useCanonicalWorkspace>['state']>;
 }) {
@@ -278,7 +286,7 @@ function FlowColumn({ garments, movingGarmentId, onMove, onOpenGarment, phase, s
         <p className="mt-2 text-sm leading-5 text-stardust/48">{flowStageDescriptions[phase]}</p>
       </header>
       <div className="mt-4 flex min-h-44 flex-1 flex-col gap-4">
-        {garments.map((summary) => <FlowGarmentCard isMoving={movingGarmentId === summary.garment.id} key={summary.garment.id} onMove={onMove} onOpenGarment={onOpenGarment} state={state} summary={summary} />)}
+        {garments.map((summary) => <FlowGarmentCard isMoving={movingGarmentId === summary.garment.id} key={summary.garment.id} onMove={onMove} onOpenGarment={onOpenGarment} onOpenTasks={onOpenTasks} state={state} summary={summary} />)}
         {!garments.length ? (
           <div className={cn(
             'flex min-h-36 flex-1 items-center justify-center rounded-2xl border border-dashed px-5 text-center text-sm leading-6 transition-colors duration-200',
@@ -292,10 +300,11 @@ function FlowColumn({ garments, movingGarmentId, onMove, onOpenGarment, phase, s
   );
 }
 
-function FlowGarmentCard({ isMoving, onMove, onOpenGarment, state, summary }: {
+function FlowGarmentCard({ isMoving, onMove, onOpenGarment, onOpenTasks, state, summary }: {
   isMoving: boolean;
   onMove: (garmentId: string, phase: CanonicalGarment['phase']) => Promise<void>;
   onOpenGarment?: (garmentId: string) => void;
+  onOpenTasks: (garmentId: string) => void;
   state: NonNullable<ReturnType<typeof useCanonicalWorkspace>['state']>;
   summary: PlanGarmentSummary;
 }) {
@@ -324,13 +333,28 @@ function FlowGarmentCard({ isMoving, onMove, onOpenGarment, state, summary }: {
         <div className="p-4 pb-3">
           <p className="truncate text-[0.66rem] font-medium uppercase tracking-[0.16em] text-ember/72">{summary.collectionName} · {summary.garment.garmentType}</p>
           <h3 className="font-display mt-2 line-clamp-2 text-2xl leading-[1.04] text-stardust">{summary.garment.title}</h3>
-          <div className="mt-4 flex items-center justify-between gap-3 text-xs text-stardust/52">
-            <span>{summary.openTaskCount ? `${summary.openTaskCount} open ${summary.openTaskCount === 1 ? 'task' : 'tasks'}` : 'No open tasks'}</span>
-            <span className="inline-flex items-center gap-1 font-medium text-stardust/72">Open <ArrowUpRight aria-hidden="true" size={14} /></span>
+          <div className="mt-4 flex items-center justify-end text-xs">
+            <span className="inline-flex items-center gap-1 font-medium text-stardust/72">Open garment <ArrowUpRight aria-hidden="true" size={14} /></span>
           </div>
-          {summary.nextTask ? <p className="mt-3 truncate border-t border-bronze/15 pt-3 text-xs text-stardust/48"><span className="mr-1 uppercase tracking-[0.13em] text-stardust/34">Next</span>{summary.nextTask.title}</p> : null}
         </div>
       </button>
+      <div className="border-t border-bronze/15 px-4 py-3">
+        <div className="flex items-center justify-between gap-3 text-xs">
+          {summary.openTaskCount ? (
+            <button
+              aria-label={`View ${summary.openTaskCount} open ${summary.openTaskCount === 1 ? 'task' : 'tasks'} for ${summary.garment.title}`}
+              className="inline-flex min-h-9 items-center gap-2 rounded-lg px-1.5 font-medium text-stardust/62 transition hover:text-ember focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ember"
+              onClick={() => onOpenTasks(summary.garment.id)}
+              type="button"
+            >
+              <ListFilter aria-hidden="true" size={14} />
+              {summary.openTaskCount} open {summary.openTaskCount === 1 ? 'task' : 'tasks'}
+              <ArrowUpRight aria-hidden="true" size={13} />
+            </button>
+          ) : <span className="px-1.5 text-stardust/42">No open tasks</span>}
+        </div>
+        {summary.nextTask ? <p className="mt-2 truncate text-xs text-stardust/48"><span className="mr-1 uppercase tracking-[0.13em] text-stardust/34">Next</span>{summary.nextTask.title}</p> : null}
+      </div>
       <button
         aria-label={`Drag ${summary.garment.title} to another stage`}
         className="absolute right-3 top-3 flex h-10 w-10 touch-none items-center justify-center rounded-xl border border-stardust/18 bg-midnight/72 text-stardust/62 opacity-0 shadow-lg backdrop-blur-sm transition hover:border-ember/55 hover:text-ember focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ember group-hover:opacity-100"
@@ -367,8 +391,9 @@ const taskModes: Array<{ id: TaskPinboardMode; label: string }> = [
   { id: 'freeform', label: 'Freeform' },
 ];
 
-function TaskView({ onCreateTask, onOpenGarment, tasks }: {
-  onCreateTask: () => void;
+function TaskView({ garmentFilterId, onClearGarmentFilter, onOpenGarment, tasks }: {
+  garmentFilterId: string | null;
+  onClearGarmentFilter: () => void;
   onOpenGarment?: (garmentId: string) => void;
   tasks: PlanTaskItem[];
 }) {
@@ -378,9 +403,11 @@ function TaskView({ onCreateTask, onOpenGarment, tasks }: {
   const [completedExpanded, setCompletedExpanded] = useState(false);
   const [positions, setPositions] = useState<TaskPinPositions>({});
   const cache = useRef(new CanonicalIndexedDb());
-  const activeTasks = tasks.filter(({ task }) => !isCompletedTask(task));
-  const completedTasks = tasks.filter(({ task }) => isCompletedTask(task));
-  const selected = tasks.find(({ task }) => task.id === selectedTaskId) ?? null;
+  const filteredTasks = garmentFilterId ? tasks.filter(({ task }) => task.garmentId === garmentFilterId) : tasks;
+  const filteredGarment = garmentFilterId ? tasks.find(({ task }) => task.garmentId === garmentFilterId)?.garment ?? null : null;
+  const activeTasks = filteredTasks.filter(({ task }) => !isCompletedTask(task));
+  const completedTasks = filteredTasks.filter(({ task }) => isCompletedTask(task));
+  const selected = filteredTasks.find(({ task }) => task.id === selectedTaskId) ?? null;
   const positionKey = state ? taskPinboardPositionKey(state.studioId) : null;
   const closeTaskDrawer = useCallback(() => setSelectedTaskId(null), []);
 
@@ -408,13 +435,21 @@ function TaskView({ onCreateTask, onOpenGarment, tasks }: {
   return (
     <section aria-labelledby="plan-tab-tasks" className="space-y-5" id="plan-panel-tasks" role="tabpanel">
       <Card className="overflow-hidden p-0">
-        <div className="flex flex-col gap-4 border-b border-bronze/18 px-5 py-5 lg:flex-row lg:items-end lg:justify-between">
+        <div className="border-b border-bronze/18 px-5 py-5">
           <div>
             <p className="text-[0.66rem] font-medium uppercase tracking-[0.22em] text-ember/75">Studio pinboard</p>
             <h2 className="font-display mt-2 text-3xl text-stardust">What moves the work forward</h2>
             <p className="mt-2 max-w-2xl text-sm leading-6 text-stardust/52">Arrange the same connected studio work in the way that helps you decide what comes next.</p>
           </div>
-          <Button icon={<Plus aria-hidden="true" size={16} />} onClick={onCreateTask}>New task</Button>
+          {garmentFilterId ? (
+            <div aria-live="polite" className="mt-4 flex flex-wrap items-center gap-3 rounded-xl border border-ember/30 bg-ember/[0.08] px-3 py-2.5 text-sm">
+              <span className="text-stardust/58">Showing work for</span>
+              <strong className="text-stardust">{filteredGarment?.garment.title ?? 'this garment'}</strong>
+              <button className="ml-auto inline-flex min-h-9 items-center gap-2 rounded-lg px-2 text-stardust/58 transition hover:text-stardust focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ember" onClick={onClearGarmentFilter} type="button">
+                <X aria-hidden="true" size={14} /> Show all tasks
+              </button>
+            </div>
+          ) : null}
         </div>
         <div aria-label="Task organization" className="studio-scrollbar flex gap-2 overflow-x-auto px-5 py-4" role="tablist">
           {taskModes.map((item) => (
@@ -432,7 +467,7 @@ function TaskView({ onCreateTask, onOpenGarment, tasks }: {
         </div>
       </Card>
 
-      {!activeTasks.length ? <EmptyPlanState title="The pinboard is clear" detail="Add a task when a garment needs a next move. Completed work stays below for reference." /> : null}
+      {!activeTasks.length ? <EmptyPlanState title={garmentFilterId ? 'No open work for this garment' : 'The pinboard is clear'} detail={garmentFilterId ? 'Completed work remains available below, or show all tasks to return to the full Studio pinboard.' : 'Add a task when a garment needs a next move. Completed work stays below for reference.'} /> : null}
       {activeTasks.length && mode !== 'freeform' ? (
         <div className="grid gap-5 xl:grid-cols-3">
           {taskPinboardGroups(mode, activeTasks).filter((group) => group.tasks.length > 0).map((group) => (
@@ -506,7 +541,7 @@ function TaskNote({ className, dragHandle, item, onOpenGarment, onOpenTask }: {
         {dragHandle}
       </div>
       <div className="mt-4 flex flex-wrap items-center justify-between gap-2 border-t border-bronze/14 pt-3 text-xs text-stardust/48">
-        {garment ? <button className="group/garment inline-flex min-w-0 items-center gap-2 text-left hover:text-stardust focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ember" onClick={() => onOpenGarment?.(garment.garment.id)} type="button"><CanonicalMediaImage alt={`${garment.garment.title} thumbnail`} asset={garment.coverImage} className="h-6 w-6 rounded-md" derivatives={state?.mediaDerivatives} mode="thumbnail" /><span className="max-w-[11rem] truncate">{garment.garment.title}</span></button> : <span>Studio-wide</span>}
+        {garment ? <button className="group/garment inline-flex min-w-0 items-center gap-2 text-left hover:text-stardust focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ember" onClick={() => onOpenGarment?.(garment.garment.id)} type="button"><span className="relative h-6 w-6 shrink-0 overflow-hidden rounded-md"><CanonicalMediaImage alt={`${garment.garment.title} thumbnail`} asset={garment.coverImage} className="absolute inset-0 h-full w-full rounded-none border-0" derivatives={state?.mediaDerivatives} mode="thumbnail" /></span><span className="max-w-[11rem] truncate">{garment.garment.title}</span></button> : <span>Studio-wide</span>}
         <time dateTime={task.dueAt ?? undefined}>{task.dueAt ? `Due ${formatDay(task.dueAt)}` : 'No due date'}</time>
       </div>
     </article>
@@ -567,7 +602,7 @@ const calendarModes: Array<{ id: PlanCalendarMode; label: string }> = [
 ];
 const calendarWeekdays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
-function CalendarView({ items, onCreateEvent, onOpenGarment }: { items: PlanCalendarItem[]; onCreateEvent: () => void; onOpenGarment?: (garmentId: string) => void }) {
+function CalendarView({ items, onOpenGarment }: { items: PlanCalendarItem[]; onOpenGarment?: (garmentId: string) => void }) {
   const [mode, setMode] = useState<PlanCalendarMode>('month');
   const [cursor, setCursor] = useState(() => new Date());
   const [selectedDateKey, setSelectedDateKey] = useState(() => calendarDateKey(new Date()));
@@ -585,9 +620,8 @@ function CalendarView({ items, onCreateEvent, onOpenGarment }: { items: PlanCale
   return (
     <section aria-labelledby="plan-tab-calendar" className="min-w-0 space-y-5" id="plan-panel-calendar" role="tabpanel">
       <Card className="min-w-0 overflow-hidden p-0">
-        <div className="flex flex-col gap-4 border-b border-bronze/18 px-5 py-5 lg:flex-row lg:items-end lg:justify-between">
+        <div className="border-b border-bronze/18 px-5 py-5">
           <div className="min-w-0"><p className="text-[0.66rem] font-medium uppercase tracking-[0.22em] text-ember/75">Studio calendar</p><h2 className="font-display mt-2 break-words text-3xl text-stardust">Make space for the work</h2><p className="mt-2 max-w-2xl break-words text-sm leading-6 text-stardust/52">Dated tasks arrive here automatically. Appointments remain their own private Studio records.</p></div>
-          <Button icon={<Plus aria-hidden="true" size={16} />} onClick={onCreateEvent}>New event</Button>
         </div>
         <div className="flex flex-col gap-4 px-5 py-4 lg:flex-row lg:items-center lg:justify-between">
           <div aria-label="Calendar navigation" className="flex flex-wrap items-center gap-2"><Button aria-label="Previous period" icon={<ChevronLeft aria-hidden="true" size={17} />} onClick={() => navigate(-1)} size="sm" variant="ghost">Previous</Button><Button onClick={() => { const today = new Date(); setCursor(today); setSelectedDateKey(calendarDateKey(today)); }} size="sm" variant="ghost">Today</Button><Button aria-label="Next period" icon={<ChevronRight aria-hidden="true" size={17} />} onClick={() => navigate(1)} size="sm" variant="ghost">Next</Button><h3 aria-live="polite" className="min-w-0 text-sm font-medium text-stardust sm:ml-1 sm:text-base">{calendarLabel(cursor, mode)}</h3></div>
@@ -641,7 +675,7 @@ function CalendarItemChip({ item, onOpen }: { item: PlanCalendarItem; onOpen: ()
 
 function CalendarDayPanel({ dateKey, items, onOpenGarment, onOpenItem }: { dateKey: string; items: PlanCalendarItem[]; onOpenGarment?: (garmentId: string) => void; onOpenItem: (itemId: string) => void }) {
   const { state } = useCanonicalWorkspace();
-  return <Card className="min-h-56 p-4 xl:sticky xl:top-5 xl:max-h-[calc(100vh-8rem)] xl:overflow-y-auto"><p className="text-[0.66rem] font-medium uppercase tracking-[0.18em] text-ember/72">Selected day</p><h3 className="font-display mt-2 text-2xl text-stardust">{new Intl.DateTimeFormat(undefined, { month: 'long', day: 'numeric' }).format(calendarDateFromKey(dateKey))}</h3><div className="mt-5 space-y-3">{items.map((item) => <button className="group flex w-full gap-3 rounded-xl border border-bronze/18 bg-stardust/[0.025] p-3 text-left transition hover:border-ember/45 hover:bg-stardust/[0.045] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ember" key={item.id} onClick={() => onOpenItem(item.id)} type="button">{item.garment ? <CanonicalMediaImage alt={`${item.garment.garment.title} thumbnail`} asset={item.garment.coverImage} className="h-11 w-11 shrink-0 rounded-lg" derivatives={state?.mediaDerivatives} mode="thumbnail" /> : <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-bronze/20 text-ember"><CalendarDays aria-hidden="true" size={17} /></span>}<span className="min-w-0 flex-1"><span className="text-xs text-ember">{calendarTime(item.startsAt)}{item.endsAt ? ` – ${calendarTime(item.endsAt)}` : ''}</span><span className="mt-1 block truncate text-sm font-semibold text-stardust">{item.title}</span><span className="mt-1 flex items-center justify-between gap-2 text-xs text-stardust/48"><span className="truncate">{item.garment?.garment.title ?? item.kind}</span>{item.garment ? <span aria-hidden="true" className="text-ember group-hover:translate-x-0.5">↗</span> : null}</span></span></button>)}</div>{!items.length ? <p className="py-8 text-sm leading-6 text-stardust/52">Nothing is scheduled for this day yet. Select another day or add an appointment.</p> : null}{items.some((item) => item.garment) ? <div className="mt-4 border-t border-bronze/15 pt-3">{items.filter((item) => item.garment).map((item) => <button className="mr-3 text-xs text-stardust/56 underline-offset-4 hover:text-stardust hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ember" key={`garment-${item.id}`} onClick={() => onOpenGarment?.(item.garment!.garment.id)} type="button">Open {item.garment!.garment.title}</button>)}</div> : null}</Card>;
+  return <Card className="min-h-56 p-4 xl:sticky xl:top-5 xl:max-h-[calc(100vh-8rem)] xl:overflow-y-auto"><p className="text-[0.66rem] font-medium uppercase tracking-[0.18em] text-ember/72">Selected day</p><h3 className="font-display mt-2 text-2xl text-stardust">{new Intl.DateTimeFormat(undefined, { month: 'long', day: 'numeric' }).format(calendarDateFromKey(dateKey))}</h3><div className="mt-5 space-y-3">{items.map((item) => <button className="group flex w-full gap-3 rounded-xl border border-bronze/18 bg-stardust/[0.025] p-3 text-left transition hover:border-ember/45 hover:bg-stardust/[0.045] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ember" key={item.id} onClick={() => onOpenItem(item.id)} type="button">{item.garment ? <span className="relative h-11 w-11 shrink-0 overflow-hidden rounded-lg"><CanonicalMediaImage alt={`${item.garment.garment.title} thumbnail`} asset={item.garment.coverImage} className="absolute inset-0 h-full w-full rounded-none border-0" derivatives={state?.mediaDerivatives} mode="thumbnail" /></span> : <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-bronze/20 text-ember"><CalendarDays aria-hidden="true" size={17} /></span>}<span className="min-w-0 flex-1"><span className="text-xs text-ember">{calendarTime(item.startsAt)}{item.endsAt ? ` – ${calendarTime(item.endsAt)}` : ''}</span><span className="mt-1 block truncate text-sm font-semibold text-stardust">{item.title}</span><span className="mt-1 flex items-center justify-between gap-2 text-xs text-stardust/48"><span className="truncate">{item.garment?.garment.title ?? item.kind}</span>{item.garment ? <span aria-hidden="true" className="text-ember group-hover:translate-x-0.5">↗</span> : null}</span></span></button>)}</div>{!items.length ? <p className="py-8 text-sm leading-6 text-stardust/52">Nothing is scheduled for this day yet. Select another day or add an appointment.</p> : null}{items.some((item) => item.garment) ? <div className="mt-4 border-t border-bronze/15 pt-3">{items.filter((item) => item.garment).map((item) => <button className="mr-3 text-xs text-stardust/56 underline-offset-4 hover:text-stardust hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ember" key={`garment-${item.id}`} onClick={() => onOpenGarment?.(item.garment!.garment.id)} type="button">Open {item.garment!.garment.title}</button>)}</div> : null}</Card>;
 }
 
 function CalendarAgenda({ cursor, items, onOpenGarment, onOpenItem }: { cursor: Date; items: PlanCalendarItem[]; onOpenGarment?: (garmentId: string) => void; onOpenItem: (itemId: string) => void }) {

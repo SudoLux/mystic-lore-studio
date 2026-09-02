@@ -107,10 +107,10 @@ export function CanonicalMediaImage({
         role="img"
       >
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_24%_18%,rgba(200,155,60,0.15),transparent_30%),linear-gradient(145deg,rgba(27,58,99,0.36),rgba(10,10,10,0.84),rgba(61,43,31,0.38))]" />
-        <div className="relative flex max-w-[14rem] flex-col items-center px-5 text-center text-stardust/42">
-          {status === 'loading' ? <LoaderCircle aria-hidden="true" className="animate-spin text-ember/70" size={24} /> : <ImageIcon aria-hidden="true" className="text-ember/55" size={28} />}
-          <span className="mt-3 text-[0.68rem] font-medium uppercase tracking-[0.2em]">{status === 'error' ? 'Image unavailable' : status === 'loading' ? 'Preparing image' : 'Awaiting garment imagery'}</span>
-          {status === 'error' ? <button className="mt-3 rounded-full border border-ember/45 px-3 py-1.5 text-xs text-stardust/76 transition hover:bg-ember/12 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ember" onClick={retry} type="button">Try image again</button> : null}
+        <div className={cn('relative flex flex-col items-center text-center text-stardust/42', mode === 'thumbnail' ? 'justify-center' : 'max-w-[14rem] px-5')}>
+          {status === 'loading' ? <LoaderCircle aria-hidden="true" className="animate-spin text-ember/70" size={mode === 'thumbnail' ? 16 : 24} /> : <ImageIcon aria-hidden="true" className="text-ember/55" size={mode === 'thumbnail' ? 17 : 28} />}
+          {mode !== 'thumbnail' ? <span className="mt-3 text-[0.68rem] font-medium uppercase tracking-[0.2em]">{status === 'error' ? 'Image unavailable' : status === 'loading' ? 'Preparing image' : 'Awaiting garment imagery'}</span> : null}
+          {status === 'error' && mode !== 'thumbnail' ? <button className="mt-3 rounded-full border border-ember/45 px-3 py-1.5 text-xs text-stardust/76 transition hover:bg-ember/12 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ember" onClick={retry} type="button">Try image again</button> : null}
         </div>
       </AtelierImageFrame>
     );

@@ -28,6 +28,13 @@ as $$
     when 'design_annotations' then array['garment_id','asset_id','anchor_json','body','status']
     when 'materials' then array['material_code','name','category','composition','status','archived_at']
     when 'material_variants' then array['material_id','color_name','color_hex','width','width_unit','weight_gsm','sku','status']
+    when 'material_variant_profiles' then array[
+      'variant_id','country_of_origin','secondary_colors','weave_or_knit',
+      'stretch','opacity','drape','hand_feel','texture','structure','rarity',
+      'best_uses','care_notes','mood_tags','lore_note','private_notes',
+      'purchase_date','storage_location','bin_number','shelf','storage_status'
+    ]
+    when 'material_variant_media' then array['variant_id','asset_id','role','sort_order','framing_json']
     when 'inventory_entries' then array['variant_id','entry_type','quantity','unit','occurred_at','note']
     when 'garment_materials' then array['garment_id','variant_id','role','placement','required_quantity','reserved_quantity','unit','status']
     when 'components' then array['component_code','name','category','spec_json','status','archived_at']
