@@ -137,6 +137,41 @@ export function moveConstructionSection(state: CanonicalWorkspaceState, sectionI
   return { ...state, constructionSections: state.constructionSections.map((item) => positions.has(item.id) ? touch({ ...item, sortOrder: positions.get(item.id)! }) : item) };
 }
 
+export function updateConstructionSection(state: CanonicalWorkspaceState, sectionId: string, patch: Pick<CanonicalConstructionSection, 'name' | 'status'>) {
+  const current = state.constructionSections.find((item) => item.id === sectionId);
+  if (!current) throw new Error('Construction section not found.');
+  if (!patch.name.trim()) throw new Error('Construction section name is required.');
+  const section = touch({ ...current, name: patch.name.trim(), status: patch.status });
+  return { section, state: { ...state, constructionSections: state.constructionSections.map((item) => item.id === sectionId ? section : item) } };
+}
+
+/** Removes a garment-owned section and only its owned steps/detail records. */
+export function removeConstructionSection(state: CanonicalWorkspaceState, sectionId: string) {
+  const current = state.constructionSections.find((item) => item.id === sectionId);
+  if (!current) throw new Error('Construction section not found.');
+  const stepIds = new Set(state.constructionSteps.filter((item) => item.sectionId === sectionId).map((item) => item.id));
+  const sections = state.constructionSections.filter((item) => item.id !== sectionId);
+  const positions = new Map(sections.filter((item) => item.specId === current.specId).sort(bySort).map((item, index) => [item.id, index]));
+  return { state: { ...state, constructionSections: sections.map((item) => positions.has(item.id) ? touch({ ...item, sortOrder: positions.get(item.id)! }) : item), constructionSteps: state.constructionSteps.filter((item) => !stepIds.has(item.id)), constructionDetails: state.constructionDetails.filter((item) => !stepIds.has(item.stepId)) } };
+}
+
+/** Duplicates a section into new garment-owned records; the source template/section stays unchanged. */
+export function duplicateConstructionSection(state: CanonicalWorkspaceState, sectionId: string) {
+  const source = state.constructionSections.find((item) => item.id === sectionId);
+  if (!source) throw new Error('Construction section not found.');
+  let next = createConstructionSection(state, source.specId, `${source.name} (copy)`).state;
+  const duplicate = next.constructionSections.at(-1)!;
+  for (const step of state.constructionSteps.filter((item) => item.sectionId === source.id).sort(bySort)) {
+    const copied = addConstructionStep(next, duplicate.id, { machine: step.machine, machineRequired: step.machineRequired, operation: step.operation, seamAllowance: step.seamAllowance, status: 'draft', stitchRequired: step.stitchRequired, stitchSpec: step.stitchSpec });
+    next = copied.state;
+    for (const detail of state.constructionDetails.filter((item) => item.stepId === step.id).sort(bySort)) {
+      const added = addConstructionDetail(next, copied.step.id, { anchor: detail.anchor, assetId: detail.assetId, callout: detail.callout, severity: detail.severity });
+      next = added.state;
+    }
+  }
+  return { section: duplicate, state: next };
+}
+
 export function addConstructionStep(state: CanonicalWorkspaceState, sectionId: string, input: ConstructionStepInput) {
   const section = state.constructionSections.find((item) => item.id === sectionId);
   if (!section) throw new Error('Construction section not found.');
@@ -167,6 +202,40 @@ export function moveConstructionStep(state: CanonicalWorkspaceState, stepId: str
   [ordered[index], ordered[target]] = [ordered[target], ordered[index]];
   const positions = new Map(ordered.map((item, position) => [item.id, position]));
   return { ...state, constructionSteps: state.constructionSteps.map((item) => positions.has(item.id) ? touch({ ...item, sortOrder: positions.get(item.id)!, stepNumber: positions.get(item.id)! + 1 }) : item) };
+}
+
+export function updateConstructionStep(state: CanonicalWorkspaceState, stepId: string, patch: Pick<CanonicalConstructionStep, 'machine' | 'machineRequired' | 'operation' | 'seamAllowance' | 'status' | 'stitchRequired' | 'stitchSpec'>) {
+  const current = requireStep(state, stepId);
+  assertConstructionStep(patch);
+  const step = touch({ ...current, ...patch, machine: patch.machine.trim(), operation: patch.operation.trim(), stitchSpec: patch.stitchSpec.trim(), seamAllowance: patch.seamAllowance == null ? null : decimal(patch.seamAllowance) });
+  return { step, state: { ...state, constructionSteps: state.constructionSteps.map((item) => item.id === stepId ? step : item) } };
+}
+
+export function duplicateConstructionStep(state: CanonicalWorkspaceState, stepId: string) {
+  const current = requireStep(state, stepId);
+  return addConstructionStep(state, current.sectionId, { machine: current.machine, machineRequired: current.machineRequired, operation: `${current.operation} (copy)`, seamAllowance: current.seamAllowance, status: 'draft', stitchRequired: current.stitchRequired, stitchSpec: current.stitchSpec });
+}
+
+export function removeConstructionStep(state: CanonicalWorkspaceState, stepId: string) {
+  const current = requireStep(state, stepId);
+  const steps = state.constructionSteps.filter((item) => item.id !== stepId);
+  const positions = new Map(steps.filter((item) => item.sectionId === current.sectionId).sort(bySort).map((item, index) => [item.id, index]));
+  return { state: { ...state, constructionSteps: steps.map((item) => positions.has(item.id) ? touch({ ...item, sortOrder: positions.get(item.id)!, stepNumber: positions.get(item.id)! + 1 }) : item), constructionDetails: state.constructionDetails.filter((item) => item.stepId !== stepId) } };
+}
+
+/** Moves the same canonical step to the end of another garment-owned section. */
+export function moveConstructionStepToSection(state: CanonicalWorkspaceState, stepId: string, sectionId: string) {
+  const current = requireStep(state, stepId);
+  const destination = state.constructionSections.find((item) => item.id === sectionId);
+  if (!destination) throw new Error('Destination construction section not found.');
+  const source = state.constructionSections.find((item) => item.id === current.sectionId);
+  if (!source || source.specId !== destination.specId) throw new Error('Construction steps can only move within the same garment specification.');
+  if (current.sectionId === sectionId) return state;
+  const without = state.constructionSteps.filter((item) => item.id !== stepId);
+  const moved = touch({ ...current, sectionId, sortOrder: without.filter((item) => item.sectionId === sectionId).length, stepNumber: without.filter((item) => item.sectionId === sectionId).length + 1 });
+  const all = [...without, moved];
+  const sourcePositions = new Map(all.filter((item) => item.sectionId === source.id).sort(bySort).map((item, index) => [item.id, index]));
+  return { ...state, constructionSteps: all.map((item) => sourcePositions.has(item.id) ? touch({ ...item, sortOrder: sourcePositions.get(item.id)!, stepNumber: sourcePositions.get(item.id)! + 1 }) : item) };
 }
 
 export function addConstructionDetail(state: CanonicalWorkspaceState, stepId: string, input: ConstructionDetailInput) {

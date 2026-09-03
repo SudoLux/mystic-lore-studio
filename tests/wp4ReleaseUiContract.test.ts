@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 
 const page = readFileSync(new URL('../src/pages/TechnicalStudio/ReleaseStudio.tsx', import.meta.url), 'utf8');
 const bomPage = readFileSync(new URL('../src/pages/TechnicalStudio/BomWorkspace.tsx', import.meta.url), 'utf8');
+const constructionPage = readFileSync(new URL('../src/pages/TechnicalStudio/ConstructionWorkspace.tsx', import.meta.url), 'utf8');
 const shell = readFileSync(new URL('../src/pages/TechnicalStudio/TechnicalStudioPage.tsx', import.meta.url), 'utf8');
 
 describe('WP4 BOM, construction, release, and export UI contracts', () => {
@@ -19,14 +20,14 @@ describe('WP4 BOM, construction, release, and export UI contracts', () => {
   });
 
   it('provides stable sequence ordering plus keyboard move controls and anchored detail records', () => {
-    expect(page).toContain('draggable');
-    expect(page).toContain('Move ${step.operation} up');
-    expect(page).toContain('Move ${step.operation} down');
-    expect(page).toContain('Move section ${section.name} up');
-    expect(page).toContain('Move section ${section.name} down');
-    expect(page).toContain('Anchor X');
-    expect(page).toContain('stable detail');
-    expect(page).toContain('Template applications');
+    expect(constructionPage).toContain('draggable');
+    expect(constructionPage).toContain('Move ${step.operation} up');
+    expect(constructionPage).toContain('Move ${step.operation} down');
+    expect(constructionPage).toContain('Move ${section.name} up');
+    expect(constructionPage).toContain('Move ${section.name} down');
+    expect(constructionPage).toContain('Visual evidence');
+    expect(constructionPage).toContain('Save as template');
+    expect(constructionPage).toContain('moveStepToSection');
   });
 
   it('shows grouped validation, audited waivers, non-waivable privacy, and export stages', () => {

@@ -8,16 +8,22 @@ import {
   captureConstructionTemplate,
   createBomItem,
   createConstructionSection,
+  duplicateConstructionSection,
+  duplicateConstructionStep,
   createMeasurementSet,
   createPomPoint,
   createSpec,
   generateDeterministicTechPack,
   moveConstructionStep,
   moveConstructionSection,
+  moveConstructionStepToSection,
+  removeConstructionSection,
+  removeConstructionStep,
   removeBomItem,
   registerFlat,
   releaseTechnicalSpec,
   setBomSubstitute,
+  updateConstructionStep,
   upsertMeasurementValue,
   validateRelease,
 } from '../src/domains/technical';
@@ -100,6 +106,25 @@ describe('WP4 BOM, construction, release, and deterministic tech pack', () => {
     captured.template.payload = { sections: [{ name: 'Changed later', steps: [] }] };
     expect(applied.state.constructionSteps.find((item) => item.id === copiedStepId)?.operation).toBe(copiedOperation);
     expect(applied.application.mapping.sourceVersion).toBe(1);
+  });
+
+  it('keeps construction edits, duplicates, cross-section moves, and removals garment-owned', async () => {
+    const start = await baseWorkspace();
+    const body = createConstructionSection(start.state, start.specId, 'Body assembly');
+    const collar = createConstructionSection(body.state, start.specId, 'Collar construction');
+    const first = addConstructionStep(collar.state, body.section.id, { operation: 'Join shoulders', machine: 'Single needle', machineRequired: true, stitchSpec: '301', stitchRequired: true, seamAllowance: .5, status: 'ready' });
+    const edited = updateConstructionStep(first.state, first.step.id, { operation: 'Join shoulder seams', machine: 'Single needle', machineRequired: true, stitchSpec: '301 Lockstitch', stitchRequired: true, seamAllowance: .5, status: 'approved' });
+    expect(edited.step).toMatchObject({ operation: 'Join shoulder seams', status: 'approved' });
+    const duplicate = duplicateConstructionStep(edited.state, first.step.id);
+    expect(duplicate.step.id).not.toBe(first.step.id);
+    const moved = moveConstructionStepToSection(duplicate.state, duplicate.step.id, collar.section.id);
+    expect(moved.constructionSteps.find((step) => step.id === duplicate.step.id)?.sectionId).toBe(collar.section.id);
+    const removedStep = removeConstructionStep(moved, first.step.id);
+    expect(removedStep.state.constructionSteps.some((step) => step.id === first.step.id)).toBe(false);
+    const copiedSection = duplicateConstructionSection(removedStep.state, collar.section.id);
+    expect(copiedSection.section.id).not.toBe(collar.section.id);
+    const removedSection = removeConstructionSection(copiedSection.state, collar.section.id);
+    expect(removedSection.state.constructionSections.some((section) => section.id === collar.section.id)).toBe(false);
   });
 
   it('requires audited warning waivers and rejects privacy waivers', async () => {

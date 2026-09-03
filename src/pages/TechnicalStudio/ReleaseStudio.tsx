@@ -1,17 +1,17 @@
-import { useEffect, useRef, useState, type Dispatch, type DragEvent, type FormEvent, type InputHTMLAttributes, type ReactNode, type SetStateAction } from 'react';
-import { AlertTriangle, ArrowDown, ArrowUp, Check, ClipboardCheck, Download, FileArchive, FileUp, GripVertical, PackageCheck, Plus, ShieldAlert, Sparkles } from 'lucide-react';
+import { useEffect, useRef, useState, type Dispatch, type FormEvent, type InputHTMLAttributes, type SetStateAction } from 'react';
+import { Check, ClipboardCheck, Download, FileArchive, FileUp, PackageCheck, ShieldAlert } from 'lucide-react';
 import { Badge } from '../../components/shared/Badge';
 import { Button } from '../../components/shared/Button';
 import { Card } from '../../components/shared/Card';
-import { RelationshipPicker } from '../../components/shared/RelationshipPicker';
-import { buildStructuredTechPack, releaseRulesetVersion, validateConstruction, validateRelease, type ReleaseWaiverInput } from '../../domains/technical';
-import { relationshipOptions, type CanonicalTechnicalFile, type CanonicalValidationIssue, type CanonicalWorkspaceState } from '../../domains/workspace';
+import { buildStructuredTechPack, releaseRulesetVersion, validateRelease, type ReleaseWaiverInput } from '../../domains/technical';
+import { type CanonicalTechnicalFile, type CanonicalValidationIssue } from '../../domains/workspace';
 import { useReleaseStudio } from '../../hooks/useReleaseStudio';
 import { recordClientEvent } from '../../lib/observability';
 import { useTechnicalStudio } from '../../hooks/useTechnicalStudio';
 import { cn } from '../../lib/classes';
 import { MeasurementStudio } from './MeasurementStudio';
 import { BomWorkspace } from './BomWorkspace';
+import { ConstructionWorkspace } from './ConstructionWorkspace';
 
 export type ReleaseSection = 'bom' | 'construction' | 'grading-files' | 'release';
 
@@ -79,6 +79,7 @@ function BomInspector({ item, items, state, substituteBom, updateBom }: { item: 
 }
 
 */
+/* Superseded construction workspace retained temporarily for historical source context.
 function ConstructionWorkspace({ specId }: { specId: string }) {
   const { applyTemplate, captureTemplate, createDetail, createSection, createStep, reorderSection, reorderStep, setDetailStatus, state } = useReleaseStudio();
   const [selectedStepId, setSelectedStepId] = useState('');
@@ -109,6 +110,7 @@ function ConstructionInspector({ createDetail, selectedStep, setDetailStatus, st
   return <Card><h2 className="font-display text-xl">Detail inspector</h2><p className="mt-2 text-sm"><strong>{selectedStep.stepNumber}. {selectedStep.operation}</strong></p><dl className="mt-3 grid grid-cols-2 gap-3 text-sm"><Detail label="Machine" value={selectedStep.machine || 'Not required'} /><Detail label="Stitch / seam" value={selectedStep.stitchSpec || 'Not required'} /><Detail label="Seam allowance" value={selectedStep.seamAllowance == null ? 'Not specified' : String(selectedStep.seamAllowance)} /><Detail label="Stable ID" value={selectedStep.id.slice(0, 12)} /></dl><form className="mt-5 space-y-3" onSubmit={submit}><RelationshipPicker emptyLabel="No technical or media assets are available." label="Visual detail asset" onSelect={setAssetId} options={relationshipOptions(state, 'asset')} selectedId={assetId} /><TextField label="Callout" name="callout" required /><div className="grid grid-cols-2 gap-3"><TextField defaultValue="0.5" disabled={!assetId} label="Anchor X" max="1" min="0" name="x" step="0.01" type="number" /><TextField defaultValue="0.5" disabled={!assetId} label="Anchor Y" max="1" min="0" name="y" step="0.01" type="number" /></div><label><span className="field-label">Severity</span><select className="field" name="severity"><option value="info">Info</option><option value="warning">Warning</option><option value="critical">Critical</option></select></label><Button type="submit">Add visual callout</Button></form>{notice ? <p aria-live="polite" className="mt-3 text-sm text-teal">{notice}</p> : null}{details.length ? <ul className="mt-4 space-y-2">{details.map((detail) => <li className="rounded-xl border border-bronze/20 p-3 text-sm" key={detail.id}><div className="flex justify-between gap-2"><strong>{detail.callout}</strong><Badge variant={detail.severity === 'critical' ? 'ember' : 'blue'}>{detail.status}</Badge></div><p className="mt-1 text-xs text-stardust/45">{detail.anchor ? `Anchor ${Math.round(detail.anchor.x * 100)}%, ${Math.round(detail.anchor.y * 100)}%` : 'Text callout'} · stable detail {detail.id.slice(0, 8)}</p>{detail.status === 'open' ? <Button className="mt-2" onClick={() => setDetailStatus(detail.id, 'resolved')} size="sm">Resolve</Button> : null}</li>)}</ul> : null}</Card>;
 }
 
+*/
 function FilesWorkspace({ specId }: { specId: string }) {
   const { state, uploadTechnicalFile } = useTechnicalStudio();
   const [fileType, setFileType] = useState<CanonicalTechnicalFile['fileType']>('pattern');
@@ -155,13 +157,10 @@ function ValidationSummary({ issues, setWaiverDrafts, waiverDrafts }: { issues: 
   return <div className="space-y-3">{domains.map((domain) => <Card key={domain}><h2 className="font-display text-xl capitalize">{domain} checks</h2><ul className="mt-3 space-y-3">{issues.filter((item) => (item.domain ?? 'release') === domain).map((item) => { const draft = waiverDrafts[item.code] ?? { enabled: false, reason: '', task: '' }; return <li className="rounded-xl border border-bronze/20 p-3 text-sm" id={`validation-${item.field}`} key={`${item.code}:${item.entityId ?? item.field}`}><div className="flex items-start justify-between gap-3"><div><strong>{item.message}</strong><p className="mt-1 text-xs text-stardust/42">{item.code} · field {item.field}</p></div><Badge variant={item.severity === 'warning' ? 'bronze' : 'ember'}>{item.severity}</Badge></div>{item.waivable && item.domain !== 'privacy' ? <div className="mt-3 space-y-2 border-t border-bronze/18 pt-3"><label className="flex min-h-11 items-center gap-2"><input checked={draft.enabled} onChange={(event) => update(item.code, { enabled: event.target.checked })} type="checkbox" />Request audited waiver</label>{draft.enabled ? <><TextField label="Reason" name={`${item.code}-reason`} onChange={(event) => update(item.code, { reason: event.target.value })} value={draft.reason} /><TextField label="Follow-up task" name={`${item.code}-task`} onChange={(event) => update(item.code, { task: event.target.value })} value={draft.task} /></> : null}</div> : <p className="mt-2 text-xs text-ember">This rule cannot be waived.</p>}</li>; })}</ul></Card>)}</div>;
 }
 
-function ValidationCards({ issues }: { issues: CanonicalValidationIssue[] }) { return <Card><div className="flex items-center gap-2"><AlertTriangle className={issues.length ? 'text-ember' : 'text-teal'} size={17} /><h2 className="font-display text-xl">Validation</h2></div>{issues.length ? <ul className="mt-3 space-y-2 text-sm">{issues.map((item) => <li key={`${item.code}:${item.entityId ?? item.field}`}>• {item.message}</li>)}</ul> : <p className="mt-3 text-sm text-teal">This domain is release ready.</p>}</Card>; }
-function CandidateNotice({ text }: { text: string }) { return <Card className="border-celestial/35"><div className="flex items-start gap-3"><Sparkles aria-hidden="true" className="mt-0.5 text-celestial" size={18} /><p className="text-sm leading-6 text-stardust/62">{text}</p></div></Card>; }
 function PageHeader({ description, eyebrow, title }: { description: string; eyebrow: string; title: string }) { return <header><Badge variant="bronze">{eyebrow}</Badge><h1 className="font-display mt-3 text-4xl">{title}</h1><p className="mt-2 max-w-3xl text-sm leading-6 text-stardust/58">{description}</p></header>; }
 function Notice({ text }: { text: string }) { return <p aria-live="polite" className="rounded-xl border border-bronze/25 bg-midnight/35 px-4 py-3 text-sm">{text}</p>; }
 function Empty({ text }: { text: string }) { return <p className="m-4 rounded-xl border border-dashed border-bronze/28 p-4 text-sm text-stardust/48">{text}</p>; }
 function Detail({ label, value }: { label: string; value: string }) { return <div><dt className="text-xs uppercase tracking-[.08em] text-stardust/42">{label}</dt><dd className="mt-1 break-words tabular-nums">{value}</dd></div>; }
 function Stage({ done, label }: { done: boolean; label: string }) { return <li className="flex min-h-10 items-center gap-3"><span className={cn('grid h-6 w-6 place-items-center rounded-full border', done ? 'border-teal bg-teal/15 text-teal' : 'border-bronze/30 text-stardust/35')}>{done ? <Check size={14} /> : '·'}</span>{label}</li>; }
-function IconButton({ children, label, onClick }: { children: ReactNode; label: string; onClick: () => void }) { return <button aria-label={label} className="grid min-h-11 min-w-11 place-items-center rounded-lg text-stardust/55 hover:bg-stardust/8 focus:outline-none focus:ring-2 focus:ring-ember/55" onClick={(event) => { event.stopPropagation(); onClick(); }} type="button">{children}</button>; }
 function TextField(props: InputHTMLAttributes<HTMLInputElement> & { label: string; name: string }) { const { label, ...input } = props; return <label><span className="field-label">{label}</span><input className="field" {...input} /></label>; }
 function message(error: unknown) { return error instanceof Error ? error.message : 'The requested change could not be completed.'; }

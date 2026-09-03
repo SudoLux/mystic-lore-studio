@@ -5,14 +5,21 @@ import {
   captureConstructionTemplate,
   createBomItem,
   createConstructionSection,
+  duplicateConstructionSection,
+  duplicateConstructionStep,
   moveBomItem,
   removeBomItem,
   moveConstructionSection,
   moveConstructionStep,
+  moveConstructionStepToSection,
+  removeConstructionSection,
+  removeConstructionStep,
   releaseTechnicalSpec,
   setBomSubstitute,
   setConstructionDetailStatus,
   updateBomItem,
+  updateConstructionSection,
+  updateConstructionStep,
   type BomItemInput,
   type ConstructionDetailInput,
   type ConstructionStepInput,
@@ -31,8 +38,15 @@ export function useReleaseStudio() {
   const reorderBom = (itemId: string, direction: -1 | 1) => commitWorkspace((current) => moveBomItem(current, itemId, direction));
   const removeBom = (itemId: string) => commitWorkspace((current) => removeBomItem(current, itemId).state);
   const createSection = (specId: string, name: string) => { let id = ''; commitWorkspace((current) => { const result = createConstructionSection(current, specId, name); id = result.section.id; return result.state; }); return id; };
+  const duplicateSection = (sectionId: string) => { let id = ''; commitWorkspace((current) => { const result = duplicateConstructionSection(current, sectionId); id = result.section.id; return result.state; }); return id; };
   const reorderSection = (sectionId: string, direction: -1 | 1) => commitWorkspace((current) => moveConstructionSection(current, sectionId, direction));
   const createStep = (sectionId: string, input: ConstructionStepInput) => { let id = ''; commitWorkspace((current) => { const result = addConstructionStep(current, sectionId, input); id = result.step.id; return result.state; }); return id; };
+  const updateSection = (sectionId: string, patch: { name: string; status: 'draft' | 'approved' | 'superseded' }) => commitWorkspace((current) => updateConstructionSection(current, sectionId, patch).state);
+  const removeSection = (sectionId: string) => commitWorkspace((current) => removeConstructionSection(current, sectionId).state);
+  const updateStep = (stepId: string, patch: Required<ConstructionStepInput>) => commitWorkspace((current) => updateConstructionStep(current, stepId, patch).state);
+  const removeStep = (stepId: string) => commitWorkspace((current) => removeConstructionStep(current, stepId).state);
+  const duplicateStep = (stepId: string) => { let id = ''; commitWorkspace((current) => { const result = duplicateConstructionStep(current, stepId); id = result.step.id; return result.state; }); return id; };
+  const moveStepToSection = (stepId: string, sectionId: string) => commitWorkspace((current) => moveConstructionStepToSection(current, stepId, sectionId));
   const reorderStep = (stepId: string, direction: -1 | 1) => commitWorkspace((current) => moveConstructionStep(current, stepId, direction));
   const createDetail = (stepId: string, input: ConstructionDetailInput) => { let id = ''; commitWorkspace((current) => { const result = addConstructionDetail(current, stepId, input); id = result.detail.id; return result.state; }); return id; };
   const setDetailStatus = (detailId: string, status: CanonicalConstructionDetail['status']) => commitWorkspace((current) => setConstructionDetailStatus(current, detailId, status));
@@ -66,5 +80,5 @@ export function useReleaseStudio() {
     const committed = await requireFreshWorkspace();
     return { ...result, state: committed };
   };
-  return { applyTemplate, captureTemplate, createBom, createDetail, createSection, createStep, currentActorId, release, removeBom, reorderBom, reorderSection, reorderStep, setDetailStatus, state, substituteBom, updateBom };
+  return { applyTemplate, captureTemplate, createBom, createDetail, createSection, createStep, currentActorId, duplicateSection, duplicateStep, moveStepToSection, release, removeBom, removeSection, removeStep, reorderBom, reorderSection, reorderStep, setDetailStatus, state, substituteBom, updateBom, updateSection, updateStep };
 }
