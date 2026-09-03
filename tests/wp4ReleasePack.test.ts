@@ -14,6 +14,7 @@ import {
   generateDeterministicTechPack,
   moveConstructionStep,
   moveConstructionSection,
+  removeBomItem,
   registerFlat,
   releaseTechnicalSpec,
   setBomSubstitute,
@@ -67,6 +68,17 @@ describe('WP4 BOM, construction, release, and deterministic tech pack', () => {
     const alternate = createBomItem(primary.state, { specId: start.specId, itemType: 'custom', description: 'Alternate button', intentionalFreeText: true, quantity: 6, unit: 'each', placement: 'Center front', status: 'approved' });
     const substituted = setBomSubstitute(alternate.state, primary.item.id, alternate.item.id, 4.5);
     expect(substituted.item).toMatchObject({ id: primary.item.id, substituteItemId: alternate.item.id, status: 'substituted', costImpact: 4.5 });
+  });
+
+  it('removes only a garment BOM row, compacts order, and protects active substitute links', async () => {
+    const start = await baseWorkspace();
+    const first = createBomItem(start.state, { specId: start.specId, itemType: 'custom', description: 'Shell button', intentionalFreeText: true, quantity: 6, unit: 'each', placement: 'Center front', status: 'approved' });
+    const second = createBomItem(first.state, { specId: start.specId, itemType: 'custom', description: 'Spare button', intentionalFreeText: true, quantity: 1, unit: 'each', placement: 'Packaging', status: 'approved' });
+    const linked = setBomSubstitute(second.state, first.item.id, second.item.id);
+    expect(() => removeBomItem(linked.state, second.item.id)).toThrow(/approved substitute/);
+    const removed = removeBomItem(linked.state, first.item.id);
+    expect(removed.state.bomItems.find((item) => item.id === first.item.id)).toBeUndefined();
+    expect(removed.state.bomItems.find((item) => item.id === second.item.id)).toMatchObject({ sortOrder: 0 });
   });
 
   it('reorders construction by stable identity and copies templates without later silent rewrites', async () => {

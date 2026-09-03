@@ -6,6 +6,7 @@ import {
   createBomItem,
   createConstructionSection,
   moveBomItem,
+  removeBomItem,
   moveConstructionSection,
   moveConstructionStep,
   releaseTechnicalSpec,
@@ -28,6 +29,7 @@ export function useReleaseStudio() {
   const updateBom = (itemId: string, patch: Partial<Omit<CanonicalBomItem, 'id' | 'studioId' | 'createdAt' | 'updatedAt' | 'revision' | 'specId' | 'sortOrder'>>) => commitWorkspace((current) => updateBomItem(current, itemId, patch).state);
   const substituteBom = (itemId: string, substituteId: string | null, costImpact?: number) => commitWorkspace((current) => setBomSubstitute(current, itemId, substituteId, costImpact).state);
   const reorderBom = (itemId: string, direction: -1 | 1) => commitWorkspace((current) => moveBomItem(current, itemId, direction));
+  const removeBom = (itemId: string) => commitWorkspace((current) => removeBomItem(current, itemId).state);
   const createSection = (specId: string, name: string) => { let id = ''; commitWorkspace((current) => { const result = createConstructionSection(current, specId, name); id = result.section.id; return result.state; }); return id; };
   const reorderSection = (sectionId: string, direction: -1 | 1) => commitWorkspace((current) => moveConstructionSection(current, sectionId, direction));
   const createStep = (sectionId: string, input: ConstructionStepInput) => { let id = ''; commitWorkspace((current) => { const result = addConstructionStep(current, sectionId, input); id = result.step.id; return result.state; }); return id; };
@@ -64,5 +66,5 @@ export function useReleaseStudio() {
     const committed = await requireFreshWorkspace();
     return { ...result, state: committed };
   };
-  return { applyTemplate, captureTemplate, createBom, createDetail, createSection, createStep, currentActorId, release, reorderBom, reorderSection, reorderStep, setDetailStatus, state, substituteBom, updateBom };
+  return { applyTemplate, captureTemplate, createBom, createDetail, createSection, createStep, currentActorId, release, removeBom, reorderBom, reorderSection, reorderStep, setDetailStatus, state, substituteBom, updateBom };
 }

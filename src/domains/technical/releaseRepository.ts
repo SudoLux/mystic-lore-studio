@@ -82,6 +82,28 @@ export function moveBomItem(state: CanonicalWorkspaceState, itemId: string, dire
   return { ...state, bomItems: state.bomItems.map((item) => positions.has(item.id) ? touch({ ...item, sortOrder: positions.get(item.id)! }) : item) };
 }
 
+/**
+ * Removes a BOM relationship from this technical specification only. The linked
+ * Material Vault/component records and their private media remain untouched.
+ * A row that is actively used as another row's approved substitute must be
+ * detached from that relationship first, so we never leave a dangling link.
+ */
+export function removeBomItem(state: CanonicalWorkspaceState, itemId: string) {
+  const current = requireBomItem(state, itemId);
+  if (state.bomItems.some((item) => item.substituteItemId === itemId)) {
+    throw new Error('This BOM item is an approved substitute. Remove that substitute relationship before removing the item.');
+  }
+  const remaining = state.bomItems.filter((item) => item.id !== itemId);
+  const orderedSiblings = remaining.filter((item) => item.specId === current.specId).sort(bySort);
+  const positions = new Map(orderedSiblings.map((item, position) => [item.id, position]));
+  return {
+    state: {
+      ...state,
+      bomItems: remaining.map((item) => positions.has(item.id) ? touch({ ...item, sortOrder: positions.get(item.id)! }) : item),
+    },
+  };
+}
+
 export function bomItemLabel(state: CanonicalWorkspaceState, item: CanonicalBomItem) {
   if (item.itemType === 'material_variant') {
     const variant = state.materialVariants.find((candidate) => candidate.id === item.materialVariantId);

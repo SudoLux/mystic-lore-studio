@@ -1,27 +1,17 @@
 import { useEffect, useRef, useState, type Dispatch, type DragEvent, type FormEvent, type InputHTMLAttributes, type ReactNode, type SetStateAction } from 'react';
-import { AlertTriangle, ArrowDown, ArrowUp, Check, ClipboardCheck, Download, FileArchive, FileUp, GripVertical, Link2, PackageCheck, Plus, ShieldAlert, Sparkles } from 'lucide-react';
+import { AlertTriangle, ArrowDown, ArrowUp, Check, ClipboardCheck, Download, FileArchive, FileUp, GripVertical, PackageCheck, Plus, ShieldAlert, Sparkles } from 'lucide-react';
 import { Badge } from '../../components/shared/Badge';
 import { Button } from '../../components/shared/Button';
 import { Card } from '../../components/shared/Card';
 import { RelationshipPicker } from '../../components/shared/RelationshipPicker';
-import {
-  bomItemLabel,
-  buildStructuredTechPack,
-  componentQuantityUnits,
-  materialQuantityUnits,
-  quantityUnits,
-  releaseRulesetVersion,
-  validateBom,
-  validateConstruction,
-  validateRelease,
-  type ReleaseWaiverInput,
-} from '../../domains/technical';
-import { relationshipOptions, type CanonicalBomItem, type CanonicalTechnicalFile, type CanonicalValidationIssue, type CanonicalWorkspaceState } from '../../domains/workspace';
+import { buildStructuredTechPack, releaseRulesetVersion, validateConstruction, validateRelease, type ReleaseWaiverInput } from '../../domains/technical';
+import { relationshipOptions, type CanonicalTechnicalFile, type CanonicalValidationIssue, type CanonicalWorkspaceState } from '../../domains/workspace';
 import { useReleaseStudio } from '../../hooks/useReleaseStudio';
 import { recordClientEvent } from '../../lib/observability';
 import { useTechnicalStudio } from '../../hooks/useTechnicalStudio';
 import { cn } from '../../lib/classes';
 import { MeasurementStudio } from './MeasurementStudio';
+import { BomWorkspace } from './BomWorkspace';
 
 export type ReleaseSection = 'bom' | 'construction' | 'grading-files' | 'release';
 
@@ -35,7 +25,7 @@ export function ReleaseStudio({ garmentId, section }: { garmentId: string; secti
   return <ReleaseWorkspace specId={spec.id} />;
 }
 
-function BomWorkspace({ specId }: { specId: string }) {
+/* Superseded BOM implementation retained temporarily for historical source context.
   const { createBom, reorderBom, state, substituteBom, updateBom } = useReleaseStudio();
   const [itemType, setItemType] = useState<CanonicalBomItem['itemType']>('material_variant');
   const [variantId, setVariantId] = useState('');
@@ -88,6 +78,7 @@ function BomInspector({ item, items, state, substituteBom, updateBom }: { item: 
   return <Card><div className="flex items-center gap-2"><Link2 aria-hidden="true" size={17} /><h2 className="font-display text-xl">Component detail</h2></div><div className="mt-4 grid gap-4 lg:grid-cols-2"><div><p className="text-xs uppercase tracking-[.1em] text-stardust/45">Selected record</p><h3 className="mt-2 text-lg font-semibold">{bomItemLabel(state, item)}</h3><dl className="mt-3 grid grid-cols-2 gap-3 text-sm"><Detail label="Stable row ID" value={item.id.slice(0, 12)} /><Detail label="Downstream placement" value={item.placement || 'Missing'} /><Detail label="Supplier offers" value={String(offers.length)} /><Detail label="Current cost" value={`${item.currency} ${(item.unitCost * item.quantity).toFixed(2)}`} /></dl><div className="mt-4 flex gap-2"><Button onClick={() => updateBom(item.id, { status: 'approved', shortageQuantity: 0 })} size="sm">Approve row</Button>{item.shortageQuantity > 0 ? <Badge variant="ember">short {item.shortageQuantity} {item.unit}</Badge> : null}</div></div><div><label><span className="field-label">Approved substitute BOM row</span><select className="field" onChange={(event) => setSubstituteId(event.target.value)} value={substituteId}><option value="">No substitute</option>{items.filter((candidate) => candidate.id !== item.id).map((candidate) => <option key={candidate.id} value={candidate.id}>{bomItemLabel(state, candidate)}</option>)}</select></label><TextField label="Substitution cost impact" name="impact" onChange={(event) => setImpact(event.target.value)} step="0.0001" type="number" value={impact} /><Button className="mt-3" onClick={() => substituteBom(item.id, substituteId || null, Number(impact))} size="sm">Record substitute decision</Button></div></div></Card>;
 }
 
+*/
 function ConstructionWorkspace({ specId }: { specId: string }) {
   const { applyTemplate, captureTemplate, createDetail, createSection, createStep, reorderSection, reorderStep, setDetailStatus, state } = useReleaseStudio();
   const [selectedStepId, setSelectedStepId] = useState('');
@@ -173,6 +164,4 @@ function Detail({ label, value }: { label: string; value: string }) { return <di
 function Stage({ done, label }: { done: boolean; label: string }) { return <li className="flex min-h-10 items-center gap-3"><span className={cn('grid h-6 w-6 place-items-center rounded-full border', done ? 'border-teal bg-teal/15 text-teal' : 'border-bronze/30 text-stardust/35')}>{done ? <Check size={14} /> : '·'}</span>{label}</li>; }
 function IconButton({ children, label, onClick }: { children: ReactNode; label: string; onClick: () => void }) { return <button aria-label={label} className="grid min-h-11 min-w-11 place-items-center rounded-lg text-stardust/55 hover:bg-stardust/8 focus:outline-none focus:ring-2 focus:ring-ember/55" onClick={(event) => { event.stopPropagation(); onClick(); }} type="button">{children}</button>; }
 function TextField(props: InputHTMLAttributes<HTMLInputElement> & { label: string; name: string }) { const { label, ...input } = props; return <label><span className="field-label">{label}</span><input className="field" {...input} /></label>; }
-function supplierLabel(state: CanonicalWorkspaceState, supplierItemId: string | null) { const offer = state.supplierItems.find((item) => item.id === supplierItemId); return offer ? `${state.suppliers.find((item) => item.id === offer.supplierId)?.name ?? 'Supplier'} · ${offer.currency} ${offer.unitCost}` : 'Not selected'; }
-function signedMoney(value: number, currency: string) { return `${value > 0 ? '+' : ''}${currency} ${value.toFixed(2)}`; }
 function message(error: unknown) { return error instanceof Error ? error.message : 'The requested change could not be completed.'; }

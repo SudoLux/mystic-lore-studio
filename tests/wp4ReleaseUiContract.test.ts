@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 
 const page = readFileSync(new URL('../src/pages/TechnicalStudio/ReleaseStudio.tsx', import.meta.url), 'utf8');
+const bomPage = readFileSync(new URL('../src/pages/TechnicalStudio/BomWorkspace.tsx', import.meta.url), 'utf8');
 const shell = readFileSync(new URL('../src/pages/TechnicalStudio/TechnicalStudioPage.tsx', import.meta.url), 'utf8');
 
 describe('WP4 BOM, construction, release, and export UI contracts', () => {
@@ -10,10 +11,11 @@ describe('WP4 BOM, construction, release, and export UI contracts', () => {
     expect(shell).toContain('Grading & files');
   });
 
-  it('keeps BOM links, intentional free text, supplier offers, substitutes, shortages, and cost visible', () => {
-    for (const label of ['Item type', 'intentional free text', 'Supplier offer', 'Approved substitute BOM row', 'Shortage', 'Cost impact', 'Component detail']) expect(page).toContain(label);
-    expect(page).toContain('RelationshipPicker');
-    expect(page).toContain('md:hidden');
+  it('keeps BOM links, private Material Vault imagery, sourcing, substitutes, shortages, and cost contextual', () => {
+    for (const label of ['Add BOM item', 'Search Material Vault', 'Sourcing details', 'Approved substitutes', 'Shortage', 'Estimated BOM cost', 'Component inspector']) expect(bomPage).toContain(label);
+    expect(bomPage).toContain('canonicalMaterialVariantCover');
+    expect(bomPage).toContain('CanonicalMediaImage');
+    expect(bomPage).toContain('removeBom');
   });
 
   it('provides stable sequence ordering plus keyboard move controls and anchored detail records', () => {
