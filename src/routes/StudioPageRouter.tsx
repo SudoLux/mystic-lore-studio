@@ -71,14 +71,17 @@ function lazyNamed<TModule extends Record<string, unknown>, TKey extends keyof T
 ) {
   return lazy(async () => {
     try {
-      return { default: (await loader())[key] as ComponentType<any> };
+      const module = await loader();
+      // A matching chunk has loaded, so a future deploy mismatch may recover once.
+      window.sessionStorage.removeItem(chunkRecoveryKey);
+      return { default: module[key] as ComponentType<any> };
     } catch (error) {
       // Netlify can briefly serve a cached entry file while the old hashed
       // route chunk has been retired. One controlled reload obtains matching
       // assets; repeated failures surface a usable recovery state instead.
       if (shouldRecoverStaleChunk(error)) {
         window.sessionStorage.setItem(chunkRecoveryKey, '1');
-        window.location.reload();
+        reloadWithFreshEntry();
         return new Promise<never>(() => undefined);
       }
       throw error;
@@ -87,6 +90,17 @@ function lazyNamed<TModule extends Record<string, unknown>, TKey extends keyof T
 }
 
 const chunkRecoveryKey = 'ml-studio:chunk-recovery';
+
+/**
+ * Netlify deploys hashed route chunks. A query-busted entry request avoids a
+ * browser or edge cache pairing an older HTML entry with a retired chunk while
+ * preserving the current hash route.
+ */
+function reloadWithFreshEntry() {
+  const url = new URL(window.location.href);
+  url.searchParams.set('ml-reload', String(Date.now()));
+  window.location.replace(url.toString());
+}
 
 function shouldRecoverStaleChunk(error: unknown) {
   if (typeof window === 'undefined' || window.sessionStorage.getItem(chunkRecoveryKey)) return false;
@@ -100,6 +114,6 @@ class RouteErrorBoundary extends Component<{ children: ReactNode }, { failed: bo
   componentDidCatch() { window.sessionStorage.removeItem(chunkRecoveryKey); }
   render() {
     if (!this.state.failed) return this.props.children;
-    return <section className="atelier-panel mx-auto max-w-xl rounded-[1.5rem] p-6 text-center"><p className="text-[0.65rem] uppercase tracking-[.18em] text-ember">Studio recovery</p><h1 className="font-display mt-3 text-3xl">This workspace needs a fresh load</h1><p className="mt-3 text-sm leading-6 text-stardust/60">A new Studio version was published while this page was open. Your saved work remains intact.</p><button className="atelier-button mt-6 rounded-xl border border-ember/70 bg-[#d5ab51] px-4 py-3 text-sm font-medium text-midnight" onClick={() => window.location.reload()} type="button">Reload Studio</button></section>;
+    return <section className="atelier-panel mx-auto max-w-xl rounded-[1.5rem] p-6 text-center"><p className="text-[0.65rem] uppercase tracking-[.18em] text-ember">Studio recovery</p><h1 className="font-display mt-3 text-3xl">This workspace needs a fresh load</h1><p className="mt-3 text-sm leading-6 text-stardust/60">A newer Studio build is available, but this tab still has an older page entry. Your saved work remains intact.</p><button className="atelier-button mt-6 rounded-xl border border-ember/70 bg-[#d5ab51] px-4 py-3 text-sm font-medium text-midnight" onClick={reloadWithFreshEntry} type="button">Reload current Studio</button></section>;
   }
 }

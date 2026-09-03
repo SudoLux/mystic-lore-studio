@@ -28,4 +28,10 @@ describe('WP11T-D grading workspace contracts', () => {
     expect(source).toContain('Use grade rule');
     expect(source).toContain('base set remains unchanged');
   });
+
+  it('opens older technical specs safely before their size range is configured', () => {
+    expect(source).toContain('Array.isArray(spec.sizeRange) && spec.sizeRange.length');
+    expect(source).toContain("[spec.baseSize || 'M']");
+    expect(source).toContain('Manage size range');
+  });
 });

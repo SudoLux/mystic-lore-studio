@@ -33,17 +33,19 @@ export function GradingWorkspace({ spec }: { spec: CanonicalTechnicalSpec }) {
 
   if (!state) return null;
   const garment = state.garments.find((item) => item.id === spec.garmentId);
-  const sets = state.measurementSets.filter((item) => item.specId === spec.id);
+  const sets = (state.measurementSets ?? []).filter((item) => item.specId === spec.id);
   const baseSet = sets.find((item) => item.sampleType === 'base') ?? sets[0];
-  const points = state.pomPoints.filter((item) => item.specId === spec.id).sort((a, b) => a.sortOrder - b.sortOrder);
-  const rules = state.gradeRules.filter((item) => item.specId === spec.id);
-  const sizes = spec.sizeRange.length ? spec.sizeRange : [spec.baseSize];
+  const points = (state.pomPoints ?? []).filter((item) => item.specId === spec.id).sort((a, b) => a.sortOrder - b.sortOrder);
+  const rules = (state.gradeRules ?? []).filter((item) => item.specId === spec.id);
+  // Older private specs predate garment-level sizeRange. Treat their base size
+  // as a one-size range until the user deliberately expands it in this workspace.
+  const sizes = Array.isArray(spec.sizeRange) && spec.sizeRange.length ? spec.sizeRange : [spec.baseSize || 'M'];
   const transitions = sizes.slice(1).map((toSize, index) => ({ fromSize: sizes[index], toSize }));
 
   useEffect(() => {
     const selected = rules.find((rule) => rule.id === ruleId);
     const initial: DraftRules = {};
-    const values = selected ? state.gradeRuleValues.filter((value) => value.gradeRuleId === selected.id) : [];
+    const values = selected ? (state.gradeRuleValues ?? []).filter((value) => value.gradeRuleId === selected.id) : [];
     for (const value of values) initial[key(value.pomPointId, value.fromSize, value.toSize)] = value.delta;
     setDraft(initial);
     setOverrides({});
@@ -121,7 +123,7 @@ export function GradingWorkspace({ spec }: { spec: CanonicalTechnicalSpec }) {
       <nav aria-label="Grading workflow" className="flex overflow-x-auto rounded-xl border border-bronze/18 bg-[#12110f] p-1">{['1. Size range & base', '2. Grade rules', '3. Preview', '4. Create graded set'].map((item, index) => <span className={cn('whitespace-nowrap rounded-lg px-3 py-2 text-xs', index === 1 ? 'bg-ember/14 text-ember' : 'text-stardust/52')} key={item}>{item}</span>)}</nav>
       <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_21rem]">
         <div className="space-y-5"><Card className="p-0"><div className="flex flex-wrap items-center justify-between gap-3 border-b border-bronze/16 p-4"><div><p className="text-[.65rem] uppercase tracking-[.16em] text-ember">Grade rules</p><h2 className="font-display mt-1 text-2xl">How each POM changes between sizes</h2></div><div className="flex rounded-lg bg-stardust/[.045] p-1"><ModeButton active={entryMode === 'simple'} onClick={() => setEntryMode('simple')}>Simple</ModeButton><ModeButton active={entryMode === 'advanced'} onClick={() => setEntryMode('advanced')}>Advanced</ModeButton></div></div>
-            <div className="border-b border-bronze/14 px-4 py-3"><label className="block max-w-sm"><span className="field-label">Grade rule library</span><select className="field" onChange={(event) => setRuleId(event.target.value)} value={ruleId}><option value="">New working rule</option>{rules.map((rule) => <option key={rule.id} value={rule.id}>{rule.name} · {rule.sizeRange.join(' / ')}</option>)}</select></label><p className="mt-2 text-xs text-stardust/45">Saved rules are reusable logic. Creating a graded set applies the current preview to this garment only.</p></div>
+            <div className="border-b border-bronze/14 px-4 py-3"><label className="block max-w-sm"><span className="field-label">Grade rule library</span><select className="field" onChange={(event) => setRuleId(event.target.value)} value={ruleId}><option value="">New working rule</option>{rules.map((rule) => <option key={rule.id} value={rule.id}>{rule.name} · {Array.isArray(rule.sizeRange) ? rule.sizeRange.join(' / ') : 'Size range needs review'}</option>)}</select></label><p className="mt-2 text-xs text-stardust/45">Saved rules are reusable logic. Creating a graded set applies the current preview to this garment only.</p></div>
             <div className="overflow-x-auto"><table className="w-full min-w-[48rem] text-left text-sm"><thead className="bg-[#151413] text-[.65rem] uppercase tracking-[.13em] text-stardust/55"><tr><th className="sticky left-0 z-20 min-w-[17rem] bg-[#151413] p-4">POM / method</th>{entryMode === 'simple' ? <th className="min-w-52 p-4">Uniform adjacent grade</th> : transitions.map(({ fromSize, toSize }) => <th className="min-w-28 p-4 text-center" key={`${fromSize}-${toSize}`}>{fromSize}→{toSize}</th>)}<th className="p-4">Status</th></tr></thead><tbody>{points.map((point) => <GradeRuleRow displayFormat={displayFormat} draft={draft} entryMode={entryMode} excluded={excluded.has(point.id)} key={point.id} onApplyAcross={applyAcross} onCopy={() => setCopiedPattern(transitions.map(({ fromSize, toSize }) => draft[key(point.id, fromSize, toSize)]).filter((delta): delta is number => delta !== undefined))} onExclude={() => toggleExcluded(point.id)} onPaste={() => { if (!copiedPattern?.length) return; setDraft((current) => ({ ...current, ...Object.fromEntries(transitions.map(({ fromSize, toSize }, index) => [key(point.id, fromSize, toSize), copiedPattern[index] ?? copiedPattern.at(-1)])) })); }} onSet={setDelta} point={point} specUnit={spec.unit} transitions={transitions}/>)}</tbody></table></div>{!points.length ? <p className="p-8 text-center text-sm text-stardust/50">Add POM identities before defining grade rules.</p> : null}</Card>
           <PreviewTable baseSet={baseSet} displayFormat={displayFormat} overrides={overrides} previewByValue={previewByValue} points={points} sizes={sizes} spec={spec}/>
         </div>
@@ -171,7 +173,7 @@ function usePersistedDisplayFormat(): [MeasurementDisplayFormat, (format: Measur
 }
 
 function SizeRangeEditor({ onClose, onSave, spec }: { onClose: () => void; onSave: (sizeSystem: CanonicalTechnicalSpec['sizeSystem'], sizeRange: string[], baseSize: string) => void; spec: CanonicalTechnicalSpec }) {
-  const [sizes, setSizes] = useState(spec.sizeRange.join(', '));
+  const [sizes, setSizes] = useState(Array.isArray(spec.sizeRange) && spec.sizeRange.length ? spec.sizeRange.join(', ') : spec.baseSize || 'M');
   const [baseSize, setBaseSize] = useState(spec.baseSize);
   const [sizeSystem, setSizeSystem] = useState(spec.sizeSystem);
   return <div className="fixed inset-0 z-[140] flex items-end justify-center bg-midnight/80 p-3 backdrop-blur-sm sm:items-center" role="presentation"><section aria-label="Manage grading size range" aria-modal="true" className="w-full max-w-lg rounded-[1.4rem] border border-bronze/30 bg-[#12110f] p-5 shadow-2xl" role="dialog"><p className="text-[.65rem] uppercase tracking-[.16em] text-ember">Size range &amp; base</p><h2 className="font-display mt-1 text-3xl">Manage size range</h2><p className="mt-2 text-sm text-stardust/56">Changing the range keeps existing measurements. Review grading rules before creating a new set.</p><label className="mt-5 block"><span className="field-label">Size system</span><select className="field" onChange={(event) => setSizeSystem(event.target.value as CanonicalTechnicalSpec['sizeSystem'])} value={sizeSystem}><option value="alpha">Alpha</option><option value="numeric">Numeric</option><option value="custom">Custom</option></select></label><label className="mt-3 block"><span className="field-label">Available sizes, in order</span><input className="field" onChange={(event) => setSizes(event.target.value)} value={sizes}/></label><label className="mt-3 block"><span className="field-label">Base size</span><input className="field" onChange={(event) => setBaseSize(event.target.value)} value={baseSize}/></label><div className="mt-5 flex justify-end gap-2"><Button onClick={onClose} variant="ghost">Cancel</Button><Button onClick={() => onSave(sizeSystem, sizes.split(',').map((size) => size.trim()).filter(Boolean), baseSize.trim())} variant="primary">Save size range</Button></div></section></div>;
