@@ -21,8 +21,13 @@ export function ReleaseStudio({ garmentId, section }: { garmentId: string; secti
   if (!state || !spec) return <Card><p className="text-sm text-stardust/60">Create the garment’s technical specification before opening this section.</p></Card>;
   if (section === 'bom') return <BomWorkspace specId={spec.id} />;
   if (section === 'construction') return <ConstructionWorkspace specId={spec.id} />;
-  if (section === 'grading-files') return <div className="space-y-5"><MeasurementStudio garmentId={garmentId} section="grading" /><FilesWorkspace specId={spec.id} /></div>;
+  if (section === 'grading-files') return <GradingFilesWorkspace garmentId={garmentId} specId={spec.id} />;
   return <ReleaseWorkspace specId={spec.id} />;
+}
+
+function GradingFilesWorkspace({ garmentId, specId }: { garmentId: string; specId: string }) {
+  const [view, setView] = useState<'grading' | 'files'>('grading');
+  return <section className="space-y-5"><nav aria-label="Grading workspace views" className="flex w-fit rounded-xl border border-bronze/22 bg-[#12110f] p-1"><button aria-pressed={view === 'grading'} className={cn('rounded-lg px-4 py-2 text-sm font-medium transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ember', view === 'grading' ? 'bg-ember text-midnight' : 'text-stardust/58 hover:text-stardust')} onClick={() => setView('grading')} type="button">Grading</button><button aria-pressed={view === 'files'} className={cn('rounded-lg px-4 py-2 text-sm font-medium transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ember', view === 'files' ? 'bg-ember text-midnight' : 'text-stardust/58 hover:text-stardust')} onClick={() => setView('files')} type="button">Files &amp; Release</button></nav>{view === 'grading' ? <MeasurementStudio garmentId={garmentId} section="grading" /> : <FilesWorkspace specId={specId} />}</section>;
 }
 
 /* Superseded BOM implementation retained temporarily for historical source context.

@@ -131,7 +131,7 @@ export function createGradeRule(state: CanonicalWorkspaceState, input: Extract<M
   return { rule, values, state: { ...state, gradeRules: [...state.gradeRules, rule], gradeRuleValues: [...state.gradeRuleValues, ...values] } };
 }
 
-export function previewGradeRule(state: CanonicalWorkspaceState, setId: string, gradeRuleId: string): GradePreview {
+export function previewGradeRule(state: CanonicalWorkspaceState, setId: string, gradeRuleId: string, overrides: Record<string, number> = {}): GradePreview {
   const set = state.measurementSets.find((item) => item.id === setId);
   const rule = state.gradeRules.find((item) => item.id === gradeRuleId);
   if (!set || !rule || set.specId !== rule.specId) return { rows: [], warnings: ['Select a compatible base set and grade rule.'] };
@@ -144,17 +144,17 @@ export function previewGradeRule(state: CanonicalWorkspaceState, setId: string, 
     const targets = new Map<string, number>([[set.baseSize, base.target]]);
     const baseIndex = rule.sizeRange.indexOf(set.baseSize);
     if (baseIndex < 0) { warnings.push(`Base size ${set.baseSize} is outside the grade range.`); continue; }
-    for (let index = baseIndex + 1; index < rule.sizeRange.length; index += 1) applyGradeStep(point.id, rule.sizeRange[index - 1], rule.sizeRange[index], targets, ruleValues, rows, warnings);
-    for (let index = baseIndex - 1; index >= 0; index -= 1) applyGradeStep(point.id, rule.sizeRange[index + 1], rule.sizeRange[index], targets, ruleValues, rows, warnings);
+    for (let index = baseIndex + 1; index < rule.sizeRange.length; index += 1) applyGradeStep(point.id, rule.sizeRange[index - 1], rule.sizeRange[index], targets, ruleValues, rows, warnings, overrides);
+    for (let index = baseIndex - 1; index >= 0; index -= 1) applyGradeStep(point.id, rule.sizeRange[index + 1], rule.sizeRange[index], targets, ruleValues, rows, warnings, overrides);
     rows.push({ pomPointId: point.id, size: set.baseSize, target: base.target, sourceSize: set.baseSize, delta: 0 });
   }
   return { rows: rows.sort((a, b) => a.pomPointId.localeCompare(b.pomPointId) || rule.sizeRange.indexOf(a.size) - rule.sizeRange.indexOf(b.size)), warnings };
 }
 
-export function commitGradePreview(state: CanonicalWorkspaceState, sourceSetId: string, gradeRuleId: string, name = 'Graded set') {
+export function commitGradePreview(state: CanonicalWorkspaceState, sourceSetId: string, gradeRuleId: string, name = 'Graded set', overrides: Record<string, number> = {}) {
   const source = state.measurementSets.find((item) => item.id === sourceSetId);
   if (!source) throw new Error('Base measurement set not found.');
-  const preview = previewGradeRule(state, sourceSetId, gradeRuleId);
+  const preview = previewGradeRule(state, sourceSetId, gradeRuleId, overrides);
   if (preview.warnings.length) throw new Error(preview.warnings[0]);
   const created = createMeasurementSet(state, source.specId, name, 'graded');
   let next = created.state;
@@ -247,7 +247,7 @@ export function restoreMeasurementSelection(state: CanonicalWorkspaceState, sour
 export function measurementKey(value: Pick<CanonicalMeasurementValue, 'setId' | 'pomPointId' | 'size'>) { return `${value.setId}:${value.pomPointId}:${value.size}`; }
 function validateAnchor(anchor: { x: number; y: number; view?: 'front' | 'back' }) { if (![anchor.x, anchor.y].every((value) => Number.isFinite(value) && value >= 0 && value <= 1)) throw new Error('POM anchors must be normalized from 0 through 1.'); if (anchor.view !== undefined && anchor.view !== 'front' && anchor.view !== 'back') throw new Error('POM anchors may reference the Front or Back flat.'); }
 function validateMeasurement(target: number, plus: number, minus: number) { if (![target, plus, minus].every((value) => Number.isFinite(value) && value >= 0)) throw new Error('Targets and tolerances must be non-negative decimals.'); }
-function applyGradeStep(pomPointId: string, fromSize: string, toSize: string, targets: Map<string, number>, values: CanonicalGradeRuleValue[], rows: GradePreview['rows'], warnings: string[]) { const direct = values.find((item) => item.pomPointId === pomPointId && item.fromSize === fromSize && item.toSize === toSize); const reverse = values.find((item) => item.pomPointId === pomPointId && item.fromSize === toSize && item.toSize === fromSize); const delta = direct?.delta ?? (reverse ? -reverse.delta : null); const source = targets.get(fromSize); if (delta === null || source === undefined) { warnings.push(`Missing ${fromSize} → ${toSize} grade delta.`); return; } const target = round4(source + delta); if (target < 0) { warnings.push(`${toSize} produces a negative target.`); return; } targets.set(toSize, target); rows.push({ pomPointId, size: toSize, target, sourceSize: fromSize, delta }); }
+function applyGradeStep(pomPointId: string, fromSize: string, toSize: string, targets: Map<string, number>, values: CanonicalGradeRuleValue[], rows: GradePreview['rows'], warnings: string[], overrides: Record<string, number>) { const direct = values.find((item) => item.pomPointId === pomPointId && item.fromSize === fromSize && item.toSize === toSize); const reverse = values.find((item) => item.pomPointId === pomPointId && item.fromSize === toSize && item.toSize === fromSize); const delta = direct?.delta ?? (reverse ? -reverse.delta : null); const source = targets.get(fromSize); if (delta === null || source === undefined) { warnings.push(`Missing ${fromSize} → ${toSize} grade delta.`); return; } const calculated = round4(source + delta); if (calculated < 0) { warnings.push(`${toSize} produces a negative target.`); return; } const override = overrides[`${pomPointId}:${toSize}`]; const target = override === undefined ? calculated : round4(override); if (!Number.isFinite(target) || target < 0) { warnings.push(`${toSize} has an invalid manual value.`); return; } targets.set(toSize, target); rows.push({ pomPointId, size: toSize, target, sourceSize: fromSize, delta }); }
 function diffEntities<T>(before: T[], after: T[], entity: 'pom' | 'measurement', key: (item: T) => string): StructuralMeasurementDiff[] { const result: StructuralMeasurementDiff[] = []; const beforeMap = new Map(before.map((item) => [key(item), item])); const afterMap = new Map(after.map((item) => [key(item), item])); for (const [id, value] of beforeMap) { const current = afterMap.get(id); if (!current) result.push({ key: id, kind: 'removed', entity, before: value, after: null }); else if (JSON.stringify(stripMeta(value)) !== JSON.stringify(stripMeta(current))) result.push({ key: id, kind: 'changed', entity, before: value, after: current }); } for (const [id, value] of afterMap) if (!beforeMap.has(id)) result.push({ key: id, kind: 'added', entity, before: null, after: value }); return result; }
 function stripMeta(value: unknown) { if (!value || typeof value !== 'object') return value; const { revision: _revision, updatedAt: _updatedAt, ...rest } = value as Record<string, unknown>; return rest; }
 function parseCsvLine(line: string) { const values: string[] = []; let current = ''; let quoted = false; for (let index = 0; index < line.length; index += 1) { const char = line[index]; if (char === '"' && quoted && line[index + 1] === '"') { current += '"'; index += 1; } else if (char === '"') quoted = !quoted; else if (char === ',' && !quoted) { values.push(current); current = ''; } else current += char; } values.push(current); return values; }

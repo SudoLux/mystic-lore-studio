@@ -22,9 +22,21 @@ export function useMeasurements() {
     commitWorkspace((current) => { const result = applyMeasurementCsv(current, specId, setId, text); errors = result.errors; return result.state; });
     return errors;
   };
-  const commitGrade = (sourceSetId: string, gradeRuleId: string, name: string) => {
+  const commitGrade = (sourceSetId: string, gradeRuleId: string, name: string, overrides: Record<string, number> = {}) => {
     let setId = '';
-    commitWorkspace((current) => { const result = commitGradePreview(current, sourceSetId, gradeRuleId, name); setId = result.set.id; return result.state; });
+    commitWorkspace((current) => { const result = commitGradePreview(current, sourceSetId, gradeRuleId, name, overrides); setId = result.set.id; return result.state; });
+    return setId;
+  };
+  const createAndCommitGrade = (sourceSetId: string, input: Extract<MeasurementCommand, { type: 'create_grade_rule' }>, name: string, overrides: Record<string, number> = {}) => {
+    let setId = '';
+    commitWorkspace((current) => {
+      const created = executeMeasurementCommand(current, input);
+      const rule = created.gradeRules.at(-1);
+      if (!rule) throw new Error('Grade rule could not be created.');
+      const result = commitGradePreview(created, sourceSetId, rule.id, name, overrides);
+      setId = result.set.id;
+      return result.state;
+    });
     return setId;
   };
   const createCheckpoint = async (specId: string, label?: string, notes?: string) => {
@@ -46,5 +58,5 @@ export function useMeasurements() {
     });
     return checkpoint.version.id;
   };
-  return { commitGrade, createCheckpoint, ensureBaseSet, execute, importCsv, restoreSelection, state };
+  return { commitGrade, createAndCommitGrade, createCheckpoint, ensureBaseSet, execute, importCsv, restoreSelection, state };
 }

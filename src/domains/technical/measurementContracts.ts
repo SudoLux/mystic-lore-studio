@@ -13,6 +13,11 @@ export type MeasurementCommand =
 export type CsvImportError = { column: string; message: string; row: number };
 export type MeasurementCsvRow = { code: string; name: string; method: string; x: number; y: number; size: string; target: number; tolerancePlus: number; toleranceMinus: number };
 export type GradePreviewRow = { pomPointId: string; size: string; target: number; sourceSize: string; delta: number };
+/**
+ * Preview overrides are deliberately transient. They let the grading UI resolve a
+ * manual value conflict before a separate graded set is created, without editing
+ * the source measurement set or adding presentation-only records.
+ */
 export type GradePreview = { rows: GradePreviewRow[]; warnings: string[] };
 export type StructuralMeasurementDiff = { key: string; kind: 'added' | 'changed' | 'removed'; entity: 'pom' | 'measurement'; before: unknown; after: unknown };
 export type MeasurementSetIssue = { code: 'missing_pom' | 'missing_base_target' | 'incomplete_graded_sizes' | 'duplicate_row'; message: string; pomPointId?: string; severity: 'error' | 'warning' };

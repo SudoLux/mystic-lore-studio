@@ -85,6 +85,20 @@ describe('WP4 POM, measurement, fit, and grading domain', () => {
     expect(committed.state.measurementValues.find((item) => item.setId === set.set.id)?.target).toBe(56);
   });
 
+  it('keeps a resolved manual grading value in a separate graded set without mutating its base source', async () => {
+    const start = await technicalWorkspace();
+    const pom = createPomPoint(start.state, { type: 'create_pom', specId: start.spec.id, code: 'CH', name: 'Chest', method: 'One inch below armhole', anchor: { x: .5, y: .25 } });
+    const set = createMeasurementSet(pom.state, start.spec.id, 'Base', 'base');
+    const base = upsertMeasurementValue(set.state, { type: 'upsert_measurement', setId: set.set.id, pomPointId: pom.point.id, size: 'M', target: 22, tolerancePlus: .5, toleranceMinus: .5 });
+    const rule = createGradeRule(base.state, { type: 'create_grade_rule', specId: start.spec.id, name: 'Alpha', sizeRange: ['S', 'M', 'L'], values: [{ pomPointId: pom.point.id, fromSize: 'S', toSize: 'M', delta: .5 }, { pomPointId: pom.point.id, fromSize: 'M', toSize: 'L', delta: .5 }] });
+    const overrides = { [`${pom.point.id}:L`]: 22.75 };
+    const preview = previewGradeRule(rule.state, set.set.id, rule.rule.id, overrides);
+    expect(preview.rows.find((row) => row.size === 'L')?.target).toBe(22.75);
+    const committed = commitGradePreview(rule.state, set.set.id, rule.rule.id, 'Graded Alpha', overrides);
+    expect(committed.state.measurementValues.find((item) => item.setId === set.set.id && item.size === 'M')?.target).toBe(22);
+    expect(committed.state.measurementValues.find((item) => item.setId === committed.set.id && item.size === 'L')?.target).toBe(22.75);
+  });
+
   it('rejects malformed, over-precise, duplicate, and negative CSV rows without partial mutation', async () => {
     const start = await technicalWorkspace(); const set = createMeasurementSet(start.state, start.spec.id, 'Base', 'base');
     const malformed = 'code,name,method,x,y,size,target,tolerance_plus,tolerance_minus\nCBL,"Length,Neck to hem,0.5,0.4,M,72.12345,0.5,-0.2';
