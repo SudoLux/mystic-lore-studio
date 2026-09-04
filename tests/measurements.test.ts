@@ -99,6 +99,18 @@ describe('WP4 POM, measurement, fit, and grading domain', () => {
     expect(committed.state.measurementValues.find((item) => item.setId === committed.set.id && item.size === 'L')?.target).toBe(22.75);
   });
 
+  it('derives non-base sizes from the grade rule rather than placeholder source values', async () => {
+    const start = await technicalWorkspace();
+    const pom = createPomPoint(start.state, { type: 'create_pom', specId: start.spec.id, code: 'CH', name: 'Chest', method: 'One inch below armhole', anchor: { x: .5, y: .25 } });
+    const set = createMeasurementSet(pom.state, start.spec.id, 'Base', 'base');
+    const base = upsertMeasurementValue(set.state, { type: 'upsert_measurement', setId: set.set.id, pomPointId: pom.point.id, size: 'M', target: 22, tolerancePlus: .5, toleranceMinus: .5 });
+    const withPlaceholder = upsertMeasurementValue(base.state, { type: 'upsert_measurement', setId: set.set.id, pomPointId: pom.point.id, size: 'S', target: 0, tolerancePlus: .5, toleranceMinus: .5 });
+    const withLegacyValue = upsertMeasurementValue(withPlaceholder.state, { type: 'upsert_measurement', setId: set.set.id, pomPointId: pom.point.id, size: 'L', target: 99, tolerancePlus: .5, toleranceMinus: .5 });
+    const rule = createGradeRule(withLegacyValue.state, { type: 'create_grade_rule', specId: start.spec.id, name: 'Alpha', sizeRange: ['S', 'M', 'L'], values: [{ pomPointId: pom.point.id, fromSize: 'S', toSize: 'M', delta: .5 }, { pomPointId: pom.point.id, fromSize: 'M', toSize: 'L', delta: .5 }] });
+    const preview = previewGradeRule(rule.state, set.set.id, rule.rule.id);
+    expect(preview.rows.map((row) => [row.size, row.target])).toEqual([['S', 21.5], ['M', 22], ['L', 22.5]]);
+  });
+
   it('rejects malformed, over-precise, duplicate, and negative CSV rows without partial mutation', async () => {
     const start = await technicalWorkspace(); const set = createMeasurementSet(start.state, start.spec.id, 'Base', 'base');
     const malformed = 'code,name,method,x,y,size,target,tolerance_plus,tolerance_minus\nCBL,"Length,Neck to hem,0.5,0.4,M,72.12345,0.5,-0.2';

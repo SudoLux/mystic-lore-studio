@@ -23,10 +23,34 @@ describe('WP11T-D grading workspace contracts', () => {
   it('uses the shared display engine and handles manual conflicts before creation', () => {
     expect(source).toContain('formatMeasurementValue');
     expect(source).toContain('parseMeasurementInput');
-    expect(source).toContain('Manual conflicts');
+    expect(source).toContain('Existing size values');
+    expect(source).toContain('Manual overrides');
     expect(source).toContain('Keep manual');
     expect(source).toContain('Use grade rule');
     expect(source).toContain('base set remains unchanged');
+  });
+
+  it('keeps grade rules authoritative while allowing intentional manual exceptions', () => {
+    expect(source).toContain('Math.abs(current.target) > .0001');
+    expect(source).toContain("sourceValueDecisions[sourceKey] === undefined");
+    expect(source).toContain("[sourceKey]: 'manual'");
+    expect(source).toContain("[sourceKey]: 'grade'");
+    expect(source).not.toContain('conflicts.length');
+  });
+
+  it('keeps fraction entry and layout usable inside scrolling grade tables', () => {
+    expect(source).toContain('FRACTION_STEPS');
+    expect(source).toContain('createPortal');
+    expect(source).toContain('Fraction quick select');
+    expect(source).toContain('table-fixed');
+    expect(source).toContain('w-[13.5rem]');
+    expect(source).toContain('w-[18rem]');
+  });
+
+  it('selects a saved rule and reuses it when creating a graded set', () => {
+    expect(source).toContain('saveGradeRule');
+    expect(source).toContain('setRuleId(savedRuleId)');
+    expect(source).toContain('if (ruleId && !ruleDirty) commitGrade');
   });
 
   it('opens older technical specs safely before their size range is configured', () => {

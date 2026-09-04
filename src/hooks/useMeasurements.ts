@@ -12,6 +12,17 @@ import {
 export function useMeasurements() {
   const { commitWorkspace, state } = useCanonicalWorkspace();
   const execute = (command: MeasurementCommand) => commitWorkspace((current) => executeMeasurementCommand(current, command));
+  const saveGradeRule = (input: Extract<MeasurementCommand, { type: 'create_grade_rule' }>) => {
+    let ruleId = '';
+    commitWorkspace((current) => {
+      const next = executeMeasurementCommand(current, input);
+      const rule = next.gradeRules.at(-1);
+      if (!rule) throw new Error('Grade rule could not be created.');
+      ruleId = rule.id;
+      return next;
+    });
+    return ruleId;
+  };
   const ensureBaseSet = (specId: string) => {
     let id = '';
     commitWorkspace((current) => { const result = createMeasurementSet(current, specId, 'Base', 'base'); id = result.set.id; return result.state; });
@@ -58,5 +69,5 @@ export function useMeasurements() {
     });
     return checkpoint.version.id;
   };
-  return { commitGrade, createAndCommitGrade, createCheckpoint, ensureBaseSet, execute, importCsv, restoreSelection, state };
+  return { commitGrade, createAndCommitGrade, createCheckpoint, ensureBaseSet, execute, importCsv, restoreSelection, saveGradeRule, state };
 }
