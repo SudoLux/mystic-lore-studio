@@ -144,3 +144,6 @@ dist
 
 # Local Netlify folder
 .netlify
+
+# Private cutover backups: never commit database or Storage contents.
+.private-backups/

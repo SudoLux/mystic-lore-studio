@@ -4,6 +4,9 @@
   "version": "0.0.0",
   "license": "UNLICENSED",
   "type": "module",
+  "engines": {
+    "node": "22.x"
+  },
   "scripts": {
     "dev": "vite",
     "dev:beta": "vite --mode beta",

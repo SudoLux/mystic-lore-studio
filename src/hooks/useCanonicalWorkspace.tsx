@@ -66,6 +66,7 @@ import {
   type CanonicalWorkspaceRepository,
 } from '../domains/persistence';
 import { recordClientEvent } from '../lib/observability';
+import { operationResultHasParity } from '../domains/persistence/canonicalCommitParity';
 import { createRequestBoundCanonicalSupabase } from '../lib/supabase';
 import { getStudioData, type StudioData } from '../lib/studioStorage';
 import type { SupabaseClient } from '@supabase/supabase-js';
@@ -845,22 +846,6 @@ function withTransportConflicts(
       ...transportConflicts,
     ],
   };
-}
-
-function operationResultHasParity(operation: CanonicalOperation, result: CanonicalCommitResult) {
-  if (result.status === 'conflict') return false;
-  return operation.mutations.every((mutation) => {
-    const authoritative = result.authoritativeRows.find((item) =>
-      item.entityType === mutation.entityType && item.entityId === mutation.entityId,
-    );
-    if (!authoritative) return false;
-    if (mutation.action === 'delete') return authoritative.row === null;
-    if (!mutation.row || !authoritative.row) return false;
-    return Object.entries(mutation.row).every(([key, value]) => {
-      if (key === 'created_at' || key === 'updated_at' || key === 'revision') return true;
-      return JSON.stringify(authoritative.row?.[key]) === JSON.stringify(value);
-    });
-  });
 }
 
 async function currentCanonicalStudioId(client: SupabaseClient<Database> | null) {
