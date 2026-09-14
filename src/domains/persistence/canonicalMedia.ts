@@ -97,7 +97,13 @@ export async function uploadStagedCanonicalMedia(
   const staged = await store.getMediaBlob(asset.id);
   if (!staged) return false;
   if (staged.checksum !== asset.checksum) throw new Error('Staged media checksum changed before upload.');
-  const upload = await client.storage.from('studio-assets').upload(asset.storagePath, staged.blob, {
+  // Send raw bytes instead of the SDK's multipart Blob branch. Safari can
+  // restore an IndexedDB Blob correctly and still submit an empty multipart
+  // file part, which Storage reports as "No content provided". ArrayBuffer is
+  // a documented Storage upload body and preserves the exact staged bytes.
+  const bytes = await staged.blob.arrayBuffer();
+  if (!bytes.byteLength) throw new Error('The staged media file contains no data. Choose the file again.');
+  const upload = await client.storage.from('studio-assets').upload(asset.storagePath, bytes, {
     cacheControl: '31536000',
     contentType: asset.mimeType,
     upsert: false,
