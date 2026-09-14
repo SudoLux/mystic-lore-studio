@@ -2,23 +2,30 @@ import { cn } from '../../lib/classes';
 import { getImageDisplay, getImageOrientation } from '../../lib/imageAssets';
 import type { LocalImageAsset } from '../../types/studio';
 import { StoredImage } from './StoredImage';
+import { AtelierImageFrame } from './AtelierImageFrame';
 
 type AdaptiveStoredImageProps = {
+  alt?: string;
   asset: LocalImageAsset;
   className?: string;
   displayFit?: 'cover' | 'contain';
   foregroundClassName?: string;
   mode?: 'compact' | 'primary' | 'thumbnail';
+  onFinalError?: () => void;
   priority?: boolean;
+  refreshSource?: () => Promise<string>;
 };
 
 export function AdaptiveStoredImage({
+  alt,
   asset,
   className,
   displayFit,
   foregroundClassName,
   mode = 'primary',
+  onFinalError,
   priority = false,
+  refreshSource,
 }: AdaptiveStoredImageProps) {
   const orientation = getImageOrientation(asset);
   const display = {
@@ -40,19 +47,22 @@ export function AdaptiveStoredImage({
         };
 
   return (
-    <div
+    <AtelierImageFrame
       className={cn(
-        'relative h-full w-full overflow-hidden bg-[radial-gradient(circle_at_20%_12%,rgba(200,155,60,0.18),transparent_30%),linear-gradient(145deg,rgba(27,58,99,0.52),rgba(10,10,10,0.78),rgba(61,43,31,0.62))]',
+        'bg-[radial-gradient(circle_at_20%_12%,rgba(200,155,60,0.18),transparent_30%),linear-gradient(145deg,rgba(27,58,99,0.52),rgba(10,10,10,0.78),rgba(61,43,31,0.62))]',
         className,
       )}
+      emphasis={mode === 'primary' ? 'hero' : mode === 'thumbnail' ? 'thumbnail' : 'library'}
     >
       {useAmbientPortrait ? (
         <>
           <StoredImage
+            alt={alt}
             asset={asset}
             className="absolute inset-0 scale-110 blur-2xl saturate-75 opacity-52"
             decorative
             quality="display"
+            refreshSource={refreshSource}
             displayOverride={{
               objectFit: 'cover',
               objectPositionX: display.objectPositionX,
@@ -65,20 +75,25 @@ export function AdaptiveStoredImage({
             <StoredImage
               asset={asset}
               className={cn('absolute inset-0', foregroundClassName)}
+              onFinalError={onFinalError}
               priority={priority}
               quality="master"
+              refreshSource={refreshSource}
             />
           </div>
         </>
       ) : (
         <StoredImage
+          alt={alt}
           asset={asset}
           className={cn('absolute inset-0', foregroundClassName)}
           displayOverride={compactDisplay}
           priority={priority}
           quality={mode === 'thumbnail' ? 'thumbnail' : mode === 'compact' ? 'display' : 'master'}
+          onFinalError={onFinalError}
+          refreshSource={refreshSource}
         />
       )}
-    </div>
+    </AtelierImageFrame>
   );
 }

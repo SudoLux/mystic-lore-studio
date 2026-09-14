@@ -1,0 +1,99 @@
+{
+  "schemaVersion": "ml-studio-2-rc-migration-evidence-v1",
+  "recordedAt": "2026-08-27T17:01:19-07:00",
+  "source": {
+    "checksum": "10620cd73ca618995878ea573f4778d16b0d9de5279c039e8fa6a099a21a999c",
+    "fixture": "tests/fixtures/legacy-studio-data-v5.json",
+    "retained": true
+  },
+  "migration": {
+    "canonicalPlanChecksum": "c67ca953661da3c18cb489137e78e7b56457ba3d492c95b343b9a91cfe05594a",
+    "canonicalDatabaseChecksum": "4f5b5355aa3541b8aa39399dfdf07a67e01e01fdfa9243ea50127285decf635d",
+    "completed": true,
+    "interruptedAfterBatches": 5,
+    "publicationAssetsCreated": 0,
+    "publicationsCreated": 0,
+    "roundTripExact": true,
+    "unexplainedDataLoss": 0
+  },
+  "report": {
+    "conflicts": 0,
+    "idMappings": 22,
+    "schemaVersion": "ml-studio-wp2-migration-report-v1",
+    "skippedRecords": 0,
+    "warnings": 6
+  },
+  "relationships": {
+    "editorialSceneParentsValid": true,
+    "garmentMaterialLinksValid": true,
+    "garmentMediaLinksValid": true,
+    "portfolioGarmentSelectionsValid": true
+  },
+  "retry": {
+    "checksumStable": true,
+    "inserted": 0,
+    "unchanged": 27,
+    "updated": 0
+  },
+  "rowCounts": {
+    "change_events": 2,
+    "collections": 1,
+    "design_briefs": 1,
+    "editorial_assets": 0,
+    "editorial_blocks": 2,
+    "editorial_collections": 1,
+    "editorial_scenes": 1,
+    "garment_materials": 1,
+    "garment_media": 1,
+    "garment_tags": 3,
+    "garments": 1,
+    "inventory_entries": 2,
+    "material_variants": 1,
+    "materials": 1,
+    "media_assets": 1,
+    "portfolio_editorials": 0,
+    "portfolio_profiles": 1,
+    "portfolio_projects": 1,
+    "profiles": 1,
+    "studio_members": 1,
+    "studio_settings": 1,
+    "studios": 1,
+    "sync_tombstones": 0,
+    "tags": 3,
+    "tasks": 1
+  },
+  "warnings": [
+    {
+      "code": "device-settings-retained",
+      "entity": "settings",
+      "message": "Backup reminder cadence and copy remain device-local; only unit and currency policy enter canonical studio_settings."
+    },
+    {
+      "code": "legacy-notes-retained",
+      "entity": "notes",
+      "message": "1 private note record(s) remain in the verified legacy fixture until a canonical journal/fit-note owner is introduced."
+    },
+    {
+      "code": "legacy-yardage-fields-inferred",
+      "entity": "yardage",
+      "legacyId": "yardage-legacy-shell",
+      "message": "The v5 yardage record lacked a modern type or quantity; the dry run inferred it from the linked material and retained the original fixture."
+    },
+    {
+      "code": "lookbook-bridge-retained",
+      "entity": "lookbook",
+      "message": "Legacy lookbook pages receive parallel canonical editorial rows, but the original pages stay authoritative until WP7."
+    },
+    {
+      "code": "provisional-media-checksum",
+      "entity": "media",
+      "legacyId": "image-legacy-aurora-hero",
+      "message": "No source-byte checksum was available; the dry run used a deterministic metadata checksum and retained the legacy path for copy verification."
+    },
+    {
+      "code": "public-cut-not-created",
+      "entity": "portfolio",
+      "message": "The dry run creates private portfolio curation only; no anonymous publication snapshot is created or changed."
+    }
+  ]
+}

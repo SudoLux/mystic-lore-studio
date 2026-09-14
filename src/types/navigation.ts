@@ -3,6 +3,10 @@ import type { LucideIcon } from 'lucide-react';
 export type PageId =
   | 'dashboard'
   | 'projects'
+  | 'technical'
+  | 'production'
+  | 'versions'
+  | 'ai'
   | 'kanban'
   | 'lookbooks'
   | 'portfolio'
@@ -16,4 +20,5 @@ export type NavItem = {
   shortLabel: string;
   description: string;
   icon: LucideIcon;
+  group: 'studio' | 'make' | 'present' | 'tools';
 };

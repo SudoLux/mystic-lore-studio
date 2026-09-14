@@ -1,493 +1,140 @@
-import { useRef, useState, type ChangeEvent } from 'react';
-import {
-  AlertTriangle,
-  Cloud,
-  Download,
-  RefreshCcw,
-  ShieldCheck,
-  Upload,
-} from 'lucide-react';
-import { BrandLockup } from '../../components/layout/BrandLockup';
+import { Cloud, Download, RefreshCcw, ShieldCheck } from 'lucide-react';
+import { useState } from 'react';
+import { ObservabilityPanel } from '../../components/settings/ObservabilityPanel';
 import { Badge } from '../../components/shared/Badge';
 import { Button } from '../../components/shared/Button';
 import { Card } from '../../components/shared/Card';
 import { MobilePageHeader } from '../../components/shared/MobilePageHeader';
 import { PageHeader } from '../../components/shared/PageHeader';
-import { useStudioData } from '../../hooks/useStudioData';
-import type { ImportPreview } from '../../lib/studioStorage';
-
-type ImportCandidate = {
-  fileName: string;
-  preview: ImportPreview;
-  serializedData: string;
-};
+import { canonicalStateChecksum, loadCanonicalStoredBlob } from '../../domains/persistence';
+import { useCanonicalWorkspace } from '../../hooks/useCanonicalWorkspace';
 
 export function SettingsPage() {
-  const {
-    exportData,
-    importData,
-    pendingCount,
-    previewImportData,
-    rawData,
-    reopenCloudMigration,
-    resetData,
-    retrySync,
-    syncError,
-    syncStatus,
-  } = useStudioData();
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [importCandidate, setImportCandidate] =
-    useState<ImportCandidate | null>(null);
-  const [resetRequested, setResetRequested] = useState(false);
-  const [statusMessage, setStatusMessage] = useState<string | null>(null);
-  const currentSummary = getBackupSummary(rawData);
+  const { error, pendingCount, persistenceMode, refresh, retry, state, syncState } = useCanonicalWorkspace();
+  const [message, setMessage] = useState<string | null>(null);
+  const [working, setWorking] = useState(false);
 
-  const handleExportData = () => {
-    const serializedData = exportData();
-    const blob = new Blob([serializedData], { type: 'application/json' });
-    const downloadUrl = URL.createObjectURL(blob);
-    const downloadLink = document.createElement('a');
+  if (!state) return null;
 
-    downloadLink.href = downloadUrl;
-    downloadLink.download = `mystic-lore-studio-backup-${getTimestampSlug()}.json`;
-    document.body.appendChild(downloadLink);
-    downloadLink.click();
-    downloadLink.remove();
-    URL.revokeObjectURL(downloadUrl);
-
-    setErrorMessage(null);
-    setImportCandidate(null);
-    setResetRequested(false);
-    setStatusMessage('Backup export prepared as a timestamped JSON file.');
-  };
-
-  const handleImportFile = async (event: ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-
-    event.target.value = '';
-
-    if (!file) {
-      return;
-    }
-
-    if (!file.name.toLowerCase().endsWith('.json')) {
-      setErrorMessage('Choose a JSON backup file exported from Mystic Lore Studio.');
-      setImportCandidate(null);
-      setStatusMessage(null);
-      return;
-    }
-
+  const exportRecoverySnapshot = async () => {
+    setWorking(true);
     try {
-      const serializedData = await file.text();
-      const preview = previewImportData(serializedData);
-
-      setImportCandidate({
-        fileName: file.name,
-        preview,
-        serializedData,
-      });
-      setErrorMessage(null);
-      setResetRequested(false);
-      setStatusMessage('Backup file is valid. Review the preview before importing.');
-    } catch (error) {
-      setErrorMessage(
-        error instanceof Error
-          ? error.message
-          : 'This file could not be read as a Mystic Lore Studio backup.',
-      );
-      setImportCandidate(null);
-      setStatusMessage(null);
+      const exportedAt = new Date().toISOString();
+      const checksum = await canonicalStateChecksum(state);
+      const { default: JSZip } = await import('jszip');
+      const archive = new JSZip();
+      const media = [...state.mediaAssets.map((asset) => ({
+        checksum: asset.checksum, id: asset.id, mimeType: asset.mimeType,
+        name: asset.name, storagePath: asset.storagePath,
+      })), ...state.mediaDerivatives.map((asset) => ({
+        checksum: asset.checksum, id: asset.id, mimeType: asset.mimeType,
+        name: `${asset.variant}-${asset.id}`, storagePath: asset.storagePath,
+      }))];
+      const manifest = [] as Array<{ checksum: string; id: string; mimeType: string; path: string; storagePath: string }>;
+      for (const item of media) {
+        const blob = await loadCanonicalStoredBlob(item);
+        if (!blob) throw new Error(`Recovery export is missing media bytes for ${item.name}.`);
+        const path = `media/${item.id}`;
+        archive.file(path, blob);
+        manifest.push({ checksum: item.checksum, id: item.id, mimeType: item.mimeType, path, storagePath: item.storagePath });
+      }
+      archive.file('workspace.json', JSON.stringify({ checksum, exportedAt, format: 'ml-canonical-recovery-v2', state }, null, 2));
+      archive.file('manifest.json', JSON.stringify({ exportedAt, format: 'ml-canonical-media-manifest-v1', media: manifest, studioId: state.studioId, workspaceChecksum: checksum }, null, 2));
+      const url = URL.createObjectURL(await archive.generateAsync({ compression: 'DEFLATE', compressionOptions: { level: 6 }, type: 'blob' }));
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `mystic-lore-canonical-recovery-${exportedAt.replace(/[:.]/g, '-')}.mlstudio.zip`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+      setMessage(`Recovery copy ready with ${manifest.length} verified images and files.`);
+    } catch (reason) {
+      setMessage(reason instanceof Error ? reason.message : 'The recovery copy could not be exported.');
+    } finally {
+      setWorking(false);
     }
   };
 
-  const handleConfirmImport = () => {
-    if (!importCandidate) {
-      return;
-    }
-
+  const refreshCloud = async () => {
+    setWorking(true);
+    setMessage(null);
     try {
-      importData(importCandidate.serializedData);
-      setStatusMessage(
-        `Imported ${importCandidate.fileName}. Local studio data has been refreshed.`,
-      );
-      setImportCandidate(null);
-      setErrorMessage(null);
-      setResetRequested(false);
-    } catch (error) {
-      setErrorMessage(
-        error instanceof Error
-          ? error.message
-          : 'The backup could not be imported.',
-      );
+      if (error) await retry();
+      else await refresh();
+      setMessage('Your Studio is up to date.');
+    } catch (reason) {
+      setMessage(reason instanceof Error ? reason.message : 'Your Studio could not be refreshed.');
+    } finally {
+      setWorking(false);
     }
-  };
-
-  const handleConfirmReset = () => {
-    resetData();
-    setResetRequested(false);
-    setImportCandidate(null);
-    setErrorMessage(null);
-    setStatusMessage('Local data reset to the Mystic Lore Studio demo dataset.');
   };
 
   return (
-    <section className="space-y-4">
-      <MobilePageHeader
-        badge="Settings"
-        kicker="Backups, install, sync, and local data"
-        title="Studio Controls"
-      />
-
-      <PageHeader
-        badge="Settings"
-        description="Control panel for app preferences, backups, import/export, and install readiness."
-        title="Settings"
-      />
+    <section className="space-y-5">
+      <MobilePageHeader badge="Settings" kicker="Sync, privacy, and recovery" title="Studio Settings" />
+      <PageHeader badge="Settings" description="Keep your Studio current, protect your work, and access advanced recovery tools when you need them." title="Studio Settings" />
 
       <div className="grid gap-4 md:grid-cols-3">
-        <SettingsStatusCard
-          label="Preferences"
-          status="Studio defaults"
-          text="Theme and workspace defaults remain staged for a later milestone."
-        />
-        <SettingsStatusCard
-          label="Backups"
-          status={`${currentSummary.projects} projects`}
-          text={`${currentSummary.fabrics} fabrics, ${currentSummary.tasks} tasks, ${currentSummary.notes} notes, and ${currentSummary.lookbooks} editorial collection records are in local data.`}
-        />
-        <SettingsStatusCard
-          label="PWA"
-          status="Install ready"
-          text="Manifest, theme metadata, icon, and app-shell service worker are configured."
-        />
+        <StatusCard label="Workspace" status={modeLabel(persistenceMode)} text={modeDescription(persistenceMode)} />
+        <StatusCard label="Waiting to sync" status={`${pendingCount} change${pendingCount === 1 ? '' : 's'}`} text={pendingCount ? 'Your queued edits will continue when a connection is available.' : 'Everything from this device is saved.'} />
+        <StatusCard label="Studio library" status={`${state.garments.length} garment${state.garments.length === 1 ? '' : 's'}`} text={`${state.mediaAssets.length} images and files · ${state.releaseTasks.length} tasks · ${state.editorialCollections.length} stories.`} />
       </div>
 
-      <Card className="border-bronze/30 bg-[linear-gradient(135deg,rgba(45,92,107,0.22),rgba(10,10,10,0.58),rgba(61,43,31,0.34))]">
+      <Card className="border-teal/28 bg-[linear-gradient(135deg,rgba(45,92,107,.2),rgba(10,10,10,.68))]" elevated>
         <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
           <div>
-            <Badge variant={syncStatus === 'synced' ? 'teal' : 'ember'}>
-              Cloud Sync
-            </Badge>
-            <h2 className="mt-4 text-xl font-semibold text-stardust">
-              {syncStatus === 'synced'
-                ? 'Studio data is synced.'
-                : syncStatus === 'syncing'
-                  ? 'Studio data is syncing.'
-                  : syncStatus === 'error'
-                    ? 'Cloud sync needs attention.'
-                    : 'This workspace is using local data.'}
-            </h2>
-            <p className="mt-2 text-sm leading-6 text-stardust/62">
-              {syncError ??
-                `${pendingCount} pending cloud operation${pendingCount === 1 ? '' : 's'}. Local storage remains available as an offline cache.`}
-            </p>
+            <Badge variant={syncState === 'ready' && pendingCount === 0 ? 'teal' : 'ember'}>Cloud status</Badge>
+            <h2 className="mt-4 text-xl font-semibold text-stardust">{syncHeading(syncState, pendingCount)}</h2>
+            <p className="mt-2 max-w-2xl text-sm leading-6 text-stardust/62">{error ?? 'Your garments, imagery, and Studio decisions are safely shared across your signed-in devices.'}</p>
           </div>
-          <div className="flex flex-col gap-3 sm:flex-row">
-            <Button
-              icon={<Cloud aria-hidden="true" size={16} strokeWidth={1.9} />}
-              onClick={() => void retrySync()}
-              variant="secondary"
-            >
-              Retry Sync
-            </Button>
-            <Button onClick={reopenCloudMigration} variant="ghost">
-              Move Local Data to Cloud
-            </Button>
-          </div>
+          <Button disabled={working} icon={<RefreshCcw aria-hidden="true" size={16} />} onClick={() => void refreshCloud()} variant="primary">Refresh Studio</Button>
         </div>
       </Card>
 
-      <Card className="border-bronze/32 bg-[linear-gradient(135deg,rgba(27,58,99,0.22),rgba(10,10,10,0.52),rgba(61,43,31,0.4))]" elevated>
-        <div className="grid gap-6 xl:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
+      <Card>
+        <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
           <div>
-            <Badge variant="ember">Backup Vault</Badge>
-            <h2 className="mt-4 text-2xl font-semibold text-stardust">
-              Export, import, or reset browser-local studio data.
-            </h2>
-            <p className="mt-3 text-sm leading-7 text-stardust/68">
-              Backups include projects, fabrics, tasks, notes, linked material
-              allocations, editorial collections, app settings, and data version metadata.
-            </p>
-            <p className="mt-3 rounded-2xl border border-bronze/26 bg-midnight/38 p-4 text-sm leading-6 text-stardust/64 shadow-[inset_0_1px_0_rgba(237,227,207,0.035)]">
-              {rawData.settings.backupReminderCopy} A good rhythm is every{' '}
-              {rawData.settings.backupReminderCadenceDays} days, and always before
-              large import or cleanup sessions.
-            </p>
+            <div className="flex items-center gap-3"><ShieldCheck aria-hidden="true" className="text-teal" size={21} /><h2 className="text-lg font-semibold">Private recovery copy</h2></div>
+            <p className="mt-3 text-sm leading-6 text-stardust/62">Download a private copy of your Studio data and media for safekeeping.</p>
+            <p className="mt-3 text-xs leading-5 text-stardust/45">This file contains private Studio work. Store it securely and remove old beta copies after 30 days.</p>
           </div>
-
-          <div className="space-y-4">
-            <div className="grid gap-3 sm:grid-cols-3">
-              <BackupMetric label="Projects" value={currentSummary.projects} />
-              <BackupMetric label="Fabrics" value={currentSummary.fabrics} />
-              <BackupMetric label="Tasks" value={currentSummary.tasks} />
-              <BackupMetric label="Notes" value={currentSummary.notes} />
-              <BackupMetric label="Editorial Collections" value={currentSummary.lookbooks} />
-              <BackupMetric label="Version" value={currentSummary.version} />
-            </div>
-
-            <input
-              accept="application/json,.json"
-              className="sr-only"
-              onChange={handleImportFile}
-              ref={fileInputRef}
-              type="file"
-            />
-
-            <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap">
-              <Button
-                icon={<Download aria-hidden="true" size={16} strokeWidth={1.9} />}
-                onClick={handleExportData}
-                variant="primary"
-              >
-                Export Data
-              </Button>
-              <Button
-                icon={<Upload aria-hidden="true" size={16} strokeWidth={1.9} />}
-                onClick={() => fileInputRef.current?.click()}
-                variant="secondary"
-              >
-                Import Data
-              </Button>
-              <Button
-                icon={<RefreshCcw aria-hidden="true" size={16} strokeWidth={1.9} />}
-                onClick={() => {
-                  setResetRequested(true);
-                  setImportCandidate(null);
-                  setErrorMessage(null);
-                  setStatusMessage(null);
-                }}
-                variant="ghost"
-              >
-                Reset Local Data
-              </Button>
-            </div>
-          </div>
+          <Button disabled={working} icon={<Download aria-hidden="true" size={16} />} onClick={() => void exportRecoverySnapshot()} variant="secondary">Download recovery copy</Button>
         </div>
       </Card>
 
-      {statusMessage ? (
-        <StatusNotice message={statusMessage} tone="success" />
-      ) : null}
-      {errorMessage ? <StatusNotice message={errorMessage} tone="error" /> : null}
-      {importCandidate ? (
-        <ImportPreviewCard
-          candidate={importCandidate}
-          onCancel={() => setImportCandidate(null)}
-          onConfirm={handleConfirmImport}
-        />
-      ) : null}
-      {resetRequested ? (
-        <ResetConfirmCard
-          onCancel={() => setResetRequested(false)}
-          onConfirm={handleConfirmReset}
-        />
-      ) : null}
-
-      <Card className="border-ember/32 bg-[linear-gradient(135deg,rgba(27,58,99,0.24),rgba(61,43,31,0.62))]" elevated>
-        <div className="grid gap-5 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)] lg:items-center">
-          <div>
-            <BrandLockup
-              className="mb-5"
-              size="settings"
-              subtitle="Installed app identity"
-            />
-            <Badge variant="teal">Progressive Web App</Badge>
-            <h2 className="mt-4 text-2xl font-semibold text-stardust">
-              Mystic Lore Studio can run from an installed app window.
-            </h2>
-            <p className="mt-3 text-sm leading-7 text-stardust/68">
-              The app shell is cached after production load, and browser-local
-              project, fabric, image, and editorial collection data stays in local storage.
-            </p>
-          </div>
-          <div className="grid gap-3 sm:grid-cols-3">
-            <PwaCapability label="Manifest" value="Configured" />
-            <PwaCapability label="Offline shell" value="Cached" />
-            <PwaCapability label="Local data" value="Offline" />
-          </div>
+      {message ? <p aria-live="polite" className="rounded-xl border border-bronze/28 bg-midnight/40 p-4 text-sm text-stardust/70">{message}</p> : null}
+      <details className="atelier-disclosure">
+        <summary>Advanced reliability details</summary>
+        <div className="mt-4 space-y-4">
+          <ObservabilityPanel />
+          <Card className="border-bronze/22">
+            <div className="flex items-start gap-3"><Cloud aria-hidden="true" className="mt-0.5 text-ember" size={19} /><div><h2 className="font-semibold">Workspace protection</h2><p className="mt-2 text-sm leading-6 text-stardust/58">The shared workspace mode applies to the whole Studio. Verification must finish and all queued changes must be saved before cloud authority can change. A browser cannot change this safety setting.</p></div></div>
+          </Card>
         </div>
-      </Card>
+      </details>
     </section>
   );
 }
 
-function ImportPreviewCard({
-  candidate,
-  onCancel,
-  onConfirm,
-}: {
-  candidate: ImportCandidate;
-  onCancel: () => void;
-  onConfirm: () => void;
-}) {
-  const { preview } = candidate;
-
-  return (
-    <Card className="border-ember/35 bg-ember/10">
-      <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
-        <div>
-          <Badge variant="ember">Import Preview</Badge>
-          <h2 className="mt-4 text-2xl font-semibold text-stardust">
-            Replace current data with {candidate.fileName}?
-          </h2>
-          <p className="mt-3 max-w-3xl text-sm leading-7 text-stardust/68">
-            This will replace all current browser-local studio data. Export a
-            backup first if you may need to return to the current workspace.
-          </p>
-        </div>
-        <div className="flex flex-col gap-3 sm:flex-row">
-          <Button onClick={onCancel} variant="ghost">
-            Cancel
-          </Button>
-          <Button onClick={onConfirm} variant="primary">
-            Confirm Import
-          </Button>
-        </div>
-      </div>
-      <div className="mt-5 grid gap-3 sm:grid-cols-3 xl:grid-cols-6">
-        <BackupMetric label="Projects" value={preview.projects} />
-        <BackupMetric label="Fabrics" value={preview.fabrics} />
-        <BackupMetric label="Tasks" value={preview.tasks} />
-        <BackupMetric label="Notes" value={preview.notes} />
-        <BackupMetric label="Editorial Collections" value={preview.lookbooks} />
-        <BackupMetric label="Version" value={preview.version} />
-      </div>
-    </Card>
-  );
+function StatusCard({ label, status, text }: { label: string; status: string; text: string }) {
+  return <Card><p className="text-xs font-medium uppercase tracking-[.14em] text-ember">{label}</p><p className="mt-3 text-lg font-semibold text-stardust">{status}</p><p className="mt-2 text-sm leading-6 text-stardust/52">{text}</p></Card>;
 }
 
-function ResetConfirmCard({
-  onCancel,
-  onConfirm,
-}: {
-  onCancel: () => void;
-  onConfirm: () => void;
-}) {
-  return (
-    <Card className="border-ember/35 bg-ember/10">
-      <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
-        <div className="max-w-3xl">
-          <Badge variant="ember">Reset Confirmation</Badge>
-          <h2 className="mt-4 text-2xl font-semibold text-stardust">
-            Reset local data to the demo studio dataset?
-          </h2>
-          <p className="mt-3 text-sm leading-7 text-stardust/68">
-            This replaces current projects, fabrics, tasks, notes, linked
-            materials, and editorial collections stored in this browser.
-          </p>
-        </div>
-        <div className="flex flex-col gap-3 sm:flex-row">
-          <Button onClick={onCancel} variant="ghost">
-            Cancel
-          </Button>
-          <Button onClick={onConfirm} variant="primary">
-            Reset Local Data
-          </Button>
-        </div>
-      </div>
-    </Card>
-  );
+function modeLabel(mode: 'cloud' | 'local-recovery' | 'shadow') {
+  return mode === 'cloud' ? 'Shared and current' : mode === 'shadow' ? 'Verification in progress' : 'Recovery mode';
 }
 
-function StatusNotice({
-  message,
-  tone,
-}: {
-  message: string;
-  tone: 'error' | 'success';
-}) {
-  const isError = tone === 'error';
-
-  return (
-    <div
-      className={`flex gap-3 rounded-2xl border p-4 text-sm leading-6 ${
-        isError
-          ? 'border-ember/35 bg-ember/10 text-stardust/74'
-          : 'border-nebula/40 bg-nebula/15 text-stardust/72'
-      }`}
-    >
-      {isError ? (
-        <AlertTriangle
-          aria-hidden="true"
-          className="mt-0.5 shrink-0 text-ember"
-          size={18}
-          strokeWidth={1.9}
-        />
-      ) : (
-        <ShieldCheck
-          aria-hidden="true"
-          className="mt-0.5 shrink-0 text-ember"
-          size={18}
-          strokeWidth={1.9}
-        />
-      )}
-      <span>{message}</span>
-    </div>
-  );
+function modeDescription(mode: 'cloud' | 'local-recovery' | 'shadow') {
+  if (mode === 'cloud') return 'This device is connected to your shared Studio.';
+  if (mode === 'shadow') return 'Local and shared results are being compared before the switch.';
+  return 'The Studio is available for recovery inspection only.';
 }
 
-function SettingsStatusCard({
-  label,
-  status,
-  text,
-}: {
-  label: string;
-  status: string;
-  text: string;
-}) {
-  return (
-    <Card className="min-h-44">
-      <div className="flex h-full flex-col justify-between gap-6">
-        <div>
-          <Badge variant="bronze">{label}</Badge>
-          <p className="mt-5 text-2xl font-semibold leading-tight text-stardust">
-            {status}
-          </p>
-        </div>
-        <p className="text-sm leading-6 text-stardust/58">{text}</p>
-      </div>
-    </Card>
-  );
-}
-
-function PwaCapability({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded-2xl border border-bronze/24 bg-midnight/36 p-4">
-      <p className="text-xs font-medium uppercase tracking-[0.14em] text-stardust/42">
-        {label}
-      </p>
-      <p className="mt-3 text-lg font-semibold text-ember">{value}</p>
-    </div>
-  );
-}
-
-function BackupMetric({ label, value }: { label: string; value: number }) {
-  return (
-    <div className="rounded-2xl border border-bronze/24 bg-midnight/36 p-4">
-      <p className="text-xs font-medium uppercase tracking-[0.14em] text-stardust/42">
-        {label}
-      </p>
-      <p className="mt-3 text-2xl font-semibold text-stardust">{value}</p>
-    </div>
-  );
-}
-
-function getBackupSummary(data: ReturnType<typeof useStudioData>['rawData']) {
-  return {
-    fabrics: data.fabrics.length,
-    linkedMaterials: data.linkedMaterials.length,
-    lookbooks: data.lookbookPages.length,
-    notes: data.notes.length,
-    projects: data.projects.length,
-    tasks: data.tasks.length,
-    version: data.version,
-  };
-}
-
-function getTimestampSlug() {
-  return new Date()
-    .toISOString()
-    .replace(/\.\d{3}Z$/, '')
-    .replace(/[:T]/g, '-');
+function syncHeading(syncState: 'loading' | 'ready' | 'offline' | 'conflict' | 'error', pendingCount: number) {
+  if (syncState === 'offline') return 'Your offline edits are safe.';
+  if (syncState === 'conflict') return 'A recent edit needs your review.';
+  if (syncState === 'error') return 'Cloud sync needs attention.';
+  if (syncState === 'loading') return 'Checking your shared Studio…';
+  return pendingCount ? 'Your latest changes are waiting to sync.' : 'Everything is up to date.';
 }

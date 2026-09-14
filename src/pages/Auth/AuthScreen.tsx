@@ -1,34 +1,48 @@
 import { useState, type CSSProperties, type FormEvent } from 'react';
-import { ArrowRight, CloudOff, Loader2, LockKeyhole, Mail } from 'lucide-react';
+import { ArrowLeft, ArrowRight, CloudOff, Loader2, LockKeyhole, Mail } from 'lucide-react';
 import { BrandLockup } from '../../components/layout/BrandLockup';
 import { Button } from '../../components/shared/Button';
 import { useAuth } from '../../hooks/useAuth';
 import { cn } from '../../lib/classes';
 
-type AuthMode = 'signin' | 'signup';
+type AuthMode = 'signin' | 'signup' | 'recovery';
 
 export function AuthScreen() {
   const {
+    cancelPasswordRecovery,
     clearError,
+    completePasswordRecovery,
     configIssues,
     isConfigured,
     isLoading,
+    isPasswordRecovery,
     lastError,
+    requestPasswordReset,
     signIn,
     signUp,
   } = useAuth();
   const [email, setEmail] = useState('');
   const [mode, setMode] = useState<AuthMode>('signin');
   const [password, setPassword] = useState('');
+  const [passwordConfirmation, setPasswordConfirmation] = useState('');
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
-  const canSubmit = isConfigured && email.trim() && password.length >= 6;
+  const isCompletingRecovery = isPasswordRecovery;
+  const canSubmit = isConfigured && (
+    isCompletingRecovery
+      ? password.length >= 6 && password === passwordConfirmation
+      : mode === 'recovery'
+        ? Boolean(email.trim())
+        : Boolean(email.trim()) && password.length >= 6
+  );
 
   const handleModeChange = (nextMode: AuthMode) => {
     setMode(nextMode);
     setSubmitError(null);
     setSuccessMessage(null);
+    setPassword('');
+    setPasswordConfirmation('');
     clearError();
   };
 
@@ -36,7 +50,13 @@ export function AuthScreen() {
     event.preventDefault();
 
     if (!canSubmit) {
-      setSubmitError('Enter an email and a password with at least 6 characters.');
+      setSubmitError(
+        isCompletingRecovery
+          ? 'Enter matching passwords with at least 6 characters.'
+          : mode === 'recovery'
+            ? 'Enter the email address for your studio account.'
+            : 'Enter an email and a password with at least 6 characters.',
+      );
       return;
     }
 
@@ -45,7 +65,12 @@ export function AuthScreen() {
     setSuccessMessage(null);
 
     try {
-      if (mode === 'signin') {
+      if (isCompletingRecovery) {
+        await completePasswordRecovery(password);
+      } else if (mode === 'recovery') {
+        await requestPasswordReset(email.trim());
+        setSuccessMessage('Recovery link sent. Check your email to choose a new password.');
+      } else if (mode === 'signin') {
         await signIn(email.trim(), password);
       } else {
         await signUp(email.trim(), password);
@@ -128,7 +153,7 @@ export function AuthScreen() {
             <p className="mb-3 text-center text-[0.64rem] font-medium uppercase tracking-[0.22em] text-stardust/42 sm:hidden">
               Atelier access
             </p>
-            <div className="flex rounded-[1.35rem] border border-bronze/22 bg-midnight/42 p-1 sm:rounded-2xl sm:border-bronze/24 sm:bg-midnight/48">
+            {!isCompletingRecovery ? <div className="flex rounded-[1.35rem] border border-bronze/22 bg-midnight/42 p-1 sm:rounded-2xl sm:border-bronze/24 sm:bg-midnight/48">
                 <ModeButton
                   active={mode === 'signin'}
                   onClick={() => handleModeChange('signin')}
@@ -141,7 +166,14 @@ export function AuthScreen() {
                 >
                   Sign Up
                 </ModeButton>
-              </div>
+              </div> : (
+                <div>
+                  <p className="text-sm font-semibold text-stardust">Choose a new password</p>
+                  <p className="mt-1 text-sm leading-6 text-stardust/58">
+                    Your recovery link is verified. Set the new password for this studio account.
+                  </p>
+                </div>
+              )}
 
             {!isConfigured ? (
               <div className="mt-4 rounded-2xl border border-ember/32 bg-ember/10 p-3 sm:mt-5 sm:p-4">
@@ -171,7 +203,7 @@ export function AuthScreen() {
             ) : null}
 
             <form className="mt-4 space-y-3 sm:mt-5 sm:space-y-4" onSubmit={handleSubmit}>
-              <label className="block">
+              {!isCompletingRecovery ? <label className="block">
                 <span className="text-[0.68rem] font-medium uppercase tracking-[0.14em] text-stardust/48 sm:text-xs">
                   Email
                 </span>
@@ -192,9 +224,9 @@ export function AuthScreen() {
                       value={email}
                     />
                 </span>
-              </label>
+              </label> : null}
 
-              <label className="block">
+              {mode !== 'recovery' || isCompletingRecovery ? <label className="block">
                 <span className="text-[0.68rem] font-medium uppercase tracking-[0.14em] text-stardust/48 sm:text-xs">
                   Password
                 </span>
@@ -207,7 +239,7 @@ export function AuthScreen() {
                     />
                     <input
                       autoComplete={
-                        mode === 'signin' ? 'current-password' : 'new-password'
+                        mode === 'signin' && !isCompletingRecovery ? 'current-password' : 'new-password'
                       }
                       className="min-h-11 w-full bg-transparent text-sm text-stardust outline-none placeholder:text-stardust/32 sm:min-h-12 sm:text-base"
                       disabled={!isConfigured || isSubmitting}
@@ -217,7 +249,27 @@ export function AuthScreen() {
                       value={password}
                     />
                 </span>
-              </label>
+              </label> : null}
+
+              {isCompletingRecovery ? (
+                <label className="block">
+                  <span className="text-[0.68rem] font-medium uppercase tracking-[0.14em] text-stardust/48 sm:text-xs">
+                    Confirm password
+                  </span>
+                  <span className="mt-1.5 flex min-h-11 items-center gap-3 rounded-2xl border border-bronze/24 bg-midnight/44 px-3 transition duration-200 focus-within:border-ember/60 sm:mt-2 sm:min-h-12">
+                    <LockKeyhole aria-hidden="true" className="shrink-0 text-ember/78" size={17} strokeWidth={1.9} />
+                    <input
+                      autoComplete="new-password"
+                      className="min-h-11 w-full bg-transparent text-sm text-stardust outline-none placeholder:text-stardust/32 sm:min-h-12 sm:text-base"
+                      disabled={!isConfigured || isSubmitting}
+                      onChange={(event) => setPasswordConfirmation(event.target.value)}
+                      placeholder="Repeat new password"
+                      type="password"
+                      value={passwordConfirmation}
+                    />
+                  </span>
+                </label>
+              ) : null}
 
               {submitError || lastError ? (
                 <p className="rounded-2xl border border-ember/34 bg-ember/10 px-4 py-3 text-sm leading-6 text-stardust/76">
@@ -251,10 +303,48 @@ export function AuthScreen() {
               >
                 {isSubmitting
                   ? 'Checking access...'
-                  : mode === 'signin'
+                  : isCompletingRecovery
+                    ? 'Save New Password'
+                    : mode === 'signin'
                     ? 'Sign In'
-                    : 'Create Account'}
+                    : mode === 'signup'
+                      ? 'Create Account'
+                      : 'Send Recovery Link'}
               </Button>
+              {!isCompletingRecovery && mode === 'signin' ? (
+                <button
+                  className="min-h-11 w-full rounded-xl text-sm text-stardust/58 transition hover:bg-stardust/[0.05] hover:text-stardust"
+                  onClick={() => handleModeChange('recovery')}
+                  type="button"
+                >
+                  Forgot your password?
+                </button>
+              ) : null}
+              {!isCompletingRecovery && mode === 'recovery' ? (
+                <button
+                  className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl text-sm text-stardust/58 transition hover:bg-stardust/[0.05] hover:text-stardust"
+                  onClick={() => handleModeChange('signin')}
+                  type="button"
+                >
+                  <ArrowLeft aria-hidden="true" size={16} />
+                  Back to sign in
+                </button>
+              ) : null}
+              {isCompletingRecovery ? (
+                <button
+                  className="min-h-11 w-full rounded-xl text-sm text-stardust/58 transition hover:bg-stardust/[0.05] hover:text-stardust"
+                  onClick={() => {
+                    void cancelPasswordRecovery().catch((error: unknown) => {
+                      setSubmitError(
+                        error instanceof Error ? error.message : 'Unable to cancel recovery.',
+                      );
+                    });
+                  }}
+                  type="button"
+                >
+                  Cancel recovery
+                </button>
+              ) : null}
             </form>
           </div>
         </section>
@@ -321,7 +411,7 @@ function ModeButton({
   return (
     <button
       className={cn(
-        'min-h-10 flex-1 rounded-[1.05rem] px-3 text-sm font-medium transition duration-300 sm:min-h-11 sm:rounded-xl sm:px-4',
+        'min-h-11 flex-1 rounded-[1.05rem] px-3 text-sm font-medium transition duration-300 sm:rounded-xl sm:px-4',
         active
           ? 'bg-ember text-midnight shadow-[0_12px_30px_rgba(200,155,60,0.18)]'
           : 'text-stardust/58 hover:bg-stardust/[0.07] hover:text-stardust',

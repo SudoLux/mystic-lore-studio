@@ -98,6 +98,7 @@ import type {
   PortfolioVisibleSections,
 } from '../types/portfolio';
 import { getSafePortfolioSettings } from '../lib/portfolio';
+import { recordClientEvent } from '../lib/observability';
 
 export type SyncProgress = {
   completed: number;
@@ -240,6 +241,7 @@ export function StudioDataProvider({
     try {
       await preserveLegacyBackup(userId);
     } catch {
+      recordClientEvent({ context: { stage: 'legacy_backup' }, kind: 'migration_warning' });
       setLocalCacheWarning(
         'Cloud data is safe, but this device could not move its legacy offline backup into IndexedDB.',
       );
@@ -307,6 +309,7 @@ export function StudioDataProvider({
       const readiness = await checkCloudSyncReadiness(userId);
 
       if (!readiness.ready) {
+        recordClientEvent({ context: { phase: 'validating' }, kind: 'sync_failure' });
         setSyncError(readiness.message);
         setSyncStatus('error');
         setSyncPhase('idle');
@@ -377,6 +380,7 @@ export function StudioDataProvider({
       );
 
       if (execution.failures.length > 0) {
+        recordClientEvent({ context: { failed_operations: execution.failures.length, phase: 'saving_records' }, kind: 'sync_failure' });
         execution.failures.forEach((failure) => {
           const failedQueue = getSyncQueue(userId);
           const failedIds = new Set(failure.operationIds);
@@ -451,6 +455,7 @@ export function StudioDataProvider({
       completedSuccessfully = completed;
       return completed;
     }).catch((error) => {
+      recordClientEvent({ context: { phase: 'queue_drain' }, kind: 'sync_failure' });
       setSyncError(errorMessage(error));
       setSyncStatus(navigator.onLine ? 'error' : 'offline');
       setSyncPhase('idle');
@@ -493,6 +498,7 @@ export function StudioDataProvider({
       const readiness = await checkCloudSyncReadiness(userId);
 
       if (!readiness.ready) {
+        recordClientEvent({ context: { phase: 'cloud_refresh' }, kind: 'sync_failure' });
         setSyncError(readiness.message);
         setSyncStatus('error');
         setSyncPhase('idle');
@@ -541,6 +547,7 @@ export function StudioDataProvider({
         setLastSyncedAt(new Date().toISOString());
         lastCloudRefreshAtRef.current = Date.now();
       } catch (error) {
+        recordClientEvent({ context: { phase: 'cloud_refresh' }, kind: 'sync_failure' });
         setSyncError(errorMessage(error));
         setSyncStatus(navigator.onLine ? 'error' : 'offline');
         setSyncPhase('idle');
@@ -577,6 +584,7 @@ export function StudioDataProvider({
       })
       .catch((error) => {
         if (!active) return;
+        recordClientEvent({ context: { phase: 'initial_hydration' }, kind: 'sync_failure' });
         setSyncError(errorMessage(error));
         setSyncStatus('error');
       });
@@ -657,6 +665,7 @@ export function StudioDataProvider({
       const readiness = await checkCloudSyncReadiness(userId);
 
       if (!readiness.ready) {
+        recordClientEvent({ context: { phase: 'cloud_migration' }, kind: 'sync_failure' });
         setSyncError(readiness.message);
         setSyncStatus('error');
         setSyncPhase('idle');
@@ -685,6 +694,7 @@ export function StudioDataProvider({
       setSyncProgress({ completed: 0, total: syncQueueCount(queue) });
       void flushQueue();
     } catch (error) {
+      recordClientEvent({ context: { phase: 'cloud_migration' }, kind: 'sync_failure' });
       setSyncError(errorMessage(error));
       setSyncStatus(navigator.onLine ? 'error' : 'offline');
       setSyncPhase('idle');

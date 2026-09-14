@@ -1,0 +1,28 @@
+{
+  "budgets": {
+    "cssChunkBytes": 358400,
+    "imageBytes": 256000,
+    "jsChunkBytes": 512000
+  },
+  "checkedAt": "2026-09-14T03:26:41.410Z",
+  "decision": "PASS",
+  "distChecksum": "7c12fa70499d537e604ffaf8e90987ac3018e2d387d2a820afbf81c408967ba1",
+  "failures": [],
+  "largestCss": {
+    "bytes": 320425,
+    "name": "index-BiHzt5cu.css",
+    "type": ".css"
+  },
+  "largestImage": {
+    "bytes": 199758,
+    "name": "mystic-lore-logo-FzCeKgr_.png",
+    "type": ".png"
+  },
+  "largestJs": {
+    "bytes": 403942,
+    "name": "classes-DZnWQbMc.js",
+    "type": ".js"
+  },
+  "routeChunkCount": 44,
+  "totalBytes": 2062216
+}

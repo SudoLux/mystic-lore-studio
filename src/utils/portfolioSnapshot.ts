@@ -138,6 +138,13 @@ export type PortfolioProjectSnapshot = Readonly<{
   skills: readonly string[];
   slug: string;
   sortOrder?: number;
+  technicalExcerpt?: Readonly<{
+    approvedAt: string;
+    approvedVersionId: string;
+    downloadUrl?: string;
+    summary: string;
+    title: string;
+  }>;
   title: string;
   updatedAt?: string;
   visibleSections: Readonly<PortfolioVisibleSections>;

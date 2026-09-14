@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react';
-import QRCode from 'qrcode';
 import { Check, Copy, QrCode, Send } from 'lucide-react';
 import { cn } from '../../lib/classes';
 import { Button } from '../shared/Button';
@@ -30,12 +29,12 @@ export function PortfolioShareCard({
   useEffect(() => {
     let active = true;
     const qrTarget = toQrTarget(portfolioUrl);
-    void QRCode.toDataURL(qrTarget, {
-      color: { dark: '#0b0d0e', light: '#f0e7d7' },
-      errorCorrectionLevel: 'M',
-      margin: 1,
-      width: 216,
-    }).then((dataUrl) => {
+    void import('qrcode').then(({ default: QRCode }) => QRCode.toDataURL(qrTarget, {
+        color: { dark: '#0b0d0e', light: '#f0e7d7' },
+        errorCorrectionLevel: 'M',
+        margin: 1,
+        width: 216,
+      })).then((dataUrl) => {
       if (active) setQrDataUrl(dataUrl);
     }).catch(() => {
       if (active) setQrDataUrl(null);

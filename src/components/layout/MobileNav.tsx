@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Plus } from 'lucide-react';
+import { Plus, Sparkles } from 'lucide-react';
 import { cn } from '../../lib/classes';
 import type { NavItem, PageId } from '../../types/navigation';
 
@@ -11,9 +11,9 @@ type MobileNavProps = {
 
 const primaryMobileLabels: Partial<Record<PageId, string>> = {
   dashboard: 'Home',
-  projects: 'Projects',
-  lookbooks: 'Editorial',
-  fabrics: 'Fabrics',
+  projects: 'Garments',
+  kanban: 'Plan',
+  fabrics: 'Materials',
 };
 
 export function MobileNav({ activePage, navItems, onNavigate }: MobileNavProps) {
@@ -21,14 +21,14 @@ export function MobileNav({ activePage, navItems, onNavigate }: MobileNavProps) 
   const navRef = useRef<HTMLElement>(null);
   const primaryNavItems = useMemo(
     () =>
-      ['dashboard', 'projects', 'lookbooks', 'fabrics']
+      ['dashboard', 'projects', 'kanban', 'fabrics']
         .map((pageId) => navItems.find((item) => item.id === pageId))
         .filter((item): item is NavItem => Boolean(item)),
     [navItems],
   );
   const overflowNavItems = useMemo(
     () =>
-      ['kanban', 'portfolio', 'stats', 'settings']
+      ['technical', 'production', 'lookbooks', 'portfolio', 'versions', 'ai', 'stats', 'settings']
         .map((pageId) => navItems.find((item) => item.id === pageId))
         .filter((item): item is NavItem => Boolean(item)),
     [navItems],
@@ -72,45 +72,11 @@ export function MobileNav({ activePage, navItems, onNavigate }: MobileNavProps) 
       />
 
       {isMenuOpen ? (
-        <div className="pointer-events-none absolute left-1/2 bottom-[5.9rem] flex -translate-x-1/2 translate-y-0 items-end justify-center opacity-100 transition duration-300">
-          <div className="relative h-28 w-72">
-            <div className="absolute inset-x-8 bottom-0 h-24 rounded-t-full border border-b-0 border-bronze/22 bg-[radial-gradient(circle_at_50%_100%,rgba(200,155,60,0.16),rgba(10,10,10,0.78)_58%,transparent_72%)] shadow-[0_-20px_55px_rgba(0,0,0,0.36)] backdrop-blur-xl" />
-            {overflowNavItems.map((item, index) => {
-              const Icon = item.icon;
-              const isActive = activePage === item.id;
-              const positions = [
-                'left-0 bottom-1',
-                'left-[27%] bottom-12 -translate-x-1/2',
-                'right-[27%] bottom-12 translate-x-1/2',
-                'right-0 bottom-1',
-              ];
-
-              return (
-                <button
-                  aria-current={isActive ? 'page' : undefined}
-                  className={cn(
-                    'pointer-events-auto absolute flex min-w-16 flex-col items-center gap-1 text-[0.64rem] font-medium text-stardust/68 transition duration-200',
-                    positions[index],
-                    isActive && 'text-stardust',
-                  )}
-                  key={item.id}
-                  onClick={() => handleNavigate(item.id)}
-                  type="button"
-                >
-                  <span
-                    className={cn(
-                      'flex h-12 w-12 items-center justify-center rounded-2xl border bg-midnight/88 shadow-[0_12px_34px_rgba(0,0,0,0.34)] backdrop-blur-xl transition duration-200',
-                      isActive
-                        ? 'border-ember/62 bg-ember/18 text-ember'
-                        : 'border-bronze/30 text-stardust/70 hover:border-ember/45 hover:text-ember',
-                    )}
-                  >
-                    <Icon aria-hidden="true" size={21} strokeWidth={1.85} />
-                  </span>
-                  <span>{item.shortLabel}</span>
-                </button>
-              );
-            })}
+        <div className="absolute inset-x-3 bottom-[5.9rem] rounded-3xl border border-bronze/24 bg-midnight/[0.97] p-3 shadow-[0_-20px_55px_rgba(0,0,0,0.42)] backdrop-blur-xl transition duration-300">
+          <div className="grid gap-3">
+            <MobileNavGroup label="Make" items={overflowNavItems.filter((item) => item.group === 'make')} activePage={activePage} onNavigate={handleNavigate} />
+            <MobileNavGroup label="Present" items={overflowNavItems.filter((item) => item.group === 'present')} activePage={activePage} onNavigate={handleNavigate} />
+            <MobileNavGroup label="Studio tools" items={overflowNavItems.filter((item) => item.group === 'tools')} activePage={activePage} onNavigate={handleNavigate} quiet />
           </div>
         </div>
       ) : null}
@@ -145,6 +111,7 @@ export function MobileNav({ activePage, navItems, onNavigate }: MobileNavProps) 
             size={29}
             strokeWidth={2}
           />
+          <Sparkles aria-hidden="true" className="absolute -right-1 -top-1 text-midnight/60" size={11} strokeWidth={2.4} />
         </button>
 
         {primaryNavItems.slice(2).map((item) => (
@@ -157,6 +124,52 @@ export function MobileNav({ activePage, navItems, onNavigate }: MobileNavProps) 
         ))}
       </div>
     </nav>
+  );
+}
+
+function MobileNavGroup({
+  activePage,
+  items,
+  label,
+  onNavigate,
+  quiet = false,
+}: {
+  activePage: PageId;
+  items: NavItem[];
+  label: string;
+  onNavigate: (pageId: PageId) => void;
+  quiet?: boolean;
+}) {
+  if (!items.length) return null;
+
+  return (
+    <section aria-label={label}>
+      <p className={cn('mb-1.5 px-1 text-[0.6rem] font-semibold uppercase tracking-[0.18em] text-stardust/38', quiet && 'text-stardust/28')}>
+        {label}
+      </p>
+      <div className="grid grid-cols-4 gap-1.5">
+        {items.map((item) => {
+          const Icon = item.icon;
+          const isActive = activePage === item.id;
+          return (
+            <button
+              aria-current={isActive ? 'page' : undefined}
+              className={cn(
+                'flex min-h-[4.15rem] min-w-0 flex-col items-center justify-center gap-1 rounded-2xl border px-1 text-[0.62rem] font-medium text-stardust/64 transition duration-200',
+                isActive ? 'border-ember/45 bg-ember/[0.11] text-stardust' : 'border-transparent hover:bg-stardust/[0.05]',
+                quiet && !isActive && 'text-stardust/48',
+              )}
+              key={item.id}
+              onClick={() => onNavigate(item.id)}
+              type="button"
+            >
+              <Icon aria-hidden="true" className={isActive ? 'text-ember' : 'text-stardust/60'} size={19} strokeWidth={1.8} />
+              <span className="w-full truncate text-center">{item.shortLabel}</span>
+            </button>
+          );
+        })}
+      </div>
+    </section>
   );
 }
 

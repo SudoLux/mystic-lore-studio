@@ -1,0 +1,162 @@
+{
+  "version": 5,
+  "projects": [
+    {
+      "id": "project-legacy-aurora-coat",
+      "name": "Aurora Utility Coat",
+      "garmentType": "Coat",
+      "phase": "Fitting",
+      "status": "Active",
+      "season": "Autumn 2026",
+      "collection": "Archive Light",
+      "progress": 62,
+      "priority": "High",
+      "difficulty": "Advanced",
+      "summary": "A weather-ready utility coat that balances mobility, layered construction, and ceremonial color accents.",
+      "designIntent": "Build a durable outer layer with a calm, architectural silhouette.",
+      "targetWearer": "A creative professional moving between studio, city, and travel.",
+      "silhouette": "Relaxed longline coat with articulated sleeves and a belted waist.",
+      "keyFeatures": ["Articulated sleeve", "Belted waist", "Contrast lining"],
+      "colorStory": "Charcoal shell, ember lining, and bone topstitching.",
+      "generalNotes": "Representative fixture note. It is intentionally fictional and safe for local migration tests.",
+      "tags": ["outerwear", "utility", "autumn"],
+      "startDate": "2026-04-15",
+      "targetDate": "2026-09-01",
+      "createdAt": "2026-04-15T09:00:00.000Z",
+      "updatedAt": "2026-06-20T16:30:00.000Z",
+      "heroImage": {
+        "id": "image-legacy-aurora-hero",
+        "name": "aurora-coat-hero.webp",
+        "mimeType": "image/webp",
+        "size": 184320,
+        "storagePath": "users/example-studio/projects/project-legacy-aurora-coat/image-legacy-aurora-hero.webp",
+        "uploadState": "uploaded",
+        "updatedAt": "2026-06-20T16:30:00.000Z",
+        "width": 1600,
+        "height": 2000,
+        "objectFit": "contain",
+        "objectPositionX": 50,
+        "objectPositionY": 50,
+        "zoom": 1
+      },
+      "galleryImages": [],
+      "editorialImages": []
+    }
+  ],
+  "fabrics": [
+    {
+      "id": "fabric-legacy-charcoal-twill",
+      "name": "Charcoal Weather Twill",
+      "supplier": "Example Textile House",
+      "category": "Twill",
+      "composition": "65% cotton, 35% nylon",
+      "colorFamily": "Charcoal",
+      "primaryColor": "Storm charcoal",
+      "secondaryColors": ["Ember"],
+      "weight": "Medium-heavy",
+      "drape": "Crisp",
+      "weaveOrKnit": "Woven",
+      "stretch": "None",
+      "opacity": "Opaque",
+      "handFeel": "Dry",
+      "texture": "Legacy texture retained for migration coverage",
+      "structure": "Legacy structure retained for migration coverage",
+      "widthInches": 58,
+      "totalYards": 12,
+      "reservedYards": 4,
+      "usedYards": 1,
+      "status": "Reserved",
+      "archiveStatus": "Reserved",
+      "rarity": "Core",
+      "purchaseDate": "2026-04-10",
+      "costPerYard": 21.5,
+      "storageLocation": "Fixture shelf",
+      "binNumber": "FIX-01",
+      "shelf": "A1",
+      "storageStatus": "Reserved",
+      "bestUses": ["Coats", "Jackets"],
+      "careNotes": "Test a steam sample before cutting.",
+      "moodTags": ["architectural"],
+      "tags": ["twill", "outerwear"],
+      "loreNote": "A fictional material record for migration coverage.",
+      "notes": "No personal sourcing details are included.",
+      "updatedAt": "2026-06-19T12:00:00.000Z"
+    }
+  ],
+  "linkedMaterials": [
+    {
+      "id": "material-legacy-shell",
+      "projectId": "project-legacy-aurora-coat",
+      "fabricId": "fabric-legacy-charcoal-twill",
+      "materialName": "Charcoal Weather Twill",
+      "role": "Shell Fabric",
+      "status": "Reserved",
+      "neededYards": 4,
+      "reservedYards": 4,
+      "usedYards": 1,
+      "notes": "Primary shell.",
+      "createdAt": "2026-04-16T09:00:00.000Z",
+      "updatedAt": "2026-06-19T12:00:00.000Z"
+    }
+  ],
+  "tasks": [
+    {
+      "id": "task-legacy-fitting",
+      "projectId": "project-legacy-aurora-coat",
+      "title": "Review sleeve mobility",
+      "description": "Check elbow articulation during the fitting.",
+      "category": "Fitting",
+      "status": "In Progress",
+      "priority": "High",
+      "phase": "Fitting",
+      "dueDate": "2026-06-28",
+      "updatedAt": "2026-06-20T16:30:00.000Z"
+    }
+  ],
+  "notes": [
+    {
+      "id": "note-legacy-private",
+      "projectId": "project-legacy-aurora-coat",
+      "title": "Private fitting observation",
+      "body": "Keep this fixture note private by default.",
+      "category": "Fit Note",
+      "createdAt": "2026-06-18T14:00:00.000Z",
+      "updatedAt": "2026-06-18T14:00:00.000Z"
+    }
+  ],
+  "lookbookPages": [
+    {
+      "id": "lookbook-legacy-aurora-cover",
+      "projectId": "project-legacy-aurora-coat",
+      "title": "Aurora Coat Study",
+      "pageType": "Cover",
+      "headline": "Aurora Utility Coat",
+      "body": "A legacy lookbook page retained to characterize migration input.",
+      "layoutHint": "editorial hero",
+      "updatedAt": "2026-06-20T16:30:00.000Z"
+    }
+  ],
+  "yardageEntries": [
+    {
+      "id": "yardage-legacy-shell",
+      "fabricId": "fabric-legacy-charcoal-twill",
+      "materialId": "material-legacy-shell",
+      "occurredAt": "2026-06-19T12:00:00.000Z",
+      "createdAt": "2026-06-19T12:00:00.000Z",
+      "notes": "Representative reservation."
+    }
+  ],
+  "editorialCollections": [],
+  "settings": {
+    "backupReminderCadenceDays": 14,
+    "backupReminderCopy": "Export a safe backup after significant studio work.",
+    "updatedAt": "2026-06-20T16:30:00.000Z"
+  },
+  "portfolioProfile": {
+    "displayName": "Example Designer",
+    "headline": "Apparel designer and technical storyteller",
+    "bio": "Sanitized fixture profile.",
+    "usernameSlug": "example-designer",
+    "updatedAt": "2026-06-20T16:30:00.000Z"
+  }
+}

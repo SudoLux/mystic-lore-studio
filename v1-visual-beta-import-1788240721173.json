@@ -1,0 +1,203 @@
+{
+  "completed": true,
+  "completedAt": "2026-09-01T05:32:01.173Z",
+  "counts": {
+    "inventory_entries": {
+      "inserted": 0,
+      "unchanged": 12
+    },
+    "material_variant_profiles": {
+      "inserted": 0,
+      "unchanged": 12
+    },
+    "supplier_items": {
+      "inserted": 0,
+      "unchanged": 11
+    },
+    "media_assets": {
+      "inserted": 0,
+      "unchanged": 12
+    },
+    "material_variant_media": {
+      "inserted": 12,
+      "unchanged": 0
+    }
+  },
+  "dryRun": false,
+  "fabricsOnly": true,
+  "failure": null,
+  "format": "ml-v1-visual-beta-import-report-v1",
+  "mappings": [
+    {
+      "canonicalId": "3f581e8d-d75c-5c28-baab-bc3044bba38d",
+      "legacyId": "fabric-eddie-bower-poly-span-mr17sohs",
+      "type": "material_variant"
+    },
+    {
+      "canonicalId": "55a2fe56-7965-591b-8308-0616478e1314",
+      "legacyId": "fabric-mason-chino-twill-navy-blue-mqz0q7bs",
+      "type": "material_variant"
+    },
+    {
+      "canonicalId": "85b9e60e-a96b-554d-94a9-6ec9b9a3a8e2",
+      "legacyId": "fabric-southwest-rev-jacard-mqzqhoje",
+      "type": "material_variant"
+    },
+    {
+      "canonicalId": "d28dc43b-5bc0-5efc-a41d-f3b60123f5c2",
+      "legacyId": "fabric-fillgree-butter-canvas-mqzqx8j5",
+      "type": "material_variant"
+    },
+    {
+      "canonicalId": "b7347df4-e04f-516b-ad70-cfffef556af7",
+      "legacyId": "fabric-11-wale-corduroy-bronze-mqzom2uq",
+      "type": "material_variant"
+    },
+    {
+      "canonicalId": "9559c684-83d9-50fe-8a80-836d0114fe1c",
+      "legacyId": "fabric-gold-feather-woven-mr453k1j",
+      "type": "material_variant"
+    },
+    {
+      "canonicalId": "09ba4817-f682-5084-914b-5adf1532ac95",
+      "legacyId": "fabric-mason-chino-twill-crimson-mqyuekqt",
+      "type": "material_variant"
+    },
+    {
+      "canonicalId": "242b70a1-dcba-50f7-aa4c-bb10bd812178",
+      "legacyId": "fabric-able-knit-pink-mr440uab",
+      "type": "material_variant"
+    },
+    {
+      "canonicalId": "061b9429-ff9d-5179-982b-408516ddda9c",
+      "legacyId": "fabric-windowpane-plaid-wool-blend-mqx9e54z",
+      "type": "material_variant"
+    },
+    {
+      "canonicalId": "20f3e267-07c0-5f95-bcc8-a7fae1cadd68",
+      "legacyId": "fabric-giverny-teal-canvas-mqzr3sd9",
+      "type": "material_variant"
+    },
+    {
+      "canonicalId": "4492db68-11c0-5346-a451-cf76d3834e50",
+      "legacyId": "fabric-red-lotus-brocade-mr44ld4b",
+      "type": "material_variant"
+    },
+    {
+      "canonicalId": "2d6e0495-615d-5817-b513-9d5a5214aab2",
+      "legacyId": "fabric-mason-chino-twill-golden-mqz12pzd",
+      "type": "material_variant"
+    }
+  ],
+  "media": [
+    {
+      "assetId": "0388aca9-ec41-5566-a310-5592325f1d1a",
+      "checksum": "2410d3137c82c62d32036a57c7f761f602956f8100ea4a73b6db193220effce9",
+      "destination": "studios/586ab26d-9713-46b8-bfff-7534ceab7633/assets/v1/0388aca9-ec41-5566-a310-5592325f1d1a/IMG_0603.jpg",
+      "legacyId": "fabric-image:fabric-eddie-bower-poly-span-mr17sohs",
+      "role": "swatch",
+      "source": "users/9b06d5d2-5732-4f28-a07e-d39a3553250f/fabrics/fabric-eddie-bower-poly-span-mr17sohs/image-8f269287-bcae-4875-8f61-92985c26ddab.jpg"
+    },
+    {
+      "assetId": "b5ee6636-04c8-57d9-99cf-66b4e95d5018",
+      "checksum": "dc59c36a23c61053a7182d6c55f6f62e20e857877212123272f27b71dc55dc9d",
+      "destination": "studios/586ab26d-9713-46b8-bfff-7534ceab7633/assets/v1/b5ee6636-04c8-57d9-99cf-66b4e95d5018/IMG_2042.jpg",
+      "legacyId": "fabric-image:fabric-mason-chino-twill-navy-blue-mqz0q7bs",
+      "role": "swatch",
+      "source": "users/9b06d5d2-5732-4f28-a07e-d39a3553250f/fabrics/fabric-mason-chino-twill-navy-blue-mqz0q7bs/image-2f88c9e0-270e-4c92-91d0-7ba4ba1eb7db.jpg"
+    },
+    {
+      "assetId": "6ead0555-2f74-532b-b3a8-81c5de8d5e71",
+      "checksum": "92375c061d7b4415b4fd933549d30dc50b97557b2ce6eaa13bc187e7fe7f1d91",
+      "destination": "studios/586ab26d-9713-46b8-bfff-7534ceab7633/assets/v1/6ead0555-2f74-532b-b3a8-81c5de8d5e71/IMG_0609.jpg",
+      "legacyId": "fabric-image:fabric-southwest-rev-jacard-mqzqhoje",
+      "role": "swatch",
+      "source": "users/9b06d5d2-5732-4f28-a07e-d39a3553250f/fabrics/fabric-southwest-rev-jacard-mqzqhoje/image-d33d0e2f-14e9-4793-95a7-075ebe73b0aa.jpg"
+    },
+    {
+      "assetId": "849a970a-ac9d-57b7-97a2-0393188e85c0",
+      "checksum": "8a1d6b5a7177fcb3dba0413a4a05b13467a982441c407ef04c1d0a81677c82cf",
+      "destination": "studios/586ab26d-9713-46b8-bfff-7534ceab7633/assets/v1/849a970a-ac9d-57b7-97a2-0393188e85c0/IMG_0607.jpg",
+      "legacyId": "fabric-image:fabric-fillgree-butter-canvas-mqzqx8j5",
+      "role": "swatch",
+      "source": "users/9b06d5d2-5732-4f28-a07e-d39a3553250f/fabrics/fabric-fillgree-butter-canvas-mqzqx8j5/image-bcd2e792-113b-4c1f-b7a3-47938704f0b3.jpg"
+    },
+    {
+      "assetId": "8a9732f4-4403-55ed-a95b-d3c6e0997650",
+      "checksum": "93041373f10bd7b8b9a8c28ff62ea15eae43c18342fb188b55b69aa44c8325a1",
+      "destination": "studios/586ab26d-9713-46b8-bfff-7534ceab7633/assets/v1/8a9732f4-4403-55ed-a95b-d3c6e0997650/IMG_2044.jpg",
+      "legacyId": "fabric-image:fabric-11-wale-corduroy-bronze-mqzom2uq",
+      "role": "swatch",
+      "source": "users/9b06d5d2-5732-4f28-a07e-d39a3553250f/fabrics/fabric-11-wale-corduroy-bronze-mqzom2uq/image-7d7d6722-7e0c-41f7-bff8-a1ef1bf48e9a.jpg"
+    },
+    {
+      "assetId": "913d15fb-1768-5001-8fe6-0e40ae2d4bb2",
+      "checksum": "cf5b2505b3cf781e69c99ff064932c9ced25c4f3e000317fbb4f8231851a0601",
+      "destination": "studios/586ab26d-9713-46b8-bfff-7534ceab7633/assets/v1/913d15fb-1768-5001-8fe6-0e40ae2d4bb2/IMG_0641.jpg",
+      "legacyId": "fabric-image:fabric-gold-feather-woven-mr453k1j",
+      "role": "swatch",
+      "source": "users/9b06d5d2-5732-4f28-a07e-d39a3553250f/fabrics/fabric-gold-feather-woven-mr453k1j/image-7d5fdb72-1ef8-4304-be66-ecc15ef15b99.jpg"
+    },
+    {
+      "assetId": "1d0db340-57d6-570b-8547-ec97c49ca1cf",
+      "checksum": "583e9aa3fec2653db151cff97b5fb912b92817627017f66444b175f103488f7d",
+      "destination": "studios/586ab26d-9713-46b8-bfff-7534ceab7633/assets/v1/1d0db340-57d6-570b-8547-ec97c49ca1cf/IMG_2041.jpg",
+      "legacyId": "fabric-image:fabric-mason-chino-twill-crimson-mqyuekqt",
+      "role": "swatch",
+      "source": "users/9b06d5d2-5732-4f28-a07e-d39a3553250f/fabrics/fabric-mason-chino-twill-crimson-mqyuekqt/image-b9d1dc7d-b13e-4e00-ad3d-7c4dcd2d8889.jpg"
+    },
+    {
+      "assetId": "8c1d887c-5259-5692-8c13-2a21d6b36421",
+      "checksum": "b722cecbc14a97861688484b5333d5892ff0734d9089024884509d62c2618bf3",
+      "destination": "studios/586ab26d-9713-46b8-bfff-7534ceab7633/assets/v1/8c1d887c-5259-5692-8c13-2a21d6b36421/IMG_0600.jpg",
+      "legacyId": "fabric-image:fabric-able-knit-pink-mr440uab",
+      "role": "swatch",
+      "source": "users/9b06d5d2-5732-4f28-a07e-d39a3553250f/fabrics/fabric-able-knit-pink-mr440uab/image-a446833e-310d-410c-8526-b9273926a0b8.jpg"
+    },
+    {
+      "assetId": "97bfa626-89f0-5582-9b02-a30220a81cf1",
+      "checksum": "f4cf9255d0f429c0192f50d8f42a3f54d2d031cee3766662cb132f0160448d67",
+      "destination": "studios/586ab26d-9713-46b8-bfff-7534ceab7633/assets/v1/97bfa626-89f0-5582-9b02-a30220a81cf1/IMG_0611.jpg",
+      "legacyId": "fabric-image:fabric-windowpane-plaid-wool-blend-mqx9e54z",
+      "role": "swatch",
+      "source": "users/9b06d5d2-5732-4f28-a07e-d39a3553250f/fabrics/fabric-windowpane-plaid-wool-blend-mqx9e54z/image-568492e1-3554-41de-97c1-e484fdf719cf.jpg"
+    },
+    {
+      "assetId": "3e068782-fb29-5d4b-ba21-ba17ed9d68f8",
+      "checksum": "195841bb1a8876ad00018c5ddbedee17db5eb1434a7f2ff0aaa235117c48cdd8",
+      "destination": "studios/586ab26d-9713-46b8-bfff-7534ceab7633/assets/v1/3e068782-fb29-5d4b-ba21-ba17ed9d68f8/IMG_0605.jpg",
+      "legacyId": "fabric-image:fabric-giverny-teal-canvas-mqzr3sd9",
+      "role": "swatch",
+      "source": "users/9b06d5d2-5732-4f28-a07e-d39a3553250f/fabrics/fabric-giverny-teal-canvas-mqzr3sd9/image-d9e73596-a959-4bd8-a58d-a2b29bdcbc05.jpg"
+    },
+    {
+      "assetId": "7192a16e-5a2c-572d-9ab5-fafc2a4d76ac",
+      "checksum": "9061e39799bd3abc0fcf480e905621f458f5bfdba0e37f0220e665e26088a6a9",
+      "destination": "studios/586ab26d-9713-46b8-bfff-7534ceab7633/assets/v1/7192a16e-5a2c-572d-9ab5-fafc2a4d76ac/IMG_0633.jpg",
+      "legacyId": "fabric-image:fabric-red-lotus-brocade-mr44ld4b",
+      "role": "swatch",
+      "source": "users/9b06d5d2-5732-4f28-a07e-d39a3553250f/fabrics/fabric-red-lotus-brocade-mr44ld4b/image-fdefac23-a2f9-429d-ac2d-81d1a3651b1a.jpg"
+    },
+    {
+      "assetId": "16a69af8-79eb-56d0-a7a4-ffd7931e0582",
+      "checksum": "c47057e94e94461e6b275da0da3c4bf69ab80bfc06445be341f619fa7cae4af7",
+      "destination": "studios/586ab26d-9713-46b8-bfff-7534ceab7633/assets/v1/16a69af8-79eb-56d0-a7a4-ffd7931e0582/IMG_2043.jpg",
+      "legacyId": "fabric-image:fabric-mason-chino-twill-golden-mqz12pzd",
+      "role": "swatch",
+      "source": "users/9b06d5d2-5732-4f28-a07e-d39a3553250f/fabrics/fabric-mason-chino-twill-golden-mqz12pzd/image-4ee05afb-32c6-4475-a684-41355fe81548.jpg"
+    }
+  ],
+  "source": {
+    "projectRef": "jsjhqnmlgceunlxgenkg",
+    "projects": 0,
+    "fabrics": 12,
+    "projectImages": 0
+  },
+  "target": {
+    "projectRef": "iahrcupmyjnyyqszrmcx",
+    "studioId": "586ab26d-9713-46b8-bfff-7534ceab7633"
+  },
+  "warnings": [
+    "Fabric fabric-giverny-teal-canvas-mqzr3sd9 has a cost but no supplier; the cost remains in the V1 recovery source until a supplier is chosen."
+  ]
+}

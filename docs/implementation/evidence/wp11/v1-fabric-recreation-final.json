@@ -1,0 +1,439 @@
+{
+  "completed": true,
+  "completedAt": "2026-08-31T00:26:13.036Z",
+  "counts": {
+    "materials": {
+      "created": 0,
+      "skipped": 12,
+      "updated": 0
+    },
+    "material_variants": {
+      "created": 0,
+      "skipped": 12,
+      "updated": 0
+    },
+    "material_variant_profiles": {
+      "created": 0,
+      "skipped": 12,
+      "updated": 0
+    },
+    "suppliers": {
+      "created": 0,
+      "skipped": 11,
+      "updated": 0
+    },
+    "supplier_items": {
+      "created": 0,
+      "skipped": 11,
+      "updated": 0
+    },
+    "garment_materials": {
+      "created": 0,
+      "skipped": 9,
+      "updated": 0
+    }
+  },
+  "conflicts": [],
+  "dryRun": false,
+  "duplicateV1Fabrics": [],
+  "errors": [],
+  "fabricResults": [
+    {
+      "action": "skip",
+      "canonicalMaterialId": "23fc7bb2-68a1-53fe-a18c-b71d932773b7",
+      "canonicalVariantId": "3f581e8d-d75c-5c28-baab-bc3044bba38d",
+      "legacyId": "fabric-eddie-bower-poly-span-mr17sohs",
+      "name": "Eddie Bower Poly Span",
+      "imageMigrated": false,
+      "preExistingLegacyMediaLinksPreserved": 1
+    },
+    {
+      "action": "skip",
+      "canonicalMaterialId": "cc17acad-6449-520d-b7e2-e78530563d13",
+      "canonicalVariantId": "55a2fe56-7965-591b-8308-0616478e1314",
+      "legacyId": "fabric-mason-chino-twill-navy-blue-mqz0q7bs",
+      "name": "Mason Chino Twill - Navy Blue",
+      "imageMigrated": false,
+      "preExistingLegacyMediaLinksPreserved": 1
+    },
+    {
+      "action": "skip",
+      "canonicalMaterialId": "2687dec9-e930-59fb-bca9-cb0ad3048aa3",
+      "canonicalVariantId": "85b9e60e-a96b-554d-94a9-6ec9b9a3a8e2",
+      "legacyId": "fabric-southwest-rev-jacard-mqzqhoje",
+      "name": "Southwest Rev Jacard",
+      "imageMigrated": false,
+      "preExistingLegacyMediaLinksPreserved": 1
+    },
+    {
+      "action": "skip",
+      "canonicalMaterialId": "17ba36a1-2d7f-5f9f-9009-415c4a165c96",
+      "canonicalVariantId": "d28dc43b-5bc0-5efc-a41d-f3b60123f5c2",
+      "legacyId": "fabric-fillgree-butter-canvas-mqzqx8j5",
+      "name": "Fillgree Butter Canvas",
+      "imageMigrated": false,
+      "preExistingLegacyMediaLinksPreserved": 1
+    },
+    {
+      "action": "skip",
+      "canonicalMaterialId": "32244ba2-1c1d-5e37-a74b-914691d3bc99",
+      "canonicalVariantId": "b7347df4-e04f-516b-ad70-cfffef556af7",
+      "legacyId": "fabric-11-wale-corduroy-bronze-mqzom2uq",
+      "name": "11 Wale Corduroy - Bronze",
+      "imageMigrated": false,
+      "preExistingLegacyMediaLinksPreserved": 1
+    },
+    {
+      "action": "skip",
+      "canonicalMaterialId": "4751af29-f00a-5ccb-be5f-61e4285de4d5",
+      "canonicalVariantId": "9559c684-83d9-50fe-8a80-836d0114fe1c",
+      "legacyId": "fabric-gold-feather-woven-mr453k1j",
+      "name": "Gold Feather Woven",
+      "imageMigrated": false,
+      "preExistingLegacyMediaLinksPreserved": 1
+    },
+    {
+      "action": "skip",
+      "canonicalMaterialId": "0d5e83ef-1080-5049-be42-b72ca2ed95dc",
+      "canonicalVariantId": "09ba4817-f682-5084-914b-5adf1532ac95",
+      "legacyId": "fabric-mason-chino-twill-crimson-mqyuekqt",
+      "name": "Mason Chino Twill - Crimson",
+      "imageMigrated": false,
+      "preExistingLegacyMediaLinksPreserved": 1
+    },
+    {
+      "action": "skip",
+      "canonicalMaterialId": "64775643-d679-5b83-86b8-3c3efe200e36",
+      "canonicalVariantId": "242b70a1-dcba-50f7-aa4c-bb10bd812178",
+      "legacyId": "fabric-able-knit-pink-mr440uab",
+      "name": "Cable Knit - Pink",
+      "imageMigrated": false,
+      "preExistingLegacyMediaLinksPreserved": 1
+    },
+    {
+      "action": "skip",
+      "canonicalMaterialId": "0b9deb9a-6090-5323-b110-7bd0e1b0a7cd",
+      "canonicalVariantId": "061b9429-ff9d-5179-982b-408516ddda9c",
+      "legacyId": "fabric-windowpane-plaid-wool-blend-mqx9e54z",
+      "name": "Windowpane Plaid Wool Blend",
+      "imageMigrated": false,
+      "preExistingLegacyMediaLinksPreserved": 1
+    },
+    {
+      "action": "skip",
+      "canonicalMaterialId": "9d6ae3b4-e3e4-5bc9-a7a5-91c8ce639815",
+      "canonicalVariantId": "20f3e267-07c0-5f95-bcc8-a7fae1cadd68",
+      "legacyId": "fabric-giverny-teal-canvas-mqzr3sd9",
+      "name": "Giverny Teal Canvas",
+      "imageMigrated": false,
+      "preExistingLegacyMediaLinksPreserved": 1
+    },
+    {
+      "action": "skip",
+      "canonicalMaterialId": "26b73124-52bf-5812-92ca-41d2b2becc9c",
+      "canonicalVariantId": "4492db68-11c0-5346-a451-cf76d3834e50",
+      "legacyId": "fabric-red-lotus-brocade-mr44ld4b",
+      "name": "Red Lotus Brocade",
+      "imageMigrated": false,
+      "preExistingLegacyMediaLinksPreserved": 1
+    },
+    {
+      "action": "skip",
+      "canonicalMaterialId": "c7fc13f0-8a0e-5876-8a68-a1700d14a31e",
+      "canonicalVariantId": "2d6e0495-615d-5817-b513-9d5a5214aab2",
+      "legacyId": "fabric-mason-chino-twill-golden-mqz12pzd",
+      "name": "Mason Chino Twill - Golden",
+      "imageMigrated": false,
+      "preExistingLegacyMediaLinksPreserved": 1
+    }
+  ],
+  "fields": {
+    "mapping": {
+      "fabrics.name": "materials.name",
+      "fabrics.fabric_type": "materials.category",
+      "fabrics.fiber_content": "materials.composition",
+      "fabrics.archive_status": "materials.status + material_variants.status",
+      "fabrics.primary_color": "material_variants.color_name",
+      "fabrics.metadata.primaryColorHex": "material_variants.color_hex",
+      "fabrics.width_inches": "material_variants.width + width_unit=in",
+      "fabrics.metadata.weightGsm": "material_variants.weight_gsm",
+      "fabrics technical/story/storage fields": "material_variant_profiles explicit columns",
+      "fabrics.yardage_total": "inventory_entries deterministic receive entry",
+      "fabrics.supplier + cost_per_yard": "suppliers + supplier_items",
+      "materials project/fabric link": "garment_materials",
+      "fabrics.image_path": "report only; no V2 media record or Storage operation"
+    },
+    "unmapped": [
+      "fabrics.color_family",
+      "fabrics.weight (descriptive label)",
+      "materials.notes",
+      "materials.notes (link-blazer-denim-shell)",
+      "materials.notes (link-blazer-ivory-lining)",
+      "materials.notes (link-meridian-ankara-trim)",
+      "materials.notes (link-meridian-linen-shell)",
+      "materials.notes (link-ronyn-rib-shell)",
+      "materials.notes (link-sankofa-lining-pocketing)",
+      "materials.notes (link-sankofa-twill-shell)",
+      "materials.notes (link-waden-ankara-accent)",
+      "materials.notes (link-waden-denim-shell)"
+    ]
+  },
+  "imagePolicy": {
+    "assetsDeleted": 0,
+    "bytesCopied": 0,
+    "filesDownloaded": 0,
+    "linksAfterRun": 0,
+    "note": "This recreation copies no image bytes and creates no media records. Links explicitly tagged by the earlier V1 visual import are detached; their private assets and Storage objects remain preserved. Genuine V2 uploads are untouched."
+  },
+  "imageReferences": [
+    {
+      "action": "detached-assets-preserved",
+      "legacyId": "fabric-eddie-bower-poly-span-mr17sohs",
+      "sourcePathForAuditOnly": "users/9b06d5d2-5732-4f28-a07e-d39a3553250f/fabrics/fabric-eddie-bower-poly-span-mr17sohs/image-8f269287-bcae-4875-8f61-92985c26ddab.jpg"
+    },
+    {
+      "action": "detached-assets-preserved",
+      "legacyId": "fabric-mason-chino-twill-navy-blue-mqz0q7bs",
+      "sourcePathForAuditOnly": "users/9b06d5d2-5732-4f28-a07e-d39a3553250f/fabrics/fabric-mason-chino-twill-navy-blue-mqz0q7bs/image-2f88c9e0-270e-4c92-91d0-7ba4ba1eb7db.jpg"
+    },
+    {
+      "action": "detached-assets-preserved",
+      "legacyId": "fabric-southwest-rev-jacard-mqzqhoje",
+      "sourcePathForAuditOnly": "users/9b06d5d2-5732-4f28-a07e-d39a3553250f/fabrics/fabric-southwest-rev-jacard-mqzqhoje/image-d33d0e2f-14e9-4793-95a7-075ebe73b0aa.jpg"
+    },
+    {
+      "action": "detached-assets-preserved",
+      "legacyId": "fabric-fillgree-butter-canvas-mqzqx8j5",
+      "sourcePathForAuditOnly": "users/9b06d5d2-5732-4f28-a07e-d39a3553250f/fabrics/fabric-fillgree-butter-canvas-mqzqx8j5/image-bcd2e792-113b-4c1f-b7a3-47938704f0b3.jpg"
+    },
+    {
+      "action": "detached-assets-preserved",
+      "legacyId": "fabric-11-wale-corduroy-bronze-mqzom2uq",
+      "sourcePathForAuditOnly": "users/9b06d5d2-5732-4f28-a07e-d39a3553250f/fabrics/fabric-11-wale-corduroy-bronze-mqzom2uq/image-7d7d6722-7e0c-41f7-bff8-a1ef1bf48e9a.jpg"
+    },
+    {
+      "action": "detached-assets-preserved",
+      "legacyId": "fabric-gold-feather-woven-mr453k1j",
+      "sourcePathForAuditOnly": "users/9b06d5d2-5732-4f28-a07e-d39a3553250f/fabrics/fabric-gold-feather-woven-mr453k1j/image-7d5fdb72-1ef8-4304-be66-ecc15ef15b99.jpg"
+    },
+    {
+      "action": "detached-assets-preserved",
+      "legacyId": "fabric-mason-chino-twill-crimson-mqyuekqt",
+      "sourcePathForAuditOnly": "users/9b06d5d2-5732-4f28-a07e-d39a3553250f/fabrics/fabric-mason-chino-twill-crimson-mqyuekqt/image-b9d1dc7d-b13e-4e00-ad3d-7c4dcd2d8889.jpg"
+    },
+    {
+      "action": "detached-assets-preserved",
+      "legacyId": "fabric-able-knit-pink-mr440uab",
+      "sourcePathForAuditOnly": "users/9b06d5d2-5732-4f28-a07e-d39a3553250f/fabrics/fabric-able-knit-pink-mr440uab/image-a446833e-310d-410c-8526-b9273926a0b8.jpg"
+    },
+    {
+      "action": "detached-assets-preserved",
+      "legacyId": "fabric-windowpane-plaid-wool-blend-mqx9e54z",
+      "sourcePathForAuditOnly": "users/9b06d5d2-5732-4f28-a07e-d39a3553250f/fabrics/fabric-windowpane-plaid-wool-blend-mqx9e54z/image-568492e1-3554-41de-97c1-e484fdf719cf.jpg"
+    },
+    {
+      "action": "detached-assets-preserved",
+      "legacyId": "fabric-giverny-teal-canvas-mqzr3sd9",
+      "sourcePathForAuditOnly": "users/9b06d5d2-5732-4f28-a07e-d39a3553250f/fabrics/fabric-giverny-teal-canvas-mqzr3sd9/image-d9e73596-a959-4bd8-a58d-a2b29bdcbc05.jpg"
+    },
+    {
+      "action": "detached-assets-preserved",
+      "legacyId": "fabric-red-lotus-brocade-mr44ld4b",
+      "sourcePathForAuditOnly": "users/9b06d5d2-5732-4f28-a07e-d39a3553250f/fabrics/fabric-red-lotus-brocade-mr44ld4b/image-fdefac23-a2f9-429d-ac2d-81d1a3651b1a.jpg"
+    },
+    {
+      "action": "detached-assets-preserved",
+      "legacyId": "fabric-mason-chino-twill-golden-mqz12pzd",
+      "sourcePathForAuditOnly": "users/9b06d5d2-5732-4f28-a07e-d39a3553250f/fabrics/fabric-mason-chino-twill-golden-mqz12pzd/image-4ee05afb-32c6-4475-a684-41355fe81548.jpg"
+    }
+  ],
+  "manualReview": [
+    "Fabric fabric-giverny-teal-canvas-mqzr3sd9 has a cost (12.99) but no supplier; no supplier item was invented."
+  ],
+  "relationshipResults": [
+    {
+      "action": "skip",
+      "canonicalGarmentId": "ebfcb08f-b5e4-50e3-bee2-e24b6fb36360",
+      "canonicalVariantId": "db6f852f-56d5-5975-8046-8bc3ed0d9916",
+      "legacyId": "link-waden-denim-shell",
+      "role": "shell",
+      "source": "exact-canonical-name-match-for-v1-material-metadata"
+    },
+    {
+      "action": "skip",
+      "canonicalGarmentId": "9c3b10b1-64b8-5e2c-b4a5-27390b7de627",
+      "canonicalVariantId": "db6f852f-56d5-5975-8046-8bc3ed0d9916",
+      "legacyId": "link-blazer-denim-shell",
+      "role": "shell",
+      "source": "exact-canonical-name-match-for-v1-material-metadata"
+    },
+    {
+      "action": "skip",
+      "canonicalGarmentId": "2079aa1b-c91e-547a-8d91-7f15b122e728",
+      "canonicalVariantId": "a27949a5-7142-5505-8f3e-122292ab613d",
+      "legacyId": "link-sankofa-twill-shell",
+      "role": "shell",
+      "source": "exact-canonical-name-match-for-v1-material-metadata"
+    },
+    {
+      "action": "skip",
+      "canonicalGarmentId": "9c3b10b1-64b8-5e2c-b4a5-27390b7de627",
+      "canonicalVariantId": "321aa9ac-d3a4-587c-89fc-32e085b4b149",
+      "legacyId": "link-blazer-ivory-lining",
+      "role": "lining",
+      "source": "exact-canonical-name-match-for-v1-material-metadata"
+    },
+    {
+      "action": "skip",
+      "canonicalGarmentId": "105e19a3-85e4-5548-a355-e702200bf4b3",
+      "canonicalVariantId": "fbedb231-a7df-5274-8281-61516c5f9044",
+      "legacyId": "link-meridian-linen-shell",
+      "role": "shell",
+      "source": "exact-canonical-name-match-for-v1-material-metadata"
+    },
+    {
+      "action": "skip",
+      "canonicalGarmentId": "2079aa1b-c91e-547a-8d91-7f15b122e728",
+      "canonicalVariantId": "321aa9ac-d3a4-587c-89fc-32e085b4b149",
+      "legacyId": "link-sankofa-lining-pocketing",
+      "role": "lining",
+      "source": "exact-canonical-name-match-for-v1-material-metadata"
+    },
+    {
+      "action": "skip",
+      "canonicalGarmentId": "ebfcb08f-b5e4-50e3-bee2-e24b6fb36360",
+      "canonicalVariantId": "0f106f5d-d5ee-5681-afae-fd979b366924",
+      "legacyId": "link-waden-ankara-accent",
+      "role": "contrast",
+      "source": "exact-canonical-name-match-for-v1-material-metadata"
+    },
+    {
+      "action": "skip",
+      "canonicalGarmentId": "105e19a3-85e4-5548-a355-e702200bf4b3",
+      "canonicalVariantId": "0f106f5d-d5ee-5681-afae-fd979b366924",
+      "legacyId": "link-meridian-ankara-trim",
+      "role": "trim",
+      "source": "exact-canonical-name-match-for-v1-material-metadata"
+    },
+    {
+      "action": "skip",
+      "canonicalGarmentId": "4d5b1a52-11a2-5443-b7e2-e3a6e6abd6f3",
+      "canonicalVariantId": "b0da478d-881c-5d0e-b42f-e6eac75099da",
+      "legacyId": "link-ronyn-rib-shell",
+      "role": "trim",
+      "source": "exact-canonical-name-match-for-v1-material-metadata"
+    }
+  ],
+  "trustedMediaDetachResult": {
+    "status": "applied",
+    "detached": 12,
+    "assetsDeleted": 0,
+    "storageObjectsDeleted": 0
+  },
+  "trustedRelationshipResult": null,
+  "source": {
+    "fabrics": 12,
+    "materialLinks": 19,
+    "projectRef": "jsjhqnmlgceunlxgenkg"
+  },
+  "summary": {
+    "alreadyExistingV2Matches": 12,
+    "garmentRelationshipsMappable": 9,
+    "garmentRelationshipsRequiringReview": 0,
+    "potentialDuplicateSupplierGroups": [
+      [
+        "Joann’s Frabric",
+        "Joann’s Fabric"
+      ],
+      [
+        "Joann’s Frabric",
+        "Joann’s Fabrics"
+      ],
+      [
+        "Fabric Warehouse Direct",
+        "Fabric Wholesale Direct"
+      ],
+      [
+        "Joann’s Fabric",
+        "Joann’s Fabrics"
+      ]
+    ],
+    "potentialDuplicateV1Fabrics": 0,
+    "readyToCreate": 0,
+    "suppliersMatched": 11,
+    "suppliersRequiringCreation": 0,
+    "totalV1Fabrics": 12
+  },
+  "supplierResults": [
+    {
+      "action": "skip",
+      "canonicalSupplierId": "7303184b-0512-5b05-8c3e-f94832f0ab8a",
+      "legacyFabricId": "fabric-eddie-bower-poly-span-mr17sohs",
+      "name": "Joann’s Frabric"
+    },
+    {
+      "action": "skip",
+      "canonicalSupplierId": "3cc9b499-7456-5dc7-b845-7c4498c972d2",
+      "legacyFabricId": "fabric-mason-chino-twill-navy-blue-mqz0q7bs",
+      "name": "Fabric Warehouse Direct"
+    },
+    {
+      "action": "skip",
+      "canonicalSupplierId": "b83dfcfb-3419-5fd0-bb46-f64b0c44cc08",
+      "legacyFabricId": "fabric-southwest-rev-jacard-mqzqhoje",
+      "name": "Joann’s Fabric"
+    },
+    {
+      "action": "skip",
+      "canonicalSupplierId": "b83dfcfb-3419-5fd0-bb46-f64b0c44cc08",
+      "legacyFabricId": "fabric-fillgree-butter-canvas-mqzqx8j5",
+      "name": "Joann’s Fabric"
+    },
+    {
+      "action": "skip",
+      "canonicalSupplierId": "3cc9b499-7456-5dc7-b845-7c4498c972d2",
+      "legacyFabricId": "fabric-11-wale-corduroy-bronze-mqzom2uq",
+      "name": "Fabric Warehouse Direct"
+    },
+    {
+      "action": "skip",
+      "canonicalSupplierId": "1e11882f-970e-5470-acee-420bd8f1b47b",
+      "legacyFabricId": "fabric-gold-feather-woven-mr453k1j",
+      "name": "Mills End"
+    },
+    {
+      "action": "skip",
+      "canonicalSupplierId": "380e2463-e2e8-5b1c-a2c8-55a34ea87148",
+      "legacyFabricId": "fabric-mason-chino-twill-crimson-mqyuekqt",
+      "name": "Fabric Wholesale Direct"
+    },
+    {
+      "action": "skip",
+      "canonicalSupplierId": "b83dfcfb-3419-5fd0-bb46-f64b0c44cc08",
+      "legacyFabricId": "fabric-able-knit-pink-mr440uab",
+      "name": "Joann’s Fabric"
+    },
+    {
+      "action": "skip",
+      "canonicalSupplierId": "aa6d8af6-65e8-5969-a432-41457f7808f8",
+      "legacyFabricId": "fabric-windowpane-plaid-wool-blend-mqx9e54z",
+      "name": "Joann’s Fabrics"
+    },
+    {
+      "action": "skip",
+      "canonicalSupplierId": "aa6d8af6-65e8-5969-a432-41457f7808f8",
+      "legacyFabricId": "fabric-red-lotus-brocade-mr44ld4b",
+      "name": "Joann’s Fabrics"
+    },
+    {
+      "action": "skip",
+      "canonicalSupplierId": "3cc9b499-7456-5dc7-b845-7c4498c972d2",
+      "legacyFabricId": "fabric-mason-chino-twill-golden-mqz12pzd",
+      "name": "Fabric Warehouse Direct"
+    }
+  ],
+  "target": {
+    "projectRef": "iahrcupmyjnyyqszrmcx",
+    "studioId": "586ab26d-9713-46b8-bfff-7534ceab7633"
+  }
+}

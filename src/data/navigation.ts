@@ -7,6 +7,10 @@ import {
   BriefcaseBusiness,
   LayoutDashboard,
   Settings,
+  Ruler,
+  Factory,
+  GitCompareArrows,
+  Sparkles,
 } from 'lucide-react';
 import type { NavItem } from '../types/navigation';
 
@@ -17,6 +21,7 @@ export const navigationItems: NavItem[] = [
     shortLabel: 'Home',
     description: 'Studio overview',
     icon: LayoutDashboard,
+    group: 'studio',
   },
   {
     id: 'projects',
@@ -24,13 +29,47 @@ export const navigationItems: NavItem[] = [
     shortLabel: 'Proj',
     description: 'Garment library',
     icon: Folder,
+    group: 'studio',
   },
   {
     id: 'kanban',
-    label: 'Kanban',
-    shortLabel: 'Flow',
-    description: 'Workflow board',
+    label: 'Plan',
+    shortLabel: 'Plan',
+    description: 'Flow, tasks, and calendar',
     icon: Columns3,
+    group: 'studio',
+  },
+  {
+    id: 'technical',
+    label: 'Technical Studio',
+    shortLabel: 'Tech',
+    description: 'Flats and release evidence',
+    icon: Ruler,
+    group: 'make',
+  },
+  {
+    id: 'production',
+    label: 'Production',
+    shortLabel: 'Production',
+    description: 'Samples and fit evidence',
+    icon: Factory,
+    group: 'make',
+  },
+  {
+    id: 'versions',
+    label: 'Versions',
+    shortLabel: 'Versions',
+    description: 'Freeze Frames and restore',
+    icon: GitCompareArrows,
+    group: 'tools',
+  },
+  {
+    id: 'ai',
+    label: 'Studio Assistant',
+    shortLabel: 'AI',
+    description: 'Private creative suggestions',
+    icon: Sparkles,
+    group: 'tools',
   },
   {
     id: 'lookbooks',
@@ -38,6 +77,7 @@ export const navigationItems: NavItem[] = [
     shortLabel: 'Editorial',
     description: 'Editorial presentation studio',
     icon: BookOpen,
+    group: 'present',
   },
   {
     id: 'portfolio',
@@ -45,6 +85,7 @@ export const navigationItems: NavItem[] = [
     shortLabel: 'Portfolio',
     description: 'Recruiter presentation',
     icon: BriefcaseBusiness,
+    group: 'present',
   },
   {
     id: 'fabrics',
@@ -52,6 +93,7 @@ export const navigationItems: NavItem[] = [
     shortLabel: 'Fabric',
     description: 'Materials archive',
     icon: Archive,
+    group: 'studio',
   },
   {
     id: 'stats',
@@ -59,6 +101,7 @@ export const navigationItems: NavItem[] = [
     shortLabel: 'Stats',
     description: 'Studio signals',
     icon: BarChart3,
+    group: 'tools',
   },
   {
     id: 'settings',
@@ -66,5 +109,13 @@ export const navigationItems: NavItem[] = [
     shortLabel: 'Prefs',
     description: 'App controls',
     icon: Settings,
+    group: 'tools',
   },
 ];
+
+export const navigationGroups = [
+  { id: 'studio', label: 'Studio' },
+  { id: 'make', label: 'Make' },
+  { id: 'present', label: 'Present' },
+  { id: 'tools', label: 'Studio tools' },
+] as const;

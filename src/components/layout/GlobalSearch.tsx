@@ -3,16 +3,18 @@ import {
   FileText,
   NotebookTabs,
   Package,
+  Plus,
   Search,
   Shirt,
   X,
 } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Badge } from '../shared/Badge';
 import { Button } from '../shared/Button';
 import { cn } from '../../lib/classes';
 import { getEditorialDisplayLabel } from '../../lib/editorialLabels';
 import type { ApparelProject, Fabric } from '../../types/studio';
+import type { PageId } from '../../types/navigation';
 
 type SearchResultType = 'Projects' | 'Fabrics' | 'Tasks' | 'Notes' | 'Editorial Collections';
 
@@ -34,6 +36,7 @@ type GlobalSearchProps = {
   fabrics: Fabric[];
   onOpenFabric: (fabricId: string) => void;
   onOpenProject: (projectId: string) => void;
+  onNavigate: (page: PageId) => void;
   projects: ApparelProject[];
 };
 
@@ -57,10 +60,12 @@ export function GlobalSearch({
   fabrics,
   onOpenFabric,
   onOpenProject,
+  onNavigate,
   projects,
 }: GlobalSearchProps) {
   const [query, setQuery] = useState(() => getInitialSearchQuery());
   const [mobileOpen, setMobileOpen] = useState(false);
+  const desktopInputRef = useRef<HTMLInputElement>(null);
   const searchIndex = useMemo(
     () => buildSearchIndex(projects, fabrics),
     [fabrics, projects],
@@ -71,6 +76,21 @@ export function GlobalSearch({
   );
   const hasQuery = query.trim().length > 0;
   const totalResults = results.reduce((total, group) => total + group.results.length, 0);
+
+  useEffect(() => {
+    const handleShortcut = (event: KeyboardEvent) => {
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') {
+        event.preventDefault();
+        setMobileOpen(true);
+        window.requestAnimationFrame(() => desktopInputRef.current?.focus());
+      } else if (event.key === 'Escape') {
+        setQuery('');
+        setMobileOpen(false);
+      }
+    };
+    window.addEventListener('keydown', handleShortcut);
+    return () => window.removeEventListener('keydown', handleShortcut);
+  }, []);
 
   const openResult = (result: SearchResult) => {
     if (result.type === 'Fabrics') {
@@ -86,6 +106,7 @@ export function GlobalSearch({
   return (
     <section className="relative z-30 mb-4 sm:mb-5">
       <button
+        aria-keyshortcuts="Meta+K Control+K"
         className="mb-1 flex min-h-11 w-full items-center gap-3 rounded-2xl border border-bronze/24 bg-midnight/42 px-4 text-left text-sm text-stardust/50 shadow-[0_12px_34px_rgba(0,0,0,0.18)] backdrop-blur-xl lg:hidden"
         onClick={() => setMobileOpen(true)}
         type="button"
@@ -96,7 +117,7 @@ export function GlobalSearch({
           size={17}
           strokeWidth={1.9}
         />
-        <span className="min-w-0 flex-1 truncate">Search studio records</span>
+        <span className="min-w-0 flex-1 truncate">Search or open commands</span>
       </button>
 
       <div className="hidden rounded-3xl border border-bronze/28 bg-[linear-gradient(145deg,rgba(10,10,10,0.58),rgba(61,43,31,0.16))] p-3 shadow-[0_20px_70px_rgba(0,0,0,0.24),inset_0_1px_0_rgba(237,227,207,0.035)] backdrop-blur-xl lg:block">
@@ -109,9 +130,11 @@ export function GlobalSearch({
           />
           <span className="sr-only">Global search</span>
           <input
+            aria-keyshortcuts="Meta+K Control+K"
             className="min-w-0 flex-1 bg-transparent text-sm text-stardust outline-none placeholder:text-stardust/38"
             onChange={(event) => setQuery(event.target.value)}
-            placeholder="Search projects, fabrics, tasks, notes, editorial collections..."
+            placeholder="Search studio records or press ⌘K for commands…"
+            ref={desktopInputRef}
             value={query}
           />
           {hasQuery ? (
@@ -131,11 +154,11 @@ export function GlobalSearch({
         <div className="studio-scrollbar fixed inset-0 z-50 max-h-dvh overflow-y-auto bg-[linear-gradient(135deg,rgba(27,58,99,0.28),rgba(10,10,10,0.99),rgba(61,43,31,0.62))] p-4 shadow-[0_30px_100px_rgba(0,0,0,0.5),inset_0_1px_0_rgba(237,227,207,0.05)] backdrop-blur-2xl lg:absolute lg:inset-auto lg:left-0 lg:right-0 lg:top-[calc(100%+0.5rem)] lg:max-h-[70vh] lg:rounded-3xl lg:border lg:border-bronze/32">
           <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
             <div>
-              <Badge variant="teal">Global Search</Badge>
+              <Badge variant="teal">Command Palette</Badge>
               <p className="mt-2 text-sm text-stardust/56">
                 {hasQuery
                   ? `${totalResults} ${totalResults === 1 ? 'result' : 'results'} for "${query.trim()}"`
-                  : 'Find projects, fabrics, tasks, notes, and editorial collections.'}
+                  : 'Search records or move directly to a create workflow.'}
               </p>
             </div>
             <Button
@@ -197,19 +220,33 @@ export function GlobalSearch({
               </p>
             </div>
           ) : (
-            <div className="rounded-2xl border border-dashed border-bronze/28 bg-midnight/28 p-6 text-center">
-              <Search
-                aria-hidden="true"
-                className="mx-auto text-ember"
-                size={26}
-                strokeWidth={1.8}
-              />
-              <p className="mt-4 text-lg font-semibold text-stardust">
-                Start with a studio cue
-              </p>
-              <p className="mt-2 text-sm leading-6 text-stardust/58">
-                Try a garment name, fabric color, task status, or note phrase.
-              </p>
+            <div className="rounded-2xl border border-bronze/24 bg-midnight/28 p-4">
+              <div className="flex items-center gap-2">
+                <Plus aria-hidden="true" className="text-ember" size={18} />
+                <h3 className="text-sm font-semibold uppercase tracking-[0.14em] text-stardust/62">Create actions</h3>
+              </div>
+              <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                {[
+                  ['projects', 'New garment'],
+                  ['fabrics', 'New library record'],
+                  ['kanban', 'New task or event'],
+                  ['technical', 'Open Technical Studio'],
+                  ['lookbooks', 'New editorial'],
+                  ['portfolio', 'Prepare Public Cut'],
+                ].map(([page, label]) => (
+                  <button
+                    className="min-h-11 rounded-xl border border-bronze/24 bg-stardust/[0.045] px-3 text-left text-sm text-stardust/68 transition hover:border-ember/44 hover:text-stardust"
+                    key={page}
+                    onClick={() => {
+                      setMobileOpen(false);
+                      onNavigate(page as PageId);
+                    }}
+                    type="button"
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
             </div>
           )}
         </div>

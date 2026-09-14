@@ -1,0 +1,80 @@
+{
+  "schemaVersion": "ml-studio-wp2-recovery-evidence-v1",
+  "recordedAt": "2026-08-24T00:30:00.000-07:00",
+  "sourceFixture": "tests/fixtures/legacy-studio-data-v5.json",
+  "sourceFixtureRetained": true,
+  "databaseGate": {
+    "emptyDatabaseReset": "passed",
+    "orderedMigrationsApplied": 10,
+    "rlsAssertions": 28,
+    "status": "passed"
+  },
+  "applicationGate": {
+    "testFiles": 7,
+    "tests": 27,
+    "status": "passed"
+  },
+  "authenticatedLocalApiDryRun": {
+    "status": "passed",
+    "firstRunCompleted": true,
+    "secondRunCompleted": true,
+    "garmentsVisibleToOwner": 1,
+    "roundTripExact": true,
+    "serverOnlyRowsSkipped": 0
+  },
+  "scenarios": {
+    "emptyInput": {
+      "status": "passed",
+      "inventedGarmentRows": 0
+    },
+    "representativeFixture": {
+      "status": "passed",
+      "roundTripExact": true,
+      "unexplainedDataLoss": 0
+    },
+    "duplicateRun": {
+      "status": "passed",
+      "secondRunInserted": 0,
+      "secondRunUpdated": 0,
+      "stableChecksum": true
+    },
+    "interruptedRun": {
+      "status": "passed",
+      "interruptionBoundary": "completed-batch",
+      "recoveredChecksumMatchesCleanRun": true
+    },
+    "malformedInput": {
+      "status": "passed",
+      "writesBeforeRejection": 0
+    },
+    "offlineQueuedWrites": {
+      "status": "passed",
+      "newerWriteApplied": true,
+      "deleteRecordedAsTombstone": true,
+      "auditRowsPlannedForTrustedServer": true
+    },
+    "tombstones": {
+      "status": "passed",
+      "newerDeleteSuppressesStaleSource": true
+    },
+    "mediaDeduplication": {
+      "status": "passed",
+      "oneAssetMultipleRelationships": true
+    },
+    "conflicts": {
+      "status": "passed",
+      "differentFieldsMergedWithCommonAncestor": true,
+      "staleDivergentWriteExposed": true,
+      "automaticOverwrite": false
+    },
+    "reload": {
+      "status": "passed",
+      "checksumStable": true
+    }
+  },
+  "recoveryPolicy": {
+    "retry": "Rebuild the deterministic plan and upsert by stable conflict keys.",
+    "rollback": "Keep using the unmodified legacy fixture and legacy UI until a later domain cutover is explicitly accepted.",
+    "publicCut": "No public publication rows or assets are created by WP2."
+  }
+}

@@ -33,6 +33,7 @@ export function BrandLockup({
     <div
       aria-label={showText ? undefined : 'Mystic Lore Studio'}
       className={cn('flex min-w-0 items-center gap-3', className)}
+      role={showText ? undefined : 'img'}
       {...props}
     >
       <span
