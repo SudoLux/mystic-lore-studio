@@ -56,6 +56,7 @@ import {
   emptyCanonicalWorkspaceState,
   loadCanonicalPersistenceMode,
   reconcileSyncImportRetry,
+  repairDuplicateMediaAssetRetry,
   repairPlaceholderPortfolioSlug,
   syncImportOperationAlreadyReflected,
   SupabaseCanonicalWorkspaceRepository,
@@ -72,6 +73,7 @@ import { getStudioData, type StudioData } from '../lib/studioStorage';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Database } from '../types/database.generated';
 import { prepareCanonicalGarmentImage, prepareCanonicalMaterialImage } from '../lib/canonicalMediaUpload';
+import { discardStagedCanonicalMedia } from '../domains/persistence/canonicalMedia';
 import type { CanonicalMaterialImageFraming } from '../lib/canonicalMaterialPresentation';
 
 type CanonicalWorkspaceContextValue = {
@@ -267,11 +269,15 @@ export function CanonicalWorkspaceProvider({
             ? await cacheRef.current.listOutbox(studioId)
             : [];
           for (const originalEntry of queuedBeforeRecovery) {
-            const entry = repairPlaceholderPortfolioSlug(originalEntry, cloudState) ?? originalEntry;
+            const duplicateMediaRepair = repairDuplicateMediaAssetRetry(originalEntry, cloudState);
+            const entry = repairPlaceholderPortfolioSlug(duplicateMediaRepair ?? originalEntry, cloudState)
+              ?? duplicateMediaRepair
+              ?? originalEntry;
             if (entry.status === 'conflict') continue;
             const reconciled = reconcileSyncImportRetry(entry, cloudState);
             const alreadyReflected = syncImportOperationAlreadyReflected(entry.operation, cloudState);
-            if (reconciled === undefined && !alreadyReflected) continue;
+            const repairedEntry = reconciled === undefined && entry !== originalEntry ? entry : reconciled;
+            if (repairedEntry === undefined && !alreadyReflected) continue;
             if (cachedState) {
               await cacheRef.current.preserveRecoveryCopy(
                 `canonical-raced-import:${entry.operation.operationId}:${new Date().toISOString()}`,
@@ -281,9 +287,13 @@ export function CanonicalWorkspaceProvider({
             await cacheRef.current.putSetting(`recovered-operation:${entry.operation.operationId}`, {
               operationId: entry.operation.operationId,
               recoveredAt: new Date().toISOString(),
-              reason: reconciled ? 'singleton_identity_rebase' : 'fresh_cloud_parity',
+              reason: duplicateMediaRepair
+                ? 'duplicate_media_identity_rebase'
+                : repairedEntry
+                  ? 'singleton_identity_rebase'
+                  : 'fresh_cloud_parity',
             });
-            if (reconciled) await cacheRef.current.putOutbox(reconciled);
+            if (repairedEntry) await cacheRef.current.putOutbox(repairedEntry);
             else await cacheRef.current.deleteOutbox(entry.operation.operationId);
           }
           const queuedBeforeImport = !usedOfflineIdentity && navigator.onLine !== false
@@ -653,11 +663,22 @@ export function CanonicalWorkspaceProvider({
       if (persistenceModeRef.current === 'local-recovery') throw new Error('Connect the canonical Studio before uploading imagery.');
       if (!current.garments.some((garment) => garment.id === garmentId)) throw new Error('Garment not found.');
       const asset = await prepareCanonicalGarmentImage(file, current.studioId, garmentId);
-      await commitAsync((workspace) => attachInspirationReference({
-        ...workspace,
-        mediaAssets: [...workspace.mediaAssets, asset],
-      }, garmentId, asset.id).state);
-      return asset.id;
+      let resolvedAssetId = asset.id;
+      await commitAsync((workspace) => {
+        const existing = workspace.mediaAssets.find((candidate) => candidate.checksum === asset.checksum);
+        if (existing) {
+          resolvedAssetId = existing.id;
+          return attachInspirationReference(workspace, garmentId, existing.id).state;
+        }
+        return attachInspirationReference({
+          ...workspace,
+          mediaAssets: [...workspace.mediaAssets, asset],
+        }, garmentId, asset.id).state;
+      });
+      if (resolvedAssetId !== asset.id) {
+        await discardStagedCanonicalMedia(asset.id);
+      }
+      return resolvedAssetId;
     },
     uploadMaterialMedia: async (variantId, file) => {
       return await replaceMaterialMedia(stateRef, persistenceModeRef, commitAsync, variantId, file);

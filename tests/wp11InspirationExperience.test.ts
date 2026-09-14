@@ -32,6 +32,8 @@ describe('WP11D inspiration-first Studio experience', () => {
     expect(garmentWorkspace).toContain('CanonicalMediaImage');
     expect(materialVault).toContain('CanonicalMediaImage');
     expect(workspaceProvider).toContain('prepareCanonicalGarmentImage');
+    expect(workspaceProvider).toContain('workspace.mediaAssets.find((candidate) => candidate.checksum === asset.checksum)');
+    expect(workspaceProvider).toContain('discardStagedCanonicalMedia(asset.id)');
     expect(workspaceProvider).toContain('attachAsset(withAsset, garmentId, asset.id, role).state');
     expect(mediaUpload).toContain('stageCanonicalMediaBlob');
     expect(mediaUpload).toContain('studios/${studioId}/garments/${garmentId}');

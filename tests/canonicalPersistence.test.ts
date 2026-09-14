@@ -7,6 +7,7 @@ import {
   emptyCanonicalWorkspaceState,
   materializeMutableRows,
   reconcileSyncImportRetry,
+  repairDuplicateMediaAssetRetry,
   repairPlaceholderPortfolioSlug,
   syncImportOperationAlreadyReflected,
   tryMergeDisjoint,
@@ -313,6 +314,51 @@ describe('canonical cloud repository cutover', () => {
         mutations: [{ ...profileInsert, row: { ...profileInsert.row, username_slug: 'chosen-name' } }],
       },
     }, cloud)).toBeUndefined();
+  });
+
+  it('rebases a duplicate media upload onto the canonical checksum identity', async () => {
+    const cloud = await fixtureWorkspace();
+    const existingAsset = cloud.mediaAssets[0];
+    const localAssetId = '86000000-0000-4000-8000-000000000091';
+    const inspirationId = '86000000-0000-4000-8000-000000000092';
+    const entry: CanonicalOutboxEntry = {
+      attempts: 1,
+      baseRows: {},
+      conflicts: [],
+      dependencyIds: [],
+      lastError: 'duplicate key value violates unique constraint "media_assets_studio_id_checksum_key"',
+      localRows: {},
+      operation: {
+        garmentId: cloud.garments[0].id,
+        mutations: [{
+          action: 'insert',
+          baseRevision: null,
+          entityId: localAssetId,
+          entityType: 'media_assets',
+          row: { checksum: existingAsset.checksum, id: localAssetId },
+        }, {
+          action: 'insert',
+          baseRevision: null,
+          entityId: inspirationId,
+          entityType: 'inspiration_items',
+          row: { asset_id: localAssetId, garment_id: cloud.garments[0].id, id: inspirationId },
+        }],
+        operationId: '86000000-0000-4000-8000-000000000093',
+        origin: 'user',
+        queuedAt: '2026-09-13T20:20:00.000Z',
+        studioId: cloud.studioId,
+      },
+      status: 'failed',
+    };
+
+    const repaired = repairDuplicateMediaAssetRetry(entry, cloud);
+    expect(repaired?.operation.mutations).toHaveLength(1);
+    expect(repaired?.operation.mutations[0]).toMatchObject({
+      entityType: 'inspiration_items',
+      row: { asset_id: existingAsset.id },
+    });
+    expect(repaired?.status).toBe('pending');
+    expect(repaired?.lastError).toBeNull();
   });
 
   it('removes browser-local authority and exposes explicit shadow/cloud coordination', () => {

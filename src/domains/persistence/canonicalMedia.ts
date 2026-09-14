@@ -24,6 +24,11 @@ export async function stageCanonicalMediaBlob(asset: CanonicalMediaAsset, blob: 
   await cache.putMediaBlob(asset.id, blob, checksum);
 }
 
+/** Clears a newly staged duplicate after its canonical checksum identity is reused. */
+export async function discardStagedCanonicalMedia(assetId: string) {
+  await cache.deleteMediaBlob(assetId);
+}
+
 export async function loadCanonicalMediaBlob(asset: CanonicalMediaAsset) {
   return await loadCanonicalStoredBlob(asset);
 }

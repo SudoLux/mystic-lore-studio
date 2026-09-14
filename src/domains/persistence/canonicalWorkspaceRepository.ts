@@ -151,10 +151,12 @@ export class SupabaseCanonicalWorkspaceRepository implements CanonicalWorkspaceR
 
   async retryFailed() {
     if (!this.studioId || (typeof navigator !== 'undefined' && navigator.onLine === false)) return;
+    const cloudState = await this.loadCloudState(this.studioId);
     const entries = await this.cache.listOutbox(this.studioId);
     for (const entry of entries) {
       if (entry.status !== 'failed') continue;
-      await this.cache.putOutbox({ ...entry, lastError: null, status: 'pending' });
+      const repaired = repairDuplicateMediaAssetRetry(entry, cloudState);
+      await this.cache.putOutbox(repaired ?? { ...entry, lastError: null, status: 'pending' });
     }
     await this.flush();
   }
@@ -577,6 +579,92 @@ export function repairPlaceholderPortfolioSlug(
   ]));
   return {
     ...entry,
+    lastError: null,
+    localRows,
+    operation: { ...entry.operation, mutations },
+    status: 'pending',
+  };
+}
+
+/**
+ * A file can already belong to the Studio under a different media id. The
+ * database deliberately enforces one media identity per checksum, so rebase a
+ * failed local capture onto that authoritative identity and keep the new
+ * garment/inspiration relationships. This preserves the designer's edit while
+ * avoiding duplicate media rows and duplicate Storage uploads.
+ */
+export function repairDuplicateMediaAssetRetry(
+  entry: CanonicalOutboxEntry,
+  cloudState: CanonicalWorkspaceState,
+): CanonicalOutboxEntry | undefined {
+  if (!entry.lastError?.includes('media_assets_studio_id_checksum_key')) return undefined;
+
+  const cloudByChecksum = new Map(cloudState.mediaAssets.map((asset) => [asset.checksum, asset.id]));
+  const aliases = new Map<string, string>();
+  for (const mutation of entry.operation.mutations) {
+    if (mutation.entityType !== 'media_assets' || mutation.action !== 'insert' || !mutation.row) continue;
+    const authoritativeId = cloudByChecksum.get(String(mutation.row.checksum ?? ''));
+    if (authoritativeId && authoritativeId !== mutation.entityId) {
+      aliases.set(mutation.entityId, authoritativeId);
+    }
+  }
+  if (aliases.size === 0) return undefined;
+
+  // Concurrent capture can also stage a second default inspiration board and
+  // relationship ids before the first upload finishes. Reuse the complete
+  // cloud relationship graph, not only the media row.
+  for (const mutation of entry.operation.mutations) {
+    if (mutation.action !== 'insert' || !mutation.row) continue;
+    const row = replaceAliasedIdentity(mutation.row, aliases) as Record<string, unknown>;
+    if (mutation.entityType === 'inspiration_boards') {
+      const existing = cloudState.moodboards.find((board) =>
+        board.garmentId === row.garment_id && board.title === row.title);
+      if (existing) aliases.set(mutation.entityId, existing.id);
+    }
+  }
+  for (const mutation of entry.operation.mutations) {
+    if (mutation.action !== 'insert' || !mutation.row) continue;
+    const row = replaceAliasedIdentity(mutation.row, aliases) as Record<string, unknown>;
+    if (mutation.entityType === 'garment_media') {
+      const existing = cloudState.garmentMedia.find((relation) =>
+        relation.garmentId === row.garment_id
+        && relation.assetId === row.asset_id
+        && relation.role === row.role);
+      if (existing) aliases.set(mutation.entityId, existing.id);
+    }
+    if (mutation.entityType === 'inspiration_items') {
+      const existing = cloudState.moodboardItems.find((item) =>
+        item.boardId === row.board_id && item.assetId === row.asset_id);
+      if (existing) aliases.set(mutation.entityId, existing.id);
+    }
+  }
+
+  const mutations: CanonicalOperation['mutations'] = [];
+  const baseRows: CanonicalOutboxEntry['baseRows'] = {};
+  const localRows: CanonicalOutboxEntry['localRows'] = {};
+  for (const original of entry.operation.mutations) {
+    if (original.action === 'insert' && aliases.has(original.entityId)) continue;
+    const entityId = replaceAliasedIdentity(original.entityId, aliases) as string;
+    const row = original.row
+      ? replaceAliasedIdentity(original.row, aliases) as Record<string, unknown>
+      : null;
+    const key = `${original.entityType}:${entityId}`;
+    const originalKey = `${original.entityType}:${original.entityId}`;
+    const base = entry.baseRows[originalKey] ?? null;
+    const local = entry.localRows[originalKey] ?? row ?? null;
+    mutations.push({ ...original, entityId, row });
+    baseRows[key] = base
+      ? replaceAliasedIdentity(base, aliases) as Record<string, unknown>
+      : null;
+    localRows[key] = local
+      ? replaceAliasedIdentity(local, aliases) as Record<string, unknown>
+      : null;
+  }
+
+  return {
+    ...entry,
+    baseRows,
+    conflicts: [],
     lastError: null,
     localRows,
     operation: { ...entry.operation, mutations },
