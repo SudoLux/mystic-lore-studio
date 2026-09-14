@@ -11,6 +11,7 @@ import {
   syncImportOperationAlreadyReflected,
   tryMergeDisjoint,
 } from '../src/domains/persistence';
+import { attachInspirationReference } from '../src/domains/workspace';
 import type { CanonicalOutboxEntry } from '../src/domains/persistence';
 import { createCanonicalWorkspace } from '../src/domains/workspace';
 import { importStudioData } from '../src/lib/studioStorage';
@@ -69,6 +70,29 @@ describe('canonical cloud repository cutover', () => {
     const mutations = buildCanonicalMutations(before, after);
     expect(mutations).toHaveLength(1_000);
     expect(new Set(mutations.map((item) => item.entityType))).toEqual(new Set(['measurement_values']));
+  });
+
+  it('orders a new media asset before inspiration relationships in one atomic upload', async () => {
+    const before = await fixtureWorkspace();
+    const garment = before.garments[0];
+    const source = before.mediaAssets[0];
+    const asset = {
+      ...source,
+      checksum: 'atomic-inspiration-upload-checksum',
+      id: '45000000-0000-4000-8000-000000000001',
+      name: 'atomic-inspiration-upload.jpg',
+      storagePath: `studios/${before.studioId}/garments/${garment.id}/atomic-inspiration-upload.jpg`,
+    };
+    const after = attachInspirationReference({
+      ...before,
+      mediaAssets: [...before.mediaAssets, asset],
+    }, garment.id, asset.id).state;
+    const mutations = buildCanonicalMutations(before, after);
+    const mediaIndex = mutations.findIndex((mutation) => mutation.entityType === 'media_assets' && mutation.entityId === asset.id);
+    const inspirationIndex = mutations.findIndex((mutation) => mutation.entityType === 'inspiration_items' && mutation.row?.asset_id === asset.id);
+
+    expect(mediaIndex).toBeGreaterThanOrEqual(0);
+    expect(inspirationIndex).toBeGreaterThan(mediaIndex);
   });
 
   it('persists the canonical graph and retry outbox outside localStorage', async () => {

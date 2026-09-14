@@ -70,8 +70,11 @@ export const canonicalCodecRegistry = [
   codec('factories', 'factories'),
   codec('designBriefs', 'design_briefs'),
   codec('moodboards', 'inspiration_boards'),
-  codec('moodboardItems', 'inspiration_items'),
+  // Media is a parent for inspiration, garment, annotation, and derivative
+  // relationships. Keep it ahead of those rows so an atomic upload operation
+  // can satisfy its foreign keys in the same transaction.
   codec('mediaAssets', 'media_assets', true, { name: 'original_filename' }),
+  codec('moodboardItems', 'inspiration_items'),
   codec('garmentMedia', 'garment_media'),
   codec('mediaDerivatives', 'media_derivatives', true, { assetId: 'source_asset_id' }),
   codec('annotations', 'design_annotations'),

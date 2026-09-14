@@ -3,7 +3,7 @@ begin;
 create extension if not exists pgtap with schema extensions;
 set local search_path = extensions, public, ml_private, ml_public;
 
-select plan(36);
+select plan(39);
 
 select has_table(
   'ml_private', 'canonical_operation_receipts',
@@ -76,6 +76,8 @@ insert into ml_private.studio_members (studio_id, user_id, role, status, joined_
 insert into ml_private.garments (id, studio_id, garment_code, title) values
   ('42000000-0000-4000-8000-000000000001', '22000000-0000-4000-8000-000000000001', 'TX-001', 'Transport garment A'),
   ('42000000-0000-4000-8000-000000000002', '22000000-0000-4000-8000-000000000002', 'TX-002', 'Transport garment B');
+insert into ml_private.inspiration_boards (id, studio_id, garment_id, title) values
+  ('46000000-0000-4000-8000-000000000001', '22000000-0000-4000-8000-000000000001', '42000000-0000-4000-8000-000000000001', 'Transport inspiration board');
 insert into ml_private.tasks (id, studio_id, garment_id, title) values
   ('52000000-0000-4000-8000-000000000001', '22000000-0000-4000-8000-000000000001', '42000000-0000-4000-8000-000000000001', 'First transport task'),
   ('52000000-0000-4000-8000-000000000002', '22000000-0000-4000-8000-000000000001', '42000000-0000-4000-8000-000000000001', 'Second transport task');
@@ -89,6 +91,31 @@ where studio_id = '22000000-0000-4000-8000-000000000001';
 
 set local role authenticated;
 set local request.jwt.claim.sub = '12000000-0000-4000-8000-000000000001';
+
+select ok(
+  (select condeferrable and condeferred
+   from pg_constraint
+   where conname = 'inspiration_items_asset_fk'),
+  'the inspiration media foreign key is deferred for atomic upload groups'
+);
+select is(
+  ml_private.commit_canonical_operation(
+    '60000000-0000-4000-8000-000000000001',
+    '22000000-0000-4000-8000-000000000001',
+    '42000000-0000-4000-8000-000000000001',
+    'user',
+    '[{"entityType":"inspiration_items","entityId":"47000000-0000-4000-8000-000000000001","action":"insert","baseRevision":null,"row":{"board_id":"46000000-0000-4000-8000-000000000001","asset_id":"48000000-0000-4000-8000-000000000001","caption":"Queued Safari upload","position_json":{},"sort_order":0}},{"entityType":"media_assets","entityId":"48000000-0000-4000-8000-000000000001","action":"insert","baseRevision":null,"row":{"storage_path":"studios/22000000-0000-4000-8000-000000000001/garments/42000000-0000-4000-8000-000000000001/48000000-0000-4000-8000-000000000001/reference.jpg","original_filename":"reference.jpg","mime_type":"image/jpeg","size_bytes":12,"checksum":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","rights_json":{},"width":1,"height":1,"duration_ms":null}}]'::jsonb
+  ) ->> 'status',
+  'applied',
+  'a queued child-first inspiration upload completes as one atomic operation'
+);
+select is(
+  (select count(*) from ml_private.inspiration_items
+   where id = '47000000-0000-4000-8000-000000000001'
+     and asset_id = '48000000-0000-4000-8000-000000000001'),
+  1::bigint,
+  'the retried inspiration reference points to its committed media row'
+);
 
 select ok(
   has_column_privilege('authenticated', 'ml_private.inventory_entries', 'id', 'update'),
