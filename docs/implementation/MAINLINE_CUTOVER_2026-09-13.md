@@ -214,3 +214,31 @@ environment and Auth redirects, new private-media upload/retrieval on both
 devices, recovery of the accidental login's pending work before deletion,
 rollout-authority readiness and final exact-commit PR checks. No main merge,
 main deployment, account deletion or authority switch has happened.
+
+## Hosted configuration / publishing handoff
+
+- Beta Netlify dependency setting changed from Node 24.x to 22.x and verified
+  saved. The currently published site remains `306f73f`; this setting affects
+  the next build. VITE_SUPABASE_URL is the expected V2 project and
+  VITE_PUBLIC_APP_URL is the beta origin. The anon-key variable is present;
+  no key value was copied or exposed in the report.
+- Post-migration V2 checks: 31 migrations, seven primary garments, 37 primary
+  media records, private studio-assets bucket and zero private tables without
+  RLS. Security advisors retain pre-existing function privilege/search-path
+  and leaked-password-protection warnings; no blanket clean advisory result
+  is claimed. See [function grants](https://supabase.com/docs/guides/database/database-linter?lint=0028_anon_security_definer_function_executable),
+  [search path](https://supabase.com/docs/guides/database/database-linter?lint=0011_function_search_path_mutable),
+  and [password protection](https://supabase.com/docs/guides/auth/password-security#password-strength-and-leaked-password-protection).
+  Canonical SECURITY DEFINER entrypoints require scoped review, not blanket
+  revocation that would break protected commands.
+- Sync fix and prior evidence committed locally at `4fc2a13`, verified content
+  tree `f1453eeb88c727c45549591b0989d140dc86df2f`. Git push failed because
+  terminal GitHub credentials are unavailable. The connected GitHub service
+  can read the branch but refused a blob upload with HTTP 403 (no write scope).
+  Neither method updated the remote branch or deployed the fix.
+- Supabase dashboard redirected to administrator sign-in. Auth redirect
+  verification needs user sign-in; that tab was retained for handoff. Do not
+  confuse this administrator login with the primary Studio user login.
+- Merge remains blocked on publishing/retesting the fix, Auth configuration,
+  private-image upload/convergence, and final rollout/cutover review. No
+  permissions were broadened to bypass the publishing or sign-in blockers.
