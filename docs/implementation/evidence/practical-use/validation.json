@@ -1,0 +1,25 @@
+{
+  "testedAt": "2026-10-11T21:58:44.039851+00:00",
+  "applicationTests": {
+    "passed": 244,
+    "skipped": 1
+  },
+  "databaseTests": {
+    "suites": 11,
+    "assertions": 293,
+    "passed": true,
+    "fixtureChangesRolledBack": true
+  },
+  "betaBuild": "passed",
+  "schemaValidation": "passed",
+  "scriptTypeCheck": "passed",
+  "administrativeScriptsSyntax": "passed",
+  "bundleBudget": "passed",
+  "removedAccountVerified": true,
+  "retainedDataAndStorageUnchanged": true,
+  "physicalDeviceAcceptance": "QA preview: matching records/images, deletion, and all preview queues clear per user; older installed official app still has 1 queued change",
+  "recoveryZipRestoreExercise": "passed in isolated local runtime with 263 mutable rows, 181 protected rows and 43 checksum-verified media files",
+  "productionPublished": false,
+  "retainedAuthority": "shadow",
+  "garmentDeletionAuditFix": "applied and regression-verified"
+}

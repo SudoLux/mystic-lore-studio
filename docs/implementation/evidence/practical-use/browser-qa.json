@@ -1,0 +1,15 @@
+{
+  "testedAt": "2026-10-11T21:59:56.956090+00:00",
+  "url": "https://6acc06be90d71f588c7c5f71--mystic-lore-studio.netlify.app",
+  "authenticationScreenLoaded": true,
+  "signupRecoveryNavigationVisible": true,
+  "recoveryScreenAccessible": true,
+  "phoneViewport": {
+    "width": 390,
+    "height": 844,
+    "horizontalOverflow": false
+  },
+  "viewportReset": true,
+  "authenticatedUiAcceptance": "pending",
+  "physicalDevicesTested": false
+}

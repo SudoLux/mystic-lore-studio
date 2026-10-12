@@ -14,18 +14,21 @@ export function SyncStatusIndicator({
   error?: string | null;
   onOpen: () => void;
   pendingCount: number;
-  status: SyncStatus;
+  status: SyncStatus | 'conflict';
   warning?: string | null;
 }) {
-  const config = pendingCount > 0
+  const config = status === 'error' || status === 'conflict'
+    ? { icon: XCircle, label: status === 'conflict' ? 'Review conflicting edits' : 'Sync failed · retry needed', tone: 'text-ember' }
+    : pendingCount > 0
     ? { icon: AlertTriangle, label: `Saved on this device · ${pendingCount} waiting`, tone: 'text-ember' }
     : status === 'synced' && warning
-    ? { icon: AlertTriangle, label: 'Saved with a warning', tone: 'text-ember' }
+    ? { icon: AlertTriangle, label: 'Verification in progress', tone: 'text-ember' }
     : ({
     error: { icon: XCircle, label: 'Sync error', tone: 'text-ember' },
     offline: { icon: CloudOff, label: 'Offline / local only', tone: 'text-stardust/58' },
     synced: { icon: Check, label: 'Synced', tone: 'text-teal' },
-    syncing: { icon: RefreshCw, label: 'Syncing', tone: 'text-ember' },
+    conflict: { icon: AlertTriangle, label: 'Review conflicting edits', tone: 'text-ember' },
+    syncing: { icon: RefreshCw, label: 'Saving / checking', tone: 'text-ember' },
   }[status]);
   const Icon = config.icon;
 

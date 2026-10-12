@@ -1,13 +1,16 @@
+import { clearCanonicalMediaSessionCaches } from '../domains/persistence/canonicalMedia';
 import {
   createContext,
   useContext,
   useEffect,
   useMemo,
   useState,
+  useRef,
   type ReactNode,
 } from 'react';
 import type { Session, User } from '@supabase/supabase-js';
 import { supabase, supabaseConfigStatus } from '../lib/supabase';
+import { authFailureMessage, isInvalidAuthSession, normalizeAuthEmail, signupGuidance } from '../lib/authIdentity';
 
 type AuthMode = 'signin' | 'signup';
 
@@ -26,7 +29,7 @@ type AuthContextValue = {
   session: Session | null;
   signIn: (email: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
-  signUp: (email: string, password: string) => Promise<void>;
+  signUp: (email: string, password: string) => Promise<string>;
   user: User | null;
 };
 
@@ -38,6 +41,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [lastError, setLastError] = useState<string | null>(null);
   const [requiresStudioSetup, setRequiresStudioSetup] = useState(false);
   const [session, setSession] = useState<Session | null>(null);
+  const setupPromiseRef = useRef<Promise<void> | null>(null);
+  const sessionRef = useRef<Session | null>(null);
+  sessionRef.current = session;
 
   useEffect(() => {
     if (!supabase) {
@@ -50,7 +56,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     supabase.auth
       .getSession()
-      .then(({ data, error }) => {
+      .then(async ({ data, error }) => {
         if (!isMounted) {
           return;
         }
@@ -59,6 +65,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setLastError(error.message);
         }
 
+        if (data.session && navigator.onLine !== false) {
+          const checked = await supabase!.auth.getUser();
+          if (isInvalidAuthSession(checked.error) || (!checked.error && !checked.data.user)) {
+            await supabase!.auth.signOut({ scope: 'local' });
+            setLastError('Your session has ended. Sign in to your Studio again.');
+            return;
+          }
+        }
+        if (!isMounted) return;
         setSession(data.session);
         return data.session
           ? studioSetupRequired(data.session.user.id).then(setRequiresStudioSetup)
@@ -79,6 +94,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (event === 'PASSWORD_RECOVERY') {
         setIsPasswordRecovery(true);
       } else if (event === 'SIGNED_OUT') {
+        clearCanonicalMediaSessionCaches();
         setIsPasswordRecovery(false);
       }
       setSession(nextSession);
@@ -95,7 +111,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     });
 
+    let validating = false;
+    const validateSession = () => {
+      if (validating || !sessionRef.current || navigator.onLine === false || document.visibilityState !== 'visible') return;
+      validating = true;
+      void supabase!.auth.getUser().then(async ({ data, error }) => {
+        if (isInvalidAuthSession(error) || (!error && !data.user)) {
+          await supabase!.auth.signOut({ scope: 'local' });
+          if (isMounted) { setSession(null); setRequiresStudioSetup(false); setLastError('Your session has ended. Sign in to your Studio again.'); }
+        }
+      }).catch(() => undefined).finally(() => { validating = false; });
+    };
+    window.addEventListener('focus', validateSession);
+    window.addEventListener('online', validateSession);
+    document.addEventListener('visibilitychange', validateSession);
+    const sessionTimer = window.setInterval(validateSession, 30_000);
     return () => {
+      window.clearInterval(sessionTimer);
+      window.removeEventListener('focus', validateSession);
+      window.removeEventListener('online', validateSession);
+      document.removeEventListener('visibilitychange', validateSession);
       isMounted = false;
       data.subscription.unsubscribe();
     };
@@ -120,34 +155,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       },
       completeStudioSetup: async ({ currency, name, timezone, units }) => {
         if (!supabase || !session?.user) throw new Error('Sign in before creating a studio.');
-        setLastError(null);
-        const userId = session.user.id;
-        const profile = await supabase.schema('ml_private').from('profiles').upsert({
-          display_name: name.trim(),
-          id: userId,
-          locale: navigator.language || 'en-US',
-          user_id: userId,
-        } as never, { onConflict: 'user_id' });
-        if (profile.error) throw profile.error;
-
-        const existing = await supabase.schema('ml_private').from('studios')
-          .select('id').eq('owner_user_id', userId).limit(1).maybeSingle();
-        if (existing.error) throw existing.error;
-        const studioId = (existing.data as { id?: string } | null)?.id ?? crypto.randomUUID();
-        if (!existing.data) {
-          const studio = await supabase.schema('ml_private').from('studios').insert({
-            id: studioId,
-            name: name.trim(),
-            owner_user_id: userId,
-            slug: `${slugify(name)}-${userId.slice(0, 8)}`,
-            timezone,
-          } as never);
-          if (studio.error) throw studio.error;
-        }
-        const settings = await supabase.schema('ml_private').from('studio_settings')
-          .upsert({ currency, studio_id: studioId, units } as never, { onConflict: 'studio_id' });
-        if (settings.error) throw settings.error;
-        setRequiresStudioSetup(false);
+        if (setupPromiseRef.current) return await setupPromiseRef.current;
+        const work = async () => {
+          setLastError(null);
+          const { data: verified, error: verificationError } = await supabase!.auth.getUser();
+          if (verificationError || verified.user?.id !== session.user.id) throw new Error('Sign in again before setting up your Studio.');
+          const { error } = await supabase!.schema('ml_private').rpc('complete_studio_setup', {
+            p_currency: currency, p_locale: navigator.language || 'en-US',
+            p_name: name.trim(), p_timezone: timezone, p_units: units,
+          });
+          if (error) throw error;
+          setRequiresStudioSetup(false);
+        };
+        setupPromiseRef.current = work();
+        try { await setupPromiseRef.current; }
+        finally { setupPromiseRef.current = null; }
       },
       configIssues: supabaseConfigStatus.issues,
       isConfigured: supabaseConfigStatus.isConfigured,
@@ -157,7 +179,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       requestPasswordReset: async (email) => {
         if (!supabase) throw new Error('Supabase is not configured.');
         setLastError(null);
-        const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        const { error } = await supabase.auth.resetPasswordForEmail(normalizeAuthEmail(email), {
           redirectTo: `${window.location.origin}${window.location.pathname}`,
         });
         if (error) {
@@ -167,8 +189,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       },
       requiresStudioSetup,
       session,
-      signIn: (email, password) =>
-        authenticate('signin', email, password, setLastError),
+      signIn: async (email, password) => {
+        await authenticate('signin', email, password, setLastError);
+      },
       signOut: async () => {
         if (!supabase) {
           setSession(null);
@@ -222,6 +245,7 @@ async function authenticate(
   }
 
   setLastError(null);
+  email = normalizeAuthEmail(email);
 
   const response =
     mode === 'signin'
@@ -237,9 +261,11 @@ async function authenticate(
         });
 
   if (response.error) {
-    setLastError(response.error.message);
-    throw response.error;
+    const message = authFailureMessage(response.error);
+    setLastError(message);
+    throw new Error(message);
   }
+  return signupGuidance(Boolean(response.data.session));
 }
 
 function getAuthErrorMessage(error: unknown) {
@@ -254,8 +280,4 @@ async function studioSetupRequired(userId: string) {
     .select('id').eq('owner_user_id', userId).limit(1);
   if (response.error) throw response.error;
   return (response.data?.length ?? 0) === 0;
-}
-
-function slugify(value: string) {
-  return value.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'studio';
 }

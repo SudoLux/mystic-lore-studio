@@ -1,0 +1,17 @@
+{
+  "checkedAt": "2026-10-12T04:26:50.836731+00:00",
+  "officialSite": "https://mystic-lore-studio.netlify.app",
+  "productionDeployId": "6aa76f99fa3641718e84eea4",
+  "releaseCandidate": "https://6acc61405c0ed135c8cac216--mystic-lore-studio.netlify.app",
+  "applicationTestsPassed": 244,
+  "databaseAssertionsPassed": 293,
+  "recoveryRestorePassed": true,
+  "previewDeviceQueuesEmpty": true,
+  "olderInstalledAppWaitingChanges": 1,
+  "authoritySwitchReady": false,
+  "proposedRelease": "Publish tested frontend while retaining shadow verification mode; preserve/reconcile the older installed app queue before the authority switch",
+  "productionPublished": false,
+  "frontendReleaseAuthorized": true,
+  "authorizationRecordedAt": "2026-10-12T04:33:03.483800+00:00",
+  "authoritySwitchAuthorizedForThisRelease": false
+}

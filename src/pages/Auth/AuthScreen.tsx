@@ -1,4 +1,4 @@
-import { useState, type CSSProperties, type FormEvent } from 'react';
+import { useRef, useState, type CSSProperties, type FormEvent } from 'react';
 import { ArrowLeft, ArrowRight, CloudOff, Loader2, LockKeyhole, Mail } from 'lucide-react';
 import { BrandLockup } from '../../components/layout/BrandLockup';
 import { Button } from '../../components/shared/Button';
@@ -27,6 +27,7 @@ export function AuthScreen() {
   const [passwordConfirmation, setPasswordConfirmation] = useState('');
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const submittingRef = useRef(false);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const isCompletingRecovery = isPasswordRecovery;
   const canSubmit = isConfigured && (
@@ -48,6 +49,7 @@ export function AuthScreen() {
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    if (submittingRef.current) return;
 
     if (!canSubmit) {
       setSubmitError(
@@ -60,6 +62,7 @@ export function AuthScreen() {
       return;
     }
 
+    submittingRef.current = true;
     setIsSubmitting(true);
     setSubmitError(null);
     setSuccessMessage(null);
@@ -69,14 +72,11 @@ export function AuthScreen() {
         await completePasswordRecovery(password);
       } else if (mode === 'recovery') {
         await requestPasswordReset(email.trim());
-        setSuccessMessage('Recovery link sent. Check your email to choose a new password.');
+        setSuccessMessage('If this email has an account, check your inbox for a password reset link.');
       } else if (mode === 'signin') {
         await signIn(email.trim(), password);
       } else {
-        await signUp(email.trim(), password);
-        setSuccessMessage(
-          'Account created. Check your email if your Supabase project requires confirmation.',
-        );
+        setSuccessMessage(await signUp(email, password));
       }
     } catch (error) {
       setSubmitError(
@@ -85,6 +85,7 @@ export function AuthScreen() {
           : 'Authentication failed. Check your details and try again.',
       );
     } finally {
+      submittingRef.current = false;
       setIsSubmitting(false);
     }
   };
@@ -311,13 +312,13 @@ export function AuthScreen() {
                       ? 'Create Account'
                       : 'Send Recovery Link'}
               </Button>
-              {!isCompletingRecovery && mode === 'signin' ? (
+              {!isCompletingRecovery && (mode === 'signin' || mode === 'signup') ? (
                 <button
                   className="min-h-11 w-full rounded-xl text-sm text-stardust/58 transition hover:bg-stardust/[0.05] hover:text-stardust"
                   onClick={() => handleModeChange('recovery')}
                   type="button"
                 >
-                  Forgot your password?
+                  {mode === 'signup' ? 'Recover an existing account' : 'Forgot your password?'}
                 </button>
               ) : null}
               {!isCompletingRecovery && mode === 'recovery' ? (

@@ -123,6 +123,23 @@ export function hydrateStudioData(data: StudioData): StudioDataView {
   };
 }
 
+/** Authenticated startup must neither seed samples nor adopt another account's legacy cache. */
+export function readStoredStudioData(userId: string): StudioData {
+  const empty: StudioData = {
+    editorialCollections: [], fabrics: [], linkedMaterials: [], lookbookPages: [],
+    notes: [], projects: [], tasks: [], yardageEntries: [],
+    portfolioProfile: createDefaultPortfolioProfile(), settings: createDefaultAppSettings(),
+    version: LOCAL_DATA_VERSION,
+  };
+  if (!canUseLocalStorage()) return empty;
+  try {
+    const stored = window.localStorage.getItem(getStorageKey(userId));
+    if (!stored) return empty;
+    const parsed: unknown = JSON.parse(stored);
+    return isStudioDataLike(parsed) ? migrateStudioData(parsed) : empty;
+  } catch { return empty; }
+}
+
 export function getStudioData(userId?: string): StudioData {
   if (!canUseLocalStorage()) {
     return createSeedStudioData();

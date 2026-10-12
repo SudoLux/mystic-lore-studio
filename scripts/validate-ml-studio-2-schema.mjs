@@ -592,14 +592,10 @@ const pgTapCount = (contents, path) => {
   check(plan === assertionCount, `${path} pgTAP plan (${plan}) does not match assertion count (${assertionCount}).`);
   return assertionCount;
 };
-const assertions = pgTapCount(rlsTest, testPath)
-  + pgTapCount(rcRlsTest, rcTestPath)
-  + pgTapCount(aiRlsTest, aiTestPath)
-  + pgTapCount(canonicalTransportTest, canonicalTransportTestPath)
-  + pgTapCount(publicCutBatchTest, publicCutBatchTestPath)
-  + pgTapCount(protectedCommandsTest, protectedCommandsTestPath)
-  + pgTapCount(trustedDeviceFinalizeTest, trustedDeviceFinalizeTestPath)
-  + pgTapCount(visualRecoveryTest, visualRecoveryTestPath);
+const assertions = readdirSync(new URL('supabase/tests/', root))
+  .filter((name) => name.endsWith('.sql'))
+  .reduce((total, name) => total + pgTapCount(read(`supabase/tests/${name}`), name), 0);
+
 check(rlsTest.includes('set local role anon'), 'pgTAP suite lacks anonymous access tests.');
 check(rlsTest.includes('Cross-studio'), 'pgTAP suite lacks cross-studio denial tests.');
 check(rlsTest.includes('unpublish_publication'), 'pgTAP suite lacks unpublication tests.');

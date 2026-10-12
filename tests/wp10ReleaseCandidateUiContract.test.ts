@@ -25,8 +25,8 @@ describe('WP10 release-candidate UI corrections', () => {
       expect(setup).toContain(contract);
     }
     expect(authHook).toContain("from('studios')");
-    expect(authHook).toContain('.insert({');
-    expect(authHook).toContain("from('studio_settings')");
+    expect(authHook).toContain("rpc('complete_studio_setup'");
+    expect(authHook).toContain('setupPromiseRef');
   });
 
   it('keeps Technical Studio reachable in Field Mode and removes the non-bible shortcut', () => {

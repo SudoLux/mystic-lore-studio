@@ -1,0 +1,11 @@
+{
+  "testedAt": "2026-10-11T21:43:59.116Z",
+  "studioId": "586ab26d-9713-46b8-bfff-7534ceab7633",
+  "status": "passed",
+  "freshMemberSession": true,
+  "expectedMedia": 41,
+  "verifiedMedia": 41,
+  "verifiedBytes": 38711751,
+  "failures": [],
+  "physicalDevicesTested": false
+}

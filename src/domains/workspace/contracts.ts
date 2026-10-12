@@ -541,7 +541,7 @@ export type WorkspaceChangeContext = {
   skipAutoLedger?: boolean;
 };
 
-export type WorkspaceSyncState = 'loading' | 'ready' | 'offline' | 'conflict' | 'error';
+export type WorkspaceSyncState = 'loading' | 'saving' | 'ready' | 'offline' | 'conflict' | 'error';
 
 export type RelationshipOption = {
   detail: string;

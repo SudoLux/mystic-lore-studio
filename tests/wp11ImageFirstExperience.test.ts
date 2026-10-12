@@ -92,7 +92,7 @@ describe('WP11C image-first garment experience', () => {
     const repository = readFileSync(new URL('../src/domains/persistence/canonicalWorkspaceRepository.ts', import.meta.url), 'utf8');
     expect(image).toContain("session?.access_token");
     expect(image).toContain('createRequestBoundCanonicalSupabase');
-    expect(image).toContain('resolveCanonicalMediaUrl(delivery, mediaClient)');
+    expect(image).toContain('resolveCanonicalMediaUrl(delivery, mediaClient, { scope: mediaScope })');
     expect(image).toContain('Try image again');
     expect(media).toContain(".createSignedUrl(asset.storagePath, CANONICAL_SIGNED_URL_SECONDS)");
     expect(media).toContain("CANONICAL_SIGNED_URL_SECONDS = 6 * 60 * 60");

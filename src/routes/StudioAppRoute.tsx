@@ -74,7 +74,7 @@ export function StudioAppRoute() {
               <p className="mt-2 text-sm leading-6 text-stardust/58">We could not finish loading your shared workspace.</p>
             <div className="mt-4 rounded-xl border border-ember/32 bg-ember/10 p-4 text-sm text-stardust/72">
               <p>{error}</p>
-              <button className="mt-3 min-h-11 rounded-xl border border-ember/36 px-4" onClick={retry} type="button">Try again</button>
+              <button className="mt-3 min-h-11 rounded-xl border border-ember/36 px-4" onClick={() => void retry().catch(() => undefined)} type="button">Try again</button>
             </div>
             </Card>
           )}
@@ -86,11 +86,11 @@ export function StudioAppRoute() {
   return (
     <AuthenticatedStudioShell
       email={user?.email}
-      localCacheWarning={persistenceMode === 'cloud' ? null : `${persistenceMode} rollout mode`}
+      localCacheWarning={persistenceMode === 'cloud' ? null : persistenceMode === 'shadow' ? 'Cross-device checks pending' : 'Recovery inspection only'}
       onNavigate={navigateToPage}
       onOpenProject={openProject}
       onSignOut={() => void handleSignOut()}
-      onSyncDetails={() => { navigateToPage('settings'); void refresh(); }}
+      onSyncDetails={() => { navigateToPage('settings'); void refresh().catch(() => undefined); }}
       pendingCount={pendingCount}
       route={route}
       state={state}
