@@ -1,8 +1,9 @@
+import { createHash } from 'node:crypto';
 import { describe, expect, it, vi } from 'vitest';
 import { uploadStagedCanonicalMedia } from '../src/domains/persistence/canonicalMedia';
 
 const asset = {
-  checksum: 'expected-checksum',
+  checksum: createHash('sha256').update('studio image bytes').digest('hex'),
   id: 'asset-id',
   mimeType: 'image/png',
   storagePath: 'studios/studio-id/garments/garment-id/asset-id/test.png',

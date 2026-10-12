@@ -51,7 +51,7 @@ export type CanonicalServerConflict = {
   expectedRevision: number | null;
   currentRevision: number | null;
   currentRow: Record<string, unknown> | null;
-  reason: 'already_exists' | 'missing_or_denied' | 'stale_revision';
+  reason: 'already_exists' | 'missing_or_denied' | 'stale_revision' | 'deleted';
 };
 
 export type CanonicalAuthoritativeRow = {
@@ -110,3 +110,10 @@ export interface CanonicalWorkspaceRepository {
   refresh(): Promise<CanonicalWorkspaceState>;
   retryFailed(): Promise<void>;
 }
+
+export type CanonicalWorkspaceLoad = {
+  state: CanonicalWorkspaceState;
+  source: 'cloud' | 'cache';
+  confirmedAt: string | null;
+  error: string | null;
+};

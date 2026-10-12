@@ -55,7 +55,7 @@ export function AuthenticatedStudioShell({
           error={syncError}
           onOpen={onSyncDetails}
           pendingCount={pendingCount}
-          status={syncStatus === 'ready' ? 'synced' : syncStatus === 'loading' ? 'syncing' : syncStatus === 'offline' ? 'offline' : 'error'}
+          status={syncStatus === 'ready' ? 'synced' : syncStatus === 'loading' || syncStatus === 'saving' ? 'syncing' : syncStatus === 'offline' ? 'offline' : syncStatus === 'conflict' ? 'conflict' : 'error'}
           warning={localCacheWarning}
         />
       }

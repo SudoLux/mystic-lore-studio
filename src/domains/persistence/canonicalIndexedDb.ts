@@ -12,7 +12,7 @@ const databaseOpenTimeoutMs = 8_000;
 type StoredOutbox = CanonicalOutboxEntry & { id: string; studioId: string };
 type StoredWorkspace = { id: string; state: CanonicalWorkspaceState; updatedAt: string };
 type StoredRecovery = { id: string; state: CanonicalWorkspaceState; report: CanonicalMigrationReport | null; preservedAt: string };
-type StoredMedia = { id: string; blob: Blob; checksum: string; updatedAt: string };
+type StoredMedia = { id: string; blob: Blob | ArrayBuffer; mimeType?: string; checksum: string; updatedAt: string };
 type StoredSetting = { id: string; value: unknown; updatedAt: string };
 
 const memory = {
@@ -111,18 +111,19 @@ export class CanonicalIndexedDb {
     try {
       await putRecord('media', record);
     } catch {
-      // Safari Private Browsing can expose IndexedDB but reject Blob/File
-      // writes. Keep the file available for this live upload rather than
-      // blocking the user; normal browsers still retain the offline cache.
-      memory.media.set(key, record);
+      // Some Safari contexts cannot clone Blob objects, but can persist their bytes.
+      // Await that durable transaction rather than silently retaining only memory.
+      await putRecord('media', { ...record, blob: await blob.arrayBuffer(), mimeType: blob.type });
     }
   }
 
   async getMediaBlob(key: string) {
     try {
-      return await getRecord<StoredMedia>('media', key) ?? memory.media.get(key) ?? null;
+      const record = await getRecord<StoredMedia>('media', key) ?? memory.media.get(key) ?? null;
+      return record ? { ...record, blob: record.blob instanceof Blob ? record.blob : new Blob([record.blob], { type: record.mimeType }) } : null;
     } catch {
-      return memory.media.get(key) ?? null;
+      const record = memory.media.get(key);
+      return record ? { ...record, blob: record.blob instanceof Blob ? record.blob : new Blob([record.blob], { type: record.mimeType }) } : null;
     }
   }
 
@@ -182,7 +183,10 @@ function stableValue(value: unknown): string {
 }
 
 async function openCanonicalDatabase() {
-  if (typeof indexedDB === 'undefined') return null;
+  if (typeof indexedDB === 'undefined') {
+    if (typeof window !== 'undefined') throw new Error('Private Studio storage is unavailable in this browser. Enable site storage before editing or uploading.');
+    return null;
+  }
   return await new Promise<IDBDatabase>((resolve, reject) => {
     const request = indexedDB.open(databaseName, databaseVersion);
     let settled = false;
@@ -249,10 +253,13 @@ async function transactionResult<T>(
   return await new Promise<T>((resolve, reject) => {
     const transaction = database.transaction(storeName, mode);
     const request = requestFactory(transaction.objectStore(storeName));
-    request.onsuccess = () => resolve((request.result as T) ?? fallback);
+    let result = fallback;
+    request.onsuccess = () => { result = (request.result as T) ?? fallback; };
     request.onerror = () => reject(request.error ?? new Error(`IndexedDB ${storeName} request failed.`));
-    transaction.oncomplete = () => database.close();
-    transaction.onerror = () => reject(transaction.error ?? new Error(`IndexedDB ${storeName} transaction failed.`));
+    transaction.oncomplete = () => { database.close(); resolve(result); };
+    const fail = () => { database.close(); reject(transaction.error ?? new Error(`IndexedDB ${storeName} transaction failed.`)); };
+    transaction.onerror = fail;
+    transaction.onabort = fail;
   });
 }
 

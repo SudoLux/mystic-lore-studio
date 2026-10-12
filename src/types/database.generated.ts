@@ -6027,6 +6027,26 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      delete_studio_item: {
+        Args: {
+          p_expected_revision: number
+          p_item_id: string
+          p_kind: string
+          p_operation_id: string
+          p_studio_id: string
+        }
+        Returns: Json
+      }
+      complete_studio_setup: {
+        Args: {
+          p_currency: unknown
+          p_locale?: string
+          p_name: string
+          p_timezone: string
+          p_units: Database["ml_private"]["Enums"]["measurement_unit"]
+        }
+        Returns: string
+      }
       accept_ai_artifact: {
         Args: {
           p_accepted_payload_checksum: unknown

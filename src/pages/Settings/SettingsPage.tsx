@@ -7,10 +7,14 @@ import { Card } from '../../components/shared/Card';
 import { MobilePageHeader } from '../../components/shared/MobilePageHeader';
 import { PageHeader } from '../../components/shared/PageHeader';
 import { canonicalStateChecksum, loadCanonicalStoredBlob } from '../../domains/persistence';
+import { useAuth } from '../../hooks/useAuth';
+import type { WorkspaceSyncState } from '../../domains/workspace';
+import { supabaseConfigStatus } from '../../lib/supabase';
 import { useCanonicalWorkspace } from '../../hooks/useCanonicalWorkspace';
 
 export function SettingsPage() {
-  const { error, pendingCount, persistenceMode, refresh, retry, state, syncState } = useCanonicalWorkspace();
+  const { error, lastSyncedAt, pendingCount, persistenceMode, refresh, retry, state, syncState } = useCanonicalWorkspace();
+  const { user } = useAuth();
   const [message, setMessage] = useState<string | null>(null);
   const [working, setWorking] = useState(false);
 
@@ -75,9 +79,10 @@ export function SettingsPage() {
       <MobilePageHeader badge="Settings" kicker="Sync, privacy, and recovery" title="Studio Settings" />
       <PageHeader badge="Settings" description="Keep your Studio current, protect your work, and access advanced recovery tools when you need them." title="Studio Settings" />
 
+      <Card><p className="field-label">Signed-in account</p><p className="mt-2 break-all text-sm">{user?.email}</p><p className="mt-3 text-sm text-stardust/62">Studio: Mystic Lore Studio</p><details className="mt-3 text-xs text-stardust/48"><summary>Workspace identity</summary><p className="mt-2 break-all">{state.studioId}</p><p className="mt-2 break-all">{supabaseConfigStatus.url}</p></details></Card>
       <div className="grid gap-4 md:grid-cols-3">
         <StatusCard label="Workspace" status={modeLabel(persistenceMode)} text={modeDescription(persistenceMode)} />
-        <StatusCard label="Waiting to sync" status={`${pendingCount} change${pendingCount === 1 ? '' : 's'}`} text={pendingCount ? 'Your queued edits will continue when a connection is available.' : 'Everything from this device is saved.'} />
+        <StatusCard label="Waiting to sync" status={`${pendingCount} change${pendingCount === 1 ? '' : 's'}`} text={pendingCount ? syncState === 'offline' ? 'Your queued edits will continue when a connection is available.' : syncState === 'conflict' ? 'An edit needs review before queued changes can finish.' : syncState === 'error' ? 'An edit could not be saved. Refresh Studio to retry and view its error.' : 'Your edits are waiting for server confirmation.' : syncState === 'ready' ? 'No queued edits on this device.' : 'Cloud verification is still needed.'} />
         <StatusCard label="Studio library" status={`${state.garments.length} garment${state.garments.length === 1 ? '' : 's'}`} text={`${state.mediaAssets.length} images and files · ${state.releaseTasks.length} tasks · ${state.editorialCollections.length} stories.`} />
       </div>
 
@@ -86,7 +91,8 @@ export function SettingsPage() {
           <div>
             <Badge variant={syncState === 'ready' && pendingCount === 0 ? 'teal' : 'ember'}>Cloud status</Badge>
             <h2 className="mt-4 text-xl font-semibold text-stardust">{syncHeading(syncState, pendingCount)}</h2>
-            <p className="mt-2 max-w-2xl text-sm leading-6 text-stardust/62">{error ?? 'Your garments, imagery, and Studio decisions are safely shared across your signed-in devices.'}</p>
+            <p className="mt-2 max-w-2xl text-sm leading-6 text-stardust/62">{error ?? (syncState === 'ready' && pendingCount === 0 ? 'The latest cloud check succeeded. Use the same account on every device.' : 'Your saved copy remains available while the shared Studio is being checked.')}</p>
+            <p className="mt-3 text-xs text-stardust/48">Last successful sync: {lastSyncedAt ? new Date(lastSyncedAt).toLocaleString() : 'Not yet verified in this session'}</p>
           </div>
           <Button disabled={working} icon={<RefreshCcw aria-hidden="true" size={16} />} onClick={() => void refreshCloud()} variant="primary">Refresh Studio</Button>
         </div>
@@ -98,6 +104,7 @@ export function SettingsPage() {
             <div className="flex items-center gap-3"><ShieldCheck aria-hidden="true" className="text-teal" size={21} /><h2 className="text-lg font-semibold">Private recovery copy</h2></div>
             <p className="mt-3 text-sm leading-6 text-stardust/62">Download a private copy of your Studio data and media for safekeeping.</p>
             <p className="mt-3 text-xs leading-5 text-stardust/45">This file contains private Studio work. Store it securely and remove old beta copies after 30 days.</p>
+
           </div>
           <Button disabled={working} icon={<Download aria-hidden="true" size={16} />} onClick={() => void exportRecoverySnapshot()} variant="secondary">Download recovery copy</Button>
         </div>
@@ -127,14 +134,15 @@ function modeLabel(mode: 'cloud' | 'local-recovery' | 'shadow') {
 
 function modeDescription(mode: 'cloud' | 'local-recovery' | 'shadow') {
   if (mode === 'cloud') return 'This device is connected to your shared Studio.';
-  if (mode === 'shadow') return 'Local and shared results are being compared before the switch.';
+  if (mode === 'shadow') return 'Cloud reads and saved edits are being verified. Complete checks on your other devices before the final switch.';
   return 'The Studio is available for recovery inspection only.';
 }
 
-function syncHeading(syncState: 'loading' | 'ready' | 'offline' | 'conflict' | 'error', pendingCount: number) {
+function syncHeading(syncState: WorkspaceSyncState, pendingCount: number) {
   if (syncState === 'offline') return 'Your offline edits are safe.';
   if (syncState === 'conflict') return 'A recent edit needs your review.';
   if (syncState === 'error') return 'Cloud sync needs attention.';
+  if (syncState === 'saving') return 'Saving your changes…';
   if (syncState === 'loading') return 'Checking your shared Studio…';
   return pendingCount ? 'Your latest changes are waiting to sync.' : 'Everything is up to date.';
 }

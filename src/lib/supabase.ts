@@ -1,8 +1,9 @@
+import { createSessionFetch } from './sessionFetch';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import type { Database } from '../types/database.generated';
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL?.trim() ?? '';
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY?.trim() ?? '';
+const supabaseUrl = import.meta.env?.VITE_SUPABASE_URL?.trim() ?? '';
+const supabaseAnonKey = import.meta.env?.VITE_SUPABASE_ANON_KEY?.trim() ?? '';
 
 type SupabaseConfigStatus = {
   anonKey: string;
@@ -52,7 +53,7 @@ export const supabaseConfigStatus = getSupabaseConfigStatus();
 
 /** Canonical schemas use the checked-in generated Database contract. */
 export const canonicalSupabase: SupabaseClient<Database> | null = supabaseConfigStatus.isConfigured
-  ? createClient<Database>(supabaseConfigStatus.url, supabaseConfigStatus.anonKey)
+  ? createClient<Database>(supabaseConfigStatus.url, supabaseConfigStatus.anonKey, { global: { fetch: createSessionFetch() } })
   : null;
 
 /**
@@ -76,6 +77,7 @@ export function createRequestBoundCanonicalSupabase(accessToken: string): Supaba
     // header here prevents a canonical REST request from falling back to the
     // publishable-key role while Safari restores a private browsing session.
     global: {
+      fetch: createSessionFetch(),
       headers: {
         Authorization: `Bearer ${accessToken}`,
       },

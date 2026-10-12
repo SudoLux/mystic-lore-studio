@@ -13,10 +13,12 @@ import { useCanonicalWorkspace } from '../../hooks/useCanonicalWorkspace';
 import { garmentLenses, type GarmentLens } from '../../domains/garments/contracts';
 import { cn } from '../../lib/classes';
 import { canonicalGarmentCover, canonicalGarmentSwatches, canonicalGarmentViews, canonicalInspirationReferences, recommendedGarmentAction, type CanonicalGarmentView, type CanonicalInspirationReference } from '../../lib/canonicalGarmentPresentation';
+import { StudioRemovalDialog } from '../../components/shared/StudioRemovalDialog';
+import { updateGarment as archiveGarment } from '../../domains/workspace';
 import { MAX_GARMENT_VIEWS, MAX_INSPIRATION_FIELD_IMAGES } from '../../domains/workspace';
 
 export function CanonicalGarmentWorkspacePage({ garmentId, onBack }: { garmentId: string; onBack: () => void }) {
-  const { deleteGarment, linkMaterialToGarment, removeGarmentMaterial, removeGarmentView, removeInspirationReference, setGarmentHero, state, syncState, updateGarmentMaterial, uploadGarmentView, uploadInspirationMedia } = useCanonicalWorkspace();
+  const { commitWorkspaceConfirmed, deleteGarment, linkMaterialToGarment, removeGarmentMaterial, removeGarmentView, removeInspirationReference, setGarmentHero, state, syncState, updateGarmentMaterial, uploadGarmentView, uploadInspirationMedia } = useCanonicalWorkspace();
   const [lens, setLens] = useState<GarmentLens>('overview');
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [referenceToRemove, setReferenceToRemove] = useState<CanonicalInspirationReference | null>(null);
@@ -48,7 +50,7 @@ export function CanonicalGarmentWorkspacePage({ garmentId, onBack }: { garmentId
   const inspirationReferences = canonicalInspirationReferences(state, garmentId);
   const referenceAssets = inspirationReferences.map((reference) => reference.asset).slice(0, MAX_INSPIRATION_FIELD_IMAGES);
   const nextAction = recommendedGarmentAction(garment);
-  const remove = () => { deleteGarment(garment.id); onBack(); };
+  const remove = async () => { await deleteGarment(garment.id); onBack(); };
   const beginUpload = (role: 'garment-view' | 'reference') => { uploadRoleRef.current = role; setUploadNotice(null); uploadInputRef.current?.click(); };
   const upload = async (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.currentTarget.files?.[0];
@@ -158,7 +160,7 @@ export function CanonicalGarmentWorkspacePage({ garmentId, onBack }: { garmentId
     {lens === 'technical' ? <TechnicalLens garmentId={garment.id} /> : null}
     {lens === 'production' || lens === 'editorial' || lens === 'portfolio' ? <DeferredLens lens={lens} /> : null}
 
-    <details className="rounded-2xl border border-bronze/16 bg-stardust/[0.018] p-4"><summary className="cursor-pointer text-sm text-stardust/48">Garment record and workspace options</summary><div className="mt-5 grid gap-5 border-t border-bronze/14 pt-5 sm:grid-cols-3"><Info label="Garment code" value={garment.garmentCode}/><Info label="Revision" value={String(garment.revision)}/><Info label="Collection" value={collection?.name ?? 'Unassigned'}/></div>{confirmDelete ? <div className="mt-6 rounded-xl border border-ember/50 bg-ember/10 p-3"><p className="text-sm leading-5">Delete this garment and its design/material links? This cannot be undone from the workspace.</p><div className="mt-3 flex gap-2"><Button onClick={remove} size="sm" variant="primary">Delete garment</Button><Button onClick={() => setConfirmDelete(false)} size="sm">Cancel</Button></div></div> : <Button className="mt-6" icon={<Trash2 aria-hidden="true" size={15}/>} onClick={() => setConfirmDelete(true)} size="sm" variant="ghost">Delete garment</Button>}</details>
+    <details className="rounded-2xl border border-bronze/16 bg-stardust/[0.018] p-4"><summary className="cursor-pointer text-sm text-stardust/48">Garment record and workspace options</summary><div className="mt-5 grid gap-5 border-t border-bronze/14 pt-5 sm:grid-cols-3"><Info label="Garment code" value={garment.garmentCode}/><Info label="Revision" value={String(garment.revision)}/><Info label="Collection" value={collection?.name ?? 'Unassigned'}/></div><Button className="mt-6" icon={<Trash2 aria-hidden="true" size={15}/>} onClick={() => setConfirmDelete(true)} size="sm" variant="ghost">Delete garment</Button></details>{confirmDelete ? <StudioRemovalDialog id={garment.id} kind="garment" title={garment.title} state={state} onClose={() => setConfirmDelete(false)} onConfirm={remove} onArchive={async () => { await commitWorkspaceConfirmed((current) => archiveGarment(current, garment.id, { status: 'archived' })); onBack(); }}/> : null}
     {garmentViewManagerOpen ? <CanonicalGarmentViewManager
       derivatives={state.mediaDerivatives}
       garmentTitle={garment.title}

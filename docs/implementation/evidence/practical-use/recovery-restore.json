@@ -1,0 +1,18 @@
+{
+  "testedAt": "2026-10-11T23:18:49.361Z",
+  "status": "passed",
+  "target": "isolated local runtime, port 55321",
+  "sourceStudioId": "586ab26d-9713-46b8-bfff-7534ceab7633",
+  "workspaceChecksum": "c474fe09471b4769db10af51445a47ef5926d17bc44ce5bd8718f3aa2b26ac5d",
+  "garments": 8,
+  "mutableRows": 263,
+  "protectedRows": 181,
+  "media": 43,
+  "verifiedBytes": 46654585,
+  "zipCrcVerified": true,
+  "memberHydrationPassed": true,
+  "anonymousPrivateAccessDenied": true,
+  "hostedWorkspaceModified": false,
+  "temporaryLocalEnvironmentRemoved": true,
+  "cleanupRecordedAt": "2026-10-11T23:22:06.644465+00:00"
+}

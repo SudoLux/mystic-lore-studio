@@ -1,0 +1,29 @@
+{
+  "testedAt": "2026-10-11T21:42:41.689Z",
+  "project": "iahrcupmyjnyyqszrmcx",
+  "status": "passed",
+  "checks": [
+    "independent sign-in sessions",
+    "duplicate, case, whitespace, repeated and simultaneous signup create no second identity",
+    "simultaneous setup creates exactly one workspace",
+    "empty workspace stays empty",
+    "creation and uploads acknowledged atomically",
+    "two fresh sessions see matching records",
+    "private image loads in a fresh second session",
+    "anonymous private image denied",
+    "anonymous private workspace denied",
+    "cross-session edit acknowledged",
+    "concurrent stale edit returns conflict",
+    "task deletion acknowledged",
+    "task deletion retry idempotent",
+    "deleted content stays deleted on stale device",
+    "draft editorial deletion acknowledged",
+    "unused material deletion acknowledged",
+    "garment deletion preserves shared media",
+    "shared original bytes survive deletion",
+    "session refresh succeeds",
+    "another account cannot read retained workspace",
+    "another account cannot delete retained records"
+  ],
+  "physicalDevicesTested": false
+}

@@ -14,13 +14,15 @@ import { recordEditorialExportCommand } from '../domains/persistence';
 import { useCanonicalWorkspace } from './useCanonicalWorkspace';
 
 export function useEditorialStudio() {
-  const { commitWorkspace, currentActorId, requireFreshWorkspace, state, syncState } = useCanonicalWorkspace();
+  const { commitWorkspace, commitWorkspaceConfirmed, deleteEditorialCollection, currentActorId, requireFreshWorkspace, state, syncState } = useCanonicalWorkspace();
   const collections = useMemo(() => state?.editorialCollections ?? [], [state]);
   return {
     addBlock: (sceneId: string, blockType: string, content?: Record<string, unknown>) => { if (!state) return; commitWorkspace((current) => addEditorialBlock(current, sceneId, blockType, content).state); },
     addScene: (collectionId: string, title?: string) => { if (!state) return; commitWorkspace((current) => addEditorialScene(current, collectionId, title).state); },
     addStoryFromSystem: (input: Parameters<typeof addStoryFromSystemBlock>[1]) => { if (!state) return; commitWorkspace((current) => addStoryFromSystemBlock(current, input).state); },
     collections,
+    deleteCollection: deleteEditorialCollection,
+    archiveCollection: (id: string) => commitWorkspaceConfirmed((current) => ({ ...current, editorialCollections: current.editorialCollections.map((item) => item.id === id ? { ...item, status: 'archived' as const, revision: item.revision + 1, updatedAt: new Date().toISOString() } : item) })),
     createCollection: (input: Parameters<typeof createEditorialCollection>[1]) => { if (!state) return; let id = ''; commitWorkspace((current) => { const result = createEditorialCollection(current, input); id = result.collection.id; return result.state; }); return id; },
     createExport: async (collectionId: string, format: 'pdf' | 'image') => {
       const fresh = await requireFreshWorkspace();

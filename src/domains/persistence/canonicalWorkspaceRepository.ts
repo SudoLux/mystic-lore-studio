@@ -20,11 +20,21 @@ import type {
   CanonicalPersistenceMode,
   CanonicalServerConflict,
   CanonicalWorkspaceRepository,
+  CanonicalWorkspaceLoad,
 } from './contracts';
 
 const pageSize = 500;
 const hydrationConcurrency = 6;
 const hydrationRequestTimeoutMs = 20_000;
+
+/** Permission/schema failures must never be disguised as a successful cache read. */
+export function isRetryableWorkspaceReadError(reason: unknown) {
+  const error = reason as { code?: string; status?: number; message?: string } | null;
+  if (error?.status === 401 || error?.status === 403) return false;
+  if (error?.code && !['PGRST000', 'PGRST001', 'PGRST002', 'PGRST003'].includes(error.code)) return false;
+  return error?.status !== undefined ? error.status >= 500
+    : /fetch|network|offline|timeout|timed out|did not respond|load failed/i.test(error?.message ?? String(reason));
+}
 
 function transportErrorMessage(reason: unknown) {
   if (reason instanceof Error && reason.message) return reason.message;
@@ -87,6 +97,7 @@ async function withHydrationTimeout<T>(request: Promise<T>, label: string): Prom
 }
 
 export class SupabaseCanonicalWorkspaceRepository implements CanonicalWorkspaceRepository {
+  lastLoad: CanonicalWorkspaceLoad | null = null;
   private studioId: string | null = null;
   private flushPromise: Promise<void> | null = null;
   private readonly projectedRows = new Map<string, Record<string, unknown>>();
@@ -100,23 +111,27 @@ export class SupabaseCanonicalWorkspaceRepository implements CanonicalWorkspaceR
     private readonly cache = new CanonicalIndexedDb(),
   ) {}
 
-  async hydrate(studioId: string) {
+  async hydrate(studioId: string, allowCache = true) {
     this.studioId = studioId;
     if (typeof navigator !== 'undefined' && navigator.onLine === false) {
+      if (!allowCache) throw new Error('Connect to the internet to verify your shared Studio.');
       const cached = await this.cache.getWorkspace(studioId);
       if (!cached) throw new Error('This device has no cached canonical workspace for offline startup.');
       this.resetProjection(cached);
+      this.lastLoad = { state: cached, source: 'cache', confirmedAt: null, error: 'Offline. Showing the last saved copy on this device.' };
       return cached;
     }
     try {
       const state = await this.loadCloudState(studioId);
       this.resetProjection(state);
       await this.cache.putWorkspace(state);
+      this.lastLoad = { state, source: 'cloud', confirmedAt: new Date().toISOString(), error: null };
       return state;
     } catch (reason) {
       const cached = await this.cache.getWorkspace(studioId);
-      if (cached) {
+      if (cached && allowCache && isRetryableWorkspaceReadError(reason)) {
         this.resetProjection(cached);
+        this.lastLoad = { state: cached, source: 'cache', confirmedAt: null, error: transportErrorMessage(reason) };
         return cached;
       }
       throw reason;
@@ -128,7 +143,13 @@ export class SupabaseCanonicalWorkspaceRepository implements CanonicalWorkspaceR
       this.pending.set(operation.operationId, { reject, resolve });
     });
     void this.enqueue(operation).then(() => {
-      if (typeof navigator === 'undefined' || navigator.onLine !== false) void this.flush();
+      if (typeof navigator === 'undefined' || navigator.onLine !== false) {
+        void this.flush().then(async () => {
+          // An enqueue may arrive after a running flush took its snapshot.
+          const waiting = (await this.cache.listOutbox(operation.studioId)).find((entry) => entry.operation.operationId === operation.operationId);
+          if (waiting?.status === 'pending') await this.flush();
+        }).catch((reason) => this.pending.get(operation.operationId)?.reject(reason));
+      }
     }).catch((reason) => this.pending.get(operation.operationId)?.reject(reason));
     return { committed, operationId: operation.operationId };
   }
@@ -146,7 +167,14 @@ export class SupabaseCanonicalWorkspaceRepository implements CanonicalWorkspaceR
 
   async refresh() {
     if (!this.studioId) throw new Error('The canonical repository has not been hydrated.');
-    return await this.hydrate(this.studioId);
+    const state = await this.loadCloudState(this.studioId);
+    this.lastLoad = { state, source: 'cloud', confirmedAt: new Date().toISOString(), error: null };
+    return state;
+  }
+
+  async acceptSnapshot(state: CanonicalWorkspaceState) {
+    this.resetProjection(state);
+    await this.cache.putWorkspace(state);
   }
 
   async retryFailed() {
@@ -322,7 +350,7 @@ export class SupabaseCanonicalWorkspaceRepository implements CanonicalWorkspaceR
       const response = await dynamicSchema.from(table).select('*')
         .eq('studio_id', studioId).order('id', { ascending: true })
         .range(from, from + pageSize - 1);
-      if (response.error) throw new Error(`${schema}.${table}: ${response.error.message}`);
+      if (response.error) throw Object.assign(new Error(`${schema}.${table}: ${response.error.message}`), response.error);
       const page = response.data ?? [];
       rows.push(...page);
       if (page.length < pageSize) return rows;

@@ -35,6 +35,7 @@ import { Card } from '../../components/shared/Card';
 import { CanonicalMediaImage } from '../../components/shared/CanonicalMediaImage';
 import { MobilePageHeader } from '../../components/shared/MobilePageHeader';
 import { PageHeader } from '../../components/shared/PageHeader';
+import { previewStudioRemoval } from '../../lib/studioRemoval';
 import { useCanonicalWorkspace } from '../../hooks/useCanonicalWorkspace';
 import { cn } from '../../lib/classes';
 import { CanonicalIndexedDb } from '../../domains/persistence';
@@ -576,6 +577,10 @@ function TaskDetailDrawer({ item, onClose, onDeleted, onOpenGarment }: { item: P
   const [status, setStatus] = useState(item.task.status);
   const [dueAt, setDueAt] = useState(toDateInput(item.task.dueAt));
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+  const preview = state ? previewStudioRemoval(state, 'task', item.task.id) : null;
+  const remove = async () => { if (deleting) return; setDeleting(true); setDeleteError(null); try { await deleteTask(item.task.id); onDeleted(); } catch (reason) { setDeleteError(reason instanceof Error ? reason.message : 'Deletion could not be confirmed.'); } finally { setDeleting(false); } };
   const dialogRef = useDialogA11y(true, onClose);
   const save = (event: FormEvent) => { event.preventDefault(); updateTask(item.task.id, { description, dueAt: dueAt ? new Date(`${dueAt}T12:00:00`).toISOString() : null, garmentId, priority, status, title }); onClose(); };
   return (
@@ -588,7 +593,8 @@ function TaskDetailDrawer({ item, onClose, onDeleted, onOpenGarment }: { item: P
           <label className="block text-xs text-stardust/52">Notes<textarea className="mt-2 min-h-28 w-full rounded-xl border border-bronze/26 bg-midnight px-3 py-3 text-sm leading-6 text-stardust outline-none focus:border-ember/65 focus:ring-2 focus:ring-ember/25" onChange={(event) => setDescription(event.target.value)} value={description} /></label>
           <div className="grid gap-4 sm:grid-cols-2"><SelectField label="Garment" onChange={setGarmentId} options={[['', 'Studio-wide'], ...(state?.garments.map((garment) => [garment.id, garment.title] as [string, string]) ?? [])]} value={garmentId} /><SelectField label="Priority" onChange={(value) => setPriority(value as CanonicalReleaseTask['priority'])} options={['low', 'medium', 'high', 'urgent'].map((value) => [value, value])} value={priority} /><SelectField label="Status" onChange={(value) => setStatus(value as CanonicalReleaseTask['status'])} options={['todo', 'in_progress', 'blocked', 'done', 'cancelled'].map((value) => [value, planTaskStatusLabel(value as CanonicalReleaseTask['status'])])} value={status} /><label className="text-xs text-stardust/52">Due date<input className="mt-2 min-h-11 w-full rounded-xl border border-bronze/26 bg-midnight px-3 text-sm text-stardust outline-none focus:border-ember/65 focus:ring-2 focus:ring-ember/25" onChange={(event) => setDueAt(event.target.value)} type="date" value={dueAt} /></label></div>
           {item.garment ? <button className="inline-flex items-center gap-2 text-sm text-stardust/60 underline-offset-4 hover:text-stardust hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ember" onClick={() => onOpenGarment?.(item.garment!.garment.id)} type="button">Open {item.garment.garment.title}<ArrowUpRight aria-hidden="true" size={15} /></button> : null}
-          <div className="flex flex-wrap items-center justify-between gap-3 border-t border-bronze/18 pt-5"><div>{confirmDelete ? <div className="flex items-center gap-2 text-sm text-ember"><span>Delete this task?</span><Button onClick={() => { deleteTask(item.task.id); onDeleted(); }} size="sm">Delete</Button><Button onClick={() => setConfirmDelete(false)} size="sm" variant="ghost">Keep</Button></div> : <Button icon={<Trash2 aria-hidden="true" size={15} />} onClick={() => setConfirmDelete(true)} size="sm" variant="ghost">Delete task</Button>}</div><Button type="submit">Save changes</Button></div>
+          <div className="flex flex-wrap items-center justify-between gap-3 border-t border-bronze/18 pt-5"><div>{confirmDelete ? <div className="flex items-center gap-2 text-sm text-ember"><span>{preview?.blocked ?? preview?.effects}</span><Button disabled={deleting || Boolean(preview?.blocked)} onClick={() => void remove()} size="sm">{deleting ? 'Waiting…' : 'Delete'}</Button><Button onClick={() => setConfirmDelete(false)} size="sm" variant="ghost">Keep</Button></div> : <Button icon={<Trash2 aria-hidden="true" size={15} />} onClick={() => setConfirmDelete(true)} size="sm" variant="ghost">Delete task</Button>}</div><Button type="submit">Save changes</Button></div>
+          {deleteError ? <p role="alert" className="text-sm text-ember">{deleteError}</p> : null}
         </form>
       </aside>
     </div>

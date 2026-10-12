@@ -365,22 +365,18 @@ describe('canonical cloud repository cutover', () => {
     const provider = readFileSync(new URL('../src/hooks/useCanonicalWorkspace.tsx', import.meta.url), 'utf8');
     expect(provider).toContain('window.localStorage.removeItem(key)');
     expect(provider).not.toContain('window.localStorage.setItem(key');
-    expect(provider).toContain("mode === 'cloud'");
-    expect(provider).toContain("mode === 'shadow'");
+    expect(provider).toContain('repository.lastLoad?.confirmedAt');
+    expect(provider).not.toContain('importShadowWorkspace(');
     expect(provider).toContain("window.addEventListener('online'");
     expect(provider).toContain("window.addEventListener('focus'");
     const replay = provider.indexOf('const queuedBeforeImport');
-    const importStart = provider.indexOf('const report = await importShadowWorkspace');
     expect(replay).toBeGreaterThan(-1);
-    expect(importStart).toBeGreaterThan(replay);
     expect(provider).toContain('cloudState = await repositoryRef.current.refresh()');
-    expect(provider).toContain('!startupQueueError');
     expect(provider).toContain('recovered-operation:');
     expect(provider).toContain('syncImportOperationAlreadyReflected');
     expect(provider).toContain('singleton_identity_rebase');
-    expect(provider).toContain('adoptedRecoveredCloud');
-    expect(provider).toContain('const cloudIsCurrent = hasCanonicalRecords(cloudState) && !startupQueueError');
-    expect(provider).toContain('adoptedRecoveredCloud || cloudIsCurrent ? cloudState');
+    expect(provider).toContain('pending.length > 0 && cachedState ? cachedState : cloudState');
+    expect(provider).toContain('Empty cloud workspaces are intentional');
   });
 
   it('uses stable pagination and the transactional operation RPC', () => {

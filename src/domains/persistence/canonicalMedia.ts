@@ -8,7 +8,7 @@ import { canonicalValueChecksum } from './canonicalIndexedDb';
 const cache = new CanonicalIndexedDb();
 const CANONICAL_SIGNED_URL_SECONDS = 6 * 60 * 60;
 const CANONICAL_SIGNED_URL_REFRESH_BUFFER_MS = 5 * 60 * 1000;
-const CANONICAL_SIGNED_URL_CACHE_KEY = 'mystic-lore:canonical-signed-media-urls:v2';
+const CANONICAL_SIGNED_URL_CACHE_KEY = 'mystic-lore:canonical-signed-media-urls:v3';
 
 type CanonicalSignedUrlCacheEntry = {
   expiresAt: number;
@@ -41,10 +41,12 @@ export async function loadCanonicalMediaBlob(asset: CanonicalMediaAsset) {
 export async function resolveCanonicalMediaUrl(
   asset: Pick<CanonicalMediaAsset, 'storagePath'>,
   client: SupabaseClient<Database> | null = canonicalSupabase,
-  options: { force?: boolean } = {},
+  options: { force?: boolean; scope?: string } = {},
 ) {
   if (!client) throw new Error('Private media is waiting for your Studio session.');
-  const cached = options.force ? null : readCanonicalSignedUrl(asset.storagePath);
+  // Explicit scope keeps private viewing links tied to the signed-in identity.
+  const key = `${options.scope ?? 'default'}:${asset.storagePath}`;
+  const cached = options.force ? null : readCanonicalSignedUrl(key);
   if (cached) return cached.url;
 
   const response = await client.storage
@@ -53,7 +55,7 @@ export async function resolveCanonicalMediaUrl(
   if (response.error || !response.data?.signedUrl) {
     throw new Error(response.error?.message ?? 'The private image link could not be prepared.');
   }
-  writeCanonicalSignedUrl(asset.storagePath, response.data.signedUrl);
+  writeCanonicalSignedUrl(key, response.data.signedUrl);
   return response.data.signedUrl;
 }
 
@@ -64,15 +66,23 @@ export async function loadCachedCanonicalMediaBlob(asset: Pick<CanonicalMediaAss
   return staged.blob;
 }
 
-export function clearCanonicalMediaUrl(storagePath: string) {
-  signedUrlCache.delete(storagePath);
+export function clearCanonicalMediaUrl(storagePath: string, scope = 'default') {
+  const key = `${scope}:${storagePath}`;
+  signedUrlCache.delete(key);
   if (typeof window === 'undefined') return;
   try {
     const entries = readCanonicalSignedUrlEntries();
-    delete entries[storagePath];
+    delete entries[key];
     window.sessionStorage.setItem(CANONICAL_SIGNED_URL_CACHE_KEY, JSON.stringify(entries));
   } catch {
     // Memory cache removal is enough when browser storage is unavailable.
+  }
+}
+
+export function clearCanonicalMediaSessionCaches() {
+  signedUrlCache.clear();
+  if (typeof window !== 'undefined') {
+    try { window.sessionStorage.removeItem(CANONICAL_SIGNED_URL_CACHE_KEY); window.sessionStorage.removeItem('mystic-lore:canonical-signed-media-urls:v2'); } catch { /* Browser storage may be disabled. */ }
   }
 }
 
@@ -83,7 +93,7 @@ export async function loadCanonicalStoredBlob(asset: {
   storagePath: string;
 }, client: SupabaseClient<Database> | null = canonicalSupabase) {
   const staged = await cache.getMediaBlob(asset.id);
-  if (staged) return staged.blob;
+  if (staged && staged.checksum === asset.checksum && await sha256(staged.blob) === asset.checksum) return staged.blob;
   if (!client) return null;
   const response = await client.storage.from('studio-assets').download(asset.storagePath);
   if (response.error) throw new Error(response.error.message);
@@ -100,14 +110,18 @@ export async function uploadStagedCanonicalMedia(
 ) {
   if (!client) throw new Error('Canonical Storage is unavailable.');
   const staged = await store.getMediaBlob(asset.id);
-  if (!staged) return false;
-  if (staged.checksum !== asset.checksum) throw new Error('Staged media checksum changed before upload.');
+  if (!staged) {
+    const existing = await client.storage.from('studio-assets').download(asset.storagePath);
+    if (existing.error || await sha256(existing.data) !== asset.checksum) throw new Error('The original file is missing or changed. Choose it again before syncing.');
+    return false;
+  }
   // Send raw bytes instead of the SDK's multipart Blob branch. Safari can
   // restore an IndexedDB Blob correctly and still submit an empty multipart
   // file part, which Storage reports as "No content provided". ArrayBuffer is
   // a documented Storage upload body and preserves the exact staged bytes.
   const bytes = await staged.blob.arrayBuffer();
   if (!bytes.byteLength) throw new Error('The staged media file contains no data. Choose the file again.');
+  if (staged.checksum !== asset.checksum || await sha256(staged.blob) !== asset.checksum) throw new Error('Staged media checksum changed before upload.');
   const upload = await client.storage.from('studio-assets').upload(asset.storagePath, bytes, {
     cacheControl: '31536000',
     contentType: asset.mimeType,

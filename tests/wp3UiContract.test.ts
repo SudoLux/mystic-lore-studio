@@ -24,7 +24,11 @@ describe('WP3 canonical UI accessibility and state contracts', () => {
   it('uses a visible destructive confirmation and an accessible lens switcher', () => {
     const source = read('../src/pages/GarmentWorkspace/CanonicalGarmentWorkspacePage.tsx');
     expect(source).toContain('confirmDelete');
-    expect(source).toContain('Delete this garment');
+    expect(source).toContain('StudioRemovalDialog');
+    const dialog = read('../src/components/shared/StudioRemovalDialog.tsx');
+    expect(dialog).toContain('Delete permanently');
+    expect(dialog).toContain('preview.effects');
+    expect(source).toContain('await deleteGarment(garment.id)');
     expect(source).toContain('aria-current');
     expect(source).toContain('type="button"');
   });

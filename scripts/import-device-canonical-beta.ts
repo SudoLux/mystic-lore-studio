@@ -82,6 +82,7 @@ const owner = configuredOwnerUserId
   : await findOwnerByEmail(configuredOwnerEmail);
 if (owner.error || !owner.data.user) fail(`The beta owner user is unavailable: ${owner.error?.message ?? 'unknown user'}`);
 const ownerUserId = owner.data.user.id;
+process.stdout.write('Recovery owner verified; reading schema metadata.\n');
 const columns = await loadColumnManifest(betaUrl, serviceKey);
 const state = workspaceEnvelope.state;
 const startedAt = new Date().toISOString();
@@ -109,6 +110,7 @@ const localPolicy = await admin.schema('ml_private').from('studio_settings').upd
 }).eq('studio_id', state.studioId);
 if (localPolicy.error) fail(localPolicy.error.message);
 
+process.stdout.write('Recovery workspace prepared; restoring media.\n');
 let mediaInserted = 0;
 let mediaUnchanged = 0;
 for (const item of mediaManifest.media) {
@@ -116,6 +118,20 @@ for (const item of mediaManifest.media) {
   if (!file) fail(`Recovery bundle is missing ${item.path}.`);
   const bytes = await file.async('uint8array');
   if (sha256(bytes) !== item.checksum) fail(`Media checksum failed for ${item.id}.`);
+  // Rehearsals and interrupted imports retry stable paths. Verify existing
+  // bytes before sending another large upload body to an occupied path.
+  const lastSlash = item.storagePath.lastIndexOf('/');
+  const folder = item.storagePath.slice(0, lastSlash);
+  const filename = item.storagePath.slice(lastSlash + 1);
+  const listed = await admin.storage.from('studio-assets').list(folder, { search: filename, limit: 1000 });
+  if (listed.error) fail(`Could not inspect beta Storage path: ${listed.error.message}`);
+  if (listed.data.some((entry) => entry.name === filename && entry.id)) {
+    const existing = await admin.storage.from('studio-assets').download(item.storagePath);
+    if (existing.error || !existing.data) fail(`Could not verify existing beta Storage object: ${existing.error?.message ?? 'missing bytes'}`);
+    if (sha256(new Uint8Array(await existing.data.arrayBuffer())) !== item.checksum) fail(`An existing beta Storage object differs at ${item.storagePath}.`);
+    mediaUnchanged += 1;
+    continue;
+  }
   const upload = await admin.storage.from('studio-assets').upload(item.storagePath, bytes, {
     cacheControl: '31536000', contentType: item.mimeType, upsert: false,
   });
@@ -123,7 +139,10 @@ for (const item of mediaManifest.media) {
     mediaInserted += 1;
   } else if (/already exists|duplicate/i.test(upload.error.message)) {
     const existing = await admin.storage.from('studio-assets').download(item.storagePath);
-    if (existing.error || !existing.data || sha256(new Uint8Array(await existing.data.arrayBuffer())) !== item.checksum) {
+    if (existing.error || !existing.data) {
+      fail(`Could not verify existing beta Storage object at ${item.storagePath}: ${existing.error?.message ?? 'missing bytes'}`);
+    }
+    if (sha256(new Uint8Array(await existing.data.arrayBuffer())) !== item.checksum) {
       fail(`An existing beta Storage object differs at ${item.storagePath}.`);
     }
     mediaUnchanged += 1;
@@ -132,6 +151,7 @@ for (const item of mediaManifest.media) {
   }
 }
 
+process.stdout.write('Recovery media verified; restoring records.\n');
 const mutableRows = groupMutableRows(state, columns, ownerUserId);
 const rowEvidence: Record<string, { inserted: number; unchanged: number }> = {};
 for (const table of mutableImportOrder) {
@@ -160,6 +180,7 @@ for (const table of protectedImportOrder) {
   await importRows(table, sortProtectedRows(table, rows), true);
 }
 
+process.stdout.write('Recovery records imported; finalizing evidence pins.\n');
 const finalize = await admin.schema('ml_private').rpc('finalize_trusted_device_import', {
   p_confirmation: 'isolated-beta-device-import-v1',
   p_garment_pins: state.garments.map((garment) => ({

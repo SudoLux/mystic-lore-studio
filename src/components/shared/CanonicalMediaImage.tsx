@@ -8,7 +8,7 @@ import {
 } from '../../domains/persistence/canonicalMedia';
 import { useAuth } from '../../hooks/useAuth';
 import { cn } from '../../lib/classes';
-import { createRequestBoundCanonicalSupabase } from '../../lib/supabase';
+import { createRequestBoundCanonicalSupabase, supabaseConfigStatus } from '../../lib/supabase';
 import type { LocalImageAsset } from '../../types/studio';
 import type { CanonicalMaterialImageFraming } from '../../lib/canonicalMaterialPresentation';
 import { AdaptiveProjectImage } from '../projects/AdaptiveProjectImage';
@@ -44,6 +44,7 @@ export function CanonicalMediaImage({
   priority = false,
 }: CanonicalMediaImageProps) {
   const { session } = useAuth();
+  const mediaScope = `${supabaseConfigStatus.url}:${session?.user.id ?? 'signed-out'}`;
   const [source, setSource] = useState<string | null>(null);
   const [status, setStatus] = useState<'empty' | 'loading' | 'ready' | 'error'>(asset ? 'loading' : 'empty');
   const [retryToken, setRetryToken] = useState(0);
@@ -66,13 +67,13 @@ export function CanonicalMediaImage({
     setStatus('loading');
     void loadCachedCanonicalMediaBlob(delivery)
       .then((cached) => {
-        if (!cached) return resolveCanonicalMediaUrl(delivery, mediaClient);
+        if (!cached) return resolveCanonicalMediaUrl(delivery, mediaClient, { scope: mediaScope });
         objectUrl = URL.createObjectURL(cached);
         return objectUrl;
       })
       .catch((error) => {
         if (delivery.id === master.id) throw error;
-        return resolveCanonicalMediaUrl(master, mediaClient);
+        return resolveCanonicalMediaUrl(master, mediaClient, { scope: mediaScope });
       })
       .then((url) => {
         if (!active) return;
@@ -90,10 +91,11 @@ export function CanonicalMediaImage({
       active = false;
       if (objectUrl) URL.revokeObjectURL(objectUrl);
     };
-  }, [delivery, mediaClient, retryToken]);
+  // Polling produces new record objects. Stable media identity avoids flicker on every cloud read.
+  }, [delivery?.id, delivery?.checksum, delivery?.storagePath, mediaClient, mediaScope, retryToken]);
 
   const retry = () => {
-    if (delivery) clearCanonicalMediaUrl(delivery.storagePath);
+    if (delivery) clearCanonicalMediaUrl(delivery.storagePath, mediaScope);
     setStatus('loading');
     setRetryToken((value) => value + 1);
   };
@@ -140,7 +142,7 @@ export function CanonicalMediaImage({
       mode={mode === 'hero' ? 'primary' : mode === 'thumbnail' ? 'thumbnail' : 'compact'}
       onFinalError={() => setStatus('error')}
       priority={priority}
-      refreshSource={() => resolveCanonicalMediaUrl(delivery, mediaClient, { force: true })}
+      refreshSource={() => resolveCanonicalMediaUrl(delivery, mediaClient, { force: true, scope: mediaScope })}
     />
   );
 

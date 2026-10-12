@@ -1,0 +1,22 @@
+{
+  "testedAt": "2026-10-11T22:47:59.582889+00:00",
+  "project": "iahrcupmyjnyyqszrmcx",
+  "migration": "20261011224333_allow_deleted_garment_audit_detachment.sql",
+  "migrationSha256": "42842273c03e8f10bffda6510bf933f4646549d68039011faaa688a0e1905729",
+  "reproduction": "App-style garment-scoped creation followed by deletion failed with 23514: Version history is append-only; create a new event or Freeze Frame.",
+  "fix": "Allow only foreign-key-triggered clearing of a deleted garment pointer from change_events, keeping every other activity field identical.",
+  "applied": true,
+  "databaseSuitesPassed": 11,
+  "databaseAssertionsPassed": 293,
+  "appliedRegressionAssertionsPassed": 8,
+  "originalLedgerPayloadsPreserved": true,
+  "operationReceiptPreserved": true,
+  "directHistoryMutationDenied": true,
+  "retainedGarmentsMediaAndLinksUnchanged": true,
+  "physicalRetestOfPermanentDeletion": "passed per direct user confirmation",
+  "specificUserErrorMessage": "not supplied; reproduced bug may explain report",
+  "productionFrontendUnchanged": true,
+  "retainedAuthority": "shadow",
+  "deletionRetestResponse": "ok confirming the delete is working now.",
+  "deletionRetestRecordedAt": "2026-10-11T22:53:59.706947+00:00"
+}
